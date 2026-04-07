@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const p=JSON.parse\\(fs.readFileSync\\('package.json','utf8'\\)\\); p.dependencies['qrcode.react']='3.1.0'; fs.writeFileSync\\('package.json',JSON.stringify\\(p,null,2\\)\\); console.log\\('ok'\\)\")",
+      "Bash(npm --version)",
+      "Bash(where yarn:*)",
+      "Bash(yarn --version)",
+      "Bash(where pnpm:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm build:*)",
+      "Bash(xargs grep:*)"
+    ]
+  }
+}
