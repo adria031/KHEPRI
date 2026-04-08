@@ -27,23 +27,20 @@ const tiposNegocio = [
   '🎨 Tatuajes', '👗 Moda / Ropa', '🍕 Restaurante', '☕ Cafetería', '🔧 Reparaciones', '📦 Otro'
 ]
 
-
-
 const planes = [
   {
-    id: 'basico', nombre: 'Básico', precio: 'Por definir', color: '#B8D8F8', colorDark: '#1D4ED8',
+    id: 'basico', nombre: 'Básico', precio: 'Precio próximamente', color: '#B8D8F8', colorDark: '#1D4ED8',
     features: ['Gestión de reservas', 'Chatbot básico', 'Perfil en el mapa', 'Hasta 10 servicios']
   },
   {
-    id: 'pro', nombre: 'Pro', precio: 'Por definir', color: '#D4C5F9', colorDark: '#6B4FD8', popular: true,
+    id: 'pro', nombre: 'Pro', precio: 'Precio próximamente', color: '#D4C5F9', colorDark: '#6B4FD8', popular: true,
     features: ['Todo lo del Básico', 'E-commerce de productos', 'Facturación española', 'Analytics con IA', 'Marketing y fidelización', 'Servicios ilimitados']
   },
   {
-    id: 'agencia', nombre: 'Agencia', precio: 'Por definir', color: '#B8EDD4', colorDark: '#2E8A5E',
+    id: 'agencia', nombre: 'Agencia', precio: 'Precio próximamente', color: '#B8EDD4', colorDark: '#2E8A5E',
     features: ['Todo lo del Pro', 'Hasta 10 negocios', 'Panel multi-sede', 'Soporte prioritario', 'API personalizada']
   }
 ]
-
 
 export default function Onboarding() {
   const [cargandoSesion, setCargandoSesion] = useState(true)
@@ -52,17 +49,19 @@ export default function Onboarding() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
 
+  // Negocio
   const [nombreNegocio, setNombreNegocio] = useState('')
   const [tipoNegocio, setTipoNegocio] = useState('')
   const [telefono, setTelefono] = useState('')
   const [direccion, setDireccion] = useState('')
   const [ciudad, setCiudad] = useState('')
   const [codigoPostal, setCodigoPostal] = useState('')
-
   const [instagram, setInstagram] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [facebook, setFacebook] = useState('')
   const [planSeleccionado, setPlanSeleccionado] = useState('pro')
+
+  // Cliente
   const [nombreCliente, setNombreCliente] = useState('')
   const [ciudadCliente, setCiudadCliente] = useState('')
 
@@ -76,23 +75,27 @@ export default function Onboarding() {
   const totalPasosNegocio = 4
   const totalPasosCliente = 2
 
+  const progreso = tipoUsuario === 'negocio'
+    ? Math.round((paso / totalPasosNegocio) * 100)
+    : Math.round((paso / totalPasosCliente) * 100)
+
   async function guardarNegocio() {
     setCargando(true); setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No hay sesión')
 
-      await supabase.from('profiles').upsert({ id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email })
+      await supabase.from('profiles').upsert({
+        id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email
+      })
 
-      const { data: negocio, error: negocioError } = await supabase.from('negocios').insert({
+      const { error: negocioError } = await supabase.from('negocios').insert({
         user_id: user.id, nombre: nombreNegocio, tipo: tipoNegocio,
         direccion, ciudad, codigo_postal: codigoPostal, telefono,
         instagram, whatsapp, facebook, plan: planSeleccionado
-      }).select().single()
+      })
 
       if (negocioError) throw negocioError
-
-
 
       window.location.href = '/dashboard'
     } catch (e: any) {
@@ -114,14 +117,6 @@ export default function Onboarding() {
     }
     setCargando(false)
   }
-
-
-
-
-
-  const progreso = tipoUsuario === 'negocio'
-    ? Math.round((paso / totalPasosNegocio) * 100)
-    : Math.round((paso / totalPasosCliente) * 100)
 
   if (cargandoSesion) {
     return (
@@ -182,36 +177,11 @@ export default function Onboarding() {
         .plan-nombre { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
         .plan-precio { font-size: 13px; color: #9CA3AF; margin-bottom: 14px; }
         .plan-feature { font-size: 12px; color: #4B5563; padding: 3px 0; display: flex; align-items: center; gap: 6px; }
-        .horario-row { display: flex; flex-direction: column; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.06); gap: 8px; }
-        .horario-row:last-child { border-bottom: none; }        .horario-top { display: flex; align-items: center; gap: 10px; }
-        .horario-dia { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }        .horario-tipo { display: flex; gap: 6px; flex-wrap: wrap; }        .horario-tipo-btn { padding: 5px 12px; border-radius: 100px; border: 1.5px solid rgba(0,0,0,0.1); background: white; font-family: inherit; font-size: 12px; font-weight: 600; color: #6B7280; cursor: pointer; }        .horario-tipo-btn.active { background: #1D4ED8; border-color: #1D4ED8; color: white; }        .horario-times { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }        .horario-input { padding: 6px 10px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 8px; font-family: inherit; font-size: 13px; color: #111827; outline: none; width: 85px; }
-        .horario-dia.abierto { background: #B8D8F8; color: #1D4ED8; }        .horario-dia.partido { background: #D4C5F9; color: #6B4FD8; }
-        .horario-dia.cerrado { background: rgba(0,0,0,0.06); color: #9CA3AF; }
-        .horario-label { font-size: 13px; font-weight: 600; color: #111827; width: 70px; flex-shrink: 0; text-transform: capitalize; }
-        .horario-times { display: flex; align-items: center; gap: 8px; flex: 1; }
-        .horario-input { padding: 6px 10px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 8px; font-family: inherit; font-size: 13px; color: #111827; outline: none; width: 90px; }
-        .cerrado-label { font-size: 13px; color: #9CA3AF; }
-        .servicio-row { background: #F7F9FC; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
-        .servicio-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; }
-        .producto-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; }
-        .iva-tag { font-size: 10px; font-weight: 700; color: #6B4FD8; background: rgba(212,197,249,0.3); padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
-        .btn-add { display: flex; align-items: center; gap: 6px; background: none; border: 1.5px dashed rgba(0,0,0,0.15); border-radius: 10px; padding: 10px 14px; font-family: inherit; font-size: 13px; font-weight: 600; color: #6B7280; cursor: pointer; width: 100%; justify-content: center; transition: all 0.2s; margin-top: 4px; }
-        .btn-add:hover { border-color: #1D4ED8; color: #1D4ED8; background: rgba(184,216,248,0.1); }
-        .btn-remove { background: none; border: none; cursor: pointer; font-size: 18px; color: #9CA3AF; padding: 4px; transition: color 0.2s; }
-        .btn-remove:hover { color: #EF4444; }
-        .yn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
-        .yn-card { border: 2px solid rgba(0,0,0,0.08); border-radius: 14px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; font-size: 15px; font-weight: 700; color: #4B5563; }
-        .yn-card:hover { border-color: #B8D8F8; }
-        .yn-card.selected { border-color: #1D4ED8; background: rgba(184,216,248,0.1); color: #1D4ED8; }
-        .iva-info { background: rgba(212,197,249,0.15); border: 1px solid rgba(212,197,249,0.4); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 12px; color: #6B4FD8; font-weight: 500; }
         @media (max-width: 600px) {
           .card { padding: 28px 20px; }
           .planes-grid { grid-template-columns: 1fr; }
           .tipo-negocio-grid { grid-template-columns: repeat(2, 1fr); }
-          .servicio-grid { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-          .producto-grid { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
           .grid2 { grid-template-columns: 1fr; }
-          .horario-label { width: 50px; }
           h2 { font-size: 20px; }
           input, select { font-size: 16px; }
         }
@@ -221,14 +191,14 @@ export default function Onboarding() {
       <div className="page">
         <div className="header">
           <KhepriLogo />
-          {tipoUsuario && (
+          {tipoUsuario && paso > 0 && (
             <span style={{fontSize:'13px', color:'#9CA3AF', fontWeight:500}}>
               Paso {paso} de {tipoUsuario === 'negocio' ? totalPasosNegocio : totalPasosCliente}
             </span>
           )}
         </div>
 
-        {tipoUsuario && (
+        {tipoUsuario && paso > 0 && (
           <div className="progress-bar">
             <div className="progress-fill" style={{width:`${progreso}%`}}></div>
           </div>
@@ -236,44 +206,60 @@ export default function Onboarding() {
 
         <div className="card">
 
-          {/* PASO 0: TIPO DE USUARIO */}
+          {/* ── PASO 0: ¿Negocio o cliente? ── */}
           {paso === 0 && (
             <>
               <div className="step-label">Bienvenido a Khepria</div>
               <h2>¿Cómo vas a usar Khepria?</h2>
               <p className="sub">Cuéntanos quién eres para personalizar tu experiencia.</p>
               <div className="tipo-grid">
-                <div className={`tipo-card ${tipoUsuario === 'negocio' ? 'selected' : ''}`} onClick={() => setTipoUsuario('negocio')}>
+                <div
+                  className={`tipo-card ${tipoUsuario === 'negocio' ? 'selected' : ''}`}
+                  onClick={() => setTipoUsuario('negocio')}
+                >
                   <div className="tipo-icon">🏢</div>
                   <div className="tipo-title">Soy un negocio</div>
-                  <div className="tipo-desc">Quiero gestionar mi negocio, reservas, equipo y automatizar con IA</div>
+                  <div className="tipo-desc">Quiero gestionar mis reservas, equipo y automatizar con IA</div>
                 </div>
-                <div className={`tipo-card ${tipoUsuario === 'cliente' ? 'selected' : ''}`} onClick={() => setTipoUsuario('cliente')}>
+                <div
+                  className={`tipo-card ${tipoUsuario === 'cliente' ? 'selected' : ''}`}
+                  onClick={() => setTipoUsuario('cliente')}
+                >
                   <div className="tipo-icon">👤</div>
                   <div className="tipo-title">Soy un cliente</div>
                   <div className="tipo-desc">Quiero descubrir negocios, reservar citas y comprar productos</div>
                 </div>
               </div>
-              <button className="btn-primary" onClick={() => setPaso(1)} disabled={!tipoUsuario}>Continuar →</button>
+              <button className="btn-primary" onClick={() => setPaso(1)} disabled={!tipoUsuario}>
+                Continuar →
+              </button>
             </>
           )}
 
-          {/* NEGOCIO PASO 1: PLAN */}
+          {/* ── NEGOCIO PASO 1: Elegir plan ── */}
           {tipoUsuario === 'negocio' && paso === 1 && (
             <>
-              <div className="step-label">Paso 1 de 6</div>
+              <div className="step-label">Paso 1 de 4</div>
               <h2>Elige tu plan</h2>
               <p className="sub">Los precios se definirán próximamente. Puedes cambiar de plan en cualquier momento.</p>
               <div className="planes-grid">
                 {planes.map(plan => (
-                  <div key={plan.id} className={`plan-card ${planSeleccionado === plan.id ? 'selected' : ''}`}
-                    style={{ borderColor: planSeleccionado === plan.id ? plan.colorDark : 'rgba(0,0,0,0.08)', background: planSeleccionado === plan.id ? `${plan.color}20` : 'white' }}
-                    onClick={() => setPlanSeleccionado(plan.id)}>
+                  <div
+                    key={plan.id}
+                    className={`plan-card ${planSeleccionado === plan.id ? 'selected' : ''}`}
+                    style={{
+                      borderColor: planSeleccionado === plan.id ? plan.colorDark : 'rgba(0,0,0,0.08)',
+                      background: planSeleccionado === plan.id ? `${plan.color}20` : 'white'
+                    }}
+                    onClick={() => setPlanSeleccionado(plan.id)}
+                  >
                     {plan.popular && <div className="plan-popular">⭐ Popular</div>}
                     <div className="plan-nombre" style={{color: plan.colorDark}}>{plan.nombre}</div>
                     <div className="plan-precio">{plan.precio}</div>
                     {plan.features.map((f, i) => (
-                      <div key={i} className="plan-feature"><span style={{color: plan.colorDark}}>✓</span>{f}</div>
+                      <div key={i} className="plan-feature">
+                        <span style={{color: plan.colorDark}}>✓</span>{f}
+                      </div>
                     ))}
                   </div>
                 ))}
@@ -285,82 +271,134 @@ export default function Onboarding() {
             </>
           )}
 
-          {/* NEGOCIO PASO 2: INFO BÁSICA */}
+          {/* ── NEGOCIO PASO 2: Nombre / tipo / teléfono ── */}
           {tipoUsuario === 'negocio' && paso === 2 && (
             <>
-              <div className="step-label">Paso 2 de 6</div>
+              <div className="step-label">Paso 2 de 4</div>
               <h2>Información básica</h2>
               <p className="sub">Cuéntanos sobre tu negocio.</p>
               <div className="field">
                 <label>Nombre del negocio *</label>
-                <input type="text" placeholder="Ej: Barber Co." value={nombreNegocio} onChange={e => setNombreNegocio(e.target.value)} />
+                <input
+                  type="text"
+                  placeholder="Ej: Barber Co."
+                  value={nombreNegocio}
+                  onChange={e => setNombreNegocio(e.target.value)}
+                />
               </div>
               <div className="field">
                 <label>Tipo de negocio *</label>
                 <div className="tipo-negocio-grid">
                   {tiposNegocio.map(tipo => (
-                    <div key={tipo} className={`tipo-negocio-item ${tipoNegocio === tipo ? 'selected' : ''}`} onClick={() => setTipoNegocio(tipo)}>{tipo}</div>
+                    <div
+                      key={tipo}
+                      className={`tipo-negocio-item ${tipoNegocio === tipo ? 'selected' : ''}`}
+                      onClick={() => setTipoNegocio(tipo)}
+                    >
+                      {tipo}
+                    </div>
                   ))}
                 </div>
               </div>
               <div className="field">
                 <label>Teléfono de contacto</label>
-                <input type="tel" placeholder="+34 600 000 000" value={telefono} onChange={e => setTelefono(e.target.value)} />
+                <input
+                  type="tel"
+                  placeholder="+34 600 000 000"
+                  value={telefono}
+                  onChange={e => setTelefono(e.target.value)}
+                />
               </div>
               <div className="btns">
                 <button className="btn-secondary" onClick={() => setPaso(1)}>← Atrás</button>
-                <button className="btn-primary" onClick={() => setPaso(3)} disabled={!nombreNegocio || !tipoNegocio}>Continuar →</button>
+                <button className="btn-primary" onClick={() => setPaso(3)} disabled={!nombreNegocio || !tipoNegocio}>
+                  Continuar →
+                </button>
               </div>
             </>
           )}
 
-          {/* NEGOCIO PASO 3: UBICACIÓN */}
+          {/* ── NEGOCIO PASO 3: Ubicación ── */}
           {tipoUsuario === 'negocio' && paso === 3 && (
             <>
-              <div className="step-label">Paso 3 de 6</div>
+              <div className="step-label">Paso 3 de 4</div>
               <h2>Ubicación</h2>
               <p className="sub">Los clientes te encontrarán en el mapa gracias a tu dirección.</p>
               <div className="field">
                 <label>Dirección</label>
-                <input type="text" placeholder="Calle Mayor, 15" value={direccion} onChange={e => setDireccion(e.target.value)} />
+                <input
+                  type="text"
+                  placeholder="Calle Mayor, 15"
+                  value={direccion}
+                  onChange={e => setDireccion(e.target.value)}
+                />
               </div>
               <div className="grid2">
                 <div className="field">
                   <label>Ciudad *</label>
-                  <input type="text" placeholder="Barcelona" value={ciudad} onChange={e => setCiudad(e.target.value)} />
+                  <input
+                    type="text"
+                    placeholder="Barcelona"
+                    value={ciudad}
+                    onChange={e => setCiudad(e.target.value)}
+                  />
                 </div>
                 <div className="field">
                   <label>Código postal</label>
-                  <input type="text" placeholder="08001" value={codigoPostal} onChange={e => setCodigoPostal(e.target.value)} />
+                  <input
+                    type="text"
+                    placeholder="08001"
+                    value={codigoPostal}
+                    onChange={e => setCodigoPostal(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="btns">
                 <button className="btn-secondary" onClick={() => setPaso(2)}>← Atrás</button>
-                <button className="btn-primary" onClick={() => setPaso(4)} disabled={!ciudad}>Continuar →</button>
+                <button className="btn-primary" onClick={() => setPaso(4)} disabled={!ciudad}>
+                  Continuar →
+                </button>
               </div>
             </>
           )}
 
-          {/* NEGOCIO PASO 4: REDES SOCIALES */}
+          {/* ── NEGOCIO PASO 4: Redes sociales + crear negocio ── */}
           {tipoUsuario === 'negocio' && paso === 4 && (
             <>
               <div className="step-label">Paso 4 de 4</div>
               <h2>Redes sociales</h2>
-              <p className="sub">Conecta tus redes para que el chatbot IA pueda atender a tus clientes automáticamente.</p>
+              <p className="sub">Opcionales. El chatbot IA las usará para atender mejor a tus clientes.</p>
               <div className="field">
-                <label>📸 Instagram (opcional)</label>
-                <input type="text" placeholder="@tunegocio" value={instagram} onChange={e => setInstagram(e.target.value)} />
+                <label>📸 Instagram</label>
+                <input
+                  type="text"
+                  placeholder="@tunegocio"
+                  value={instagram}
+                  onChange={e => setInstagram(e.target.value)}
+                />
               </div>
               <div className="field">
-                <label>💬 WhatsApp (opcional)</label>
-                <input type="tel" placeholder="+34 600 000 000" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} />
+                <label>💬 WhatsApp</label>
+                <input
+                  type="tel"
+                  placeholder="+34 600 000 000"
+                  value={whatsapp}
+                  onChange={e => setWhatsapp(e.target.value)}
+                />
               </div>
               <div className="field">
-                <label>👤 Facebook (opcional)</label>
-                <input type="text" placeholder="facebook.com/tunegocio" value={facebook} onChange={e => setFacebook(e.target.value)} />
+                <label>👤 Facebook</label>
+                <input
+                  type="text"
+                  placeholder="facebook.com/tunegocio"
+                  value={facebook}
+                  onChange={e => setFacebook(e.target.value)}
+                />
               </div>
-              <div style={{background:'rgba(184,216,248,0.15)', border:'1px solid rgba(184,216,248,0.4)', borderRadius:'12px', padding:'14px', marginTop:'8px', marginBottom:'16px'}}>
-                <p style={{fontSize:'13px', color:'#1D4ED8', fontWeight:500}}>🤖 El chatbot IA se creará automáticamente con toda la información de tu negocio, servicios y horarios.</p>
+              <div style={{background:'rgba(184,216,248,0.15)', border:'1px solid rgba(184,216,248,0.4)', borderRadius:'12px', padding:'14px', marginTop:'4px', marginBottom:'16px'}}>
+                <p style={{fontSize:'13px', color:'#1D4ED8', fontWeight:500}}>
+                  🤖 El chatbot IA se creará automáticamente con toda la información de tu negocio.
+                </p>
               </div>
               {error && <div className="error">{error}</div>}
               <div className="btns">
@@ -372,7 +410,7 @@ export default function Onboarding() {
             </>
           )}
 
-          {/* CLIENTE PASO 1 */}
+          {/* ── CLIENTE PASO 1: Perfil ── */}
           {tipoUsuario === 'cliente' && paso === 1 && (
             <>
               <div className="step-label">Paso 1 de 2</div>
@@ -380,20 +418,32 @@ export default function Onboarding() {
               <p className="sub">Cuéntanos un poco sobre ti.</p>
               <div className="field">
                 <label>Tu nombre *</label>
-                <input type="text" placeholder="María García" value={nombreCliente} onChange={e => setNombreCliente(e.target.value)} />
+                <input
+                  type="text"
+                  placeholder="María García"
+                  value={nombreCliente}
+                  onChange={e => setNombreCliente(e.target.value)}
+                />
               </div>
               <div className="field">
                 <label>Tu ciudad *</label>
-                <input type="text" placeholder="Barcelona" value={ciudadCliente} onChange={e => setCiudadCliente(e.target.value)} />
+                <input
+                  type="text"
+                  placeholder="Barcelona"
+                  value={ciudadCliente}
+                  onChange={e => setCiudadCliente(e.target.value)}
+                />
               </div>
               <div className="btns">
                 <button className="btn-secondary" onClick={() => setPaso(0)}>← Atrás</button>
-                <button className="btn-primary" onClick={() => setPaso(2)} disabled={!nombreCliente || !ciudadCliente}>Continuar →</button>
+                <button className="btn-primary" onClick={() => setPaso(2)} disabled={!nombreCliente || !ciudadCliente}>
+                  Continuar →
+                </button>
               </div>
             </>
           )}
 
-          {/* CLIENTE PASO 2 */}
+          {/* ── CLIENTE PASO 2: Confirmación ── */}
           {tipoUsuario === 'cliente' && paso === 2 && (
             <>
               <div className="step-label">Paso 2 de 2</div>
