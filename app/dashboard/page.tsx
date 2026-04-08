@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
+import { NegocioSelector } from './NegocioSelector'
 
 function KhepriLogo({ white = false }: { white?: boolean }) {
   return (
@@ -46,6 +48,7 @@ function isoLocal(d: Date) {
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocio, setNegocio] = useState<{ id: string; nombre: string; plan: string } | null>(null)
   const [reservasHoy, setReservasHoy] = useState<number | null>(null)
   const [ingresosHoy, setIngresosHoy] = useState<number | null>(null)
@@ -63,8 +66,9 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/auth'; return }
 
-      const { data: neg } = await supabase.from('negocios').select('id, nombre, plan').eq('user_id', user.id).single()
+      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
       if (!neg) return
+      setTodosNegocios(todosNegs)
       setNegocio(neg)
 
       const hoy = new Date()
@@ -237,6 +241,7 @@ export default function Dashboard() {
               <button className="notif-btn">🔔<span className="notif-badge"></span></button>
               <button className="btn-nuevo">+ <span>Nueva reserva</span></button>
             </div>
+            <NegocioSelector negocios={todosNegocios} activoId={negocio?.id??''} />
           </header>
 
           <main className="content">

@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -44,6 +46,7 @@ const tips = [
 
 export default function Marketing() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [negocioNombre, setNegocioNombre] = useState('')
   const [copiado, setCopiado] = useState(false)
@@ -53,7 +56,8 @@ export default function Marketing() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/auth'; return }
-      const { data } = await supabase.from('negocios').select('id, nombre').eq('user_id', user.id).single()
+      const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id)
+      setTodosNegocios(todosNegs)
       if (data) { setNegocioId(data.id); setNegocioNombre(data.nombre) }
     })()
   }, [])

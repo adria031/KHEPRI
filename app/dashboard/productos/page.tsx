@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -67,6 +69,7 @@ function fmt(n: number) {
 
 export default function Productos() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [productos, setProductos] = useState<Producto[]>([])
   const [cargando, setCargando] = useState(true)
@@ -105,11 +108,11 @@ export default function Productos() {
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/auth'; return }
-      const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', user.id).single()
-      if (neg) {
-        setNegocioId(neg.id)
-        await cargarProductos(neg.id)
-      }
+      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
+      if (!neg) return
+      setTodosNegocios(todosNegs)
+      setNegocioId(neg.id)
+      await cargarProductos(neg.id)
       setCargando(false)
     })()
   }, [cargarProductos])

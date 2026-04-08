@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -72,6 +74,7 @@ const estadoConfig = {
 
 export default function Reservas() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocio, setNegocio] = useState<{id: string, nombre: string, plan: string} | null>(null)
   const [reservas, setReservas] = useState<Reserva[]>([])
   const [fecha, setFecha] = useState(hoyISO())
@@ -81,7 +84,8 @@ export default function Reservas() {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { window.location.href = '/auth'; return }
-      const { data } = await supabase.from('negocios').select('id, nombre, plan').eq('user_id', user.id).single()
+      const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id)
+      setTodosNegocios(todosNegs)
       if (data) setNegocio(data)
     })
   }, [])
@@ -226,6 +230,7 @@ export default function Reservas() {
               </button>
               <span className="topbar-title">Reservas</span>
             </div>
+            <NegocioSelector negocios={todosNegocios} activoId={negocio?.id??''} />
           </header>
 
           <main className="content">

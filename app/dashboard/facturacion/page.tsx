@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -72,6 +74,7 @@ function isoMes(anio: number, mes: number) {
 
 export default function Facturacion() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [negocioNombre, setNegocioNombre] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -332,6 +335,7 @@ export default function Facturacion() {
               <span className="mes-label">{MESES[mes]} {anio}</span>
               <button className="mes-nav-btn" onClick={nextMes} disabled={anio === hoy.getFullYear() && mes === hoy.getMonth()}>&#8250;</button>
             </div>
+            <NegocioSelector negocios={todosNegocios} activoId={negocioId??''} />
           </header>
 
           <main className="content">

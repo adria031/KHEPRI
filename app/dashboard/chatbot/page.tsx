@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -128,6 +130,7 @@ Puedes hacer tres cosas además de responder preguntas:
 
 export default function ChatbotPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
 
@@ -158,11 +161,13 @@ export default function ChatbotPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/auth'; return }
 
-      const { data: neg } = await supabase
-        .from('negocios')
+      const { activo: negBase, todos: todosNegs } = await getNegocioActivo(user.id)
+      if (!negBase) { setCargando(false); return }
+      setTodosNegocios(todosNegs)
+      // Re-fetch full fields for chatbot
+      const { data: neg } = await supabase.from('negocios')
         .select('id, nombre, tipo, descripcion, direccion, ciudad, telefono')
-        .eq('user_id', user.id)
-        .single()
+        .eq('id', negBase.id).single()
       if (!neg) { setCargando(false); return }
 
       setNegocioId(neg.id)
@@ -505,6 +510,7 @@ export default function ChatbotPage() {
               <span style={{width:'8px', height:'8px', borderRadius:'50%', background: activo ? '#2E8A5E' : '#E5E7EB', display:'inline-block'}} />
               {activo ? 'Activo' : 'Inactivo'}
             </div>
+            <NegocioSelector negocios={todosNegocios} activoId={negocioId??''} />
           </header>
 
           {cargando ? (

@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -34,6 +36,7 @@ const navItems = [
 
 export default function MiNegocio() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
@@ -52,7 +55,11 @@ export default function MiNegocio() {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { window.location.href = '/auth'; return }
-      const { data } = await supabase.from('negocios').select('*').eq('user_id', user.id).single()
+      const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(user.id)
+      setTodosNegocios(todosNegs)
+      const { data } = negActivo
+        ? await supabase.from('negocios').select('*').eq('id', negActivo.id).single()
+        : { data: null }
       if (data) {
         setNegocioId(data.id)
         setForm({

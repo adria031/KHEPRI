@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -48,6 +50,7 @@ type FormState = {
 
 export default function Equipo() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [trabajadores, setTrabajadores] = useState<Trabajador[]>([])
   const [cargando, setCargando] = useState(true)
@@ -63,12 +66,12 @@ export default function Equipo() {
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { window.location.href = '/auth'; return }
-      const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', user.id).single()
-      if (neg) {
-        setNegocioId(neg.id)
-        const { data } = await supabase.from('trabajadores').select('*').eq('negocio_id', neg.id).order('nombre')
-        setTrabajadores(data || [])
-      }
+      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
+      if (!neg) return
+      setTodosNegocios(todosNegs)
+      setNegocioId(neg.id)
+      const { data } = await supabase.from('trabajadores').select('*').eq('negocio_id', neg.id).order('nombre')
+      setTrabajadores(data || [])
       setCargando(false)
     })
   }, [])
@@ -282,7 +285,10 @@ export default function Equipo() {
               </button>
               <span style={{fontSize:'16px', fontWeight:700, color:'#111827'}}>Equipo</span>
             </div>
-            <button className="btn-nuevo" onClick={() => abrirModal()}>+ Añadir miembro</button>
+            <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+              <NegocioSelector negocios={todosNegocios} activoId={negocioId??''} />
+              <button className="btn-nuevo" onClick={() => abrirModal()}>+ Añadir miembro</button>
+            </div>
           </header>
 
           <main className="content">

@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -42,6 +44,7 @@ type Servicio = { id?: string; nombre: string; duracion: number; precio: number;
 
 export default function Servicios() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -209,6 +212,7 @@ export default function Servicios() {
               </button>
               <span style={{fontSize:'16px', fontWeight:700, color:'#111827'}}>Servicios</span>
             </div>
+            <NegocioSelector negocios={todosNegocios} activoId={negocioId??''} />
           </header>
 
           <main className="content">

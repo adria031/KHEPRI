@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
   return (
@@ -63,6 +65,7 @@ function isoFecha(y: number, m: number, d: number) {
 
 export default function Horarios() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [horarios, setHorarios] = useState<Record<string, Horario>>(
     Object.fromEntries(diasSemana.map(d => [d, defaultHorario(d)]))
