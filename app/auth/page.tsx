@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 
@@ -13,13 +14,15 @@ function KhepriLogo() {
           <circle cx="11" cy="11" r="2" fill="white"/>
         </svg>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', color: '#111827' }}>Khepri</span>
+      <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', color: '#111827' }}>Khepria</span>
     </div>
   )
 }
 
-export default function Auth() {
-  const [modo, setModo] = useState<'login' | 'registro'>('registro')
+function AuthForm() {
+  const searchParams = useSearchParams()
+  const modoInicial = searchParams?.get('modo') === 'login' ? 'login' : 'registro'
+  const [modo, setModo] = useState<'login' | 'registro'>(modoInicial)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nombre, setNombre] = useState('')
@@ -103,7 +106,7 @@ export default function Auth() {
           </div>
 
           <h1>{modo === 'registro' ? 'Crea tu cuenta' : 'Bienvenido de nuevo'}</h1>
-          <p className="sub">{modo === 'registro' ? 'Empieza gratis, sin tarjeta de crédito.' : 'Accede a tu panel de gestión.'}</p>
+          <p className="sub">{modo === 'registro' ? 'Crea tu cuenta y empieza a gestionar tu negocio.' : 'Accede a tu panel de gestión.'}</p>
 
           <div className="tabs">
             <button className={`tab ${modo === 'registro' ? 'active' : ''}`} onClick={() => { setModo('registro'); setMensaje('') }}>Registro</button>
@@ -126,7 +129,7 @@ export default function Auth() {
           </div>
 
           <button className="btn" onClick={handleSubmit} disabled={cargando}>
-            {cargando ? 'Cargando...' : modo === 'registro' ? 'Crear cuenta gratis' : 'Entrar'}
+            {cargando ? 'Cargando...' : modo === 'registro' ? 'Crear cuenta' : 'Entrar'}
           </button>
 
           {mensaje && <div className={`mensaje ${esError ? 'err' : 'ok'}`}>{mensaje}</div>}
@@ -146,11 +149,19 @@ export default function Auth() {
           <p className="footer-link">
             {modo === 'registro' ? '¿Ya tienes cuenta? ' : '¿No tienes cuenta? '}
             <a href="#" onClick={e => { e.preventDefault(); setModo(modo === 'registro' ? 'login' : 'registro'); setMensaje('') }}>
-              {modo === 'registro' ? 'Inicia sesión' : 'Regístrate gratis'}
+              {modo === 'registro' ? 'Inicia sesión' : 'Regístrate'}
             </a>
           </p>
         </div>
       </div>
     </>
+  )
+}
+
+export default function Auth() {
+  return (
+    <Suspense fallback={null}>
+      <AuthForm />
+    </Suspense>
   )
 }

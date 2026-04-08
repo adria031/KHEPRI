@@ -16,7 +16,7 @@ function KhepriLogo() {
           <circle cx="11" cy="11" r="2" fill="white"/>
         </svg>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', color: '#111827' }}>Khepri</span>
+      <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', color: '#111827' }}>Khepria</span>
     </div>
   )
 }
@@ -239,8 +239,8 @@ export default function Onboarding() {
           {/* PASO 0: TIPO DE USUARIO */}
           {paso === 0 && (
             <>
-              <div className="step-label">Bienvenido a Khepri</div>
-              <h2>¿Cómo vas a usar Khepri?</h2>
+              <div className="step-label">Bienvenido a Khepria</div>
+              <h2>¿Cómo vas a usar Khepria?</h2>
               <p className="sub">Cuéntanos quién eres para personalizar tu experiencia.</p>
               <div className="tipo-grid">
                 <div className={`tipo-card ${tipoUsuario === 'negocio' ? 'selected' : ''}`} onClick={() => setTipoUsuario('negocio')}>

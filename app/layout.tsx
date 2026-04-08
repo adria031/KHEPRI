@@ -8,7 +8,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Khepri — Gestión inteligente para negocios",
+  title: "Khepria — Gestión inteligente para negocios",
   description: "Plataforma todo-en-uno con IA para negocios de servicios",
 };
 

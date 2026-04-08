@@ -14,7 +14,7 @@ function KhepriLogo({ white = false }: { white?: boolean }) {
           <circle cx="11" cy="11" r="2" fill="white"/>
         </svg>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', color: white ? '#ffffff' : '#111827' }}>Khepri</span>
+      <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', color: white ? '#ffffff' : '#111827' }}>Khepria</span>
     </div>
   )
 }
@@ -516,7 +516,7 @@ export default function Home() {
       {/* ── FOOTER ── */}
       <footer>
         <Link href="/" style={{textDecoration:'none'}}><KhepriLogo /></Link>
-        <div>© 2025 Khepri · Hecho en España 🇪🇸</div>
+        <div>© 2025 Khepria · Hecho en España 🇪🇸</div>
         <div style={{display:'flex', gap:'20px'}}>
           <a href="#">Privacidad</a>
           <a href="#">Términos</a>

@@ -14,7 +14,7 @@ function KhepriLogo() {
           <circle cx="11" cy="11" r="2" fill="white"/>
         </svg>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Khepri</span>
+      <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Khepria</span>
     </div>
   )
 }
@@ -117,11 +117,12 @@ export default function Reservar() {
   async function confirmar() {
     if (!nombre.trim()) { setError('Introduce tu nombre'); return }
     if (!telefono.trim()) { setError('Introduce tu teléfono'); return }
+    if (!servicio) { setError('Selecciona un servicio'); return }
     setError(''); setEnviando(true)
 
     const { error: err } = await supabase.from('reservas').insert({
       negocio_id: id,
-      servicio_id: servicio!.id,
+      servicio_id: servicio.id,
       trabajador_id: trabajador?.id || null,
       cliente_nombre: nombre.trim(),
       cliente_telefono: telefono.trim(),

@@ -62,7 +62,7 @@ function KhepriLogo() {
           <circle cx="11" cy="11" r="2" fill="white"/>
         </svg>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Khepri</span>
+      <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Khepria</span>
     </div>
   )
 }
@@ -70,7 +70,7 @@ function KhepriLogo() {
 function ClienteContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const tabActiva = (searchParams.get('tab') || 'inicio') as string
+  const tabActiva = (searchParams?.get('tab') || 'inicio') as string
   const [categoriaActiva, setCategoriaActiva] = useState('todos')
   const [busqueda, setBusqueda] = useState('')
   const [nombreUsuario, setNombreUsuario] = useState('Usuario')
@@ -380,7 +380,7 @@ function ClienteContent() {
               <div className="perfil-av">{nombreUsuario.charAt(0).toUpperCase()}</div>
               <div>
                 <div style={{fontSize:'19px', fontWeight:800, color:'#111827', marginBottom:'3px'}}>{nombreUsuario}</div>
-                <div style={{fontSize:'13px', color:'#9CA3AF'}}>Cliente de Khepri</div>
+                <div style={{fontSize:'13px', color:'#9CA3AF'}}>Cliente de Khepria</div>
               </div>
             </div>
             <div className="perfil-menu">

@@ -13,7 +13,7 @@ function KhepriLogo({ white = false }: { white?: boolean }) {
           <circle cx="11" cy="11" r="2" fill="white"/>
         </svg>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: white ? '#fff' : '#111827' }}>Khepri</span>
+      <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: white ? '#fff' : '#111827' }}>Khepria</span>
     </div>
   )
 }
