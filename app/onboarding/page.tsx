@@ -43,7 +43,7 @@ const planes = [
 ]
 
 export default function Onboarding() {
-  const [cargandoSesion, setCargandoSesion] = useState(true)
+  const [cargandoSesion, setCargandoSesion] = useState(false)
   const [tipoUsuario, setTipoUsuario] = useState<'negocio' | 'cliente' | null>(null)
   const [paso, setPaso] = useState(0)
   const [cargando, setCargando] = useState(false)
@@ -66,23 +66,14 @@ export default function Onboarding() {
   const [ciudadCliente, setCiudadCliente] = useState('')
 
   useEffect(() => {
-    // onAuthStateChange catches the session even when it arrives slightly after page load
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) setCargandoSesion(false)
+    // If user already has a profile, redirect them — don't show onboarding again
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return // new registration, show the form as-is
+      const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
+      if (profile?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
+      else if (profile?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
+      // no profile yet → stay on onboarding
     })
-    // Also check immediately in case session is already present
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setCargandoSesion(false)
-      } else {
-        // No session yet — give it 4s (covers email-confirmed signUp latency)
-        setTimeout(async () => {
-          const { data: { session: s2 } } = await supabase.auth.getSession()
-          if (!s2) window.location.href = window.location.origin + '/auth'
-        }, 4000)
-      }
-    })
-    return () => subscription.unsubscribe()
   }, [])
 
   const totalPasosNegocio = 4
