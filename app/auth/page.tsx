@@ -41,10 +41,8 @@ function AuthForm() {
           setMensaje('Este email ya está registrado. Redirigiendo...'); setEsError(true)
           setTimeout(() => { setModo('login'); setMensaje(''); setEsError(false) }, 2500)
         } else { setMensaje(error.message); setEsError(true) }
-      } else if (data.session) {
-        window.location.href = window.location.origin + '/onboarding'
       } else {
-        setMensaje('Revisa tu email y confirma tu cuenta para continuar.'); setEsError(false)
+        window.location.href = window.location.origin + '/onboarding'
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })

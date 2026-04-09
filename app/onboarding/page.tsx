@@ -66,10 +66,23 @@ export default function Onboarding() {
   const [ciudadCliente, setCiudadCliente] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) window.location.href = '/auth'
-      else setCargandoSesion(false)
+    // onAuthStateChange catches the session even when it arrives slightly after page load
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) setCargandoSesion(false)
     })
+    // Also check immediately in case session is already present
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setCargandoSesion(false)
+      } else {
+        // No session yet — give it 4s (covers email-confirmed signUp latency)
+        setTimeout(async () => {
+          const { data: { session: s2 } } = await supabase.auth.getSession()
+          if (!s2) window.location.href = window.location.origin + '/auth'
+        }, 4000)
+      }
+    })
+    return () => subscription.unsubscribe()
   }, [])
 
   const totalPasosNegocio = 4
