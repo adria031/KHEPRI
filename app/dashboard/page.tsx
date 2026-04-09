@@ -32,6 +32,7 @@ const navItems = [
   { icon: '🧾', label: 'Facturación', href: '/dashboard/facturacion', active: false },
   { icon: '📱', label: 'Marketing', href: '/dashboard/marketing', active: false },
   { icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas', active: false },
+  { icon: '💰', label: 'Caja', href: '/dashboard/caja', active: false },
 ]
 
 const planLabel: Record<string, string> = {
@@ -326,6 +327,7 @@ export default function Dashboard() {
                     {icon:'👥', label:'Equipo', href:'/dashboard/equipo'},
                     {icon:'🧾', label:'Facturas', href:'/dashboard/facturacion'},
                     {icon:'⭐', label:'Reseñas', href:'/dashboard/resenas'},
+                    {icon:'💰', label:'Caja', href:'/dashboard/caja'},
                   ].map((a, i) => (
                     <Link key={i} href={a.href} className="acceso">
                       <div className="acceso-icon">{a.icon}</div>

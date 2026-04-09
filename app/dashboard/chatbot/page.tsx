@@ -39,6 +39,7 @@ const navItems = [
   { icon: '🧾', label: 'Facturación', href: '/dashboard/facturacion' },
   { icon: '📱', label: 'Marketing', href: '/dashboard/marketing' },
   { icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas' },
+  { icon: '💰', label: 'Caja', href: '/dashboard/caja' },
 ]
 
 const GEMINI_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'

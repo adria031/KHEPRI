@@ -31,6 +31,7 @@ const navItems = [
   { icon: '🧾', label: 'Facturación', href: '/dashboard/facturacion' },
   { icon: '📱', label: 'Marketing', href: '/dashboard/marketing' },
   { icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas' },
+  { icon: '💰', label: 'Caja', href: '/dashboard/caja' },
 ]
 
 const diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
