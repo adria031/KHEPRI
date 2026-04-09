@@ -46,6 +46,18 @@ export default function MiNegocio() {
   const [copiado,   setCopiado]   = useState(false)
   const [subiendo, setSubiendo] = useState(false)
 
+  // Importar desde otra app
+  const [importModal, setImportModal] = useState(false)
+  const [importUrl, setImportUrl] = useState('')
+  const [importLoading, setImportLoading] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [importData, setImportData] = useState<{
+    nombre?: string; descripcion?: string; telefono?: string;
+    direccion?: string; ciudad?: string; codigo_postal?: string;
+    instagram?: string; whatsapp?: string; facebook?: string;
+    servicios?: string[];
+  } | null>(null)
+
   const [form, setForm] = useState({
     nombre: '', tipo: '', descripcion: '', telefono: '',
     direccion: '', ciudad: '', codigo_postal: '',
@@ -158,6 +170,43 @@ export default function MiNegocio() {
     if (logoRef.current) logoRef.current.value = ''
   }
 
+  async function analizarImport() {
+    if (!importUrl.trim()) return
+    setImportLoading(true); setImportError(''); setImportData(null)
+    try {
+      const res = await fetch('/api/importar-negocio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      })
+      const json = await res.json()
+      if (json.error) { setImportError(json.error); setImportLoading(false); return }
+      setImportData(json.data)
+    } catch (e: unknown) {
+      setImportError((e as Error).message)
+    }
+    setImportLoading(false)
+  }
+
+  function aplicarImport() {
+    if (!importData) return
+    setForm(prev => ({
+      ...prev,
+      nombre: importData.nombre || prev.nombre,
+      descripcion: importData.descripcion || prev.descripcion,
+      telefono: importData.telefono || prev.telefono,
+      direccion: importData.direccion || prev.direccion,
+      ciudad: importData.ciudad || prev.ciudad,
+      codigo_postal: importData.codigo_postal || prev.codigo_postal,
+      instagram: importData.instagram || prev.instagram,
+      whatsapp: importData.whatsapp || prev.whatsapp,
+      facebook: importData.facebook || prev.facebook,
+    }))
+    setImportModal(false)
+    setImportData(null)
+    setImportUrl('')
+  }
+
   async function eliminarFoto(url: string) {
     const nuevasFotos = form.fotos.filter(f => f !== url)
     setForm({ ...form, fotos: nuevasFotos })
@@ -260,6 +309,31 @@ export default function MiNegocio() {
         .pago-check { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
         .pago-opt.active .pago-check { background: var(--blue-dark); border-color: var(--blue-dark); color: white; font-size: 12px; }
 
+        /* IMPORT MODAL */
+        .import-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .import-modal { background: white; border-radius: 20px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 28px; }
+        .import-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+        .import-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+        .import-url-row { display: flex; gap: 8px; margin-bottom: 16px; }
+        .import-url-input { flex: 1; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 14px; color: var(--text); outline: none; }
+        .import-url-input:focus { border-color: var(--blue-dark); }
+        .btn-analizar { padding: 11px 20px; background: var(--text); color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .btn-analizar:disabled { background: var(--muted); cursor: not-allowed; }
+        .import-platforms { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+        .import-platform-tag { padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 100px; font-size: 12px; color: var(--text2); font-weight: 500; cursor: pointer; transition: all 0.15s; }
+        .import-platform-tag:hover { background: var(--blue-soft); color: var(--blue-dark); border-color: var(--blue-dark); }
+        .import-data-section { border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+        .import-data-header { padding: 12px 16px; background: var(--bg); font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
+        .import-field-row { padding: 10px 16px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: start; }
+        .import-field-label { font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 2px; }
+        .import-field-val { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
+        .import-servicios-list { font-size: 12px; color: var(--text2); line-height: 2; }
+        .import-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .btn-import-cancel { padding: 11px 20px; background: none; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
+        .btn-import-apply { padding: 11px 24px; background: var(--blue-dark); color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .btn-importar-abrir { display: flex; align-items: center; gap: 7px; padding: 9px 16px; background: none; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; margin-bottom: 16px; }
+        .btn-importar-abrir:hover { background: var(--blue-soft); color: var(--blue-dark); border-color: var(--blue-dark); }
+
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); }
           .sidebar.open { transform: translateX(0); }
@@ -270,6 +344,8 @@ export default function MiNegocio() {
           .content { padding: 16px; }
           .grid2, .grid3 { grid-template-columns: 1fr; }
           .fotos-grid { grid-template-columns: repeat(3, 1fr); }
+          .import-url-row { flex-direction: column; }
+          .import-field-row { grid-template-columns: 90px 1fr; }
         }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -319,6 +395,10 @@ export default function MiNegocio() {
                 👁️ Ver ficha pública de mi negocio →
               </Link>
             )}
+
+            <button className="btn-importar-abrir" onClick={() => { setImportModal(true); setImportData(null); setImportError(''); setImportUrl('') }}>
+              📥 Importar datos desde otra app
+            </button>
 
             {cargando ? (
               <div style={{textAlign:'center', padding:'60px', color:'var(--muted)'}}>Cargando...</div>
@@ -574,6 +654,90 @@ export default function MiNegocio() {
           </main>
         </div>
       </div>
+
+      {/* IMPORTAR MODAL */}
+      {importModal && (
+        <div className="import-overlay" onClick={e => { if (e.target === e.currentTarget) setImportModal(false) }}>
+          <div className="import-modal">
+            <div className="import-title">📥 Importar desde otra app</div>
+            <div className="import-sub">Pega la URL de tu negocio en Fresha, Treatwell, Booksy, Google Maps o Instagram. Khepria extraerá los datos automáticamente.</div>
+
+            <div style={{marginBottom:'10px'}}>
+              <div style={{fontSize:'12px', fontWeight:600, color:'var(--muted)', marginBottom:'6px'}}>Plataformas compatibles:</div>
+              <div className="import-platforms">
+                {['fresha.com', 'treatwell.es', 'booksy.com', 'google.com/maps', 'instagram.com'].map(p => (
+                  <span key={p} className="import-platform-tag" onClick={() => setImportUrl('https://' + p + '/')}>{p}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="import-url-row">
+              <input
+                className="import-url-input"
+                type="url"
+                placeholder="https://www.fresha.com/providers/tu-negocio-..."
+                value={importUrl}
+                onChange={e => setImportUrl(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && analizarImport()}
+              />
+              <button className="btn-analizar" onClick={analizarImport} disabled={importLoading || !importUrl.trim()}>
+                {importLoading ? '⏳ Analizando...' : '🔍 Analizar'}
+              </button>
+            </div>
+
+            {importError && (
+              <div style={{padding:'12px 14px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:'10px', fontSize:'13px', color:'#DC2626', marginBottom:'16px'}}>
+                {importError}
+              </div>
+            )}
+
+            {importData && (
+              <>
+                <div className="import-data-section">
+                  <div className="import-data-header">✅ Datos encontrados — revisa antes de importar</div>
+                  {[
+                    { label: 'Nombre', val: importData.nombre },
+                    { label: 'Descripción', val: importData.descripcion },
+                    { label: 'Teléfono', val: importData.telefono },
+                    { label: 'Dirección', val: importData.direccion },
+                    { label: 'Ciudad', val: importData.ciudad },
+                    { label: 'Código postal', val: importData.codigo_postal },
+                    { label: 'Instagram', val: importData.instagram },
+                    { label: 'WhatsApp', val: importData.whatsapp },
+                    { label: 'Facebook', val: importData.facebook },
+                  ].filter(f => f.val).map(f => (
+                    <div key={f.label} className="import-field-row">
+                      <span className="import-field-label">{f.label}</span>
+                      <span className="import-field-val">{f.val}</span>
+                    </div>
+                  ))}
+                  {importData.servicios && importData.servicios.length > 0 && (
+                    <div className="import-field-row">
+                      <span className="import-field-label">Servicios</span>
+                      <div className="import-servicios-list">
+                        {importData.servicios.map((s, i) => <div key={i}>• {s}</div>)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p style={{fontSize:'12px', color:'var(--muted)', marginBottom:'14px', lineHeight:1.5}}>
+                  Los servicios detectados no se importarán automáticamente — ve a la sección Servicios para añadirlos manualmente. Solo se importarán los campos de información básica.
+                </p>
+                <div className="import-actions">
+                  <button className="btn-import-cancel" onClick={() => setImportModal(false)}>Cancelar</button>
+                  <button className="btn-import-apply" onClick={aplicarImport}>Importar datos →</button>
+                </div>
+              </>
+            )}
+
+            {!importData && (
+              <div className="import-actions">
+                <button className="btn-import-cancel" onClick={() => setImportModal(false)}>Cancelar</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
