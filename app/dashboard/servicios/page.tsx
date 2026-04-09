@@ -41,7 +41,16 @@ const tiposIVA = [
   { valor: 0, label: '0% Exento' },
 ]
 
-type Servicio = { id?: string; nombre: string; duracion: number; precio: number; iva: number; activo: boolean }
+type Servicio = {
+  id?: string; nombre: string; duracion: number; precio: number; iva: number; activo: boolean
+  precio_descuento: number | null; descuento_inicio: string | null; descuento_fin: string | null
+}
+
+function ofertaActiva(s: Servicio): boolean {
+  if (!s.precio_descuento || !s.descuento_inicio || !s.descuento_fin) return false
+  const hoy = new Date().toLocaleDateString('en-CA')
+  return hoy >= s.descuento_inicio && hoy <= s.descuento_fin
+}
 
 export default function Servicios() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -52,7 +61,7 @@ export default function Servicios() {
   const [guardando, setGuardando] = useState(false)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState<Servicio | null>(null)
-  const [form, setForm] = useState({ nombre: '', duracion: '30', precio: '', iva: '10' })
+  const [form, setForm] = useState({ nombre: '', duracion: '30', precio: '', iva: '10', precio_descuento: '', descuento_inicio: '', descuento_fin: '' })
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -71,10 +80,16 @@ export default function Servicios() {
   function abrirModal(servicio?: Servicio) {
     if (servicio) {
       setEditando(servicio)
-      setForm({ nombre: servicio.nombre, duracion: String(servicio.duracion), precio: String(servicio.precio), iva: String(servicio.iva) })
+      setForm({
+        nombre: servicio.nombre, duracion: String(servicio.duracion),
+        precio: String(servicio.precio), iva: String(servicio.iva),
+        precio_descuento: servicio.precio_descuento != null ? String(servicio.precio_descuento) : '',
+        descuento_inicio: servicio.descuento_inicio || '',
+        descuento_fin: servicio.descuento_fin || '',
+      })
     } else {
       setEditando(null)
-      setForm({ nombre: '', duracion: '30', precio: '', iva: '10' })
+      setForm({ nombre: '', duracion: '30', precio: '', iva: '10', precio_descuento: '', descuento_inicio: '', descuento_fin: '' })
     }
     setError('')
     setModal(true)
@@ -83,7 +98,12 @@ export default function Servicios() {
   async function guardar() {
     if (!form.nombre || !form.precio) { setError('Nombre y precio son obligatorios.'); return }
     setGuardando(true)
-    const datos = { nombre: form.nombre, duracion: parseInt(form.duracion), precio: parseFloat(form.precio), iva: parseInt(form.iva) }
+    const datos = {
+      nombre: form.nombre, duracion: parseInt(form.duracion), precio: parseFloat(form.precio), iva: parseInt(form.iva),
+      precio_descuento: form.precio_descuento ? parseFloat(form.precio_descuento) : null,
+      descuento_inicio: form.descuento_inicio || null,
+      descuento_fin: form.descuento_fin || null,
+    }
 
     if (editando?.id) {
       const { error } = await supabase.from('servicios').update(datos).eq('id', editando.id)
@@ -157,6 +177,9 @@ export default function Servicios() {
         .tag-green { background: var(--green-soft); color: var(--green-dark); }
         .tag-lila { background: rgba(212,197,249,0.3); color: #6B4FD8; }
         .servicio-precio { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 10px; letter-spacing: -0.5px; }
+        .precio-original { font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: line-through; margin-right: 6px; }
+        .precio-oferta { font-size: 20px; font-weight: 800; color: #DC2626; letter-spacing: -0.5px; }
+        .badge-oferta { display: inline-flex; align-items: center; gap: 4px; background: rgba(254,226,226,0.6); color: #DC2626; border: 1px solid #FCA5A5; border-radius: 100px; font-size: 11px; font-weight: 700; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
         .empty { text-align: center; padding: 60px 20px; background: var(--white); border: 1px solid var(--border); border-radius: 16px; }
         .empty-emoji { font-size: 48px; margin-bottom: 12px; }
         .empty-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
@@ -249,11 +272,21 @@ export default function Servicios() {
                         <button className="btn-icon" onClick={() => eliminar(s.id!)} title="Eliminar">🗑️</button>
                       </div>
                     </div>
-                    <div className="servicio-precio">€{s.precio.toFixed(2)}</div>
+                    <div className="servicio-precio" style={{marginBottom:'10px'}}>
+                      {ofertaActiva(s) ? (
+                        <>
+                          <span className="precio-original">€{s.precio.toFixed(2)}</span>
+                          <span className="precio-oferta">€{s.precio_descuento!.toFixed(2)}</span>
+                          <span className="badge-oferta">🏷 Oferta</span>
+                        </>
+                      ) : (
+                        <>€{s.precio.toFixed(2)}{s.precio_descuento && <span className="badge-oferta" style={{opacity:0.5}}>descuento inactivo</span>}</>
+                      )}
+                    </div>
                     <div className="servicio-meta">
                       <span className="tag tag-blue">⏱ {s.duracion} min</span>
                       <span className="tag tag-lila">IVA {s.iva}%</span>
-                      <span className="tag tag-green">Base: €{(s.precio / (1 + s.iva/100)).toFixed(2)}</span>
+                      <span className="tag tag-green">Base: €{((ofertaActiva(s) ? s.precio_descuento! : s.precio) / (1 + s.iva/100)).toFixed(2)}</span>
                       {!s.activo && <span className="tag" style={{background:'rgba(0,0,0,0.06)', color:'var(--muted)'}}>Inactivo</span>}
                     </div>
                   </div>
@@ -302,6 +335,39 @@ export default function Servicios() {
                 &nbsp;·&nbsp; IVA ({form.iva}%): <strong>€{(parseFloat(form.precio || '0') - parseFloat(form.precio || '0') / (1 + parseInt(form.iva)/100)).toFixed(2)}</strong>
               </div>
             )}
+
+            {/* ── DESCUENTO ── */}
+            <div style={{borderTop:'1px solid rgba(0,0,0,0.07)', marginTop:'16px', paddingTop:'16px'}}>
+              <div style={{fontSize:'13px', fontWeight:700, color:'#111827', marginBottom:'12px'}}>🏷 Precio con descuento <span style={{fontWeight:400, color:'#9CA3AF'}}>(opcional)</span></div>
+              <div className="field">
+                <label>Precio rebajado (€, con IVA)</label>
+                <input
+                  type="number" placeholder="0.00" min="0" step="0.01"
+                  value={form.precio_descuento}
+                  onChange={e => setForm({...form, precio_descuento: e.target.value})}
+                />
+              </div>
+              <div className="grid2">
+                <div className="field">
+                  <label>Fecha inicio</label>
+                  <input type="date" value={form.descuento_inicio} onChange={e => setForm({...form, descuento_inicio: e.target.value})} />
+                </div>
+                <div className="field">
+                  <label>Fecha fin</label>
+                  <input type="date" value={form.descuento_fin} onChange={e => setForm({...form, descuento_fin: e.target.value})} />
+                </div>
+              </div>
+              {form.precio_descuento && form.precio && parseFloat(form.precio_descuento) >= parseFloat(form.precio) && (
+                <div style={{background:'rgba(254,226,226,0.5)', color:'#DC2626', padding:'8px 12px', borderRadius:'8px', fontSize:'12px', fontWeight:600}}>
+                  ⚠ El precio rebajado debe ser menor que el precio original.
+                </div>
+              )}
+              {form.precio_descuento && form.precio && parseFloat(form.precio_descuento) < parseFloat(form.precio) && (
+                <div style={{background:'rgba(184,237,212,0.3)', color:'#2E8A5E', padding:'8px 12px', borderRadius:'8px', fontSize:'12px', fontWeight:600}}>
+                  Ahorro: €{(parseFloat(form.precio) - parseFloat(form.precio_descuento)).toFixed(2)} ({Math.round((1 - parseFloat(form.precio_descuento)/parseFloat(form.precio))*100)}% dto.)
+                </div>
+              )}
+            </div>
             {error && <div className="error-msg">{error}</div>}
             <div className="modal-btns">
               <button className="btn-secondary" onClick={() => setModal(false)}>Cancelar</button>

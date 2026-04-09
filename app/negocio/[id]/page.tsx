@@ -32,7 +32,16 @@ type Negocio = {
   logo_url: string; fotos: string[]; metodos_pago: string[] | null
 }
 type Horario = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string; hora_cierre2: string }
-type Servicio = { id: string; nombre: string; duracion: number; precio: number; iva: number }
+type Servicio = {
+  id: string; nombre: string; duracion: number; precio: number; iva: number
+  precio_descuento: number | null; descuento_inicio: string | null; descuento_fin: string | null
+}
+
+function ofertaActiva(s: Servicio): boolean {
+  if (!s.precio_descuento || !s.descuento_inicio || !s.descuento_fin) return false
+  const hoy = new Date().toLocaleDateString('en-CA')
+  return hoy >= s.descuento_inicio && hoy <= s.descuento_fin
+}
 
 export default function FichaNegocio() {
   const params = useParams()
@@ -240,10 +249,22 @@ export default function FichaNegocio() {
                 {servicios.map(s => (
                   <div key={s.id} className="servicio-row">
                     <div>
-                      <div className="servicio-nombre">{s.nombre}</div>
+                      <div className="servicio-nombre">
+                        {s.nombre}
+                        {ofertaActiva(s) && <span style={{display:'inline-flex', alignItems:'center', marginLeft:'6px', background:'rgba(220,38,38,0.1)', color:'#DC2626', borderRadius:'100px', fontSize:'10px', fontWeight:700, padding:'1px 7px'}}>🏷 OFERTA</span>}
+                      </div>
                       <div className="servicio-dur">⏱ {s.duracion} min</div>
                     </div>
-                    <div className="servicio-precio">€{s.precio.toFixed(2)}</div>
+                    <div style={{textAlign:'right'}}>
+                      {ofertaActiva(s) ? (
+                        <>
+                          <div style={{fontSize:'12px', color:'#9CA3AF', textDecoration:'line-through', fontWeight:600}}>€{s.precio.toFixed(2)}</div>
+                          <div className="servicio-precio" style={{color:'#DC2626', marginBottom:0}}>€{s.precio_descuento!.toFixed(2)}</div>
+                        </>
+                      ) : (
+                        <div className="servicio-precio" style={{marginBottom:0}}>€{s.precio.toFixed(2)}</div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
