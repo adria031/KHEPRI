@@ -42,7 +42,7 @@ function AuthForm() {
           setTimeout(() => { setModo('login'); setMensaje(''); setEsError(false) }, 2500)
         } else { setMensaje(error.message); setEsError(true) }
       } else if (data.session) {
-        window.location.href = '/onboarding'
+        window.location.href = window.location.origin + '/onboarding'
       } else {
         setMensaje('Revisa tu email y confirma tu cuenta para continuar.'); setEsError(false)
       }
@@ -53,9 +53,9 @@ function AuthForm() {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', user.id).single()
-          if (profile?.tipo === 'negocio') window.location.href = '/dashboard'
-          else if (profile?.tipo === 'cliente') window.location.href = '/cliente'
-          else window.location.href = '/onboarding'
+          if (profile?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
+          else if (profile?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
+          else window.location.href = window.location.origin + '/onboarding'
         }
       }
     }

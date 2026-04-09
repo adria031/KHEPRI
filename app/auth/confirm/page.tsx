@@ -10,15 +10,15 @@ export default function Confirm() {
         const user = data.session?.user ?? data.user
         if (user) {
           const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', user.id).single()
-          if (profile?.tipo === 'negocio') window.location.href = '/dashboard'
-          else if (profile?.tipo === 'cliente') window.location.href = '/cliente'
-          else window.location.href = '/onboarding'
+          if (profile?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
+          else if (profile?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
+          else window.location.href = window.location.origin + '/onboarding'
         } else {
-          window.location.href = '/onboarding'
+          window.location.href = window.location.origin + '/onboarding'
         }
       })
     } else {
-      window.location.href = '/auth'
+      window.location.href = window.location.origin + '/auth'
     }
   }, [])
 
