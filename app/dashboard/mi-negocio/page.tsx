@@ -53,6 +53,7 @@ export default function MiNegocio() {
     horas_cancelacion: 24 as number,
     confirmacion_automatica: true as boolean,
     mensaje_cancelacion: '',
+    metodos_pago: ['efectivo'] as string[],
   })
 
   const fileRef = useRef<HTMLInputElement>(null)
@@ -84,6 +85,7 @@ export default function MiNegocio() {
           horas_cancelacion: data.horas_cancelacion ?? 24,
           confirmacion_automatica: data.confirmacion_automatica ?? true,
           mensaje_cancelacion: data.mensaje_cancelacion || '',
+          metodos_pago: data.metodos_pago || ['efectivo'],
         })
       }
       setCargando(false)
@@ -108,6 +110,7 @@ export default function MiNegocio() {
       horas_cancelacion: form.horas_cancelacion,
       confirmacion_automatica: form.confirmacion_automatica,
       mensaje_cancelacion: form.mensaje_cancelacion || null,
+      metodos_pago: form.metodos_pago,
     }).eq('id', negocioId)
     if (errGuardar) {
       console.error('[mi-negocio] update negocios:', errGuardar)
@@ -247,6 +250,15 @@ export default function MiNegocio() {
         .toggle input:checked + .toggle-track { background: #111827; border-color: #111827; }
         .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); pointer-events: none; }
         .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+        .pago-opts { display: flex; flex-direction: column; gap: 10px; }
+        .pago-opt { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.15s; background: white; }
+        .pago-opt.active { border-color: var(--blue-dark); background: var(--blue-soft); }
+        .pago-opt-left { display: flex; align-items: center; gap: 10px; }
+        .pago-opt-icon { font-size: 20px; }
+        .pago-opt-name { font-size: 14px; font-weight: 600; color: var(--text); }
+        .pago-opt-desc { font-size: 12px; color: var(--muted); }
+        .pago-check { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+        .pago-opt.active .pago-check { background: var(--blue-dark); border-color: var(--blue-dark); color: white; font-size: 12px; }
 
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); }
@@ -480,6 +492,41 @@ export default function MiNegocio() {
                       style={{minHeight:'80px'}}
                     />
                     <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'4px'}}>Este mensaje se mostrará al cliente cuando cancele una cita.</p>
+                  </div>
+                </div>
+
+                {/* ── MÉTODOS DE PAGO ── */}
+                <div className="section">
+                  <div className="section-title">💳 Métodos de pago aceptados</div>
+                  <div className="pago-opts">
+                    {([
+                      { id: 'pago_app',  icon: '📱', name: 'Pago por app',  desc: 'Los clientes pagan online al reservar' },
+                      { id: 'efectivo',  icon: '💵', name: 'Efectivo',       desc: 'Pago en mano en el local' },
+                      { id: 'datafono',  icon: '💳', name: 'Datáfono',       desc: 'Tarjeta de crédito o débito' },
+                    ] as const).map(m => {
+                      const activo = form.metodos_pago.includes(m.id)
+                      return (
+                        <div
+                          key={m.id}
+                          className={`pago-opt ${activo ? 'active' : ''}`}
+                          onClick={() => setForm(prev => ({
+                            ...prev,
+                            metodos_pago: activo
+                              ? prev.metodos_pago.filter(x => x !== m.id)
+                              : [...prev.metodos_pago, m.id]
+                          }))}
+                        >
+                          <div className="pago-opt-left">
+                            <span className="pago-opt-icon">{m.icon}</span>
+                            <div>
+                              <div className="pago-opt-name">{m.name}</div>
+                              <div className="pago-opt-desc">{m.desc}</div>
+                            </div>
+                          </div>
+                          <div className="pago-check">{activo ? '✓' : ''}</div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
 

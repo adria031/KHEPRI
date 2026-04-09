@@ -29,7 +29,7 @@ type Negocio = {
   id: string; nombre: string; tipo: string; descripcion: string;
   telefono: string; direccion: string; ciudad: string; codigo_postal: string;
   instagram: string; whatsapp: string; facebook: string;
-  logo_url: string; fotos: string[]
+  logo_url: string; fotos: string[]; metodos_pago: string[] | null
 }
 type Horario = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string; hora_cierre2: string }
 type Servicio = { id: string; nombre: string; duracion: number; precio: number; iva: number }
@@ -308,6 +308,28 @@ export default function FichaNegocio() {
                 </a>
               )}
             </div>
+
+            {/* MÉTODOS DE PAGO */}
+            {negocio.metodos_pago && negocio.metodos_pago.length > 0 && (
+              <div style={{background:'white', borderRadius:'16px', border:'1px solid rgba(0,0,0,0.08)', padding:'18px 20px', marginBottom:'16px'}}>
+                <div style={{fontSize:'13px', fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'12px'}}>Métodos de pago</div>
+                <div style={{display:'flex', flexWrap:'wrap', gap:'8px'}}>
+                  {negocio.metodos_pago.map(m => {
+                    const info: Record<string, {icon:string; label:string}> = {
+                      pago_app: { icon: '📱', label: 'Pago por app' },
+                      efectivo: { icon: '💵', label: 'Efectivo' },
+                      datafono: { icon: '💳', label: 'Datáfono' },
+                    }
+                    const { icon, label } = info[m] ?? { icon: '💰', label: m }
+                    return (
+                      <span key={m} style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'6px 12px', background:'rgba(184,216,248,0.15)', border:'1px solid rgba(184,216,248,0.4)', borderRadius:'100px', fontSize:'13px', fontWeight:600, color:'#1D4ED8'}}>
+                        {icon} {label}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* UBICACION */}
             {(negocio.direccion || negocio.ciudad) && (
