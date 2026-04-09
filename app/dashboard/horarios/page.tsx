@@ -73,6 +73,7 @@ export default function Horarios() {
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
+  const [apiError, setApiError] = useState('')
 
   // Calendario
   const hoy = new Date()
@@ -152,7 +153,7 @@ export default function Horarios() {
 
   async function guardar() {
     if (!negocioId) return
-    setGuardando(true)
+    setGuardando(true); setApiError('')
     for (const dia of diasSemana) {
       const h = horarios[dia]
       const datos = {
@@ -165,10 +166,10 @@ export default function Horarios() {
       }
       if (h.id) {
         const { error: errUpd } = await supabase.from('horarios').update(datos).eq('id', h.id)
-        if (errUpd) console.error('[horarios] update:', errUpd, dia)
+        if (errUpd) { console.error('[horarios] update:', errUpd, dia); setApiError(errUpd.message); }
       } else {
         const { data, error: errIns } = await supabase.from('horarios').insert(datos).select().single()
-        if (errIns) console.error('[horarios] insert:', errIns, dia)
+        if (errIns) { console.error('[horarios] insert:', errIns, dia); setApiError(errIns.message); }
         else if (data) setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], id: data.id } }))
       }
     }
@@ -403,6 +404,7 @@ export default function Horarios() {
               </button>
               <span style={{fontSize:'16px', fontWeight:700, color:'#111827'}}>Horarios</span>
             </div>
+            {apiError && <span style={{fontSize:'12px', color:'#DC2626', fontWeight:600, maxWidth:'300px'}}>{apiError}</span>}
             <button
               className={`btn-guardar ${guardado ? 'btn-guardado' : ''}`}
               onClick={guardar}

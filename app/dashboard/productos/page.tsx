@@ -80,6 +80,7 @@ export default function Productos() {
   const [form, setForm] = useState<FormData>(emptyForm())
   const [guardando, setGuardando] = useState(false)
   const [errores, setErrores] = useState<Partial<FormData>>({})
+  const [apiError, setApiError] = useState('')
 
   // Foto
   const [fotoFile, setFotoFile] = useState<File | null>(null)
@@ -181,7 +182,7 @@ export default function Productos() {
 
   async function guardar() {
     if (!negocioId || !validar()) return
-    setGuardando(true)
+    setGuardando(true); setApiError('')
 
     const precio = parseFloat(form.precio)
     const stock = parseInt(form.stock)
@@ -203,7 +204,8 @@ export default function Productos() {
         .select()
         .single()
 
-      if (!error && nuevo) {
+      if (error) { setApiError(error.message); setGuardando(false); return }
+      if (nuevo) {
         let foto_url = null
         if (fotoFile) foto_url = await subirFoto(fotoFile, nuevo.id)
         if (foto_url) {
@@ -228,7 +230,8 @@ export default function Productos() {
         })
         .eq('id', editando.id)
 
-      if (!error) {
+      if (error) { setApiError(error.message); setGuardando(false); return }
+      if (true) {
         setProductos(prev => prev.map(p => p.id === editando.id
           ? { ...p, nombre: form.nombre.trim(), descripcion: form.descripcion.trim() || null, precio, iva: form.iva, stock, foto_url }
           : p
@@ -658,6 +661,7 @@ export default function Productos() {
               </div>
 
             </div>
+            {apiError && <div style={{background:'rgba(254,226,226,0.5)', color:'#DC2626', padding:'10px 14px', borderRadius:'8px', fontSize:'13px', fontWeight:500, marginBottom:'8px'}}>{apiError}</div>}
             <div className="modal-footer">
               <button className="btn-cancel" onClick={cerrarModal}>Cancelar</button>
               <button className="btn-primary" onClick={guardar} disabled={guardando || subiendoFoto}>

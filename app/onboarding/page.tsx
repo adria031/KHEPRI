@@ -101,7 +101,7 @@ export default function Onboarding() {
 
       if (negocioError) throw negocioError
 
-      window.location.href = '/dashboard'
+      window.location.href = window.location.origin + '/dashboard'
     } catch (e: any) {
       setError(e.message || 'Error al guardar. Inténtalo de nuevo.')
     }
@@ -112,12 +112,14 @@ export default function Onboarding() {
     setCargando(true); setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No hay sesión')
-      await supabase.from('profiles').upsert({ id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email })
-      await supabase.from('clientes').insert({ user_id: user.id, nombre: nombreCliente, ciudad: ciudadCliente })
-      window.location.href = '/cliente'
+      if (!user) throw new Error('No hay sesión activa. Vuelve a registrarte.')
+      const { error: profErr } = await supabase.from('profiles').upsert({ id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email })
+      if (profErr) throw profErr
+      const { error: cliErr } = await supabase.from('clientes').insert({ user_id: user.id, nombre: nombreCliente, ciudad: ciudadCliente })
+      if (cliErr) throw cliErr
+      window.location.href = window.location.origin + '/cliente'
     } catch (e: any) {
-      setError(e.message || 'Error al guardar.')
+      setError(e.message || 'Error al guardar. Inténtalo de nuevo.')
     }
     setCargando(false)
   }

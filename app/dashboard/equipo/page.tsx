@@ -133,14 +133,16 @@ export default function Equipo() {
 
     if (editando) {
       const { error: err } = await supabase.from('trabajadores').update(datos).eq('id', editando.id)
-      if (!err) setTrabajadores(prev => prev.map(t => t.id === editando.id ? { ...t, ...datos } : t))
+      if (err) { setError(err.message); setGuardando(false); return }
+      setTrabajadores(prev => prev.map(t => t.id === editando.id ? { ...t, ...datos } : t))
     } else {
       const { data, error: err } = await supabase
         .from('trabajadores')
         .insert({ ...datos, negocio_id: negocioId, activo: true })
         .select()
         .single()
-      if (!err && data) setTrabajadores(prev => [...prev, data])
+      if (err) { setError(err.message); setGuardando(false); return }
+      if (data) setTrabajadores(prev => [...prev, data])
     }
 
     setGuardando(false)

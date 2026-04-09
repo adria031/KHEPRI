@@ -40,6 +40,7 @@ export default function MiNegocio() {
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
+  const [apiError, setApiError] = useState('')
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [copiado,   setCopiado]   = useState(false)
   const [subiendo, setSubiendo] = useState(false)
@@ -90,7 +91,7 @@ export default function MiNegocio() {
 
   async function guardar() {
     if (!negocioId) return
-    setGuardando(true)
+    setGuardando(true); setApiError('')
     const { error: errGuardar } = await supabase.from('negocios').update({
       nombre: form.nombre,
       descripcion: form.descripcion,
@@ -107,7 +108,12 @@ export default function MiNegocio() {
       confirmacion_automatica: form.confirmacion_automatica,
       mensaje_cancelacion: form.mensaje_cancelacion || null,
     }).eq('id', negocioId)
-    if (errGuardar) console.error('[mi-negocio] update negocios:', errGuardar)
+    if (errGuardar) {
+      console.error('[mi-negocio] update negocios:', errGuardar)
+      setApiError(errGuardar.message)
+      setGuardando(false)
+      return
+    }
     setGuardando(false)
     setGuardado(true)
     setTimeout(() => setGuardado(false), 3000)
@@ -281,6 +287,7 @@ export default function MiNegocio() {
               </button>
               <span style={{fontSize:'16px', fontWeight:700, color:'#111827'}}>Mi negocio</span>
             </div>
+            {apiError && <span style={{fontSize:'12px', color:'#DC2626', fontWeight:600, maxWidth:'300px'}}>{apiError}</span>}
             <button
               className={`btn-guardar ${guardado ? 'btn-guardado' : ''}`}
               onClick={guardar}
