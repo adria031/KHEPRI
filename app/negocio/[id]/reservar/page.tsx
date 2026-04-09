@@ -1,8 +1,20 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
+import {
+  verificarDisponibilidad,
+  crearReserva,
+  buscarReservas,
+  cancelarReserva,
+  FUNCTION_DECLARATIONS,
+} from '../../../lib/chatbotFunctions'
+
+const GEMINI_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`
+
+type ChatMsg = { role: 'user' | 'bot'; text: string }
 
 function KhepriLogo() {
   return (
@@ -63,8 +75,17 @@ export default function Reservar() {
   const [hora, setHora] = useState<string>('')
   const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
+  const [email, setEmail] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
+
+  // Chat widget
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatEnviando, setChatEnviando] = useState(false)
+  const chatBodyRef = useRef<HTMLDivElement>(null)
+  const chatInputRef = useRef<HTMLInputElement>(null)
 
   // Calendario
   const hoy = new Date()
@@ -114,24 +135,146 @@ export default function Reservar() {
     return (new Date(y, m, 1).getDay() + 6) % 7
   }
 
+  function abrirChat() {
+    if (!chatOpen) {
+      setChatOpen(true)
+      if (chatMsgs.length === 0) {
+        setChatMsgs([{ role: 'bot', text: `¡Hola! Soy el asistente de ${negocioNombre}. Puedo ayudarte a reservar o cancelar una cita. ¿Qué necesitas?` }])
+      }
+      setTimeout(() => chatInputRef.current?.focus(), 150)
+    } else {
+      setChatOpen(false)
+    }
+  }
+
+  async function enviarChatMsg() {
+    const texto = chatInput.trim()
+    if (!texto || chatEnviando || !id) return
+
+    setChatInput('')
+    setChatEnviando(true)
+    const nuevos: ChatMsg[] = [...chatMsgs, { role: 'user', text: texto }]
+    setChatMsgs(nuevos)
+    setTimeout(() => { if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight }, 50)
+
+    try {
+      const serviciosText = servicios.map(s => `  - ID:${s.id} | ${s.nombre} | ${s.precio}€ | ${s.duracion}min`).join('\n')
+      const trabajadoresText = trabajadores.length > 0
+        ? trabajadores.map(t => `  - ID:${t.id} | ${t.nombre}`).join('\n')
+        : '  (Sin trabajadores registrados)'
+      const diasNombreMap: Record<string, string> = { lunes:'Lunes', martes:'Martes', miercoles:'Miércoles', jueves:'Jueves', viernes:'Viernes', sabado:'Sábado', domingo:'Domingo' }
+      const horariosText = horarios.filter(h => h.abierto).map(h => `  - ${diasNombreMap[h.dia]||h.dia}: ${h.hora_apertura}–${h.hora_cierre}`).join('\n')
+
+      const systemPrompt = `Eres el asistente virtual de ${negocioNombre}. Responde en español, sé conciso.
+Ayuda a reservar citas y cancelarlas. Para reservar recoge: nombre, teléfono, servicio, trabajador (si hay varios), fecha, hora y email (opcional, para confirmación).
+SIEMPRE llama a verificarDisponibilidad antes de crearReserva. Si no está disponible muestra slots alternativos.
+Hoy es ${new Date().toISOString().split('T')[0]}.
+== SERVICIOS == \n${serviciosText || '(Sin servicios)'}
+== EQUIPO == \n${trabajadoresText}
+== HORARIOS == \n${horariosText || '(Sin horarios)'}`
+
+      const historial: any[] = nuevos
+        .slice(0, -1) // exclude the just-added user msg (we add it below)
+        .map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }))
+      historial.push({ role: 'user', parts: [{ text: texto }] })
+
+      for (let iter = 0; iter < 5; iter++) {
+        const res = await fetch(GEMINI_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: historial,
+            tools: [{ functionDeclarations: FUNCTION_DECLARATIONS }],
+            generationConfig: { maxOutputTokens: 500, temperature: 0.7 },
+          }),
+        })
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err?.error?.message || `HTTP ${res.status}`)
+        }
+
+        const json = await res.json()
+        const parts: any[] = json.candidates?.[0]?.content?.parts ?? []
+        const fnCallPart = parts.find((p: any) => p.functionCall)
+
+        if (fnCallPart) {
+          const { name, args } = fnCallPart.functionCall
+          historial.push({ role: 'model', parts: [{ functionCall: { name, args } }] })
+
+          let fnResult: any
+          try {
+            switch (name) {
+              case 'verificarDisponibilidad':
+                fnResult = await verificarDisponibilidad({ negocio_id: id as string, ...args })
+                break
+              case 'crearReserva':
+                fnResult = await crearReserva({ negocio_id: id as string, ...args })
+                break
+              case 'buscarReservas':
+                fnResult = await buscarReservas({ negocio_id: id as string, ...args })
+                break
+              case 'cancelarReserva':
+                fnResult = await cancelarReserva(args)
+                break
+              default:
+                fnResult = { error: 'Función desconocida' }
+            }
+          } catch (e: any) {
+            fnResult = { error: e.message }
+          }
+
+          historial.push({
+            role: 'user',
+            parts: [{ functionResponse: { name, response: fnResult } }],
+          })
+          continue
+        }
+
+        const textPart = parts.find((p: any) => p.text)
+        const respuesta = textPart?.text ?? '...'
+        setChatMsgs(prev => [...prev, { role: 'bot', text: respuesta }])
+        setTimeout(() => { if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight }, 50)
+        break
+      }
+    } catch (e: any) {
+      setChatMsgs(prev => [...prev, { role: 'bot', text: `Error: ${e.message}` }])
+    } finally {
+      setChatEnviando(false)
+      setTimeout(() => chatInputRef.current?.focus(), 50)
+    }
+  }
+
   async function confirmar() {
     if (!nombre.trim()) { setError('Introduce tu nombre'); return }
     if (!telefono.trim()) { setError('Introduce tu teléfono'); return }
     if (!servicio) { setError('Selecciona un servicio'); return }
     setError(''); setEnviando(true)
 
-    const { error: err } = await supabase.from('reservas').insert({
+    const { data: nueva, error: err } = await supabase.from('reservas').insert({
       negocio_id: id,
       servicio_id: servicio.id,
       trabajador_id: trabajador?.id || null,
       cliente_nombre: nombre.trim(),
       cliente_telefono: telefono.trim(),
+      cliente_email: email.trim() || null,
       fecha,
       hora,
       estado: 'confirmada',
-    })
+    }).select('id').single()
 
     if (err) { setError('Error al guardar la reserva. Inténtalo de nuevo.'); setEnviando(false); return }
+
+    // Fire confirmation email (non-blocking)
+    if (nueva?.id) {
+      fetch('/api/reservas/confirmar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reserva_id: nueva.id }),
+      }).catch(() => {})
+    }
+
     setPaso(5)
   }
 
@@ -221,6 +364,30 @@ export default function Reservar() {
         .exito-card { background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 18px; text-align: left; margin-bottom: 20px; }
         .exito-card-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.06); }
         .exito-card-row:last-child { border-bottom: none; }
+        /* Chatbot widget */
+        .chat-fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #D4C5F9, #B8D8F8); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 200; transition: transform 0.2s; }
+        .chat-fab:hover { transform: scale(1.08); }
+        .chat-panel { position: fixed; bottom: 96px; right: 24px; width: 340px; height: 480px; background: white; border: 1px solid rgba(0,0,0,0.1); border-radius: 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.15); z-index: 200; display: flex; flex-direction: column; overflow: hidden; }
+        .chat-head { padding: 14px 16px; border-bottom: 1px solid rgba(0,0,0,0.07); display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg, rgba(212,197,249,0.15), rgba(184,216,248,0.15)); }
+        .chat-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #D4C5F9, #B8D8F8); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .chat-head-name { font-size: 13px; font-weight: 700; color: #111827; }
+        .chat-head-status { font-size: 11px; color: #2E8A5E; display: flex; align-items: center; gap: 3px; }
+        .chat-head-close { margin-left: auto; background: none; border: none; cursor: pointer; font-size: 18px; color: #9CA3AF; line-height: 1; }
+        .chat-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .chat-bubble { max-width: 82%; padding: 9px 12px; border-radius: 14px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+        .chat-bubble-bot { background: #F7F9FC; color: #111827; border-bottom-left-radius: 4px; align-self: flex-start; }
+        .chat-bubble-user { background: linear-gradient(135deg, #D4C5F9 0%, #B8D8F8 100%); color: #111827; border-bottom-right-radius: 4px; align-self: flex-end; }
+        .chat-input-row { padding: 10px; border-top: 1px solid rgba(0,0,0,0.07); display: flex; gap: 8px; }
+        .chat-input-field { flex: 1; padding: 9px 13px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 100px; font-family: inherit; font-size: 13px; color: #111827; outline: none; }
+        .chat-input-field:focus { border-color: #6B4FD8; }
+        .chat-send { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #D4C5F9, #B8D8F8); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+        .chat-typing { display: flex; gap: 3px; align-items: center; padding: 9px 12px; background: #F7F9FC; border-radius: 14px; border-bottom-left-radius: 4px; align-self: flex-start; }
+        .chat-typing span { width: 5px; height: 5px; border-radius: 50%; background: #9CA3AF; animation: tb 1.2s infinite; }
+        .chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+        .chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes tb { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-4px)} }
+        @media (max-width: 400px) { .chat-panel { width: calc(100vw - 32px); right: 16px; } }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
@@ -419,6 +586,10 @@ export default function Reservar() {
                   <label>Teléfono</label>
                   <input type="tel" placeholder="612 345 678" value={telefono} onChange={e => setTelefono(e.target.value)} autoComplete="tel" inputMode="tel" />
                 </div>
+                <div className="field">
+                  <label>Email <span style={{fontSize:'11px', color:'#9CA3AF', fontWeight:500}}>(para recibir confirmación)</span></label>
+                  <input type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" />
+                </div>
 
                 {error && <div className="error-msg">{error}</div>}
 
@@ -430,6 +601,59 @@ export default function Reservar() {
           </>
         )}
       </div>
+
+      {/* Floating chatbot widget */}
+      {!cargandoInit && servicios.length > 0 && (
+        <>
+          {chatOpen && (
+            <div className="chat-panel">
+              <div className="chat-head">
+                <div className="chat-avatar">🤖</div>
+                <div>
+                  <div className="chat-head-name">Asistente IA</div>
+                  <div className="chat-head-status"><span style={{width:'6px',height:'6px',borderRadius:'50%',background:'#2E8A5E',display:'inline-block'}} />En línea</div>
+                </div>
+                <button className="chat-head-close" onClick={() => setChatOpen(false)}>×</button>
+              </div>
+              <div className="chat-body" ref={chatBodyRef}>
+                {chatMsgs.map((m, i) => (
+                  <div key={i} className={`chat-bubble ${m.role === 'bot' ? 'chat-bubble-bot' : 'chat-bubble-user'}`}>
+                    {m.text}
+                  </div>
+                ))}
+                {chatEnviando && (
+                  <div className="chat-typing">
+                    <span /><span /><span />
+                  </div>
+                )}
+              </div>
+              <div className="chat-input-row">
+                <input
+                  ref={chatInputRef}
+                  className="chat-input-field"
+                  placeholder="Escribe un mensaje..."
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarChatMsg() } }}
+                  disabled={chatEnviando}
+                />
+                <button
+                  className="chat-send"
+                  onClick={enviarChatMsg}
+                  disabled={chatEnviando || !chatInput.trim()}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="#6B4FD8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+          <button className="chat-fab" onClick={abrirChat} title="Reservar con asistente IA">
+            {chatOpen ? '×' : '🤖'}
+          </button>
+        </>
+      )}
     </>
   )
 }

@@ -64,6 +64,26 @@ type FilaIva = {
   total: number
 }
 
+type Gasto = {
+  id: string
+  fecha: string
+  proveedor: string | null
+  base_imponible: number
+  iva_porcentaje: number
+  cuota_iva: number
+  total: number
+  foto_url: string | null
+}
+
+type GastoDraft = {
+  fecha: string
+  proveedor: string
+  base_imponible: string
+  iva_porcentaje: string
+  cuota_iva: string
+  total: string
+}
+
 function fmt(n: number) {
   return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -91,6 +111,17 @@ export default function Facturacion() {
   const trimestre = Math.floor(hoy.getMonth() / 3) + 1
   const [modal303, setModal303] = useState(false)
   const [modal130, setModal130] = useState(false)
+
+  // Gastos
+  const [gastos, setGastos] = useState<Gasto[]>([])
+  const [uploadModal, setUploadModal] = useState(false)
+  const [archivo, setArchivo] = useState<File | null>(null)
+  const [archivoPreview, setArchivoPreview] = useState<string | null>(null)
+  const [analizando, setAnalizando] = useState(false)
+  const [gastoDraft, setGastoDraft] = useState<GastoDraft | null>(null)
+  const [guardandoGasto, setGuardandoGasto] = useState(false)
+  const [ivaGastosTrimestre, setIvaGastosTrimestre] = useState(0)
+  const [dragOver, setDragOver] = useState(false)
 
   const cargarFacturas = useCallback(async (nid: string, a: number, m: number) => {
     setCargando(true)
@@ -149,6 +180,20 @@ export default function Facturacion() {
     setCargando(false)
   }, [])
 
+  const cargarGastos = useCallback(async (nid: string, a: number, m: number) => {
+    const desde = `${isoMes(a, m)}-01`
+    const hasta = new Date(a, m + 1, 0)
+    const hastaStr = `${isoMes(a, m)}-${String(hasta.getDate()).padStart(2, '0')}`
+    const { data } = await supabase
+      .from('gastos')
+      .select('id, fecha, proveedor, base_imponible, iva_porcentaje, cuota_iva, total, foto_url')
+      .eq('negocio_id', nid)
+      .gte('fecha', desde)
+      .lte('fecha', hastaStr)
+      .order('fecha', { ascending: false })
+    setGastos((data as Gasto[]) || [])
+  }, [])
+
   useEffect(() => {
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -157,7 +202,10 @@ export default function Facturacion() {
       if (neg) {
         setNegocioId(neg.id)
         setNegocioNombre(neg.nombre)
-        await cargarFacturas(neg.id, anio, mes)
+        await Promise.all([
+          cargarFacturas(neg.id, anio, mes),
+          cargarGastos(neg.id, anio, mes),
+        ])
       } else {
         setCargando(false)
       }
@@ -166,8 +214,11 @@ export default function Facturacion() {
   }, [])
 
   useEffect(() => {
-    if (negocioId) cargarFacturas(negocioId, anio, mes)
-  }, [negocioId, anio, mes, cargarFacturas])
+    if (negocioId) {
+      cargarFacturas(negocioId, anio, mes)
+      cargarGastos(negocioId, anio, mes)
+    }
+  }, [negocioId, anio, mes, cargarFacturas, cargarGastos])
 
   function prevMes() {
     if (mes === 0) { setAnio(a => a - 1); setMes(11) } else setMes(m => m - 1)
@@ -185,6 +236,173 @@ export default function Facturacion() {
   // Datos trimestre para modelos
   const trimestreLabel = `T${trimestre} ${hoy.getFullYear()}`
   const mesesTrimestre = [0,1,2].map(i => MESES[(trimestre - 1) * 3 + i]).join(', ')
+
+  async function cargarIvaGastosTrimestre(nid: string, trim: number, a: number) {
+    const mesInicio = (trim - 1) * 3
+    const desde = `${a}-${String(mesInicio + 1).padStart(2, '0')}-01`
+    const mesFinDate = new Date(a, mesInicio + 3, 0)
+    const hasta = `${a}-${String(mesInicio + 3).padStart(2, '0')}-${String(mesFinDate.getDate()).padStart(2, '0')}`
+    const { data } = await supabase
+      .from('gastos')
+      .select('cuota_iva')
+      .eq('negocio_id', nid)
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
+    const total = ((data as any[]) || []).reduce((s: number, g: any) => s + (g.cuota_iva || 0), 0)
+    setIvaGastosTrimestre(total)
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        resolve(result.split(',')[1])
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function manejarArchivo(file: File) {
+    const MAX_MB = 10
+    if (file.size > MAX_MB * 1024 * 1024) {
+      alert(`El archivo es demasiado grande. Máximo ${MAX_MB}MB.`)
+      return
+    }
+    const tipo = file.type
+    if (!tipo.startsWith('image/') && tipo !== 'application/pdf') {
+      alert('Solo se aceptan imágenes (JPG, PNG, WEBP) o PDFs.')
+      return
+    }
+
+    setArchivo(file)
+    setGastoDraft(null)
+
+    // Preview
+    if (tipo.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onload = () => setArchivoPreview(reader.result as string)
+      reader.readAsDataURL(file)
+    } else {
+      setArchivoPreview(null) // PDF — no image preview
+    }
+
+    // Analizar con Gemini Vision
+    setAnalizando(true)
+    try {
+      const b64 = await fileToBase64(file)
+      const mimeType = tipo === 'application/pdf' ? 'application/pdf' : tipo
+      const GEMINI_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: mimeType, data: b64 } },
+                { text: 'Analiza este ticket o factura y extrae los datos fiscales. Responde SOLO con JSON válido, sin markdown ni explicaciones. Formato exacto: {"proveedor":"nombre del comercio","fecha":"YYYY-MM-DD","base_imponible":number,"iva_porcentaje":number,"cuota_iva":number,"total":number}. Para iva_porcentaje usa 21, 10, 4 o 0 según corresponda. Si no encuentras un dato usa null.' }
+              ]
+            }],
+            generationConfig: { maxOutputTokens: 300, temperature: 0.1 },
+          }),
+        }
+      )
+      if (res.ok) {
+        const json = await res.json()
+        const rawText: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+        const clean = rawText.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+        try {
+          const parsed = JSON.parse(clean)
+          const hoy2 = new Date().toISOString().split('T')[0]
+          const total = parsed.total ?? 0
+          const ivaPct = parsed.iva_porcentaje ?? 21
+          const cuota = parsed.cuota_iva ?? parseFloat((total - total / (1 + ivaPct / 100)).toFixed(2))
+          const base = parsed.base_imponible ?? parseFloat((total / (1 + ivaPct / 100)).toFixed(2))
+          setGastoDraft({
+            fecha: parsed.fecha ?? hoy2,
+            proveedor: parsed.proveedor ?? '',
+            base_imponible: String(base),
+            iva_porcentaje: String(ivaPct),
+            cuota_iva: String(cuota),
+            total: String(total),
+          })
+        } catch {
+          setGastoDraft({ fecha: new Date().toISOString().split('T')[0], proveedor: '', base_imponible: '', iva_porcentaje: '21', cuota_iva: '', total: '' })
+        }
+      }
+    } catch {
+      setGastoDraft({ fecha: new Date().toISOString().split('T')[0], proveedor: '', base_imponible: '', iva_porcentaje: '21', cuota_iva: '', total: '' })
+    } finally {
+      setAnalizando(false)
+    }
+  }
+
+  function recalcularCuota(draft: GastoDraft, campo: 'total' | 'base_imponible' | 'iva_porcentaje', valor: string): GastoDraft {
+    const d = { ...draft, [campo]: valor }
+    const ivaPct = parseFloat(d.iva_porcentaje) || 0
+    if (campo === 'total') {
+      const total = parseFloat(valor) || 0
+      const base = total / (1 + ivaPct / 100)
+      return { ...d, base_imponible: base.toFixed(2), cuota_iva: (total - base).toFixed(2) }
+    }
+    if (campo === 'base_imponible' || campo === 'iva_porcentaje') {
+      const base = parseFloat(d.base_imponible) || 0
+      const cuota = base * ivaPct / 100
+      return { ...d, cuota_iva: cuota.toFixed(2), total: (base + cuota).toFixed(2) }
+    }
+    return d
+  }
+
+  async function guardarGasto() {
+    if (!gastoDraft || !negocioId || !archivo) return
+    setGuardandoGasto(true)
+    try {
+      // 1. Upload file to Storage
+      const ext = archivo.name.split('.').pop() ?? 'jpg'
+      const path = `${negocioId}/${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('facturas').upload(path, archivo)
+      if (uploadErr) throw new Error(uploadErr.message)
+      const { data: { publicUrl } } = supabase.storage.from('facturas').getPublicUrl(path)
+
+      // 2. Insert into gastos
+      const { error: dbErr } = await supabase.from('gastos').insert({
+        negocio_id: negocioId,
+        fecha: gastoDraft.fecha || new Date().toISOString().split('T')[0],
+        proveedor: gastoDraft.proveedor || null,
+        base_imponible: parseFloat(gastoDraft.base_imponible) || 0,
+        iva_porcentaje: parseInt(gastoDraft.iva_porcentaje) || 0,
+        cuota_iva: parseFloat(gastoDraft.cuota_iva) || 0,
+        total: parseFloat(gastoDraft.total) || 0,
+        foto_url: publicUrl,
+      })
+      if (dbErr) throw new Error(dbErr.message)
+
+      // 3. Reload and close
+      await cargarGastos(negocioId, anio, mes)
+      setUploadModal(false)
+      setArchivo(null)
+      setArchivoPreview(null)
+      setGastoDraft(null)
+    } catch (e: any) {
+      alert(`Error: ${e.message}`)
+    } finally {
+      setGuardandoGasto(false)
+    }
+  }
+
+  async function eliminarGasto(gasto: Gasto) {
+    if (!confirm('¿Eliminar este gasto?')) return
+    await supabase.from('gastos').delete().eq('id', gasto.id)
+    if (gasto.foto_url) {
+      // Extract storage path from public URL
+      const match = gasto.foto_url.match(/facturas\/(.+)$/)
+      if (match) await supabase.storage.from('facturas').remove([match[1]])
+    }
+    setGastos(prev => prev.filter(g => g.id !== gasto.id))
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -289,6 +507,47 @@ export default function Facturacion() {
         .modal-fila span { font-weight: 700; color: var(--text); }
         .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
         .btn-cerrar { padding: 10px 24px; border-radius: 10px; background: var(--text); color: white; border: none; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+        /* Gastos */
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .btn-subir { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--text); color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .btn-subir:hover { background: #374151; }
+        .gasto-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+        .gasto-row:last-child { border-bottom: none; }
+        .gasto-row:hover { background: var(--bg); }
+        .gasto-thumb { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
+        .gasto-pdf-icon { width: 36px; height: 36px; border-radius: 8px; background: #FEF3C7; border: 1px solid #FDE68A; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .gasto-info { flex: 1; min-width: 0; }
+        .gasto-proveedor { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .gasto-fecha { font-size: 12px; color: var(--muted); margin-top: 1px; }
+        .gasto-iva { font-size: 12px; color: var(--muted); white-space: nowrap; }
+        .gasto-total { font-size: 15px; font-weight: 800; color: var(--text); white-space: nowrap; }
+        .gasto-del { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 16px; padding: 4px; border-radius: 6px; flex-shrink: 0; }
+        .gasto-del:hover { background: #FEE2E2; color: #DC2626; }
+        /* Upload modal */
+        .drop-zone { border: 2px dashed var(--border); border-radius: 16px; padding: 32px 24px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg); }
+        .drop-zone.over { border-color: var(--lila-dark); background: rgba(212,197,249,0.08); }
+        .drop-zone:hover { border-color: var(--lila-dark); }
+        .drop-icon { font-size: 36px; margin-bottom: 10px; }
+        .drop-text { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .drop-sub { font-size: 12px; color: var(--muted); }
+        .preview-img { width: 100%; max-height: 200px; object-fit: contain; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); }
+        .preview-pdf { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; }
+        .preview-pdf-icon { font-size: 28px; }
+        .preview-pdf-name { font-size: 13px; font-weight: 700; color: #92400E; word-break: break-all; }
+        .analyzing { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px; }
+        .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--lila-dark); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .extracted-form { display: flex; flex-direction: column; gap: 12px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-field { display: flex; flex-direction: column; gap: 4px; }
+        .form-field label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-field input, .form-field select { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 13px; color: var(--text); outline: none; background: white; }
+        .form-field input:focus, .form-field select:focus { border-color: var(--lila-dark); }
+        .ai-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: rgba(212,197,249,0.3); border-radius: 100px; font-size: 11px; font-weight: 700; color: var(--lila-dark); margin-bottom: 8px; }
+        .modal-actions { display: flex; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--border); }
+        .btn-guardar-gasto { flex: 1; padding: 11px; background: var(--text); color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .btn-guardar-gasto:disabled { background: var(--muted); cursor: not-allowed; }
+        .btn-cancelar-gasto { padding: 11px 20px; background: none; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700; color: var(--text2); cursor: pointer; }
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); }
           .sidebar.open { transform: translateX(0); }
@@ -454,7 +713,69 @@ export default function Facturacion() {
               </div>
             </div>
 
-            {/* ── 3. MODELOS FISCALES ── */}
+            {/* ── 3. GASTOS ── */}
+            <div className="section-block">
+              <div className="section-header">
+                <div>
+                  <div className="section-title">Gastos</div>
+                  <div className="section-sub">Tickets y facturas de proveedores — IVA soportado deducible</div>
+                </div>
+                <button className="btn-subir" onClick={() => { setUploadModal(true); setArchivo(null); setArchivoPreview(null); setGastoDraft(null) }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  Subir ticket
+                </button>
+              </div>
+              <div className="card">
+                {gastos.length === 0 ? (
+                  <div className="empty-state">
+                    <div style={{fontSize:'32px', marginBottom:'8px'}}>🧾</div>
+                    No hay gastos registrados en {MESES[mes].toLowerCase()} {anio}
+                    <div style={{marginTop:'12px'}}>
+                      <button className="btn-subir" style={{margin:'0 auto'}} onClick={() => { setUploadModal(true); setArchivo(null); setArchivoPreview(null); setGastoDraft(null) }}>
+                        + Subir primer ticket
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {gastos.map(g => (
+                      <div key={g.id} className="gasto-row">
+                        {g.foto_url ? (
+                          g.foto_url.toLowerCase().includes('.pdf') ? (
+                            <a href={g.foto_url} target="_blank" rel="noreferrer">
+                              <div className="gasto-pdf-icon">📄</div>
+                            </a>
+                          ) : (
+                            <a href={g.foto_url} target="_blank" rel="noreferrer">
+                              <img src={g.foto_url} alt="" className="gasto-thumb" />
+                            </a>
+                          )
+                        ) : (
+                          <div className="gasto-pdf-icon">🧾</div>
+                        )}
+                        <div className="gasto-info">
+                          <div className="gasto-proveedor">{g.proveedor || 'Sin proveedor'}</div>
+                          <div className="gasto-fecha">{new Date(g.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                        </div>
+                        <div className="gasto-iva">IVA {g.iva_porcentaje}% · {fmt(g.cuota_iva)} €</div>
+                        <div className="gasto-total">{fmt(g.total)} €</div>
+                        <button className="gasto-del" onClick={() => eliminarGasto(g)} title="Eliminar">×</button>
+                      </div>
+                    ))}
+                    <div style={{padding:'12px 16px', borderTop:'2px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'var(--bg)'}}>
+                      <span style={{fontSize:'13px', fontWeight:700, color:'var(--text2)'}}>Total IVA soportado</span>
+                      <span style={{fontSize:'15px', fontWeight:800, color:'var(--text)'}}>
+                        {fmt(gastos.reduce((s, g) => s + g.cuota_iva, 0))} €
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ── 4. MODELOS FISCALES ── */}
             <div className="section-block">
               <div className="section-title">Modelos fiscales</div>
               <div className="section-sub">Declaraciones trimestrales — {trimestreLabel} ({mesesTrimestre})</div>
@@ -471,7 +792,7 @@ export default function Facturacion() {
                     Autoliquidación del IVA. Diferencia entre el IVA repercutido a clientes y el IVA soportado en compras.
                   </div>
                   <div className="modelo-meta">Presentación: hasta 20 días tras fin del trimestre</div>
-                  <button className="btn-modelo" onClick={() => setModal303(true)}>
+                  <button className="btn-modelo" onClick={() => { setModal303(true); if (negocioId) cargarIvaGastosTrimestre(negocioId, trimestre, hoy.getFullYear()) }}>
                     <span>📋</span> Preparar modelo 303
                   </button>
                 </div>
@@ -499,6 +820,165 @@ export default function Facturacion() {
         </div>
       </div>
 
+      {/* ── MODAL SUBIR GASTO ── */}
+      {uploadModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setUploadModal(false) } }}>
+          <div className="modal" style={{maxWidth:'520px', maxHeight:'90vh', overflowY:'auto'}}>
+            <div className="modal-header">
+              <div className="modal-title">Subir ticket o factura</div>
+              <button className="modal-close" onClick={() => setUploadModal(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{display:'flex', flexDirection:'column', gap:'16px'}}>
+
+              {/* Drop zone or preview */}
+              {!archivo ? (
+                <div
+                  className={`drop-zone ${dragOver ? 'over' : ''}`}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) manejarArchivo(f) }}
+                  onClick={() => document.getElementById('file-input-gasto')?.click()}
+                >
+                  <div className="drop-icon">📂</div>
+                  <div className="drop-text">Arrastra aquí o haz clic para seleccionar</div>
+                  <div className="drop-sub">JPG, PNG, WEBP o PDF · máx. 10 MB</div>
+                  <input
+                    id="file-input-gasto"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    style={{display:'none'}}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) manejarArchivo(f) }}
+                  />
+                </div>
+              ) : (
+                <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+                  {archivoPreview ? (
+                    <img src={archivoPreview} alt="Preview" className="preview-img" />
+                  ) : (
+                    <div className="preview-pdf">
+                      <span className="preview-pdf-icon">📄</span>
+                      <span className="preview-pdf-name">{archivo.name}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => { setArchivo(null); setArchivoPreview(null); setGastoDraft(null) }}
+                    style={{alignSelf:'flex-start', padding:'5px 12px', background:'none', border:'1px solid var(--border)', borderRadius:'8px', fontFamily:'inherit', fontSize:'12px', fontWeight:600, color:'var(--text2)', cursor:'pointer'}}
+                  >
+                    ✕ Cambiar archivo
+                  </button>
+                </div>
+              )}
+
+              {/* Gemini analyzing */}
+              {analizando && (
+                <div className="analyzing">
+                  <div className="spinner" />
+                  <div style={{fontSize:'13px', fontWeight:700, color:'var(--text)'}}>Analizando con Gemini Vision...</div>
+                  <div style={{fontSize:'12px', color:'var(--muted)'}}>Extrayendo importe, IVA, fecha y proveedor</div>
+                </div>
+              )}
+
+              {/* Extracted data form */}
+              {gastoDraft && !analizando && (
+                <div className="extracted-form">
+                  <div className="ai-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    Datos extraídos por IA — revisa antes de guardar
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-field" style={{gridColumn:'1/-1'}}>
+                      <label>Proveedor</label>
+                      <input
+                        type="text"
+                        value={gastoDraft.proveedor}
+                        onChange={e => setGastoDraft(d => d ? { ...d, proveedor: e.target.value } : d)}
+                        placeholder="Nombre del proveedor"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label>Fecha</label>
+                      <input
+                        type="date"
+                        value={gastoDraft.fecha}
+                        onChange={e => setGastoDraft(d => d ? { ...d, fecha: e.target.value } : d)}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>IVA %</label>
+                      <select
+                        value={gastoDraft.iva_porcentaje}
+                        onChange={e => setGastoDraft(d => d ? recalcularCuota(d, 'iva_porcentaje', e.target.value) : d)}
+                      >
+                        {[21, 10, 4, 0].map(v => <option key={v} value={v}>{v}%</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label>Total (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={gastoDraft.total}
+                        onChange={e => setGastoDraft(d => d ? recalcularCuota(d, 'total', e.target.value) : d)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>Base imponible (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={gastoDraft.base_imponible}
+                        onChange={e => setGastoDraft(d => d ? recalcularCuota(d, 'base_imponible', e.target.value) : d)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-field">
+                      <label>Cuota IVA (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={gastoDraft.cuota_iva}
+                        onChange={e => setGastoDraft(d => d ? { ...d, cuota_iva: e.target.value } : d)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="form-field" style={{justifyContent:'flex-end', paddingTop:'20px'}}>
+                      <div style={{fontSize:'12px', color:'var(--muted)', lineHeight:1.5}}>
+                        Total = Base + Cuota IVA<br/>
+                        Al editar el total se recalcula la base automáticamente.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancelar-gasto" onClick={() => setUploadModal(false)}>Cancelar</button>
+              <button
+                className="btn-guardar-gasto"
+                disabled={!gastoDraft || !archivo || guardandoGasto || analizando}
+                onClick={guardarGasto}
+              >
+                {guardandoGasto ? 'Guardando...' : '💾 Guardar gasto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MODAL MODELO 303 ── */}
       {modal303 && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setModal303(false) }}>
@@ -525,11 +1005,15 @@ export default function Facturacion() {
               </div>
               <div className="modal-fila">
                 <label>IVA soportado (gastos)</label>
-                <span style={{color:'var(--muted)'}}>Introduce en tu programa de contabilidad</span>
+                <span style={{color: ivaGastosTrimestre > 0 ? 'var(--text)' : 'var(--muted)'}}>
+                  {ivaGastosTrimestre > 0 ? `${fmt(ivaGastosTrimestre)} €` : 'Sin gastos registrados'}
+                </span>
               </div>
               <div className="modal-fila">
                 <label>Resultado (IVA repercutido – soportado)</label>
-                <span>—</span>
+                <span style={{fontWeight:800, color: totalCuota - ivaGastosTrimestre >= 0 ? 'var(--text)' : '#2E8A5E'}}>
+                  {ivaGastosTrimestre > 0 ? `${fmt(totalCuota - ivaGastosTrimestre)} €` : '—'}
+                </span>
               </div>
             </div>
             <div className="modal-footer">

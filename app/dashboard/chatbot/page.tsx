@@ -4,6 +4,13 @@ import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
+import {
+  verificarDisponibilidad,
+  crearReserva,
+  buscarReservas,
+  cancelarReserva,
+  FUNCTION_DECLARATIONS,
+} from '../../lib/chatbotFunctions'
 
 function KhepriLogo() {
   return (
@@ -37,9 +44,7 @@ const navItems = [
 const GEMINI_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`
 
-type Msg = { role: 'user' | 'bot'; text: string; ts: Date; accion?: AccionReserva | AccionCancelar }
-type AccionReserva = { tipo: 'reserva'; datos: { nombre: string; telefono: string; servicio_id: string; servicio_nombre: string; trabajador_id: string | null; fecha: string; hora: string } }
-type AccionCancelar = { tipo: 'cancelar'; reserva_id: string }
+type Msg = { role: 'user' | 'bot'; text: string; ts: Date }
 
 type NegocioInfo = {
   id: string; nombre: string; tipo: string; descripcion: string | null
@@ -107,25 +112,16 @@ ${serviciosText || '  (Sin servicios)'}
 ${trabajadoresText}
 
 == CAPACIDADES ==
-Puedes hacer tres cosas además de responder preguntas:
+Tienes acceso a funciones para gestionar reservas. Úsalas cuando el cliente lo necesite:
 
-1. RESERVAR CITA: Si el cliente quiere reservar, recoge PASO A PASO (uno por respuesta):
-   a) Nombre completo del cliente
-   b) Teléfono de contacto
-   c) Qué servicio quiere (muéstrale la lista si no sabe)
-   d) Con qué trabajador (si hay más de uno, pregunta; si no hay o solo hay uno, pon null)
-   e) Qué día (formato YYYY-MM-DD)
-   f) A qué hora (formato HH:MM, dentro del horario del negocio)
+- Para RESERVAR: recoge paso a paso nombre, teléfono, servicio, trabajador (opcional), fecha, hora y email (opcional, para enviar confirmación).
+  SIEMPRE llama primero a verificarDisponibilidad antes de crearReserva.
+  Si no está disponible, muestra los slots sugeridos y pregunta por otra hora.
 
-   Cuando tengas TODOS los datos, responde EXACTAMENTE así (sin nada más):
-   [ACCION_RESERVA:{"nombre":"...","telefono":"...","servicio_id":"...","servicio_nombre":"...","trabajador_id":"..." o null,"fecha":"YYYY-MM-DD","hora":"HH:MM"}]
+- Para CANCELAR: pide el teléfono, llama a buscarReservas, muestra la lista y cuando el cliente
+  confirme qué reserva cancelar, llama a cancelarReserva con el ID.
 
-2. CANCELAR RESERVA: Si el cliente quiere cancelar, pide su teléfono, luego responde:
-   [BUSCAR_RESERVAS:{"telefono":"..."}]
-   Después del resultado, si el cliente confirma qué reserva cancelar, responde:
-   [ACCION_CANCELAR:{"reserva_id":"..."}]
-
-3. Si no puedes hacer algo, indica amablemente que el cliente contacte directamente con ${negocio.nombre}${negocio.telefono ? ` al ${negocio.telefono}` : ''}.`
+Si no puedes ayudar con algo, indica que contacte directamente con ${negocio.nombre}${negocio.telefono ? ` al ${negocio.telefono}` : ''}.`
 }
 
 export default function ChatbotPage() {
@@ -220,47 +216,9 @@ export default function ChatbotPage() {
     setMensajes(prev => [...prev, msg])
   }, [])
 
-  async function ejecutarAccionReserva(datos: AccionReserva['datos']): Promise<string> {
-    if (!negocioId) return 'Error: negocio no encontrado.'
-    const { error } = await supabase.from('reservas').insert({
-      negocio_id: negocioId,
-      servicio_id: datos.servicio_id || null,
-      trabajador_id: datos.trabajador_id || null,
-      cliente_nombre: datos.nombre,
-      cliente_telefono: datos.telefono,
-      fecha: datos.fecha,
-      hora: datos.hora,
-      estado: 'pendiente',
-    })
-    if (error) return `Error al guardar la reserva: ${error.message}`
-    return `✅ ¡Reserva confirmada! He registrado tu cita para el ${datos.fecha} a las ${datos.hora} (${datos.servicio_nombre}). Recibirás confirmación de ${negocio?.nombre}.`
-  }
-
-  async function ejecutarBuscarReservas(telefono: string): Promise<string> {
-    if (!negocioId) return 'Error: negocio no encontrado.'
-    const { data } = await supabase
-      .from('reservas')
-      .select('id, fecha, hora, estado, servicios(nombre)')
-      .eq('negocio_id', negocioId)
-      .eq('cliente_telefono', telefono)
-      .in('estado', ['pendiente', 'confirmada'])
-      .order('fecha', { ascending: true })
-    if (!data || data.length === 0) return `No encontré reservas activas para el teléfono ${telefono}.`
-    const lista = (data as any[]).map((r, i) =>
-      `${i + 1}. ${r.fecha} a las ${r.hora} — ${r.servicios?.nombre || 'Servicio'} (ID: ${r.id})`
-    ).join('\n')
-    return `Reservas activas para ${telefono}:\n${lista}\n\n¿Cuál quieres cancelar? Dime el número.`
-  }
-
-  async function ejecutarCancelar(reservaId: string): Promise<string> {
-    const { error } = await supabase.from('reservas').update({ estado: 'cancelada' }).eq('id', reservaId)
-    if (error) return `Error al cancelar: ${error.message}`
-    return '✅ Reserva cancelada correctamente.'
-  }
-
   async function enviarMensaje() {
     const texto = input.trim()
-    if (!texto || enviando || !negocio) return
+    if (!texto || enviando || !negocio || !negocioId) return
 
     setInput('')
     setEnviando(true)
@@ -273,61 +231,71 @@ export default function ChatbotPage() {
         horarios, servicios, trabajadores
       )
 
-      // Construir historial para Gemini (excluye msg de bienvenida inicial)
-      const historial = mensajes
+      // Build history (exclude welcome msg)
+      const historial: any[] = mensajes
         .filter(m => !(m.role === 'bot' && m.text === bienvenida))
         .map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }))
       historial.push({ role: 'user', parts: [{ text: texto }] })
 
-      const res = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: historial,
-          generationConfig: { maxOutputTokens: 500, temperature: 0.7 },
-        }),
-      })
+      // Function Calling loop (max 5 iterations)
+      for (let i = 0; i < 5; i++) {
+        const res = await fetch(GEMINI_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: historial,
+            tools: [{ functionDeclarations: FUNCTION_DECLARATIONS }],
+            generationConfig: { maxOutputTokens: 600, temperature: 0.7 },
+          }),
+        })
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err?.error?.message || `HTTP ${res.status}`)
-      }
-
-      const json = await res.json()
-      const rawText: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '...'
-
-      // Parsear acciones especiales
-      const matchReserva = rawText.match(/\[ACCION_RESERVA:(\{.*?\})\]/s)
-      const matchBuscar = rawText.match(/\[BUSCAR_RESERVAS:(\{.*?\})\]/s)
-      const matchCancelar = rawText.match(/\[ACCION_CANCELAR:(\{.*?\})\]/s)
-
-      if (matchReserva) {
-        try {
-          const datos = JSON.parse(matchReserva[1])
-          const resultado = await ejecutarAccionReserva(datos)
-          addMsg({ role: 'bot', text: resultado, ts: new Date() })
-        } catch {
-          addMsg({ role: 'bot', text: 'Hubo un error al procesar la reserva. Por favor inténtalo de nuevo.', ts: new Date() })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err?.error?.message || `HTTP ${res.status}`)
         }
-      } else if (matchBuscar) {
-        try {
-          const { telefono } = JSON.parse(matchBuscar[1])
-          const resultado = await ejecutarBuscarReservas(telefono)
-          addMsg({ role: 'bot', text: resultado, ts: new Date() })
-        } catch {
-          addMsg({ role: 'bot', text: 'No pude buscar las reservas. Inténtalo de nuevo.', ts: new Date() })
+
+        const json = await res.json()
+        const parts: any[] = json.candidates?.[0]?.content?.parts ?? []
+
+        const fnCallPart = parts.find((p: any) => p.functionCall)
+        if (fnCallPart) {
+          const { name, args } = fnCallPart.functionCall
+          historial.push({ role: 'model', parts: [{ functionCall: { name, args } }] })
+
+          let fnResult: any
+          try {
+            switch (name) {
+              case 'verificarDisponibilidad':
+                fnResult = await verificarDisponibilidad({ negocio_id: negocioId, ...args })
+                break
+              case 'crearReserva':
+                fnResult = await crearReserva({ negocio_id: negocioId, ...args })
+                break
+              case 'buscarReservas':
+                fnResult = await buscarReservas({ negocio_id: negocioId, ...args })
+                break
+              case 'cancelarReserva':
+                fnResult = await cancelarReserva(args)
+                break
+              default:
+                fnResult = { error: 'Función desconocida' }
+            }
+          } catch (e: any) {
+            fnResult = { error: e.message }
+          }
+
+          historial.push({
+            role: 'user',
+            parts: [{ functionResponse: { name, response: fnResult } }],
+          })
+          continue
         }
-      } else if (matchCancelar) {
-        try {
-          const { reserva_id } = JSON.parse(matchCancelar[1])
-          const resultado = await ejecutarCancelar(reserva_id)
-          addMsg({ role: 'bot', text: resultado, ts: new Date() })
-        } catch {
-          addMsg({ role: 'bot', text: 'No pude cancelar la reserva. Inténtalo de nuevo.', ts: new Date() })
-        }
-      } else {
-        addMsg({ role: 'bot', text: rawText, ts: new Date() })
+
+        // Text response — done
+        const textPart = parts.find((p: any) => p.text)
+        addMsg({ role: 'bot', text: textPart?.text ?? '...', ts: new Date() })
+        break
       }
     } catch (err: any) {
       addMsg({ role: 'bot', text: `Error de conexión: ${err.message}`, ts: new Date() })

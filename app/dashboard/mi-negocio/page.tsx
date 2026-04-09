@@ -41,12 +41,16 @@ export default function MiNegocio() {
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
   const [negocioId, setNegocioId] = useState<string | null>(null)
+  const [copiado,   setCopiado]   = useState(false)
   const [subiendo, setSubiendo] = useState(false)
 
   const [form, setForm] = useState({
     nombre: '', tipo: '', descripcion: '', telefono: '',
     direccion: '', ciudad: '', codigo_postal: '',
-    instagram: '', whatsapp: '', facebook: '', fotos: [] as string[], logo_url: ''
+    instagram: '', whatsapp: '', facebook: '', fotos: [] as string[], logo_url: '',
+    horas_cancelacion: 24 as number,
+    confirmacion_automatica: true as boolean,
+    mensaje_cancelacion: '',
   })
 
   const fileRef = useRef<HTMLInputElement>(null)
@@ -74,7 +78,10 @@ export default function MiNegocio() {
           whatsapp: data.whatsapp || '',
           facebook: data.facebook || '',
           fotos: data.fotos || [],
-          logo_url: data.logo_url || ''
+          logo_url: data.logo_url || '',
+          horas_cancelacion: data.horas_cancelacion ?? 24,
+          confirmacion_automatica: data.confirmacion_automatica ?? true,
+          mensaje_cancelacion: data.mensaje_cancelacion || '',
         })
       }
       setCargando(false)
@@ -95,7 +102,10 @@ export default function MiNegocio() {
       whatsapp: form.whatsapp,
       facebook: form.facebook,
       fotos: form.fotos,
-      logo_url: form.logo_url
+      logo_url: form.logo_url,
+      horas_cancelacion: form.horas_cancelacion,
+      confirmacion_automatica: form.confirmacion_automatica,
+      mensaje_cancelacion: form.mensaje_cancelacion || null,
     }).eq('id', negocioId)
     setGuardando(false)
     setGuardado(true)
@@ -206,6 +216,26 @@ export default function MiNegocio() {
         .btn-guardar { background: var(--text); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
         .btn-guardar:disabled { background: var(--muted); cursor: not-allowed; }
         .btn-guardado { background: var(--green-dark) !important; }
+        /* EMBED */
+        .embed-box { background: #1E293B; border-radius: 12px; padding: 14px 16px; font-family: 'Courier New', monospace; font-size: 11.5px; color: #94A3B8; line-height: 1.7; white-space: pre-wrap; word-break: break-all; border: 1px solid rgba(255,255,255,0.06); }
+        .btn-copy { display: flex; align-items: center; gap: 6px; padding: 9px 16px; background: none; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
+        .btn-copy:hover { background: var(--blue-soft); color: var(--blue-dark); border-color: var(--blue-dark); }
+        .btn-copy.copied { background: rgba(184,237,212,0.2); color: var(--green-dark); border-color: var(--green-dark); }
+
+        /* POLÍTICA DE RESERVAS */
+        .policy-opts { display: flex; gap: 8px; flex-wrap: wrap; }
+        .policy-opt { padding: 9px 20px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 100px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+        .policy-opt:hover { border-color: var(--text); color: var(--text); }
+        .policy-opt.active { background: var(--text); border-color: var(--text); color: white; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-top: 1px solid var(--border); }
+        .toggle-label { font-size: 14px; font-weight: 600; color: var(--text); }
+        .toggle-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .toggle { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+        .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 100px; cursor: pointer; transition: background 0.2s; border: 1.5px solid rgba(0,0,0,0.1); }
+        .toggle input:checked + .toggle-track { background: #111827; border-color: #111827; }
+        .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); pointer-events: none; }
+        .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
 
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); }
@@ -382,6 +412,104 @@ export default function MiNegocio() {
                     </div>
                   </div>
                 </div>
+
+                {/* ── POLÍTICA DE RESERVAS ── */}
+                <div className="section">
+                  <div className="section-title">📋 Política de reservas</div>
+
+                  <div className="field" style={{marginBottom:'18px'}}>
+                    <label style={{marginBottom:'10px', display:'block'}}>Tiempo mínimo para cancelar</label>
+                    <div className="policy-opts">
+                      {([
+                        { value: 2,  label: '2 horas' },
+                        { value: 24, label: '24 horas' },
+                        { value: 48, label: '48 horas' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.value}
+                          className={`policy-opt ${form.horas_cancelacion === opt.value ? 'active' : ''}`}
+                          onClick={() => setForm({ ...form, horas_cancelacion: opt.value })}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'8px'}}>
+                      Los clientes podrán cancelar hasta {form.horas_cancelacion === 2 ? '2 horas' : form.horas_cancelacion === 24 ? '24 horas' : '48 horas'} antes de la cita.
+                    </p>
+                  </div>
+
+                  <div className="toggle-row">
+                    <div>
+                      <div className="toggle-label">Confirmación automática</div>
+                      <div className="toggle-sub">
+                        {form.confirmacion_automatica
+                          ? 'Las reservas se confirman al instante sin revisión manual'
+                          : 'Debes aprobar cada reserva manualmente antes de confirmarla'}
+                      </div>
+                    </div>
+                    <label className="toggle">
+                      <input
+                        type="checkbox"
+                        checked={form.confirmacion_automatica}
+                        onChange={e => setForm({ ...form, confirmacion_automatica: e.target.checked })}
+                      />
+                      <div className="toggle-track" />
+                      <div className="toggle-thumb" />
+                    </label>
+                  </div>
+
+                  <div className="field" style={{marginTop:'18px', marginBottom:0}}>
+                    <label>Mensaje al cancelar <span style={{fontWeight:400, color:'var(--muted)'}}>(opcional)</span></label>
+                    <textarea
+                      placeholder="Ej: Lamentamos que hayas tenido que cancelar. Si lo deseas puedes reservar de nuevo cuando quieras. ¡Te esperamos!"
+                      value={form.mensaje_cancelacion}
+                      onChange={e => setForm({ ...form, mensaje_cancelacion: e.target.value })}
+                      style={{minHeight:'80px'}}
+                    />
+                    <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'4px'}}>Este mensaje se mostrará al cliente cuando cancele una cita.</p>
+                  </div>
+                </div>
+
+                {/* ── WIDGET EMBEBIBLE ── */}
+                {negocioId && (
+                  <div className="section">
+                    <div className="section-title">🔗 Widget de reservas</div>
+                    <p style={{fontSize:'13px', color:'var(--muted)', marginBottom:'14px', lineHeight:1.6}}>
+                      Copia este código HTML y pégalo en cualquier página de tu web para añadir un botón de reservas directamente.
+                    </p>
+                    <div className="embed-box">{`<iframe
+  src="${typeof window !== 'undefined' ? window.location.origin : 'https://khepria.vercel.app'}/widget/${negocioId}"
+  width="100%"
+  height="600"
+  frameborder="0"
+  style="border:none; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,0.08);"
+  title="Reservar cita"
+></iframe>`}</div>
+                    <div style={{display:'flex', alignItems:'center', gap:'10px', marginTop:'10px', flexWrap:'wrap'}}>
+                      <button
+                        className={`btn-copy ${copiado ? 'copied' : ''}`}
+                        onClick={() => {
+                          const code = `<iframe\n  src="${window.location.origin}/widget/${negocioId}"\n  width="100%"\n  height="600"\n  frameborder="0"\n  style="border:none; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,0.08);"\n  title="Reservar cita"\n></iframe>`
+                          navigator.clipboard.writeText(code).then(() => {
+                            setCopiado(true)
+                            setTimeout(() => setCopiado(false), 2500)
+                          })
+                        }}
+                      >
+                        {copiado ? '✓ Copiado' : '📋 Copiar código'}
+                      </button>
+                      <a
+                        href={`/widget/${negocioId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{fontSize:'13px', fontWeight:600, color:'var(--blue-dark)', textDecoration:'none'}}
+                      >
+                        Ver preview →
+                      </a>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </main>

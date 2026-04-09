@@ -38,6 +38,31 @@ const tipoConfig: Record<string, { emoji: string; bg: string }> = {
 const tipoDefault = { emoji: '🏪', bg: 'rgba(184,216,248,0.2)' }
 
 type Negocio = { id: string; nombre: string; tipo: string; ciudad: string; logo_url: string | null; fotos: string[] | null; lat: number | null; lng: number | null }
+type HorarioDB = { negocio_id: string; dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string | null; hora_cierre2: string | null }
+
+type Filtro = 'ninguno' | 'abierto' | 'valorados' | 'cercanos'
+
+const DIAS = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado']
+
+function toMins(t: string) { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+
+function estaAbierto(horarios: HorarioDB[]): boolean {
+  const ahora = new Date()
+  const diaHoy = DIAS[ahora.getDay()]
+  const minActual = ahora.getHours() * 60 + ahora.getMinutes()
+  const h = horarios.find(h => h.dia === diaHoy && h.abierto)
+  if (!h) return false
+  const t1 = h.hora_apertura && h.hora_cierre && minActual >= toMins(h.hora_apertura) && minActual < toMins(h.hora_cierre)
+  const t2 = h.hora_apertura2 && h.hora_cierre2 && minActual >= toMins(h.hora_apertura2) && minActual < toMins(h.hora_cierre2)
+  return !!(t1 || t2)
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371, toRad = (x: number) => x * Math.PI / 180
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
 
 const reservasMock = [
   { id: 1, negocio: 'Barber Co.', servicio: 'Corte + Barba', fecha: 'Mañana', hora: '10:30', emoji: '💈', color: '#B8D8F8' },
@@ -77,14 +102,42 @@ function ClienteContent() {
   const [favs, setFavs] = useState<string[]>([])
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [cargandoNegocios, setCargandoNegocios] = useState(true)
+  const [filtro, setFiltro] = useState<Filtro>('ninguno')
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null)
+  const [geoError, setGeoError] = useState(false)
+  const [horariosPorNeg, setHorariosPorNeg] = useState<Record<string, HorarioDB[]>>({})
+  const [valPorNeg, setValPorNeg] = useState<Record<string, number>>({})
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { window.location.href = '/auth'; return }
       if (user.user_metadata?.nombre) setNombreUsuario(user.user_metadata.nombre.split(' ')[0])
     })
-    supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng').then(({ data }) => {
-      if (data) setNegocios(data)
+    Promise.all([
+      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng'),
+      supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
+      supabase.from('resenas').select('negocio_id,valoracion'),
+    ]).then(([{ data: negs }, { data: hors }, { data: ress }]) => {
+      if (negs) setNegocios(negs)
+      if (hors) {
+        const map: Record<string, HorarioDB[]> = {}
+        for (const h of hors as HorarioDB[]) {
+          if (!map[h.negocio_id]) map[h.negocio_id] = []
+          map[h.negocio_id].push(h)
+        }
+        setHorariosPorNeg(map)
+      }
+      if (ress) {
+        const sums: Record<string, { total: number; count: number }> = {}
+        for (const r of ress as { negocio_id: string; valoracion: number }[]) {
+          if (!sums[r.negocio_id]) sums[r.negocio_id] = { total: 0, count: 0 }
+          sums[r.negocio_id].total += r.valoracion
+          sums[r.negocio_id].count++
+        }
+        const avg: Record<string, number> = {}
+        for (const [id, s] of Object.entries(sums)) avg[id] = Math.round((s.total / s.count) * 10) / 10
+        setValPorNeg(avg)
+      }
       setCargandoNegocios(false)
     })
   }, [])
@@ -93,13 +146,43 @@ function ClienteContent() {
     router.push(`/cliente?tab=${tab}`)
   }, [router])
 
-  const negociosFiltrados = negocios.filter(n => {
-    const matchCat = categoriaActiva === 'todos' || n.tipo?.toLowerCase() === categoriaActiva
-    const matchBusq = n.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      (n.ciudad || '').toLowerCase().includes(busqueda.toLowerCase()) ||
-      (n.tipo || '').toLowerCase().includes(busqueda.toLowerCase())
+  // ── Base filter (categoría + búsqueda) ──────────────────────────────────
+  let negociosFiltrados = negocios.filter(n => {
+    const matchCat  = categoriaActiva === 'todos' || n.tipo?.toLowerCase() === categoriaActiva
+    const q = busqueda.toLowerCase()
+    const matchBusq = !q || n.nombre.toLowerCase().includes(q) ||
+      (n.ciudad || '').toLowerCase().includes(q) ||
+      (n.tipo  || '').toLowerCase().includes(q)
     return matchCat && matchBusq
   })
+
+  // ── Extra filters ────────────────────────────────────────────────────────
+  if (filtro === 'abierto') {
+    negociosFiltrados = negociosFiltrados.filter(n => estaAbierto(horariosPorNeg[n.id] || []))
+  } else if (filtro === 'valorados') {
+    negociosFiltrados = [...negociosFiltrados].sort((a, b) => (valPorNeg[b.id] ?? 0) - (valPorNeg[a.id] ?? 0))
+  } else if (filtro === 'cercanos' && userPos) {
+    negociosFiltrados = [...negociosFiltrados]
+      .filter(n => n.lat != null && n.lng != null)
+      .sort((a, b) =>
+        haversineKm(userPos.lat, userPos.lng, a.lat!, a.lng!) -
+        haversineKm(userPos.lat, userPos.lng, b.lat!, b.lng!)
+      )
+  }
+
+  function handleFiltro(f: Filtro) {
+    if (filtro === f) { setFiltro('ninguno'); return }
+    if (f === 'cercanos') {
+      if (userPos) { setFiltro('cercanos'); return }
+      navigator.geolocation?.getCurrentPosition(
+        pos => { setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setFiltro('cercanos') },
+        ()  => { setGeoError(true); setTimeout(() => setGeoError(false), 3000) },
+        { timeout: 8000 }
+      )
+      return
+    }
+    setFiltro(f)
+  }
 
   const toggleFav = (id: string) => setFavs(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id])
 
@@ -165,12 +248,28 @@ function ClienteContent() {
         .botnav-item.active .botnav-label { color: #1D4ED8; }
         .botnav-dot { width: 4px; height: 4px; border-radius: 50%; background: #1D4ED8; margin: 1px auto 0; }
 
+        /* Filtros */
+        .filtros { padding: 10px 48px 14px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; }
+        .filtros::-webkit-scrollbar { display: none; }
+        .filtro-chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 100px; border: 1.5px solid rgba(0,0,0,0.1); background: white; font-family: inherit; font-size: 13px; font-weight: 600; color: #4B5563; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; }
+        .filtro-chip:hover { border-color: #1D4ED8; color: #1D4ED8; }
+        .filtro-chip.active { background: #1D4ED8; border-color: #1D4ED8; color: white; }
+        .filtro-chip.active:hover { background: #1E40AF; border-color: #1E40AF; }
+        .filtro-sep { width: 1px; height: 18px; background: rgba(0,0,0,0.1); flex-shrink: 0; }
+        .geo-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #1F2937; color: white; padding: 10px 18px; border-radius: 100px; font-size: 13px; font-weight: 600; z-index: 200; white-space: nowrap; pointer-events: none; }
+        /* Card badges */
+        .neg-badge-open   { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 100px; background: rgba(34,197,94,0.12); color: #166534; }
+        .neg-badge-closed { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 100px; background: rgba(0,0,0,0.06); color: #9CA3AF; }
+        .neg-rating { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: #92400E; }
+        .neg-dist   { font-size: 11px; color: #9CA3AF; font-weight: 500; }
+
         @media (max-width: 1024px) { .neg-grid { grid-template-columns: repeat(2,1fr); } }
         @media (max-width: 768px) {
           .topnav { padding: 12px 20px; }
           .topnav-links { display: none; }
           .hero { padding: 16px 20px; }
           .cats { padding: 12px 20px 0; }
+          .filtros { padding: 8px 20px 10px; }
           .content { padding: 16px 20px 100px; }
           .neg-grid { grid-template-columns: 1fr; }
           .botnav { display: block; }
@@ -217,6 +316,26 @@ function ClienteContent() {
               ))}
             </div>
 
+            {/* ── Filtros ── */}
+            <div className="filtros">
+              <div className="filtro-sep" />
+              <button className={`filtro-chip ${filtro === 'abierto'   ? 'active' : ''}`} onClick={() => handleFiltro('abierto')}>
+                🟢 Abierto ahora
+              </button>
+              <button className={`filtro-chip ${filtro === 'valorados' ? 'active' : ''}`} onClick={() => handleFiltro('valorados')}>
+                ⭐ Mejor valorados
+              </button>
+              <button className={`filtro-chip ${filtro === 'cercanos'  ? 'active' : ''}`} onClick={() => handleFiltro('cercanos')}>
+                📍 Más cercanos
+              </button>
+              {filtro !== 'ninguno' && (
+                <button className="filtro-chip" style={{color:'#DC2626', borderColor:'rgba(220,38,38,0.2)'}} onClick={() => setFiltro('ninguno')}>
+                  ✕ Limpiar
+                </button>
+              )}
+            </div>
+            {geoError && <div className="geo-toast">📍 Activa la ubicación para ver los más cercanos</div>}
+
             <div className="content">
               {reservasMock.length > 0 && !busqueda && categoriaActiva === 'todos' && (
                 <>
@@ -257,8 +376,14 @@ function ClienteContent() {
               ) : (
                 <div className="neg-grid">
                   {negociosFiltrados.map(n => {
-                    const cfg = tipoConfig[n.tipo?.toLowerCase()] || tipoDefault
+                    const cfg    = tipoConfig[n.tipo?.toLowerCase()] || tipoDefault
                     const imagen = n.logo_url || (n.fotos && n.fotos[0]) || null
+                    const abierto = estaAbierto(horariosPorNeg[n.id] || [])
+                    const rating  = valPorNeg[n.id]
+                    const dist    = userPos && n.lat && n.lng
+                      ? haversineKm(userPos.lat, userPos.lng, n.lat, n.lng)
+                      : null
+                    const horsTiene = (horariosPorNeg[n.id] || []).length > 0
                     return (
                       <Link key={n.id} href={`/negocio/${n.id}`} style={{textDecoration:'none'}}>
                         <div className="neg-card">
@@ -276,10 +401,21 @@ function ClienteContent() {
                           <div style={{fontSize:'12px', color:'#9CA3AF', marginBottom:'8px', lineHeight:1.4}}>
                             {n.ciudad ? `📍 ${n.ciudad}` : n.tipo}
                           </div>
-                          <div style={{display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap'}}>
+                          <div style={{display:'flex', alignItems:'center', gap:'5px', flexWrap:'wrap'}}>
                             <span style={{fontSize:'11px', fontWeight:600, padding:'2px 8px', borderRadius:'100px', background: cfg.bg, color:'#4B5563'}}>
                               {n.tipo}
                             </span>
+                            {horsTiene && (
+                              <span className={abierto ? 'neg-badge-open' : 'neg-badge-closed'}>
+                                {abierto ? '● Abierto' : '● Cerrado'}
+                              </span>
+                            )}
+                            {rating != null && (
+                              <span className="neg-rating">⭐ {rating}</span>
+                            )}
+                            {dist != null && (
+                              <span className="neg-dist">{dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`}</span>
+                            )}
                           </div>
                         </div>
                       </Link>
@@ -294,20 +430,14 @@ function ClienteContent() {
         {/* ── MAPA ── */}
         {tabActiva === 'mapa' && (
           <div style={{display:'flex', flexDirection:'column', height:'calc(100vh - 62px)'}}>
-            <div style={{padding:'16px 20px 12px', background:'#fff', borderBottom:'1px solid rgba(0,0,0,0.08)', flexShrink:0}}>
-              <div style={{fontSize:'18px', fontWeight:800, color:'#111827', marginBottom:'2px'}}>Mapa de negocios</div>
-              <div style={{fontSize:'13px', color:'#9CA3AF'}}>
-                {negocios.filter(n => n.lat && n.lng).length} negocios en el mapa
-              </div>
-            </div>
-            <div style={{flex:1, position:'relative'}}>
-              <MapaNegocios
-                negocios={negocios
-                  .filter(n => n.lat != null && n.lng != null)
-                  .map(n => ({ id: n.id, nombre: n.nombre, tipo: n.tipo, ciudad: n.ciudad, logo_url: n.logo_url, lat: n.lat!, lng: n.lng! }))
-                }
-              />
-            </div>
+            <MapaNegocios
+              negocios={negocios
+                .filter(n => n.lat != null && n.lng != null)
+                .map(n => ({ id: n.id, nombre: n.nombre, tipo: n.tipo, ciudad: n.ciudad, logo_url: n.logo_url, lat: n.lat!, lng: n.lng! }))
+              }
+              valPorNeg={valPorNeg}
+              userPos={userPos}
+            />
           </div>
         )}
 
