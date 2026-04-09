@@ -6,11 +6,19 @@ export default function Confirm() {
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code')
     if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(() => {
-        window.location.href = '/onboarding'
+      supabase.auth.exchangeCodeForSession(code).then(async ({ data }) => {
+        const user = data.session?.user ?? data.user
+        if (user) {
+          const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', user.id).single()
+          if (profile?.tipo === 'negocio') window.location.href = '/dashboard'
+          else if (profile?.tipo === 'cliente') window.location.href = '/cliente'
+          else window.location.href = '/onboarding'
+        } else {
+          window.location.href = '/onboarding'
+        }
       })
     } else {
-      window.location.href = '/onboarding'
+      window.location.href = '/auth'
     }
   }, [])
 

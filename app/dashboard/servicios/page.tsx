@@ -86,23 +86,27 @@ export default function Servicios() {
 
     if (editando?.id) {
       const { error } = await supabase.from('servicios').update(datos).eq('id', editando.id)
-      if (!error) setServicios(servicios.map(s => s.id === editando.id ? { ...s, ...datos } : s))
+      if (error) console.error('[servicios] update:', error)
+      else setServicios(servicios.map(s => s.id === editando.id ? { ...s, ...datos } : s))
     } else {
       const { data, error } = await supabase.from('servicios').insert({ ...datos, negocio_id: negocioId, activo: true }).select().single()
-      if (!error && data) setServicios([...servicios, data])
+      if (error) console.error('[servicios] insert:', error)
+      else if (data) setServicios([...servicios, data])
     }
     setModal(false)
     setGuardando(false)
   }
 
   async function toggleActivo(servicio: Servicio) {
-    await supabase.from('servicios').update({ activo: !servicio.activo }).eq('id', servicio.id)
+    const { error } = await supabase.from('servicios').update({ activo: !servicio.activo }).eq('id', servicio.id)
+    if (error) { console.error('[servicios] toggleActivo:', error); return }
     setServicios(servicios.map(s => s.id === servicio.id ? { ...s, activo: !s.activo } : s))
   }
 
   async function eliminar(id: string) {
     if (!confirm('¿Eliminar este servicio?')) return
-    await supabase.from('servicios').delete().eq('id', id)
+    const { error } = await supabase.from('servicios').delete().eq('id', id)
+    if (error) { console.error('[servicios] delete:', error); return }
     setServicios(servicios.filter(s => s.id !== id))
   }
 

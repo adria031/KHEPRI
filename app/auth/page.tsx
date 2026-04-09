@@ -35,13 +35,17 @@ function AuthForm() {
     setCargando(true); setMensaje(''); setEsError(false)
 
     if (modo === 'registro') {
-      const { error } = await supabase.auth.signUp({ email, password, options: { data: { nombre } } })
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nombre } } })
       if (error) {
         if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already exists') || error.message.toLowerCase().includes('user already')) {
           setMensaje('Este email ya está registrado. Redirigiendo...'); setEsError(true)
           setTimeout(() => { setModo('login'); setMensaje(''); setEsError(false) }, 2500)
         } else { setMensaje(error.message); setEsError(true) }
-      } else { window.location.href = '/onboarding' }
+      } else if (data.session) {
+        window.location.href = '/onboarding'
+      } else {
+        setMensaje('Revisa tu email y confirma tu cuenta para continuar.'); setEsError(false)
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setMensaje('Email o contraseña incorrectos.'); setEsError(true) }

@@ -164,10 +164,12 @@ export default function Horarios() {
         hora_cierre2: h.estado === 'partido' ? h.cierre2 : null,
       }
       if (h.id) {
-        await supabase.from('horarios').update(datos).eq('id', h.id)
+        const { error: errUpd } = await supabase.from('horarios').update(datos).eq('id', h.id)
+        if (errUpd) console.error('[horarios] update:', errUpd, dia)
       } else {
-        const { data } = await supabase.from('horarios').insert(datos).select().single()
-        if (data) setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], id: data.id } }))
+        const { data, error: errIns } = await supabase.from('horarios').insert(datos).select().single()
+        if (errIns) console.error('[horarios] insert:', errIns, dia)
+        else if (data) setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], id: data.id } }))
       }
     }
     setGuardando(false)
@@ -200,11 +202,13 @@ export default function Horarios() {
     }
     const existing = excepciones[modalFecha]
     if (existing?.id) {
-      await supabase.from('horarios_especiales').update(datos).eq('id', existing.id)
-      setExcepciones(prev => ({ ...prev, [modalFecha]: { ...modalData, id: existing.id } }))
+      const { error: errExcUpd } = await supabase.from('horarios_especiales').update(datos).eq('id', existing.id)
+      if (errExcUpd) console.error('[horarios] update excepcion:', errExcUpd)
+      else setExcepciones(prev => ({ ...prev, [modalFecha]: { ...modalData, id: existing.id } }))
     } else {
-      const { data } = await supabase.from('horarios_especiales').insert(datos).select().single()
-      if (data) setExcepciones(prev => ({ ...prev, [modalFecha]: { ...modalData, id: data.id } }))
+      const { data, error: errExcIns } = await supabase.from('horarios_especiales').insert(datos).select().single()
+      if (errExcIns) console.error('[horarios] insert excepcion:', errExcIns)
+      else if (data) setExcepciones(prev => ({ ...prev, [modalFecha]: { ...modalData, id: data.id } }))
     }
     setGuardandoModal(false)
     cerrarModal()

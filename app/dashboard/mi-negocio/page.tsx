@@ -91,7 +91,7 @@ export default function MiNegocio() {
   async function guardar() {
     if (!negocioId) return
     setGuardando(true)
-    await supabase.from('negocios').update({
+    const { error: errGuardar } = await supabase.from('negocios').update({
       nombre: form.nombre,
       descripcion: form.descripcion,
       telefono: form.telefono,
@@ -107,6 +107,7 @@ export default function MiNegocio() {
       confirmacion_automatica: form.confirmacion_automatica,
       mensaje_cancelacion: form.mensaje_cancelacion || null,
     }).eq('id', negocioId)
+    if (errGuardar) console.error('[mi-negocio] update negocios:', errGuardar)
     setGuardando(false)
     setGuardado(true)
     setTimeout(() => setGuardado(false), 3000)
@@ -125,7 +126,8 @@ export default function MiNegocio() {
       const { data: { publicUrl } } = supabase.storage.from('fotos').getPublicUrl(path)
       const nuevasFotos = [...form.fotos, publicUrl]
       setForm({ ...form, fotos: nuevasFotos })
-      await supabase.from('negocios').update({ fotos: nuevasFotos }).eq('id', negocioId)
+      const { error: errFotos } = await supabase.from('negocios').update({ fotos: nuevasFotos }).eq('id', negocioId)
+      if (errFotos) console.error('[mi-negocio] update fotos:', errFotos)
     }
     setSubiendo(false)
     if (fileRef.current) fileRef.current.value = ''
@@ -140,7 +142,8 @@ export default function MiNegocio() {
     await supabase.storage.from('fotos').upload(path, file, { upsert: true })
     const { data: { publicUrl } } = supabase.storage.from('fotos').getPublicUrl(path)
     setForm(prev => ({ ...prev, logo_url: publicUrl }))
-    await supabase.from('negocios').update({ logo_url: publicUrl }).eq('id', negocioId)
+    const { error: errLogo } = await supabase.from('negocios').update({ logo_url: publicUrl }).eq('id', negocioId)
+    if (errLogo) console.error('[mi-negocio] update logo:', errLogo)
     setSubiendo(false)
     if (logoRef.current) logoRef.current.value = ''
   }
@@ -148,7 +151,8 @@ export default function MiNegocio() {
   async function eliminarFoto(url: string) {
     const nuevasFotos = form.fotos.filter(f => f !== url)
     setForm({ ...form, fotos: nuevasFotos })
-    await supabase.from('negocios').update({ fotos: nuevasFotos }).eq('id', negocioId)
+    const { error: errDelFoto } = await supabase.from('negocios').update({ fotos: nuevasFotos }).eq('id', negocioId)
+    if (errDelFoto) console.error('[mi-negocio] update fotos (eliminar):', errDelFoto)
   }
 
   function abrirGPS() {
