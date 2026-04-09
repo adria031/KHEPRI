@@ -17,5 +17,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/auth/confirm?code=${encodeURIComponent(code)}`, request.url))
   }
 
-  return NextResponse.redirect(new URL('/auth', request.url))
+  return NextResponse.redirect(new URL('/onboarding', request.url))
 }
