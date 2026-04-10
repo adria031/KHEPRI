@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const supabase = clientWithToken(token)
-  const { data: { user }, error: userErr } = await supabase.auth.getUser()
+  const { data: { user }, error: userErr } = await supabase.auth.getUser(token)
   if (userErr || !user) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
 
   const body = await req.json() as {

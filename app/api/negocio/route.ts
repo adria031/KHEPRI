@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const supabase = clientWithToken(token)
 
-  const { data: user, error: userErr } = await supabase.auth.getUser()
+  const { data: user, error: userErr } = await supabase.auth.getUser(token)
   if (userErr || !user.user) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
 
   const { data, error } = await supabase
@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest) {
   if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const supabase = clientWithToken(token)
 
-  const { data: user, error: userErr } = await supabase.auth.getUser()
+  const { data: user, error: userErr } = await supabase.auth.getUser(token)
   if (userErr || !user.user) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
 
   const body = await req.json()
