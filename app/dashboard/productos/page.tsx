@@ -114,7 +114,7 @@ export default function Productos() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
-      if (!neg) return
+      if (!neg) { setCargando(false); return }
       setTodosNegocios(todosNegs)
       setNegocioId(neg.id)
       await cargarProductos(neg.id)

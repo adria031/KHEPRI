@@ -95,7 +95,7 @@ export default function Horarios() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { activo: negocio } = await getNegocioActivo(user.id, session.access_token)
-      if (!negocio) return
+      if (!negocio) { setCargando(false); return }
       setNegocioId(negocio.id)
       {
         const { data } = await db.from('horarios').select('*').eq('negocio_id', negocio.id)

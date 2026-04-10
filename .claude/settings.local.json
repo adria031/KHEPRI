@@ -9,7 +9,25 @@
       "Bash(where pnpm:*)",
       "Bash(pnpm add:*)",
       "Bash(pnpm build:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(xargs sed:*)",
+      "Bash(python3 scripts/patch_negocio.py)",
+      "Bash(sed -i 's|from '\\\\''./lib/negocioActivo'\\\\''|from '\\\\''../lib/negocioActivo'\\\\''|g' 'C:\\\\Users\\\\Adria\\\\proyectos\\\\mi-saas\\\\app\\\\dashboard\\\\page.tsx')",
+      "Bash(sed -i 's|from '\\\\''../../NegocioSelector'\\\\''|from '\\\\''../NegocioSelector'\\\\''|g' 'C:\\\\Users\\\\Adria\\\\proyectos\\\\mi-saas\\\\app\\\\dashboard${f}\\\\page.tsx')",
+      "Bash(npm list:*)",
+      "Bash(ls:*)",
+      "Bash(sed -i \"s|{ icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas', active: false },|{ icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas', active: false },\\\\n  { icon: '💰', label: 'Caja', href: '/dashboard/caja', active: false },|\" app/dashboard/page.tsx)",
+      "Bash(sed -i \"s|{icon:'⭐', label:'Reseñas', href:'/dashboard/resenas'},|{icon:'⭐', label:'Reseñas', href:'/dashboard/resenas'},\\\\n                    {icon:'💰', label:'Caja', href:'/dashboard/caja'},|\" app/dashboard/page.tsx)",
+      "Bash(npx tsc:*)",
+      "Bash(sed -n '88,100p' \"C:/Users/Adria/proyectos/mi-saas/app/dashboard/horarios/page.tsx\")",
+      "Bash(sed -n '106,118p' \"C:/Users/Adria/proyectos/mi-saas/app/dashboard/productos/page.tsx\")",
+      "Bash(node -e \"const {createBrowserClient} = require\\('@supabase/ssr'\\); console.log\\(typeof createBrowserClient\\)\")",
+      "Bash(node -e ':*)",
+      "Bash(node:*)",
+      "Bash(cat \"C:/Users/Adria/proyectos/mi-saas/node_modules/next/dist/docs/\"*.md)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -77,7 +77,7 @@ export default function MiNegocio() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
-      if (!negActivo) return
+      if (!negActivo) { setCargando(false); return }
       setTodosNegocios(todosNegs)
       const { data } = await db.from('negocios').select('*').eq('id', negActivo.id).single()
       if (data) {
