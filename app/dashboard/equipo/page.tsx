@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { dbMutation } from '../../lib/dbApi'
 import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
@@ -134,17 +135,13 @@ export default function Equipo() {
     }
 
     if (editando) {
-      const { data: upd, error: err } = await supabase.from('trabajadores').update(datos).eq('id', editando.id).select('id').single()
-      if (err || !upd) { setError(err?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
+      const { error: err } = await dbMutation({ op: 'update', table: 'trabajadores', id: editando.id, negocioId: negocioId!, data: datos })
+      if (err) { setError(err); setGuardando(false); return }
       setTrabajadores(prev => prev.map(t => t.id === editando.id ? { ...t, ...datos } : t))
     } else {
-      const { data, error: err } = await supabase
-        .from('trabajadores')
-        .insert({ ...datos, negocio_id: negocioId, activo: true })
-        .select()
-        .single()
-      if (err || !data) { setError(err?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
-      setTrabajadores(prev => [...prev, data])
+      const { data, error: err } = await dbMutation({ op: 'insert', table: 'trabajadores', negocioId: negocioId!, data: { ...datos, negocio_id: negocioId, activo: true } })
+      if (err || !data) { setError(err || 'No se pudo guardar.'); setGuardando(false); return }
+      setTrabajadores(prev => [...prev, data as Trabajador])
     }
 
     setGuardando(false)
@@ -152,13 +149,13 @@ export default function Equipo() {
   }
 
   async function toggleActivo(t: Trabajador) {
-    const { error } = await supabase.from('trabajadores').update({ activo: !t.activo }).eq('id', t.id)
+    const { error } = await dbMutation({ op: 'update', table: 'trabajadores', id: t.id, negocioId: negocioId!, data: { activo: !t.activo } })
     if (!error) setTrabajadores(prev => prev.map(x => x.id === t.id ? { ...x, activo: !t.activo } : x))
   }
 
   async function eliminar(t: Trabajador) {
     if (!confirm(`¿Eliminar a ${t.nombre}? Esta acción no se puede deshacer.`)) return
-    const { error } = await supabase.from('trabajadores').delete().eq('id', t.id)
+    const { error } = await dbMutation({ op: 'delete', table: 'trabajadores', id: t.id, negocioId: negocioId! })
     if (!error) setTrabajadores(prev => prev.filter(x => x.id !== t.id))
   }
 

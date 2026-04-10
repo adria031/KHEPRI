@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { dbMutation } from '../../lib/dbApi'
 import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
@@ -106,27 +107,27 @@ export default function Servicios() {
     }
 
     if (editando?.id) {
-      const { data: upd, error } = await supabase.from('servicios').update(datos).eq('id', editando.id).select('id').single()
-      if (error || !upd) { console.error('[servicios] update:', error); setError(error?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
+      const { data: upd, error } = await dbMutation({ op: 'update', table: 'servicios', id: editando.id, negocioId: negocioId!, data: datos })
+      if (error || !upd) { setError(error || 'No se pudo guardar.'); setGuardando(false); return }
       setServicios(servicios.map(s => s.id === editando.id ? { ...s, ...datos } : s))
     } else {
-      const { data, error } = await supabase.from('servicios').insert({ ...datos, negocio_id: negocioId, activo: true }).select().single()
-      if (error || !data) { console.error('[servicios] insert:', error); setError(error?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
-      setServicios([...servicios, data])
+      const { data, error } = await dbMutation({ op: 'insert', table: 'servicios', negocioId: negocioId!, data: { ...datos, negocio_id: negocioId, activo: true } })
+      if (error || !data) { setError(error || 'No se pudo guardar.'); setGuardando(false); return }
+      setServicios([...servicios, data as Servicio])
     }
     setModal(false)
     setGuardando(false)
   }
 
   async function toggleActivo(servicio: Servicio) {
-    const { error } = await supabase.from('servicios').update({ activo: !servicio.activo }).eq('id', servicio.id)
-    if (error) { console.error('[servicios] toggleActivo:', error); return }
+    const { error } = await dbMutation({ op: 'update', table: 'servicios', id: servicio.id, negocioId: negocioId!, data: { activo: !servicio.activo } })
+    if (error) return
     setServicios(servicios.map(s => s.id === servicio.id ? { ...s, activo: !s.activo } : s))
   }
 
   async function eliminar(id: string) {
     if (!confirm('¿Eliminar este servicio?')) return
-    const { error } = await supabase.from('servicios').delete().eq('id', id)
+    const { error } = await dbMutation({ op: 'delete', table: 'servicios', id, negocioId: negocioId! })
     if (error) { console.error('[servicios] delete:', error); return }
     setServicios(servicios.filter(s => s.id !== id))
   }

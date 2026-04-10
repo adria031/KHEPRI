@@ -73,14 +73,19 @@ export default function MiNegocio() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user }, error: userErr } = await supabase.auth.getUser()
-      if (userErr || !user) { window.location.href = '/auth'; return }
-      const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(user.id)
-      if (!negActivo) { window.location.href = '/onboarding'; return }
-      setTodosNegocios(todosNegs)
-      const { data } = await supabase.from('negocios').select('*').eq('id', negActivo.id).single()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { window.location.href = '/auth'; return }
+      const token = session.access_token
+      // Cargar negocio vía API route (token explícito, sin depender de cookies)
+      const res = await fetch('/api/negocio', { headers: { 'x-supabase-token': token } })
+      if (res.status === 401) { window.location.href = '/auth'; return }
+      if (!res.ok) { window.location.href = '/onboarding'; return }
+      const { data } = await res.json()
       if (data) {
         setNegocioId(data.id)
+        // También poblar el selector de negocios
+        const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(session.user.id)
+        setTodosNegocios(todosNegs)
         setForm({
           nombre: data.nombre || '',
           tipo: data.tipo || '',
@@ -107,26 +112,34 @@ export default function MiNegocio() {
   async function guardar() {
     if (!negocioId) return
     setGuardando(true); setApiError('')
-    const { data: updated, error: errGuardar } = await supabase.from('negocios').update({
-      nombre: form.nombre,
-      descripcion: form.descripcion,
-      telefono: form.telefono,
-      direccion: form.direccion,
-      ciudad: form.ciudad,
-      codigo_postal: form.codigo_postal,
-      instagram: form.instagram,
-      whatsapp: form.whatsapp,
-      facebook: form.facebook,
-      fotos: form.fotos,
-      logo_url: form.logo_url,
-      horas_cancelacion: form.horas_cancelacion,
-      confirmacion_automatica: form.confirmacion_automatica,
-      mensaje_cancelacion: form.mensaje_cancelacion || null,
-      metodos_pago: form.metodos_pago,
-    }).eq('id', negocioId).select('id').single()
-    if (errGuardar || !updated) {
-      console.error('[mi-negocio] update negocios:', errGuardar)
-      setApiError(errGuardar?.message || 'No se pudo guardar. Comprueba que has iniciado sesión correctamente.')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setApiError('Sesión expirada. Recarga la página.'); setGuardando(false); return }
+    const res = await fetch('/api/negocio', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-supabase-token': session.access_token },
+      body: JSON.stringify({
+        negocioId,
+        nombre: form.nombre,
+        descripcion: form.descripcion,
+        telefono: form.telefono,
+        direccion: form.direccion,
+        ciudad: form.ciudad,
+        codigo_postal: form.codigo_postal,
+        instagram: form.instagram,
+        whatsapp: form.whatsapp,
+        facebook: form.facebook,
+        fotos: form.fotos,
+        logo_url: form.logo_url,
+        horas_cancelacion: form.horas_cancelacion,
+        confirmacion_automatica: form.confirmacion_automatica,
+        mensaje_cancelacion: form.mensaje_cancelacion || null,
+        metodos_pago: form.metodos_pago,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok || json.error) {
+      console.error('[mi-negocio] guardar:', json.error)
+      setApiError(json.error || 'Error al guardar')
       setGuardando(false)
       return
     }

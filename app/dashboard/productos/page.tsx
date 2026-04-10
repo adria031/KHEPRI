@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { dbMutation } from '../../lib/dbApi'
 import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
@@ -189,56 +190,30 @@ export default function Productos() {
     const stock = parseInt(form.stock)
 
     if (modal === 'add') {
-      // Insertar primero para obtener ID
-      const { data: nuevo, error } = await supabase
-        .from('productos')
-        .insert({
-          negocio_id: negocioId,
-          nombre: form.nombre.trim(),
-          descripcion: form.descripcion.trim() || null,
-          precio,
-          iva: form.iva,
-          stock,
-          foto_url: null,
-          activo: true,
-        })
-        .select()
-        .single()
-
-      if (error || !nuevo) { setApiError(error?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
-      if (nuevo) {
-        let foto_url = null
-        if (fotoFile) foto_url = await subirFoto(fotoFile, nuevo.id)
-        if (foto_url) {
-          await supabase.from('productos').update({ foto_url }).eq('id', nuevo.id)
-          nuevo.foto_url = foto_url
-        }
-        setProductos(prev => [{ ...nuevo, foto_url }, ...prev])
+      const { data: nuevo, error } = await dbMutation({ op: 'insert', table: 'productos', negocioId: negocioId!, data: {
+        negocio_id: negocioId, nombre: form.nombre.trim(), descripcion: form.descripcion.trim() || null,
+        precio, iva: form.iva, stock, foto_url: null, activo: true,
+      }})
+      if (error || !nuevo) { setApiError(error || 'No se pudo guardar.'); setGuardando(false); return }
+      const prod = nuevo as Producto
+      let foto_url: string | null = null
+      if (fotoFile) foto_url = await subirFoto(fotoFile, prod.id)
+      if (foto_url) {
+        await dbMutation({ op: 'update', table: 'productos', id: prod.id, negocioId: negocioId!, data: { foto_url } })
       }
+      setProductos(prev => [{ ...prod, foto_url }, ...prev])
     } else if (modal === 'edit' && editando) {
       let foto_url = form.foto_url
       if (fotoFile) foto_url = await subirFoto(fotoFile, editando.id)
-
-      const { data: upd, error } = await supabase
-        .from('productos')
-        .update({
-          nombre: form.nombre.trim(),
-          descripcion: form.descripcion.trim() || null,
-          precio,
-          iva: form.iva,
-          stock,
-          foto_url,
-        })
-        .eq('id', editando.id)
-        .select('id').single()
-
-      if (error || !upd) { setApiError(error?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
-      if (true) {
-        setProductos(prev => prev.map(p => p.id === editando.id
-          ? { ...p, nombre: form.nombre.trim(), descripcion: form.descripcion.trim() || null, precio, iva: form.iva, stock, foto_url }
-          : p
-        ))
-      }
+      const { error } = await dbMutation({ op: 'update', table: 'productos', id: editando.id, negocioId: negocioId!, data: {
+        nombre: form.nombre.trim(), descripcion: form.descripcion.trim() || null,
+        precio, iva: form.iva, stock, foto_url,
+      }})
+      if (error) { setApiError(error); setGuardando(false); return }
+      setProductos(prev => prev.map(p => p.id === editando.id
+        ? { ...p, nombre: form.nombre.trim(), descripcion: form.descripcion.trim() || null, precio, iva: form.iva, stock, foto_url }
+        : p
+      ))
     }
 
     setGuardando(false)
@@ -246,13 +221,13 @@ export default function Productos() {
   }
 
   async function toggleActivo(p: Producto) {
-    const { error } = await supabase.from('productos').update({ activo: !p.activo }).eq('id', p.id)
+    const { error } = await dbMutation({ op: 'update', table: 'productos', id: p.id, negocioId: negocioId!, data: { activo: !p.activo } })
     if (!error) setProductos(prev => prev.map(x => x.id === p.id ? { ...x, activo: !p.activo } : x))
   }
 
   async function updateStock(p: Producto, delta: number) {
     const nuevo = Math.max(0, p.stock + delta)
-    const { error } = await supabase.from('productos').update({ stock: nuevo }).eq('id', p.id)
+    const { error } = await dbMutation({ op: 'update', table: 'productos', id: p.id, negocioId: negocioId!, data: { stock: nuevo } })
     if (!error) setProductos(prev => prev.map(x => x.id === p.id ? { ...x, stock: nuevo } : x))
   }
 

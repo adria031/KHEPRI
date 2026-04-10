@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { dbMutation } from '../../lib/dbApi'
 import { NegocioSelector } from '../NegocioSelector'
 
 function KhepriLogo() {
@@ -167,12 +168,12 @@ export default function Horarios() {
         hora_cierre2: h.estado === 'partido' ? h.cierre2 : null,
       }
       if (h.id) {
-        const { data: upd, error: errUpd } = await supabase.from('horarios').update(datos).eq('id', h.id).select('id').single()
-        if (errUpd || !upd) { console.error('[horarios] update:', errUpd, dia); setApiError(errUpd?.message || 'No se pudo guardar. Recarga e inicia sesión.'); }
+        const { error: errUpd } = await dbMutation({ op: 'update', table: 'horarios', id: h.id, negocioId, data: datos })
+        if (errUpd) { setApiError(errUpd); }
       } else {
-        const { data, error: errIns } = await supabase.from('horarios').insert(datos).select().single()
-        if (errIns || !data) { console.error('[horarios] insert:', errIns, dia); setApiError(errIns?.message || 'No se pudo guardar. Recarga e inicia sesión.'); }
-        else setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], id: data.id } }))
+        const { data, error: errIns } = await dbMutation({ op: 'insert', table: 'horarios', negocioId, data: datos })
+        if (errIns || !data) { setApiError(errIns || 'Error al insertar horario'); }
+        else setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], id: (data as { id: string }).id } }))
       }
     }
     setGuardando(false)
@@ -205,13 +206,11 @@ export default function Horarios() {
     }
     const existing = excepciones[modalFecha]
     if (existing?.id) {
-      const { error: errExcUpd } = await supabase.from('horarios_especiales').update(datos).eq('id', existing.id)
-      if (errExcUpd) console.error('[horarios] update excepcion:', errExcUpd)
-      else setExcepciones(prev => ({ ...prev, [modalFecha]: { ...modalData, id: existing.id } }))
+      const { error: errExcUpd } = await dbMutation({ op: 'update', table: 'horarios_especiales', id: existing.id, negocioId, data: datos })
+      if (!errExcUpd) setExcepciones(prev => ({ ...prev, [modalFecha]: { ...modalData, id: existing.id } }))
     } else {
-      const { data, error: errExcIns } = await supabase.from('horarios_especiales').insert(datos).select().single()
-      if (errExcIns) console.error('[horarios] insert excepcion:', errExcIns)
-      else if (data) setExcepciones(prev => ({ ...prev, [modalFecha]: { ...modalData, id: data.id } }))
+      const { data, error: errExcIns } = await dbMutation({ op: 'insert', table: 'horarios_especiales', negocioId, data: datos })
+      if (!errExcIns && data) setExcepciones(prev => ({ ...prev, [modalFecha]: { ...modalData, id: (data as { id: string }).id } }))
     }
     setGuardandoModal(false)
     cerrarModal()
@@ -219,7 +218,7 @@ export default function Horarios() {
 
   async function eliminarExcepcion() {
     if (!modalFecha || !excepciones[modalFecha]?.id) { cerrarModal(); return }
-    await supabase.from('horarios_especiales').delete().eq('id', excepciones[modalFecha].id!)
+    await dbMutation({ op: 'delete', table: 'horarios_especiales', id: excepciones[modalFecha].id!, negocioId: negocioId! })
     setExcepciones(prev => {
       const next = { ...prev }
       delete next[modalFecha]
