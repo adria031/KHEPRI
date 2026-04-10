@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '../lib/supabase'
+import { supabase, getSessionClient } from '../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
 import { NegocioSelector } from './NegocioSelector'
 
@@ -64,10 +64,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
+      const { session, db } = await getSessionClient()
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
 
-      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
+      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
       if (!neg) return
       setTodosNegocios(todosNegs)
       setNegocio(neg)
@@ -80,9 +81,9 @@ export default function Dashboard() {
       const hace6ISO = isoLocal(hace6)
 
       const [{ data: resHoy }, { data: resSemana }, { data: citasData }] = await Promise.all([
-        supabase.from('reservas').select('estado, servicios(precio)').eq('negocio_id', neg.id).eq('fecha', hoyISO),
-        supabase.from('reservas').select('fecha, estado, cliente_telefono, servicios(precio)').eq('negocio_id', neg.id).gte('fecha', hace6ISO).lte('fecha', hoyISO),
-        supabase.from('reservas').select('id, hora, cliente_nombre, estado, servicios(nombre)').eq('negocio_id', neg.id).eq('fecha', hoyISO).order('hora').limit(5),
+        db.from('reservas').select('estado, servicios(precio)').eq('negocio_id', neg.id).eq('fecha', hoyISO),
+        db.from('reservas').select('fecha, estado, cliente_telefono, servicios(precio)').eq('negocio_id', neg.id).gte('fecha', hace6ISO).lte('fecha', hoyISO),
+        db.from('reservas').select('id, hora, cliente_nombre, estado, servicios(nombre)').eq('negocio_id', neg.id).eq('fecha', hoyISO).order('hora').limit(5),
       ])
 
       setReservasHoy(resHoy?.length ?? 0)

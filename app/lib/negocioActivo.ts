@@ -1,24 +1,22 @@
-import { supabase } from './supabase'
-import { createClient } from '@supabase/supabase-js'
+import { supabase, createAuthClient } from './supabase'
 
 export type NegMin = { id: string; nombre: string; plan: string }
 
 /**
  * Fetch all negocios for a user, pick the active one from localStorage.
- * Accepts an optional accessToken to pass auth explicitly (bypasses cookie issues).
+ * Always uses an explicit auth token to bypass cookie issues in production.
  */
 export async function getNegocioActivo(userId: string, accessToken?: string): Promise<{
   activo: NegMin | null
   todos: NegMin[]
 }> {
-  // If we have an explicit token, create a client with it to ensure auth works
-  const client = accessToken
-    ? createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
-      )
-    : supabase
+  let token = accessToken
+  if (!token) {
+    const { data: { session } } = await supabase.auth.getSession()
+    token = session?.access_token
+  }
+
+  const client = token ? createAuthClient(token) : supabase
 
   const { data } = await client
     .from('negocios')

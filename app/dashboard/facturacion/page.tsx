@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
 
@@ -130,7 +130,8 @@ export default function Facturacion() {
     const hasta = new Date(a, m + 1, 0)
     const hastaStr = `${isoMes(a, m)}-${String(hasta.getDate()).padStart(2, '0')}`
 
-    const { data } = await supabase
+    const { db } = await getSessionClient()
+    const { data } = await db
       .from('reservas')
       .select('id, fecha, cliente_nombre, estado, created_at, servicios(nombre, precio, iva)')
       .eq('negocio_id', nid)
@@ -185,7 +186,8 @@ export default function Facturacion() {
     const desde = `${isoMes(a, m)}-01`
     const hasta = new Date(a, m + 1, 0)
     const hastaStr = `${isoMes(a, m)}-${String(hasta.getDate()).padStart(2, '0')}`
-    const { data } = await supabase
+    const { db } = await getSessionClient()
+    const { data } = await db
       .from('gastos')
       .select('id, fecha, proveedor, base_imponible, iva_porcentaje, cuota_iva, total, foto_url')
       .eq('negocio_id', nid)
@@ -197,10 +199,10 @@ export default function Facturacion() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { session, db } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
-      const { data: neg } = await supabase.from('negocios').select('id, nombre').eq('user_id', user.id).single()
+      const { data: neg } = await db.from('negocios').select('id, nombre').eq('user_id', user.id).single()
       if (neg) {
         setNegocioId(neg.id)
         setNegocioNombre(neg.nombre)

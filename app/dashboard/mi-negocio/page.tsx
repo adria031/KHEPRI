@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
 
@@ -73,12 +73,13 @@ export default function MiNegocio() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
-      const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(user.id)
+      const { session, db } = await getSessionClient()
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
+      const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
       if (!negActivo) return
       setTodosNegocios(todosNegs)
-      const { data } = await supabase.from('negocios').select('*').eq('id', negActivo.id).single()
+      const { data } = await db.from('negocios').select('*').eq('id', negActivo.id).single()
       if (data) {
         setNegocioId(data.id)
         setForm({

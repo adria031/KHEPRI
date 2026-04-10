@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
 
@@ -74,13 +74,13 @@ export default function Resenas() {
 
   useEffect(() => {
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { session, db } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
-      const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', user.id).single()
+      const { data: neg } = await db.from('negocios').select('id').eq('user_id', user.id).single()
       if (!neg) return
       setNegocioId(neg.id)
-      const { data } = await supabase
+      const { data } = await db
         .from('resenas')
         .select('*')
         .eq('negocio_id', neg.id)

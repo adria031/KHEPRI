@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
 
@@ -67,14 +67,15 @@ export default function Caja() {
   const [efectivoReal, setEfectivoReal] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    ;(async () => {
+      const { session } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
-      const { activo, todos } = await getNegocioActivo(user.id)
+      const { activo, todos } = await getNegocioActivo(user.id, session.access_token)
       setTodosNegocios(todos)
       if (activo) setNegocioId(activo.id)
       setCargando(false)
-    })
+    })()
   }, [])
 
   useEffect(() => {
@@ -83,7 +84,8 @@ export default function Caja() {
   }, [negocioId, fecha])
 
   async function cargarMovimientos() {
-    const { data } = await supabase
+    const { db } = await getSessionClient()
+    const { data } = await db
       .from('caja')
       .select('*')
       .eq('negocio_id', negocioId)

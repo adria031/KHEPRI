@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { dbMutation } from '../../lib/dbApi'
 import { NegocioSelector } from '../NegocioSelector'
@@ -99,7 +99,8 @@ export default function Productos() {
   const [busqueda, setBusqueda] = useState('')
 
   const cargarProductos = useCallback(async (nid: string) => {
-    const { data } = await supabase
+    const { db } = await getSessionClient()
+    const { data } = await db
       .from('productos')
       .select('*')
       .eq('negocio_id', nid)
@@ -109,9 +110,10 @@ export default function Productos() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
-      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
+      const { session } = await getSessionClient()
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
+      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
       if (!neg) return
       setTodosNegocios(todosNegs)
       setNegocioId(neg.id)

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { dbMutation } from '../../lib/dbApi'
 import { NegocioSelector } from '../NegocioSelector'
@@ -91,13 +91,14 @@ export default function Horarios() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
-      const { activo: negocio } = await getNegocioActivo(user.id)
+      const { session, db } = await getSessionClient()
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
+      const { activo: negocio } = await getNegocioActivo(user.id, session.access_token)
       if (!negocio) return
       setNegocioId(negocio.id)
       {
-        const { data } = await supabase.from('horarios').select('*').eq('negocio_id', negocio.id)
+        const { data } = await db.from('horarios').select('*').eq('negocio_id', negocio.id)
         if (data && data.length > 0) {
           const map: Record<string, Horario> = {}
           data.forEach((h: any) => {

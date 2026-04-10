@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
 import {
@@ -155,14 +155,15 @@ export default function ChatbotPage() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
+      const { session, db } = await getSessionClient()
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
 
-      const { activo: negBase, todos: todosNegs } = await getNegocioActivo(user.id)
+      const { activo: negBase, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
       if (!negBase) { setCargando(false); return }
       setTodosNegocios(todosNegs)
       // Re-fetch full fields for chatbot
-      const { data: neg } = await supabase.from('negocios')
+      const { data: neg } = await db.from('negocios')
         .select('id, nombre, tipo, descripcion, direccion, ciudad, telefono')
         .eq('id', negBase.id).single()
       if (!neg) { setCargando(false); return }
@@ -173,10 +174,10 @@ export default function ChatbotPage() {
       setBienvenida(`¡Hola! Soy el asistente de ${neg.nombre}. ¿En qué puedo ayudarte?`)
 
       const [{ data: svcs }, { data: trabs }, { data: hors }, { data: cfg }] = await Promise.all([
-        supabase.from('servicios').select('id, nombre, precio, duracion').eq('negocio_id', neg.id).eq('activo', true),
-        supabase.from('trabajadores').select('id, nombre, especialidad').eq('negocio_id', neg.id).eq('activo', true),
-        supabase.from('horarios').select('dia, abierto, hora_apertura, hora_cierre, hora_apertura2, hora_cierre2').eq('negocio_id', neg.id),
-        supabase.from('chatbot_config').select('*').eq('negocio_id', neg.id).single(),
+        db.from('servicios').select('id, nombre, precio, duracion').eq('negocio_id', neg.id).eq('activo', true),
+        db.from('trabajadores').select('id, nombre, especialidad').eq('negocio_id', neg.id).eq('activo', true),
+        db.from('horarios').select('dia, abierto, hora_apertura, hora_cierre, hora_apertura2, hora_cierre2').eq('negocio_id', neg.id),
+        db.from('chatbot_config').select('*').eq('negocio_id', neg.id).single(),
       ])
 
       if (svcs) setServicios(svcs.map((s: any) => ({ id: s.id, nombre: s.nombre, precio: s.precio || 0, duracion: s.duracion || 30 })))

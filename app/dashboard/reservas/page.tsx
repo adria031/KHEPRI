@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
 
@@ -83,19 +83,21 @@ export default function Reservas() {
   const [actualizando, setActualizando] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    ;(async () => {
+      const { session } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
-      const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id)
+      const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
       setTodosNegocios(todosNegs)
       if (data) setNegocio(data)
-    })
+    })()
   }, [])
 
   const cargarReservas = useCallback(async () => {
     if (!negocio) return
     setCargando(true)
-    const { data } = await supabase
+    const { db } = await getSessionClient()
+    const { data } = await db
       .from('reservas')
       .select('*, servicios(nombre), trabajadores(nombre)')
       .eq('negocio_id', negocio.id)

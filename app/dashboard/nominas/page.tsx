@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
 
@@ -96,18 +96,19 @@ export default function Nominas() {
   const [iaTarget, setIaTarget]         = useState<string | null>(null) // nomina.id
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    ;(async () => {
+      const { session, db } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
-      const { activo, todos } = await getNegocioActivo(user.id)
+      const { activo, todos } = await getNegocioActivo(user.id, session.access_token)
       setTodosNegocios(todos)
       if (activo) {
         setNegocioId(activo.id)
-        const { data: tr } = await supabase.from('trabajadores').select('id,nombre,especialidad,foto_url').eq('negocio_id', activo.id).eq('activo', true).order('nombre')
+        const { data: tr } = await db.from('trabajadores').select('id,nombre,especialidad,foto_url').eq('negocio_id', activo.id).eq('activo', true).order('nombre')
         setTrabajadores(tr || [])
       }
       setCargando(false)
-    })
+    })()
   }, [])
 
   const cargarNominas = useCallback(async () => {

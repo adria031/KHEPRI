@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
-import { supabase } from '../../lib/supabase'
+import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { NegocioSelector } from '../NegocioSelector'
 
@@ -90,18 +90,19 @@ export default function Marketing() {
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
-      const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id)
+      const { session, db } = await getSessionClient()
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
+      const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
       setTodosNegocios(todosNegs)
       if (!data) return
       setNegocioId(data.id)
       setNegocioNombre(data.nombre)
 
       const [{ data: neg }, { data: svcs }, { data: resenas }] = await Promise.all([
-        supabase.from('negocios').select('tipo, descripcion').eq('id', data.id).single(),
-        supabase.from('servicios').select('nombre, precio').eq('negocio_id', data.id).eq('activo', true).limit(8),
-        supabase.from('resenas').select('puntuacion').eq('negocio_id', data.id),
+        db.from('negocios').select('tipo, descripcion').eq('id', data.id).single(),
+        db.from('servicios').select('nombre, precio').eq('negocio_id', data.id).eq('activo', true).limit(8),
+        db.from('resenas').select('puntuacion').eq('negocio_id', data.id),
       ])
       if (neg) setNegocioTipo(neg.tipo || '')
       if (svcs) setNegocioServicios(svcs as {nombre:string; precio:number}[])
