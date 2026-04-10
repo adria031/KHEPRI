@@ -5,21 +5,15 @@ export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-/** Creates a Supabase client with an explicit Bearer token — bypasses cookie issues in production. */
-export function createAuthClient(accessToken: string) {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
-  )
-}
-
-/** Gets the current session and returns both the session and an auth-ready client. */
-export async function getSessionClient(): Promise<{
-  session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']
-  db: ReturnType<typeof createAuthClient> | typeof supabase
-}> {
+/** Gets the current session and ensures it's active on the client before making queries. */
+export async function getSessionClient() {
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.access_token) return { session: null, db: supabase }
-  return { session, db: createAuthClient(session.access_token) }
+  if (session) {
+    // Ensure the singleton has this session set for RLS-authenticated queries
+    await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    })
+  }
+  return { session, db: supabase }
 }
