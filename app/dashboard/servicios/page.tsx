@@ -67,10 +67,11 @@ export default function Servicios() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user }, error: userErr } = await supabase.auth.getUser()
-      if (userErr || !user) { window.location.href = '/auth'; return }
-      const { activo: neg } = await getNegocioActivo(user.id)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { window.location.href = '/auth'; return }
+      const { activo: neg, todos: todosNegs } = await getNegocioActivo(session.user.id, session.access_token)
       if (!neg) { window.location.href = '/onboarding'; return }
+      setTodosNegocios(todosNegs)
       setNegocioId(neg.id)
       const { data } = await supabase.from('servicios').select('*').eq('negocio_id', neg.id).order('nombre')
       setServicios(data || [])

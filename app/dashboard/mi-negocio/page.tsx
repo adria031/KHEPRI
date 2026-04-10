@@ -75,17 +75,12 @@ export default function MiNegocio() {
     ;(async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { window.location.href = '/auth'; return }
-      const token = session.access_token
-      // Cargar negocio vía API route (token explícito, sin depender de cookies)
-      const res = await fetch('/api/negocio', { headers: { 'x-supabase-token': token } })
-      if (res.status === 401) { window.location.href = '/auth'; return }
-      if (!res.ok) { window.location.href = '/onboarding'; return }
-      const { data } = await res.json()
+      const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(session.user.id, session.access_token)
+      if (!negActivo) { window.location.href = '/onboarding'; return }
+      setTodosNegocios(todosNegs)
+      const { data } = await supabase.from('negocios').select('*').eq('id', negActivo.id).single()
       if (data) {
         setNegocioId(data.id)
-        // También poblar el selector de negocios
-        const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(session.user.id)
-        setTodosNegocios(todosNegs)
         setForm({
           nombre: data.nombre || '',
           tipo: data.tipo || '',
