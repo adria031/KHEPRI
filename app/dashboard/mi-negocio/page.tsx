@@ -107,9 +107,9 @@ export default function MiNegocio() {
   }, [])
 
   async function guardar() {
-    if (!negocioId) return
+    if (!negocioId) { setApiError('No se encontró el negocio. Recarga la página.'); return }
     setGuardando(true); setApiError('')
-    const { error: errGuardar } = await supabase.from('negocios').update({
+    const { data: updated, error: errGuardar } = await supabase.from('negocios').update({
       nombre: form.nombre,
       descripcion: form.descripcion,
       telefono: form.telefono,
@@ -125,10 +125,10 @@ export default function MiNegocio() {
       confirmacion_automatica: form.confirmacion_automatica,
       mensaje_cancelacion: form.mensaje_cancelacion || null,
       metodos_pago: form.metodos_pago,
-    }).eq('id', negocioId)
-    if (errGuardar) {
+    }).eq('id', negocioId).select('id').single()
+    if (errGuardar || !updated) {
       console.error('[mi-negocio] update negocios:', errGuardar)
-      setApiError(errGuardar.message)
+      setApiError(errGuardar?.message || 'No se pudo guardar. Comprueba que has iniciado sesión correctamente.')
       setGuardando(false)
       return
     }

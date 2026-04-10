@@ -135,8 +135,8 @@ export default function Equipo() {
     }
 
     if (editando) {
-      const { error: err } = await supabase.from('trabajadores').update(datos).eq('id', editando.id)
-      if (err) { setError(err.message); setGuardando(false); return }
+      const { data: upd, error: err } = await supabase.from('trabajadores').update(datos).eq('id', editando.id).select('id').single()
+      if (err || !upd) { setError(err?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
       setTrabajadores(prev => prev.map(t => t.id === editando.id ? { ...t, ...datos } : t))
     } else {
       const { data, error: err } = await supabase
@@ -144,8 +144,8 @@ export default function Equipo() {
         .insert({ ...datos, negocio_id: negocioId, activo: true })
         .select()
         .single()
-      if (err) { setError(err.message); setGuardando(false); return }
-      if (data) setTrabajadores(prev => [...prev, data])
+      if (err || !data) { setError(err?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
+      setTrabajadores(prev => [...prev, data])
     }
 
     setGuardando(false)

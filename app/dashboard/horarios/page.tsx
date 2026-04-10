@@ -167,12 +167,12 @@ export default function Horarios() {
         hora_cierre2: h.estado === 'partido' ? h.cierre2 : null,
       }
       if (h.id) {
-        const { error: errUpd } = await supabase.from('horarios').update(datos).eq('id', h.id)
-        if (errUpd) { console.error('[horarios] update:', errUpd, dia); setApiError(errUpd.message); }
+        const { data: upd, error: errUpd } = await supabase.from('horarios').update(datos).eq('id', h.id).select('id').single()
+        if (errUpd || !upd) { console.error('[horarios] update:', errUpd, dia); setApiError(errUpd?.message || 'No se pudo guardar. Recarga e inicia sesión.'); }
       } else {
         const { data, error: errIns } = await supabase.from('horarios').insert(datos).select().single()
-        if (errIns) { console.error('[horarios] insert:', errIns, dia); setApiError(errIns.message); }
-        else if (data) setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], id: data.id } }))
+        if (errIns || !data) { console.error('[horarios] insert:', errIns, dia); setApiError(errIns?.message || 'No se pudo guardar. Recarga e inicia sesión.'); }
+        else setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], id: data.id } }))
       }
     }
     setGuardando(false)

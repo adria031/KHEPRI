@@ -206,7 +206,7 @@ export default function Productos() {
         .select()
         .single()
 
-      if (error) { setApiError(error.message); setGuardando(false); return }
+      if (error || !nuevo) { setApiError(error?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
       if (nuevo) {
         let foto_url = null
         if (fotoFile) foto_url = await subirFoto(fotoFile, nuevo.id)
@@ -220,7 +220,7 @@ export default function Productos() {
       let foto_url = form.foto_url
       if (fotoFile) foto_url = await subirFoto(fotoFile, editando.id)
 
-      const { error } = await supabase
+      const { data: upd, error } = await supabase
         .from('productos')
         .update({
           nombre: form.nombre.trim(),
@@ -231,8 +231,9 @@ export default function Productos() {
           foto_url,
         })
         .eq('id', editando.id)
+        .select('id').single()
 
-      if (error) { setApiError(error.message); setGuardando(false); return }
+      if (error || !upd) { setApiError(error?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
       if (true) {
         setProductos(prev => prev.map(p => p.id === editando.id
           ? { ...p, nombre: form.nombre.trim(), descripcion: form.descripcion.trim() || null, precio, iva: form.iva, stock, foto_url }

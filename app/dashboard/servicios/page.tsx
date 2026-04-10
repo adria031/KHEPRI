@@ -108,13 +108,13 @@ export default function Servicios() {
     }
 
     if (editando?.id) {
-      const { error } = await supabase.from('servicios').update(datos).eq('id', editando.id)
-      if (error) { console.error('[servicios] update:', error); setError(error.message); setGuardando(false); return }
+      const { data: upd, error } = await supabase.from('servicios').update(datos).eq('id', editando.id).select('id').single()
+      if (error || !upd) { console.error('[servicios] update:', error); setError(error?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
       setServicios(servicios.map(s => s.id === editando.id ? { ...s, ...datos } : s))
     } else {
       const { data, error } = await supabase.from('servicios').insert({ ...datos, negocio_id: negocioId, activo: true }).select().single()
-      if (error) { console.error('[servicios] insert:', error); setError(error.message); setGuardando(false); return }
-      if (data) setServicios([...servicios, data])
+      if (error || !data) { console.error('[servicios] insert:', error); setError(error?.message || 'No se pudo guardar. Recarga e inicia sesión.'); setGuardando(false); return }
+      setServicios([...servicios, data])
     }
     setModal(false)
     setGuardando(false)
