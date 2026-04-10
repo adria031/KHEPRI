@@ -67,8 +67,9 @@ export default function Caja() {
   const [efectivoReal, setEfectivoReal] = useState('')
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { window.location.href = '/auth'; return }
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
       const { activo, todos } = await getNegocioActivo(user.id)
       setTodosNegocios(todos)
       if (activo) setNegocioId(activo.id)

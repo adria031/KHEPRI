@@ -86,8 +86,9 @@ export default function Onboarding() {
   async function guardarNegocio() {
     setCargando(true); setError('')
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No hay sesión')
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) throw new Error('No hay sesión')
+      const user = session.user
 
       await supabase.from('profiles').upsert({
         id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email
@@ -111,8 +112,9 @@ export default function Onboarding() {
   async function guardarCliente() {
     setCargando(true); setError('')
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('No hay sesión activa. Vuelve a registrarte.')
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) throw new Error('No hay sesión activa. Vuelve a registrarte.')
+      const user = session.user
       const { error: profErr } = await supabase.from('profiles').upsert({ id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email })
       if (profErr) throw profErr
       const { error: cliErr } = await supabase.from('clientes').insert({ user_id: user.id, nombre: nombreCliente, ciudad: ciudadCliente })

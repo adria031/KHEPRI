@@ -96,8 +96,9 @@ export default function Nominas() {
   const [iaTarget, setIaTarget]         = useState<string | null>(null) // nomina.id
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { window.location.href = '/auth'; return }
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
       const { activo, todos } = await getNegocioActivo(user.id)
       setTodosNegocios(todos)
       if (activo) {

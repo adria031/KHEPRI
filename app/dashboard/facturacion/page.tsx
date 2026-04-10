@@ -197,8 +197,9 @@ export default function Facturacion() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
       const { data: neg } = await supabase.from('negocios').select('id, nombre').eq('user_id', user.id).single()
       if (neg) {
         setNegocioId(neg.id)

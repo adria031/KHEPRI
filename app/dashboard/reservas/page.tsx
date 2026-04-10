@@ -83,8 +83,9 @@ export default function Reservas() {
   const [actualizando, setActualizando] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { window.location.href = '/auth'; return }
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) { window.location.href = '/auth'; return }
+      const user = session.user
       const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id)
       setTodosNegocios(todosNegs)
       if (data) setNegocio(data)
