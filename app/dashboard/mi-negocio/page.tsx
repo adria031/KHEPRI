@@ -73,10 +73,10 @@ export default function MiNegocio() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { window.location.href = '/auth'; return }
-      const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(session.user.id, session.access_token)
-      if (!negActivo) { window.location.href = '/onboarding'; return }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { window.location.href = '/auth'; return }
+      const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(user.id)
+      if (!negActivo) return
       setTodosNegocios(todosNegs)
       const { data } = await supabase.from('negocios').select('*').eq('id', negActivo.id).single()
       if (data) {

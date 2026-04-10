@@ -91,10 +91,10 @@ export default function Horarios() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { window.location.href = '/auth'; return }
-      const { activo: negocio } = await getNegocioActivo(session.user.id, session.access_token)
-      if (!negocio) { window.location.href = '/onboarding'; return }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { window.location.href = '/auth'; return }
+      const { activo: negocio } = await getNegocioActivo(user.id)
+      if (!negocio) return
       setNegocioId(negocio.id)
       {
         const { data } = await supabase.from('horarios').select('*').eq('negocio_id', negocio.id)

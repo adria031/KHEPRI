@@ -109,10 +109,10 @@ export default function Productos() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { window.location.href = '/auth'; return }
-      const { activo: neg, todos: todosNegs } = await getNegocioActivo(session.user.id, session.access_token)
-      if (!neg) { window.location.href = '/onboarding'; return }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { window.location.href = '/auth'; return }
+      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
+      if (!neg) return
       setTodosNegocios(todosNegs)
       setNegocioId(neg.id)
       await cargarProductos(neg.id)
