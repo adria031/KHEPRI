@@ -65,8 +65,10 @@ export default function Equipo() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { window.location.href = '/auth'; return }
+    ;(async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { window.location.href = '/auth'; return }
+      const user = session.user
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
       if (!neg) return
       setTodosNegocios(todosNegs)
@@ -74,7 +76,7 @@ export default function Equipo() {
       const { data } = await supabase.from('trabajadores').select('*').eq('negocio_id', neg.id).order('nombre')
       setTrabajadores(data || [])
       setCargando(false)
-    })
+    })()
   }, [])
 
   function abrirModal(t?: Trabajador) {

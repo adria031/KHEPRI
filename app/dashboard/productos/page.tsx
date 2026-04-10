@@ -108,8 +108,9 @@ export default function Productos() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { window.location.href = '/auth'; return }
+      const user = session.user
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
       if (!neg) return
       setTodosNegocios(todosNegs)

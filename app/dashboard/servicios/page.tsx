@@ -65,8 +65,10 @@ export default function Servicios() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { window.location.href = '/auth'; return }
+    ;(async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { window.location.href = '/auth'; return }
+      const user = session.user
       const { data: negocio } = await supabase.from('negocios').select('id').eq('user_id', user.id).single()
       if (negocio) {
         setNegocioId(negocio.id)
@@ -74,7 +76,7 @@ export default function Servicios() {
         setServicios(data || [])
       }
       setCargando(false)
-    })
+    })()
   }, [])
 
   function abrirModal(servicio?: Servicio) {
