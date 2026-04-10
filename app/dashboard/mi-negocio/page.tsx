@@ -73,14 +73,12 @@ export default function MiNegocio() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { window.location.href = '/auth'; return }
-      const user = session.user
+      const { data: { user }, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !user) { window.location.href = '/auth'; return }
       const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(user.id)
+      if (!negActivo) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
-      const { data } = negActivo
-        ? await supabase.from('negocios').select('*').eq('id', negActivo.id).single()
-        : { data: null }
+      const { data } = await supabase.from('negocios').select('*').eq('id', negActivo.id).single()
       if (data) {
         setNegocioId(data.id)
         setForm({
@@ -107,7 +105,7 @@ export default function MiNegocio() {
   }, [])
 
   async function guardar() {
-    if (!negocioId) { setApiError('No se encontró el negocio. Recarga la página.'); return }
+    if (!negocioId) return
     setGuardando(true); setApiError('')
     const { data: updated, error: errGuardar } = await supabase.from('negocios').update({
       nombre: form.nombre,

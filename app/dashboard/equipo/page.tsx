@@ -66,11 +66,10 @@ export default function Equipo() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { window.location.href = '/auth'; return }
-      const user = session.user
+      const { data: { user }, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !user) { window.location.href = '/auth'; return }
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id)
-      if (!neg) return
+      if (!neg) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
       setNegocioId(neg.id)
       const { data } = await supabase.from('trabajadores').select('*').eq('negocio_id', neg.id).order('nombre')

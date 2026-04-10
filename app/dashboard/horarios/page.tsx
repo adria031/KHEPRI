@@ -90,12 +90,12 @@ export default function Horarios() {
 
   useEffect(() => {
     ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { window.location.href = '/auth'; return }
-      const user = session.user
-      const { data: negocio } = await supabase.from('negocios').select('id').eq('user_id', user.id).single()
-      if (negocio) {
-        setNegocioId(negocio.id)
+      const { data: { user }, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !user) { window.location.href = '/auth'; return }
+      const { activo: negocio } = await getNegocioActivo(user.id)
+      if (!negocio) { window.location.href = '/onboarding'; return }
+      setNegocioId(negocio.id)
+      {
         const { data } = await supabase.from('horarios').select('*').eq('negocio_id', negocio.id)
         if (data && data.length > 0) {
           const map: Record<string, Horario> = {}
