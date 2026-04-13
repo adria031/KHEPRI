@@ -169,7 +169,7 @@ export default function Marketing() {
   }
 
   // ── Gemini ────────────────────────────────────────────────────────────────
-  const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+  const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
   const MESES_NOMBRE = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 
   function buildContexto(): string {
