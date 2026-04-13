@@ -13,7 +13,7 @@ export async function getNegocioActivo(userId: string, _accessToken?: string): P
     .from('negocios')
     .select('id, nombre, plan')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true })
+    .order('creado_en', { ascending: true })
 
   if (e1) {
     console.error('[getNegocioActivo] select error:', e1.code, e1.message, e1.hint)
@@ -23,7 +23,7 @@ export async function getNegocioActivo(userId: string, _accessToken?: string): P
         .from('negocios')
         .select('id, nombre')
         .eq('user_id', userId)
-        .order('created_at', { ascending: true })
+        .order('creado_en', { ascending: true })
       if (e2) {
         console.error('[getNegocioActivo] fallback error:', e2.code, e2.message)
         return { activo: null, todos: [] }

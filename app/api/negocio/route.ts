@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     .from('negocios')
     .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true })
+    .order('creado_en', { ascending: true })
     .limit(1)
     .single()
 
