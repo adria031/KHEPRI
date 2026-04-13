@@ -48,13 +48,8 @@ function AuthForm() {
           setMensaje('Este email ya está registrado. Redirigiendo...'); setEsError(true)
           setTimeout(() => { setModo('login'); setMensaje(''); setEsError(false) }, 2500)
         } else { setMensaje(error.message); setEsError(true) }
-      } else if (data.session) {
-        // Email confirmation disabled — session ready, go to onboarding
-        window.location.href = window.location.origin + '/onboarding'
       } else {
-        // Email confirmation required — no session yet
-        setMensaje('✉️ Hemos enviado un email de confirmación. Haz clic en el enlace del email para activar tu cuenta y continuar.')
-        setEsError(false)
+        window.location.href = window.location.origin + '/onboarding'
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
