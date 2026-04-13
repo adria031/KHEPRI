@@ -30,9 +30,17 @@ function AuthForm() {
   const [mensaje, setMensaje] = useState('')
   const [esError, setEsError] = useState(false)
 
+  // Sign out any existing session so a second user can register/login cleanly
+  // without inheriting the previous user's cached auth state
+  async function ensureSignedOut() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) await supabase.auth.signOut()
+  }
+
   async function handleSubmit() {
     if (!email || !password) { setMensaje('Por favor rellena todos los campos.'); setEsError(true); return }
     setCargando(true); setMensaje(''); setEsError(false)
+    await ensureSignedOut()
 
     if (modo === 'registro') {
       const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nombre } } })
@@ -48,11 +56,10 @@ function AuthForm() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setMensaje('Email o contraseña incorrectos.'); setEsError(true) }
       else {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', user.id).single()
-          if (profile?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
-          else if (profile?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', session.user.id).maybeSingle()
+          if (neg) window.location.href = window.location.origin + '/dashboard'
           else window.location.href = window.location.origin + '/onboarding'
         }
       }
@@ -61,6 +68,7 @@ function AuthForm() {
   }
 
   async function handleGoogle() {
+    await ensureSignedOut()
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback`, skipBrowserRedirect: false, queryParams: { access_type: 'offline', prompt: 'consent' } }
