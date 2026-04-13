@@ -32,13 +32,14 @@ export async function GET(request: NextRequest) {
   if (!error) {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('tipo')
-        .eq('id', user.id)
-        .single()
-      if (profile?.tipo === 'negocio') redirectTo = `${origin}/dashboard`
-      else if (profile?.tipo === 'cliente') redirectTo = `${origin}/cliente`
+      // Check if user already has a negocio → go to dashboard
+      // Otherwise → go to onboarding to complete setup
+      const { data: neg } = await supabase
+        .from('negocios')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (neg) redirectTo = `${origin}/dashboard`
     }
   }
 
