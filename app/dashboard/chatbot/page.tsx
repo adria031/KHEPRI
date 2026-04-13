@@ -42,7 +42,7 @@ const navItems = [
   { icon: '💰', label: 'Caja', href: '/dashboard/caja' },
 ]
 
-const GEMINI_KEY = 'AIzaSyCjVMye_PfUg-U8aOfvXzF4TW4ZraS5yzk'
+const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY!
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
 
 type Msg = { role: 'user' | 'bot'; text: string; ts: Date }
