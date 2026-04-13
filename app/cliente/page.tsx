@@ -38,7 +38,7 @@ const tipoConfig: Record<string, { emoji: string; bg: string }> = {
 const tipoDefault = { emoji: '🏪', bg: 'rgba(184,216,248,0.2)' }
 
 type Negocio = { id: string; nombre: string; tipo: string; ciudad: string; logo_url: string | null; fotos: string[] | null; lat: number | null; lng: number | null }
-type HorarioDB = { negocio_id: string; dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string }
+type HorarioDB = { negocio_id: string; dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string | null; hora_cierre2: string | null }
 
 type Filtro = 'ninguno' | 'abierto' | 'valorados' | 'cercanos'
 
@@ -53,7 +53,8 @@ function estaAbierto(horarios: HorarioDB[]): boolean {
   const h = horarios.find(h => h.dia === diaHoy && h.abierto)
   if (!h) return false
   const t1 = h.hora_apertura && h.hora_cierre && minActual >= toMins(h.hora_apertura) && minActual < toMins(h.hora_cierre)
-  return !!t1
+  const t2 = h.hora_apertura2 && h.hora_cierre2 && minActual >= toMins(h.hora_apertura2) && minActual < toMins(h.hora_cierre2)
+  return !!(t1 || t2)
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -114,7 +115,7 @@ function ClienteContent() {
     })
     Promise.all([
       supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng'),
-      supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre'),
+      supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
     ]).then(([{ data: negs }, { data: hors }, { data: ress }]) => {
       if (negs) setNegocios(negs)

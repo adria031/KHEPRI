@@ -42,7 +42,7 @@ const navItems = [
   { icon: '💰', label: 'Caja', href: '/dashboard/caja' },
 ]
 
-const GEMINI_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+const GEMINI_KEY = 'AIzaSyCjVMye_PfUg-U8aOfvXzF4TW4ZraS5yzk'
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
 
 type Msg = { role: 'user' | 'bot'; text: string; ts: Date }
@@ -176,7 +176,7 @@ export default function ChatbotPage() {
       const [{ data: svcs }, { data: trabs }, { data: hors }, { data: cfg }] = await Promise.all([
         db.from('servicios').select('id, nombre, precio, duracion').eq('negocio_id', neg.id).eq('activo', true),
         db.from('trabajadores').select('id, nombre, especialidad').eq('negocio_id', neg.id).eq('activo', true),
-        db.from('horarios').select('dia, abierto, hora_apertura, hora_cierre').eq('negocio_id', neg.id),
+        db.from('horarios').select('dia, abierto, hora_apertura, hora_cierre, hora_apertura2, hora_cierre2').eq('negocio_id', neg.id),
         db.from('chatbot_config').select('*').eq('negocio_id', neg.id).single(),
       ])
 
@@ -185,6 +185,7 @@ export default function ChatbotPage() {
       if (hors) setHorarios(hors.map((h: any) => ({
         dia: h.dia, abierto: h.abierto,
         apertura: h.hora_apertura || '09:00', cierre: h.hora_cierre || '18:00',
+        apertura2: h.hora_apertura2 || null, cierre2: h.hora_cierre2 || null,
       })))
       if (cfg) {
         setActivo(cfg.activo ?? true)

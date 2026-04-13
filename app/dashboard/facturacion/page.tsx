@@ -294,7 +294,7 @@ export default function Facturacion() {
     try {
       const b64 = await fileToBase64(file)
       const mimeType = tipo === 'application/pdf' ? 'application/pdf' : tipo
-      const GEMINI_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+      const GEMINI_KEY = 'AIzaSyCjVMye_PfUg-U8aOfvXzF4TW4ZraS5yzk'
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
         {

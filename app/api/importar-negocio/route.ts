@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GEMINI_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+const GEMINI_KEY = 'AIzaSyCjVMye_PfUg-U8aOfvXzF4TW4ZraS5yzk'
 
 export async function POST(req: NextRequest) {
   const { url } = await req.json()

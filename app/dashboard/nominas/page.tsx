@@ -36,7 +36,7 @@ const navItems = [
   { icon: '💸', label: 'Nóminas', href: '/dashboard/nominas' },
 ]
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyCjVMye_PfUg-U8aOfvXzF4TW4ZraS5yzk'
 
 const CONTRATOS = [
   { id: 'indefinido',  label: 'Indefinido' },

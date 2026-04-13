@@ -11,7 +11,7 @@ import {
   FUNCTION_DECLARATIONS,
 } from '../../../lib/chatbotFunctions'
 
-const GEMINI_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+const GEMINI_KEY = 'AIzaSyCjVMye_PfUg-U8aOfvXzF4TW4ZraS5yzk'
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
 
 type ChatMsg = { role: 'user' | 'bot'; text: string }
@@ -33,7 +33,7 @@ function KhepriLogo() {
 
 type Servicio = { id: string; nombre: string; duracion: number; precio: number }
 type Trabajador = { id: string; nombre: string }
-type Horario = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string }
+type Horario = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string | null; hora_cierre2: string | null }
 
 const diasNombre = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado']
 const mesesNombre = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
@@ -116,7 +116,7 @@ export default function Reservar() {
     const horario = horarios.find(h => h.dia === diaNombre)
     if (!horario || !horario.abierto) return []
     const s1 = generarSlots(horario.hora_apertura, horario.hora_cierre, servicio.duracion)
-    const s2: string[] = []
+    const s2 = horario.hora_apertura2 ? generarSlots(horario.hora_apertura2, horario.hora_cierre2!, servicio.duracion) : []
     return [...s1, ...s2]
   }, [fecha, servicio, horarios])
 
