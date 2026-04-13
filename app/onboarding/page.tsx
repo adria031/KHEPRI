@@ -92,6 +92,15 @@ export default function Onboarding() {
       if (!session?.user) throw new Error('No hay sesión activa. Recarga la página.')
       const user = session.user
 
+      // profiles must exist before negocios (FK: negocios.user_id -> profiles.id)
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email
+      })
+      if (profileError) {
+        console.error('[onboarding] profile upsert error:', profileError.code, profileError.message, profileError.hint)
+        throw new Error(`Error al crear el perfil: ${profileError.message} (código: ${profileError.code})`)
+      }
+
       const { error: negocioError } = await supabase.from('negocios').insert({
         user_id: user.id, nombre: nombreNegocio, tipo: tipoNegocio,
         direccion, ciudad, codigo_postal: codigoPostal, telefono,
@@ -101,11 +110,6 @@ export default function Onboarding() {
         console.error('[onboarding] negocio insert error:', negocioError.code, negocioError.message, negocioError.details, negocioError.hint)
         throw new Error(`Error al crear el negocio: ${negocioError.message} (código: ${negocioError.code})`)
       }
-
-      // Best-effort profile update — don't fail if profiles schema differs
-      await supabase.from('profiles').upsert({
-        id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email
-      })
 
       window.location.href = window.location.origin + '/dashboard'
     } catch (e: any) {

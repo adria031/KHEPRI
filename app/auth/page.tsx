@@ -33,8 +33,7 @@ function AuthForm() {
   // Sign out any existing session so a second user can register/login cleanly
   // without inheriting the previous user's cached auth state
   async function ensureSignedOut() {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'local' })
   }
 
   async function handleSubmit() {
