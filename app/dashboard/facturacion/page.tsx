@@ -203,16 +203,13 @@ export default function Facturacion() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { data: neg } = await db.from('negocios').select('id, nombre').eq('user_id', user.id).single()
-      if (neg) {
-        setNegocioId(neg.id)
-        setNegocioNombre(neg.nombre)
-        await Promise.all([
-          cargarFacturas(neg.id, anio, mes),
-          cargarGastos(neg.id, anio, mes),
-        ])
-      } else {
-        setCargando(false)
-      }
+      if (!neg) { window.location.href = '/onboarding'; return }
+      setNegocioId(neg.id)
+      setNegocioNombre(neg.nombre)
+      await Promise.all([
+        cargarFacturas(neg.id, anio, mes),
+        cargarGastos(neg.id, anio, mes),
+      ])
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

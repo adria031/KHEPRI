@@ -101,12 +101,11 @@ export default function Nominas() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { activo, todos } = await getNegocioActivo(user.id, session.access_token)
+      if (!activo) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todos)
-      if (activo) {
-        setNegocioId(activo.id)
-        const { data: tr } = await db.from('trabajadores').select('id,nombre,especialidad,foto_url').eq('negocio_id', activo.id).eq('activo', true).order('nombre')
-        setTrabajadores(tr || [])
-      }
+      setNegocioId(activo.id)
+      const { data: tr } = await db.from('trabajadores').select('id,nombre,especialidad,foto_url').eq('negocio_id', activo.id).eq('activo', true).order('nombre')
+      setTrabajadores(tr || [])
       setCargando(false)
     })()
   }, [])

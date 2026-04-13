@@ -71,7 +71,7 @@ export default function Servicios() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
-      if (!neg) { setCargando(false); return }
+      if (!neg) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
       setNegocioId(neg.id)
       const { data } = await db.from('servicios').select('*').eq('negocio_id', neg.id).order('nombre')
@@ -99,6 +99,7 @@ export default function Servicios() {
   }
 
   async function guardar() {
+    if (!negocioId) { setError('No se encontró el negocio. Recarga la página.'); return }
     if (!form.nombre || !form.precio) { setError('Nombre y precio son obligatorios.'); return }
     setGuardando(true)
     const datos = {

@@ -78,7 +78,7 @@ export default function Resenas() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { data: neg } = await db.from('negocios').select('id').eq('user_id', user.id).single()
-      if (!neg) { setCargando(false); return }
+      if (!neg) { window.location.href = '/onboarding'; return }
       setNegocioId(neg.id)
       const { data } = await db
         .from('resenas')

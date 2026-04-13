@@ -69,7 +69,7 @@ export default function Dashboard() {
       const user = session.user
 
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
-      if (!neg) return
+      if (!neg) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
       setNegocio(neg)
 

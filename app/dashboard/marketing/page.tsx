@@ -94,8 +94,8 @@ export default function Marketing() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
+      if (!data) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
-      if (!data) return
       setNegocioId(data.id)
       setNegocioNombre(data.nombre)
 

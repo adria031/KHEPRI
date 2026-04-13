@@ -71,7 +71,7 @@ export default function Equipo() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
-      if (!neg) { setCargando(false); return }
+      if (!neg) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
       setNegocioId(neg.id)
       const { data } = await db.from('trabajadores').select('*').eq('negocio_id', neg.id).order('nombre')

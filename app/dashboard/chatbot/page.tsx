@@ -160,7 +160,7 @@ export default function ChatbotPage() {
       const user = session.user
 
       const { activo: negBase, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
-      if (!negBase) { setCargando(false); return }
+      if (!negBase) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
       // Re-fetch full fields for chatbot
       const { data: neg } = await db.from('negocios')

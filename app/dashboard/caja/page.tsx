@@ -72,8 +72,9 @@ export default function Caja() {
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
       const { activo, todos } = await getNegocioActivo(user.id, session.access_token)
+      if (!activo) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todos)
-      if (activo) setNegocioId(activo.id)
+      setNegocioId(activo.id)
       setCargando(false)
     })()
   }, [])
