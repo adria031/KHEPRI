@@ -10,19 +10,43 @@ export async function dbMutation(opts: {
   negocioId?: string
   data?: Record<string, unknown>
 }): Promise<{ data?: unknown; error?: string }> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return { error: 'Sesión expirada. Recarga la página.' }
+  const { op, table, id, data } = opts
 
-  const res = await fetch('/api/db', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-supabase-token': session.access_token,
-    },
-    body: JSON.stringify(opts),
-  })
+  if (op === 'update' && id) {
+    const { data: result, error } = await supabase.from(table).update(data).eq('id', id).select('id').single()
+    if (error) {
+      console.error('[dbMutation] update error:', error.message, error.details, error.hint)
+      return { error: error.message }
+    }
+    return { data: result }
+  }
 
-  const json = await res.json()
-  if (!res.ok || json.error) return { error: json.error || 'Error desconocido' }
-  return { data: json.data }
+  if (op === 'insert') {
+    const { data: result, error } = await supabase.from(table).insert(data).select().single()
+    if (error) {
+      console.error('[dbMutation] insert error:', error.message, error.details, error.hint)
+      return { error: error.message }
+    }
+    return { data: result }
+  }
+
+  if (op === 'upsert') {
+    const { data: result, error } = await supabase.from(table).upsert(data).select().single()
+    if (error) {
+      console.error('[dbMutation] upsert error:', error.message, error.details, error.hint)
+      return { error: error.message }
+    }
+    return { data: result }
+  }
+
+  if (op === 'delete' && id) {
+    const { error } = await supabase.from(table).delete().eq('id', id)
+    if (error) {
+      console.error('[dbMutation] delete error:', error.message, error.details, error.hint)
+      return { error: error.message }
+    }
+    return { data: null }
+  }
+
+  return { error: 'Operación no válida' }
 }

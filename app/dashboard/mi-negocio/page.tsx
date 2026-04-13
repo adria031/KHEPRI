@@ -108,13 +108,9 @@ export default function MiNegocio() {
   async function guardar() {
     if (!negocioId) return
     setGuardando(true); setApiError('')
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setApiError('Sesión expirada. Recarga la página.'); setGuardando(false); return }
-    const res = await fetch('/api/negocio', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-supabase-token': session.access_token },
-      body: JSON.stringify({
-        negocioId,
+    const { error } = await supabase
+      .from('negocios')
+      .update({
         nombre: form.nombre,
         descripcion: form.descripcion,
         telefono: form.telefono,
@@ -130,12 +126,11 @@ export default function MiNegocio() {
         confirmacion_automatica: form.confirmacion_automatica,
         mensaje_cancelacion: form.mensaje_cancelacion || null,
         metodos_pago: form.metodos_pago,
-      }),
-    })
-    const json = await res.json()
-    if (!res.ok || json.error) {
-      console.error('[mi-negocio] guardar:', json.error)
-      setApiError(json.error || 'Error al guardar')
+      })
+      .eq('id', negocioId)
+    if (error) {
+      console.error('[mi-negocio] guardar:', error.message, error.details, error.hint)
+      setApiError(error.message || 'Error al guardar')
       setGuardando(false)
       return
     }
