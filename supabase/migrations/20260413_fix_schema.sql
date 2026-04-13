@@ -221,10 +221,13 @@ DROP POLICY IF EXISTS "clientes_owner" ON clientes;
 CREATE POLICY "clientes_owner" ON clientes FOR ALL
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- ── 23. ÍNDICES DE RENDIMIENTO ───────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_reservas_negocio_fecha ON reservas (negocio_id, fecha);
-CREATE INDEX IF NOT EXISTS idx_servicios_negocio       ON servicios (negocio_id);
-CREATE INDEX IF NOT EXISTS idx_trabajadores_negocio    ON trabajadores (negocio_id);
-CREATE INDEX IF NOT EXISTS idx_horarios_negocio        ON horarios (negocio_id);
-CREATE INDEX IF NOT EXISTS idx_resenas_negocio_id      ON resenas (negocio_id);
+-- ── 23. COLUMNAS FALTANTES EN resenas ───────────────────────
+ALTER TABLE resenas ADD COLUMN IF NOT EXISTS reserva_id uuid REFERENCES reservas(id) ON DELETE SET NULL;
+
+-- ── 24. ÍNDICES DE RENDIMIENTO ───────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_reservas_negocio_fecha    ON reservas (negocio_id, fecha);
+CREATE INDEX IF NOT EXISTS idx_servicios_negocio         ON servicios (negocio_id);
+CREATE INDEX IF NOT EXISTS idx_trabajadores_negocio      ON trabajadores (negocio_id);
+CREATE INDEX IF NOT EXISTS idx_horarios_negocio          ON horarios (negocio_id);
+CREATE INDEX IF NOT EXISTS idx_resenas_negocio_id        ON resenas (negocio_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_resenas_reserva_id ON resenas (reserva_id) WHERE reserva_id IS NOT NULL;
