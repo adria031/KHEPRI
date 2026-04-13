@@ -111,8 +111,12 @@ export default function Reservas() {
 
   async function cambiarEstado(id: string, estado: 'confirmada' | 'cancelada' | 'completada') {
     setActualizando(id)
-    await supabase.from('reservas').update({ estado }).eq('id', id)
-    setReservas(prev => prev.map(r => r.id === id ? { ...r, estado } : r))
+    const { error } = await supabase.from('reservas').update({ estado }).eq('id', id)
+    if (error) {
+      console.error('[reservas] cambiarEstado error:', error.message, error.details, error.hint)
+    } else {
+      setReservas(prev => prev.map(r => r.id === id ? { ...r, estado } : r))
+    }
     setActualizando(null)
   }
 

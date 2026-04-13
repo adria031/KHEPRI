@@ -80,11 +80,15 @@ export default function Dashboard() {
       const hace6 = new Date(hoy); hace6.setDate(hoy.getDate() - 6)
       const hace6ISO = isoLocal(hace6)
 
-      const [{ data: resHoy }, { data: resSemana }, { data: citasData }] = await Promise.all([
+      const [r1, r2, r3] = await Promise.all([
         db.from('reservas').select('estado, servicios(precio)').eq('negocio_id', neg.id).eq('fecha', hoyISO),
         db.from('reservas').select('fecha, estado, cliente_telefono, servicios(precio)').eq('negocio_id', neg.id).gte('fecha', hace6ISO).lte('fecha', hoyISO),
         db.from('reservas').select('id, hora, cliente_nombre, estado, servicios(nombre)').eq('negocio_id', neg.id).eq('fecha', hoyISO).order('hora').limit(5),
       ])
+      if (r1.error) console.error('[dashboard] reservas hoy:', r1.error.message)
+      if (r2.error) console.error('[dashboard] reservas semana:', r2.error.message)
+      if (r3.error) console.error('[dashboard] citas hoy:', r3.error.message)
+      const resHoy = r1.data; const resSemana = r2.data; const citasData = r3.data
 
       setReservasHoy(resHoy?.length ?? 0)
 

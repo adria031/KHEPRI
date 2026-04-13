@@ -114,8 +114,12 @@ export default function Caja() {
   }
 
   async function eliminar(id: string) {
-    await supabase.from('caja').delete().eq('id', id)
-    setMovimientos(prev => prev.filter(m => m.id !== id))
+    const { error } = await supabase.from('caja').delete().eq('id', id)
+    if (error) {
+      console.error('[caja] eliminar error:', error.message, error.details, error.hint)
+    } else {
+      setMovimientos(prev => prev.filter(m => m.id !== id))
+    }
   }
 
   async function handleLogout() {
