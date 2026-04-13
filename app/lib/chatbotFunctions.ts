@@ -37,11 +37,7 @@ export async function verificarDisponibilidad(params: {
     return { disponible: false, razon: `El negocio no abre el ${diaNombre}` }
   }
 
-  const s1 = generarSlots(horario.hora_apertura, horario.hora_cierre, servicio.duracion)
-  const s2 = horario.hora_apertura2
-    ? generarSlots(horario.hora_apertura2, horario.hora_cierre2, servicio.duracion)
-    : []
-  const todosSlots = [...s1, ...s2]
+  const todosSlots = generarSlots(horario.hora_apertura, horario.hora_cierre, servicio.duracion)
 
   if (!todosSlots.includes(hora)) {
     return {

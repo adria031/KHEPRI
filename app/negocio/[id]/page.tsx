@@ -31,7 +31,7 @@ type Negocio = {
   instagram: string; whatsapp: string; facebook: string;
   logo_url: string; fotos: string[]; metodos_pago: string[] | null
 }
-type Horario = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string; hora_cierre2: string }
+type Horario = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string }
 type Servicio = {
   id: string; nombre: string; duracion: number; precio: number; iva: number
   precio_descuento: number | null; descuento_inicio: string | null; descuento_fin: string | null
@@ -79,7 +79,6 @@ export default function FichaNegocio() {
 
   function horarioTexto(h: Horario) {
     if (!h.abierto) return 'Cerrado'
-    if (h.hora_apertura2) return `${formatHora(h.hora_apertura)}-${formatHora(h.hora_cierre)} / ${formatHora(h.hora_apertura2)}-${formatHora(h.hora_cierre2)}`
     return `${formatHora(h.hora_apertura)} - ${formatHora(h.hora_cierre)}`
   }
 

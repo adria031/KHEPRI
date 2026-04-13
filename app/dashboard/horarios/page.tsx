@@ -46,18 +46,17 @@ const diasShort: Record<string, string> = {
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DIAS_CAL = ['L','M','X','J','V','S','D']
 
-type Horario = { id?: string; dia: string; estado: 'abierto' | 'partido' | 'cerrado'; apertura: string; cierre: string; apertura2: string; cierre2: string }
-type Excepcion = { id?: string; fecha: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string; hora_cierre2: string; nota: string }
+type Horario = { id?: string; dia: string; estado: 'abierto' | 'cerrado'; apertura: string; cierre: string }
+type Excepcion = { id?: string; fecha: string; abierto: boolean; hora_apertura: string; hora_cierre: string; nota: string }
 
 const defaultHorario = (dia: string): Horario => ({
   dia, estado: dia === 'domingo' ? 'cerrado' : 'abierto',
-  apertura: '09:00', cierre: '18:00', apertura2: '15:00', cierre2: '20:00'
+  apertura: '09:00', cierre: '18:00',
 })
 
 const defaultExcepcion = (fecha: string): Excepcion => ({
   fecha, abierto: false,
   hora_apertura: '09:00', hora_cierre: '18:00',
-  hora_apertura2: '15:00', hora_cierre2: '20:00',
   nota: ''
 })
 
@@ -104,11 +103,9 @@ export default function Horarios() {
           data.forEach((h: any) => {
             map[h.dia] = {
               id: h.id, dia: h.dia,
-              estado: h.abierto ? (h.hora_apertura2 ? 'partido' : 'abierto') : 'cerrado',
+              estado: h.abierto ? 'abierto' : 'cerrado',
               apertura: h.hora_apertura || '09:00',
               cierre: h.hora_cierre || '18:00',
-              apertura2: h.hora_apertura2 || '15:00',
-              cierre2: h.hora_cierre2 || '20:00',
             }
           })
           diasSemana.forEach(d => { if (!map[d]) map[d] = defaultHorario(d) })
@@ -137,8 +134,6 @@ export default function Horarios() {
           abierto: e.abierto,
           hora_apertura: e.hora_apertura || '09:00',
           hora_cierre: e.hora_cierre || '18:00',
-          hora_apertura2: e.hora_apertura2 || '15:00',
-          hora_cierre2: e.hora_cierre2 || '20:00',
           nota: e.nota || '',
         }
       })
@@ -165,8 +160,6 @@ export default function Horarios() {
         abierto: h.estado !== 'cerrado',
         hora_apertura: h.apertura,
         hora_cierre: h.cierre,
-        hora_apertura2: h.estado === 'partido' ? h.apertura2 : null,
-        hora_cierre2: h.estado === 'partido' ? h.cierre2 : null,
       }
       if (h.id) {
         const { error: errUpd } = await dbMutation({ op: 'update', table: 'horarios', id: h.id, negocioId, data: datos })
@@ -201,8 +194,6 @@ export default function Horarios() {
       abierto: modalData.abierto,
       hora_apertura: modalData.abierto ? modalData.hora_apertura : null,
       hora_cierre: modalData.abierto ? modalData.hora_cierre : null,
-      hora_apertura2: (modalData.abierto && modalData.hora_apertura2) ? modalData.hora_apertura2 : null,
-      hora_cierre2: (modalData.abierto && modalData.hora_apertura2) ? modalData.hora_cierre2 : null,
       nota: modalData.nota || null,
     }
     const existing = excepciones[modalFecha]
@@ -560,14 +551,6 @@ export default function Horarios() {
                       <input type="time" className="time-input" value={modalData.hora_apertura} onChange={e => setModalData(d => d ? {...d, hora_apertura: e.target.value} : d)} />
                       <span style={{fontSize:'13px', color:'var(--muted)'}}>a</span>
                       <input type="time" className="time-input" value={modalData.hora_cierre} onChange={e => setModalData(d => d ? {...d, hora_cierre: e.target.value} : d)} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="modal-label">Turno tarde (opcional)</div>
-                    <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                      <input type="time" className="time-input" value={modalData.hora_apertura2} onChange={e => setModalData(d => d ? {...d, hora_apertura2: e.target.value} : d)} />
-                      <span style={{fontSize:'13px', color:'var(--muted)'}}>a</span>
-                      <input type="time" className="time-input" value={modalData.hora_cierre2} onChange={e => setModalData(d => d ? {...d, hora_cierre2: e.target.value} : d)} />
                     </div>
                   </div>
                 </>

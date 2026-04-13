@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase'
 
 type Servicio  = { id: string; nombre: string; duracion: number; precio: number }
 type Trabajador = { id: string; nombre: string }
-type Horario   = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string | null; hora_cierre2: string | null }
+type Horario   = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string }
 
 // ─── Calendar helpers ─────────────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ export default function Widget() {
     const h = horarios.find(h => h.dia === diaNombre)
     if (!h || !h.abierto) return []
     const s1 = generarSlots(h.hora_apertura, h.hora_cierre, servicio.duracion)
-    const s2 = h.hora_apertura2 ? generarSlots(h.hora_apertura2, h.hora_cierre2!, servicio.duracion) : []
+    const s2: string[] = []
     return [...s1, ...s2]
   }, [fecha, servicio, horarios])
 
