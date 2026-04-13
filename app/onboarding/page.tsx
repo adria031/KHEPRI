@@ -66,19 +66,15 @@ export default function Onboarding() {
   const [ciudadCliente, setCiudadCliente] = useState('')
 
   useEffect(() => {
-    // Only redirect if the user has BOTH a profile AND a negocio created
+    // Redirect only if the negocio actually exists in the DB
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return
-      const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
-      if (profile?.tipo === 'negocio') {
-        // Verify negocio actually exists — prevents redirect loop when profile
-        // was saved but negocio insert failed in a previous attempt
-        const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', session.user.id).single()
-        if (neg) window.location.href = window.location.origin + '/dashboard'
-        // else: profile exists but no negocio → stay on onboarding to finish setup
-      } else if (profile?.tipo === 'cliente') {
-        window.location.href = window.location.origin + '/cliente'
+      const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', session.user.id).maybeSingle()
+      if (neg) {
+        window.location.href = window.location.origin + '/dashboard'
+        return
       }
+      // No negocio → stay and let the user complete onboarding
     })
   }, [])
 
@@ -93,23 +89,23 @@ export default function Onboarding() {
     setCargando(true); setError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) throw new Error('No hay sesión')
+      if (!session?.user) throw new Error('No hay sesión activa. Recarga la página.')
       const user = session.user
 
-      // Insert negocio FIRST — if this fails, profile stays incomplete
-      // and the loop prevention above keeps the user on onboarding
       const { error: negocioError } = await supabase.from('negocios').insert({
         user_id: user.id, nombre: nombreNegocio, tipo: tipoNegocio,
         direccion, ciudad, codigo_postal: codigoPostal, telefono,
         instagram, whatsapp, facebook, plan: planSeleccionado
       })
-      if (negocioError) throw negocioError
+      if (negocioError) {
+        console.error('[onboarding] negocio insert error:', negocioError.code, negocioError.message, negocioError.details, negocioError.hint)
+        throw new Error(`Error al crear el negocio: ${negocioError.message} (código: ${negocioError.code})`)
+      }
 
-      // Profile after negocio — safe to mark as complete now
-      const { error: profileError } = await supabase.from('profiles').upsert({
+      // Best-effort profile update — don't fail if profiles schema differs
+      await supabase.from('profiles').upsert({
         id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email
       })
-      if (profileError) throw profileError
 
       window.location.href = window.location.origin + '/dashboard'
     } catch (e: any) {
