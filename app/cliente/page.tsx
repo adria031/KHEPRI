@@ -134,12 +134,12 @@ function ClienteContent() {
     })
 
     Promise.all([
-      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng,descripcion,visible'),
+      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng'),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
     ]).then(([{ data: negs, error: negError }, { data: hors }, { data: ress }]) => {
       console.log('[cliente] negocios data:', negs, 'error:', negError)
-      if (negs) setNegocios(negs.filter((n: any) => n.visible !== false))
+      if (negs) setNegocios(negs)
       if (hors) {
         const map: Record<string, HorarioDB[]> = {}
         for (const h of hors as HorarioDB[]) {
