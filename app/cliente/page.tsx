@@ -45,6 +45,21 @@ type Filtro = 'ninguno' | 'abierto' | 'valorados' | 'cercanos'
 
 const DIAS = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado']
 
+function norm(s: string) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') }
+function normTipo(tipo: string): string {
+  const t = norm(tipo)
+  if (t.includes('peluq') || t.includes('barber')) return 'peluqueria'
+  if (t.includes('estet') || t.includes('beauty')) return 'estetica'
+  if (t.includes('spa')   || t.includes('masaj'))  return 'spa'
+  if (t.includes('clinic')|| t.includes('medic'))  return 'clinica'
+  if (t.includes('yoga')  || t.includes('pilates'))return 'yoga'
+  if (t.includes('gimnas'))                         return 'gimnasio'
+  if (t.includes('dentis')|| t.includes('dental')) return 'dentista'
+  if (t.includes('veterin'))                        return 'veterinaria'
+  if (t.includes('restaur')|| t.includes('cafet')) return 'restaurante'
+  return t
+}
+
 function toMins(t: string) { const [h, m] = t.split(':').map(Number); return h * 60 + m }
 
 function estaAbierto(horarios: HorarioDB[]): boolean {
@@ -168,11 +183,11 @@ function ClienteContent() {
 
   // ── Base filter (categoría + búsqueda) ──────────────────────────────────
   let negociosFiltrados = negocios.filter(n => {
-    const matchCat  = categoriaActiva === 'todos' || n.tipo?.toLowerCase() === categoriaActiva
-    const q = busqueda.toLowerCase()
-    const matchBusq = !q || n.nombre.toLowerCase().includes(q) ||
-      (n.ciudad || '').toLowerCase().includes(q) ||
-      (n.tipo  || '').toLowerCase().includes(q)
+    const matchCat  = categoriaActiva === 'todos' || normTipo(n.tipo || '') === categoriaActiva
+    const q = norm(busqueda)
+    const matchBusq = !q || norm(n.nombre).includes(q) ||
+      norm(n.ciudad || '').includes(q) ||
+      norm(n.tipo   || '').includes(q)
     return matchCat && matchBusq
   })
 

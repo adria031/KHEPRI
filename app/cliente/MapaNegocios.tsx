@@ -35,6 +35,21 @@ const tipoConfig: Record<string, { emoji: string; bg: string; color: string }> =
 }
 const tipoDefault = { emoji: '🏪', bg: '#F3F4F6', color: '#374151' }
 
+function norm(s: string) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') }
+function normTipo(tipo: string): string {
+  const t = norm(tipo)
+  if (t.includes('peluq') || t.includes('barber')) return 'peluqueria'
+  if (t.includes('estet') || t.includes('beauty')) return 'estetica'
+  if (t.includes('spa')   || t.includes('masaj'))  return 'spa'
+  if (t.includes('clinic')|| t.includes('medic'))  return 'clinica'
+  if (t.includes('yoga')  || t.includes('pilates'))return 'yoga'
+  if (t.includes('gimnas'))                         return 'gimnasio'
+  if (t.includes('dentis')|| t.includes('dental')) return 'dentista'
+  if (t.includes('veterin'))                        return 'veterinaria'
+  if (t.includes('restaur')|| t.includes('cafet')) return 'restaurante'
+  return t
+}
+
 const categorias = [
   { id: 'todos',       label: 'Todos',      emoji: '✨' },
   { id: 'peluqueria',  label: 'Peluquería', emoji: '💈' },
@@ -51,7 +66,7 @@ const categorias = [
 // ─── Marker icon ──────────────────────────────────────────────────────────────
 
 function crearIcono(tipo: string, logoUrl: string | null, activo = false): L.DivIcon {
-  const cfg = tipoConfig[tipo?.toLowerCase()] || tipoDefault
+  const cfg = tipoConfig[normTipo(tipo || '')] || tipoDefault
   const inner = logoUrl
     ? `<img src="${logoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
     : `<span style="font-size:18px;line-height:1;">${cfg.emoji}</span>`
@@ -108,7 +123,7 @@ function clusterIconCreate(cluster: L.MarkerCluster): L.DivIcon {
 // ─── Popup HTML ───────────────────────────────────────────────────────────────
 
 function buildPopupHtml(neg: NegocioMapa, rating?: number): string {
-  const cfg = tipoConfig[neg.tipo?.toLowerCase()] || tipoDefault
+  const cfg = tipoConfig[normTipo(neg.tipo || '')] || tipoDefault
   const logo = neg.logo_url
     ? `<img src="${neg.logo_url}" style="width:44px;height:44px;border-radius:12px;object-fit:cover;flex-shrink:0;" />`
     : `<div style="width:44px;height:44px;border-radius:12px;background:${cfg.bg};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${cfg.emoji}</div>`
@@ -226,9 +241,9 @@ export default function MapaNegocios({
   const flyToRef = useRef<((lat: number, lng: number, zoom?: number) => void) | null>(null)
 
   const negociosFiltrados = negocios.filter(n => {
-    const matchTipo = filtroTipo === 'todos' || n.tipo?.toLowerCase() === filtroTipo
-    const q = busqueda.toLowerCase()
-    const matchQ = !q || n.nombre.toLowerCase().includes(q) || (n.ciudad || '').toLowerCase().includes(q)
+    const matchTipo = filtroTipo === 'todos' || normTipo(n.tipo || '') === filtroTipo
+    const q = norm(busqueda)
+    const matchQ = !q || norm(n.nombre).includes(q) || norm(n.ciudad || '').includes(q) || norm(n.tipo || '').includes(q)
     return matchTipo && matchQ
   })
 
