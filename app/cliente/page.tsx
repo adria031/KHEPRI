@@ -37,7 +37,7 @@ const tipoConfig: Record<string, { emoji: string; bg: string }> = {
 }
 const tipoDefault = { emoji: '🏪', bg: 'rgba(184,216,248,0.2)' }
 
-type Negocio = { id: string; nombre: string; tipo: string; ciudad: string; logo_url: string | null; fotos: string[] | null; lat: number | null; lng: number | null; descripcion: string | null }
+type Negocio = { id: string; nombre: string; tipo: string; ciudad: string; logo_url: string | null; fotos: string[] | null; lat: number | null; lng: number | null; descripcion: string | null; visible: boolean | null }
 type ReservaCliente = { id: string; fecha: string; hora: string; estado: string; negocio_nombre: string; servicio_nombre: string; negocio_tipo: string }
 type HorarioDB = { negocio_id: string; dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string | null; hora_cierre2: string | null }
 
@@ -134,12 +134,12 @@ function ClienteContent() {
     })
 
     Promise.all([
-      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng'),
+      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng,descripcion,visible'),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
     ]).then(([{ data: negs, error: negError }, { data: hors }, { data: ress }]) => {
       console.log('[cliente] negocios data:', negs, 'error:', negError)
-      if (negs) setNegocios(negs)
+      if (negs) setNegocios(negs.filter((n: any) => n.visible !== false))
       if (hors) {
         const map: Record<string, HorarioDB[]> = {}
         for (const h of hors as HorarioDB[]) {
