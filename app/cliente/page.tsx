@@ -185,9 +185,7 @@ function ClienteContent() {
   let negociosFiltrados = negocios.filter(n => {
     const matchCat  = categoriaActiva === 'todos' || normTipo(n.tipo || '') === categoriaActiva
     const q = norm(busqueda)
-    const matchBusq = !q || norm(n.nombre).includes(q) ||
-      norm(n.ciudad || '').includes(q) ||
-      norm(n.tipo   || '').includes(q)
+    const matchBusq = !q || norm(n.nombre).includes(q)
     return matchCat && matchBusq
   })
 

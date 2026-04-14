@@ -243,7 +243,7 @@ export default function MapaNegocios({
   const negociosFiltrados = negocios.filter(n => {
     const matchTipo = filtroTipo === 'todos' || normTipo(n.tipo || '') === filtroTipo
     const q = norm(busqueda)
-    const matchQ = !q || norm(n.nombre).includes(q) || norm(n.ciudad || '').includes(q) || norm(n.tipo || '').includes(q)
+    const matchQ = !q || norm(n.nombre).includes(q)
     return matchTipo && matchQ
   })
 
