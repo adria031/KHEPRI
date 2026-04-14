@@ -104,7 +104,7 @@ export default function Onboarding() {
       const { error: negocioError } = await supabase.from('negocios').insert({
         user_id: user.id, nombre: nombreNegocio, tipo: tipoNegocio,
         direccion, ciudad, codigo_postal: codigoPostal, telefono,
-        instagram, whatsapp, facebook, plan: planSeleccionado
+        instagram, whatsapp, facebook, plan: planSeleccionado, visible: true
       })
       if (negocioError) {
         console.error('[onboarding] negocio insert error:', negocioError.code, negocioError.message, negocioError.details, negocioError.hint)
@@ -126,8 +126,6 @@ export default function Onboarding() {
       const user = session.user
       const { error: profErr } = await supabase.from('profiles').upsert({ id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email })
       if (profErr) throw profErr
-      const { error: cliErr } = await supabase.from('clientes').insert({ user_id: user.id, nombre: nombreCliente, ciudad: ciudadCliente })
-      if (cliErr) throw cliErr
       window.location.href = window.location.origin + '/cliente'
     } catch (e: any) {
       setError(e.message || 'Error al guardar. Inténtalo de nuevo.')
