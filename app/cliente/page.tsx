@@ -37,7 +37,8 @@ const tipoConfig: Record<string, { emoji: string; bg: string }> = {
 }
 const tipoDefault = { emoji: '🏪', bg: 'rgba(184,216,248,0.2)' }
 
-type Negocio = { id: string; nombre: string; tipo: string; ciudad: string; logo_url: string | null; fotos: string[] | null; lat: number | null; lng: number | null }
+type Negocio = { id: string; nombre: string; tipo: string; ciudad: string; logo_url: string | null; fotos: string[] | null; lat: number | null; lng: number | null; descripcion: string | null }
+type ReservaCliente = { id: string; fecha: string; hora: string; estado: string; negocio_nombre: string; servicio_nombre: string; negocio_tipo: string }
 type HorarioDB = { negocio_id: string; dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string | null; hora_cierre2: string | null }
 
 type Filtro = 'ninguno' | 'abierto' | 'valorados' | 'cercanos'
@@ -64,10 +65,6 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-const reservasMock = [
-  { id: 1, negocio: 'Barber Co.', servicio: 'Corte + Barba', fecha: 'Mañana', hora: '10:30', emoji: '💈', color: '#B8D8F8' },
-  { id: 2, negocio: 'Spa Zen', servicio: 'Masaje relajante', fecha: 'Vie 4 Abr', hora: '17:00', emoji: '💆', color: '#D4C5F9' },
-]
 
 const tabs = [
   { id: 'inicio', icon: '🏠', label: 'Inicio' },
@@ -107,14 +104,37 @@ function ClienteContent() {
   const [geoError, setGeoError] = useState(false)
   const [horariosPorNeg, setHorariosPorNeg] = useState<Record<string, HorarioDB[]>>({})
   const [valPorNeg, setValPorNeg] = useState<Record<string, number>>({})
+  const [reservas, setReservas] = useState<ReservaCliente[]>([])
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { window.location.href = '/auth'; return }
       if (user.user_metadata?.nombre) setNombreUsuario(user.user_metadata.nombre.split(' ')[0])
+
+      // Cargar reservas del usuario por email
+      const { data: resData } = await supabase
+        .from('reservas')
+        .select('id,fecha,hora,estado,negocios(nombre,tipo),servicios(nombre)')
+        .eq('cliente_email', user.email)
+        .in('estado', ['pendiente','confirmada'])
+        .gte('fecha', new Date().toISOString().slice(0,10))
+        .order('fecha', { ascending: true })
+        .limit(10)
+      if (resData) {
+        setReservas((resData as any[]).map(r => ({
+          id: r.id,
+          fecha: r.fecha,
+          hora: r.hora,
+          estado: r.estado,
+          negocio_nombre: r.negocios?.nombre || 'Negocio',
+          servicio_nombre: r.servicios?.nombre || 'Servicio',
+          negocio_tipo: r.negocios?.tipo || '',
+        })))
+      }
     })
+
     Promise.all([
-      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng'),
+      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng,descripcion').eq('visible', true),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
     ]).then(([{ data: negs }, { data: hors }, { data: ress }]) => {
@@ -337,23 +357,26 @@ function ClienteContent() {
             {geoError && <div className="geo-toast">📍 Activa la ubicación para ver los más cercanos</div>}
 
             <div className="content">
-              {reservasMock.length > 0 && !busqueda && categoriaActiva === 'todos' && (
+              {reservas.length > 0 && !busqueda && categoriaActiva === 'todos' && (
                 <>
                   <div className="sec-header">
                     <span className="sec-title">Tus próximas citas</span>
                     <Link href="/cliente?tab=reservas" className="sec-link">Ver todas →</Link>
                   </div>
                   <div className="res-scroll">
-                    {reservasMock.map(r => (
-                      <div key={r.id} className="res-card">
-                        <div style={{fontSize:'22px', marginBottom:'8px'}}>{r.emoji}</div>
-                        <div style={{fontSize:'13px', fontWeight:700, color:'#111827', marginBottom:'2px'}}>{r.negocio}</div>
-                        <div style={{fontSize:'12px', color:'#9CA3AF', marginBottom:'8px'}}>{r.servicio}</div>
-                        <div style={{fontSize:'11px', fontWeight:600, padding:'4px 9px', borderRadius:'7px', background: r.color+'40', color:'#111827', display:'inline-flex', alignItems:'center', gap:'4px'}}>
-                          📅 {r.fecha} · {r.hora}
+                    {reservas.slice(0, 5).map(r => {
+                      const cfg = tipoConfig[r.negocio_tipo?.toLowerCase()] || tipoDefault
+                      return (
+                        <div key={r.id} className="res-card">
+                          <div style={{fontSize:'22px', marginBottom:'8px'}}>{cfg.emoji}</div>
+                          <div style={{fontSize:'13px', fontWeight:700, color:'#111827', marginBottom:'2px'}}>{r.negocio_nombre}</div>
+                          <div style={{fontSize:'12px', color:'#9CA3AF', marginBottom:'8px'}}>{r.servicio_nombre}</div>
+                          <div style={{fontSize:'11px', fontWeight:600, padding:'4px 9px', borderRadius:'7px', background: cfg.bg, color:'#111827', display:'inline-flex', alignItems:'center', gap:'4px'}}>
+                            📅 {r.fecha} · {r.hora}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </>
               )}
@@ -367,11 +390,17 @@ function ClienteContent() {
 
               {cargandoNegocios ? (
                 <div style={{textAlign:'center', padding:'60px 20px', color:'#9CA3AF', fontSize:'14px'}}>Cargando negocios...</div>
+              ) : negocios.length === 0 ? (
+                <div style={{textAlign:'center', padding:'60px 20px'}}>
+                  <div style={{fontSize:'48px', marginBottom:'12px'}}>🏙️</div>
+                  <div style={{fontSize:'16px', fontWeight:700, color:'#111827', marginBottom:'6px'}}>Aún no hay negocios en tu zona</div>
+                  <div style={{fontSize:'13px', color:'#9CA3AF'}}>Pronto habrá más disponibles</div>
+                </div>
               ) : negociosFiltrados.length === 0 ? (
                 <div style={{textAlign:'center', padding:'60px 20px'}}>
                   <div style={{fontSize:'48px', marginBottom:'12px'}}>🔍</div>
                   <div style={{fontSize:'16px', fontWeight:700, color:'#111827', marginBottom:'6px'}}>Sin resultados</div>
-                  <div style={{fontSize:'13px', color:'#9CA3AF'}}>Prueba con otro término</div>
+                  <div style={{fontSize:'13px', color:'#9CA3AF'}}>Prueba con otro término o categoría</div>
                 </div>
               ) : (
                 <div className="neg-grid">
@@ -446,17 +475,27 @@ function ClienteContent() {
           <div className="content">
             <div style={{fontSize:'22px', fontWeight:800, color:'#111827', marginBottom:'4px'}}>Mis reservas</div>
             <div style={{fontSize:'14px', color:'#9CA3AF', marginBottom:'16px'}}>Tus citas próximas</div>
-            {reservasMock.map(r => (
-              <div key={r.id} className="res-full">
-                <div style={{width:'46px', height:'46px', borderRadius:'12px', background: r.color+'40', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'22px', flexShrink:0}}>{r.emoji}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:'15px', fontWeight:700, color:'#111827', marginBottom:'2px'}}>{r.negocio}</div>
-                  <div style={{fontSize:'13px', color:'#9CA3AF', marginBottom:'4px'}}>{r.servicio}</div>
-                  <div style={{fontSize:'12px', fontWeight:600, color:'#1D4ED8'}}>📅 {r.fecha} · {r.hora}</div>
-                </div>
-                <span style={{fontSize:'18px', color:'#9CA3AF'}}>›</span>
+            {reservas.length === 0 ? (
+              <div style={{textAlign:'center', padding:'60px 20px'}}>
+                <div style={{fontSize:'48px', marginBottom:'12px'}}>📅</div>
+                <div style={{fontSize:'16px', fontWeight:700, color:'#111827', marginBottom:'6px'}}>Sin reservas próximas</div>
+                <div style={{fontSize:'13px', color:'#9CA3AF', marginBottom:'20px'}}>Reserva una cita en cualquier negocio</div>
+                <Link href="/cliente?tab=inicio" style={{display:'inline-block', padding:'12px 24px', background:'#1D4ED8', color:'white', borderRadius:'12px', textDecoration:'none', fontSize:'14px', fontWeight:700}}>Explorar negocios</Link>
               </div>
-            ))}
+            ) : reservas.map(r => {
+              const cfg = tipoConfig[r.negocio_tipo?.toLowerCase()] || tipoDefault
+              return (
+                <div key={r.id} className="res-full">
+                  <div style={{width:'46px', height:'46px', borderRadius:'12px', background: cfg.bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'22px', flexShrink:0}}>{cfg.emoji}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:'15px', fontWeight:700, color:'#111827', marginBottom:'2px'}}>{r.negocio_nombre}</div>
+                    <div style={{fontSize:'13px', color:'#9CA3AF', marginBottom:'4px'}}>{r.servicio_nombre}</div>
+                    <div style={{fontSize:'12px', fontWeight:600, color:'#1D4ED8'}}>📅 {r.fecha} · {r.hora}</div>
+                  </div>
+                  <span style={{fontSize:'11px', fontWeight:600, padding:'3px 8px', borderRadius:'100px', background: r.estado === 'confirmada' ? 'rgba(34,197,94,0.12)' : 'rgba(253,233,162,0.5)', color: r.estado === 'confirmada' ? '#166534' : '#92400E'}}>{r.estado}</span>
+                </div>
+              )
+            })}
           </div>
         )}
 
