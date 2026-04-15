@@ -256,7 +256,7 @@ function ClienteContent(){
   const negValTop=[...negocios].filter(n=>vals[n.id]!=null).sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0)).slice(0,8)
   const proximasReservas=reservas.filter(r=>r.estado!=='cancelada'&&r.fecha>=new Date().toISOString().slice(0,10))
 
-  function pedir geo(f:Filtro){
+  function pedirGeo(f:Filtro){
     if(filtro===f){setFiltro('ninguno');return}
     if(f==='cercanos'){
       if(pos){setFiltro('cercanos');return}
@@ -470,9 +470,9 @@ function ClienteContent(){
 
           {/* FILTROS */}
           <div className="fbar">
-            <button className={`fchip ${filtro==='abierto'?'on':''}`} onClick={()=>pedir geo('abierto')}>🟢 Abierto ahora</button>
-            <button className={`fchip ${filtro==='valorados'?'on':''}`} onClick={()=>pedir geo('valorados')}>⭐ Mejor valorados</button>
-            <button className={`fchip ${filtro==='cercanos'?'on':''}`} onClick={()=>pedir geo('cercanos')}>📍 Más cercanos</button>
+            <button className={`fchip ${filtro==='abierto'?'on':''}`} onClick={()=>pedirGeo('abierto')}>🟢 Abierto ahora</button>
+            <button className={`fchip ${filtro==='valorados'?'on':''}`} onClick={()=>pedirGeo('valorados')}>⭐ Mejor valorados</button>
+            <button className={`fchip ${filtro==='cercanos'?'on':''}`} onClick={()=>pedirGeo('cercanos')}>📍 Más cercanos</button>
             {filtro!=='ninguno'&&<button className="fchip" style={{color:'#DC2626',borderColor:'rgba(220,38,38,0.2)'}} onClick={()=>setFiltro('ninguno')}>✕ Limpiar</button>}
           </div>
           {geoErr&&<div className="toast">📍 Activa la ubicación en tu navegador</div>}
@@ -766,10 +766,6 @@ function ClienteContent(){
   )
 }
 
-// ─── pedir geo helper (inside component scope, extracted for readability) ─────
-// Note: defined inline above as `function pedir geo` — TypeScript will see it fine
-// since it's hoisted. Actually we can't have spaces in function name. Let's keep it
-// as `handleFiltro` inline.
 
 export default function ClientePage(){
   return(<Suspense><ClienteContent/></Suspense>)
