@@ -250,6 +250,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     if (!nombre.trim()) { setError('Introduce tu nombre'); return }
     if (!telefono.trim()) { setError('Introduce tu teléfono'); return }
     if (!servicio) { setError('Selecciona un servicio'); return }
+    if (!id) { setError('Error: negocio no identificado'); return }
     setError(''); setEnviando(true)
 
     const { data: nueva, error: err } = await supabase.from('reservas').insert({
@@ -264,7 +265,12 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
       estado: 'confirmada',
     }).select('id').single()
 
-    if (err) { setError('Error al guardar la reserva. Inténtalo de nuevo.'); setEnviando(false); return }
+    if (err) {
+      setError(`Error al guardar: ${err.message}${err.details ? ' — ' + err.details : ''}`)
+      console.error('[reservar] insert error:', err)
+      setEnviando(false)
+      return
+    }
 
     // Fire confirmation email (non-blocking)
     if (nueva?.id) {
