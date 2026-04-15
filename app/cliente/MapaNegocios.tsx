@@ -14,9 +14,10 @@ export type NegocioMapa = {
   nombre: string
   tipo: string
   ciudad: string | null
+  direccion: string | null
   logo_url: string | null
-  lat: number
-  lng: number
+  lat: number | null
+  lng: number | null
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -122,7 +123,21 @@ function clusterIconCreate(cluster: L.MarkerCluster): L.DivIcon {
 
 // ─── Popup HTML ───────────────────────────────────────────────────────────────
 
-function buildPopupHtml(neg: NegocioMapa, rating?: number): string {
+async function geocodificar(neg: NegocioMapa): Promise<{ lat: number; lng: number } | null> {
+  const query = [neg.direccion, neg.ciudad].filter(Boolean).join(', ')
+  if (!query) return null
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      { headers: { 'Accept-Language': 'es' } }
+    )
+    const data = await res.json()
+    if (data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+  } catch { /* silencioso */ }
+  return null
+}
+
+function buildPopupHtml(neg: NegocioMapa & { lat: number; lng: number }, rating?: number): string {
   const cfg = tipoConfig[normTipo(neg.tipo || '')] || tipoDefault
   const logo = neg.logo_url
     ? `<img src="${neg.logo_url}" style="width:44px;height:44px;border-radius:12px;object-fit:cover;flex-shrink:0;" />`
@@ -148,13 +163,20 @@ function buildPopupHtml(neg: NegocioMapa, rating?: number): string {
         <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px;background:${cfg.bg};color:${cfg.color};">${neg.tipo || 'Negocio'}</span>
       </div>
       ${stars}
-      <a href="/negocio/${neg.id}" style="display:block;text-align:center;padding:9px 12px;background:#111827;color:white;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
-        Ver perfil →
-      </a>
+      <div style="display:flex;gap:8px;">
+        <a href="/negocio/${neg.id}" style="flex:1;display:block;text-align:center;padding:9px 12px;background:#111827;color:white;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
+          Ver perfil →
+        </a>
+        <a href="https://www.google.com/maps/search/${encodeURIComponent([neg.direccion||'', neg.ciudad||''].filter(Boolean).join(', '))}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;padding:9px 12px;background:#EFF6FF;color:#1D4ED8;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;">
+          📍 Maps
+        </a>
+      </div>
     </div>`
 }
 
 // ─── ClusterLayer (inner component with map access) ───────────────────────────
+
+type NegocioConCoords = NegocioMapa & { lat: number; lng: number }
 
 function ClusterLayer({
   negocios,
@@ -172,11 +194,29 @@ function ClusterLayer({
   const map         = useMap()
   const clusterRef  = useRef<L.MarkerClusterGroup | null>(null)
   const userRef     = useRef<L.Marker | null>(null)
+  const [negociosConCoords, setNegociosConCoords] = useState<NegocioConCoords[]>([])
 
   // Expose flyTo to parent
   useEffect(() => {
     onReady((lat, lng, zoom = 15) => map.flyTo([lat, lng], zoom, { duration: 1.2 }))
   }, [map, onReady])
+
+  // Geocodificar negocios sin lat/lng
+  useEffect(() => {
+    async function resolver() {
+      const resueltos: NegocioConCoords[] = []
+      for (const neg of negocios) {
+        if (neg.lat != null && neg.lng != null) {
+          resueltos.push(neg as NegocioConCoords)
+        } else {
+          const coords = await geocodificar(neg)
+          if (coords) resueltos.push({ ...neg, ...coords })
+        }
+      }
+      setNegociosConCoords(resueltos)
+    }
+    resolver()
+  }, [negocios])
 
   // Rebuild cluster when negocios change
   useEffect(() => {
@@ -191,7 +231,7 @@ function ClusterLayer({
       animate: true,
     }) as L.MarkerClusterGroup
 
-    negocios.forEach(neg => {
+    negociosConCoords.forEach(neg => {
       const activo  = neg.id === focusId
       const marker  = L.marker([neg.lat, neg.lng], { icon: crearIcono(neg.tipo, neg.logo_url, activo) })
       const rating  = valPorNeg[neg.id]
@@ -207,7 +247,7 @@ function ClusterLayer({
     clusterRef.current = cluster
 
     return () => { if (clusterRef.current) map.removeLayer(clusterRef.current) }
-  }, [map, negocios, valPorNeg, focusId])
+  }, [map, negociosConCoords, valPorNeg, focusId])
 
   // User position marker
   useEffect(() => {
@@ -323,7 +363,7 @@ export default function MapaNegocios({
             return (
               <button
                 key={n.id}
-                onClick={() => { setBusqueda(''); setFocusId(n.id); flyToRef.current?.(n.lat, n.lng, 16) }}
+                onClick={() => { setBusqueda(''); setFocusId(n.id); if (n.lat != null && n.lng != null) flyToRef.current?.(n.lat, n.lng, 16) }}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'none', border: 'none', borderBottom: '1px solid rgba(0,0,0,0.06)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
               >
                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0, overflow: 'hidden' }}>

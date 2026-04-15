@@ -51,7 +51,7 @@ const TABS = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type Negocio      = {id:string;nombre:string;tipo:string;ciudad:string;logo_url:string|null;fotos:string[]|null;lat?:number|null;lng?:number|null;descripcion:string|null;visible:boolean|null}
+type Negocio      = {id:string;nombre:string;tipo:string;ciudad:string;direccion:string|null;logo_url:string|null;fotos:string[]|null;lat?:number|null;lng?:number|null;descripcion:string|null;visible:boolean|null}
 type ReservaCliente = {id:string;fecha:string;hora:string;estado:string;negocio_id:string;negocio_nombre:string;servicio_nombre:string;negocio_tipo:string}
 type HorarioDB    = {negocio_id:string;dia:string;abierto:boolean;hora_apertura:string;hora_cierre:string;hora_apertura2:string|null;hora_cierre2:string|null}
 type Filtro       = 'ninguno'|'abierto'|'valorados'|'cercanos'
@@ -209,7 +209,7 @@ function ClienteContent(){
       })))
     })
     Promise.all([
-      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng,descripcion,visible'),
+      supabase.from('negocios').select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible'),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
     ]).then(([{data:ns},{data:hs},{data:rs}])=>{
