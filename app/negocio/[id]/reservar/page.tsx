@@ -103,10 +103,10 @@ export default function Reservar() {
       // Email siempre disponible
       setEmail(u.email || '')
 
-      // Nombre: profiles → user_metadata (registro manual o Google)
+      // Nombre y teléfono desde profiles
       const { data: profile } = await supabase
         .from('profiles')
-        .select('nombre')
+        .select('nombre, telefono')
         .eq('id', u.id)
         .single()
       const nombreGuardado = profile?.nombre
@@ -114,17 +114,7 @@ export default function Reservar() {
         || u.user_metadata?.full_name
         || ''
       if (nombreGuardado) setNombre(nombreGuardado)
-
-      // Teléfono: última reserva hecha con este email
-      const { data: ultimaReserva } = await supabase
-        .from('reservas')
-        .select('cliente_telefono')
-        .eq('cliente_email', u.email)
-        .not('cliente_telefono', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-      if (ultimaReserva?.cliente_telefono) setTelefono(ultimaReserva.cliente_telefono)
+      if (profile?.telefono) setTelefono(profile.telefono)
     })
 
     Promise.all([
@@ -303,6 +293,12 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
       console.error('[reservar] insert error:', err)
       setEnviando(false)
       return
+    }
+
+    // Guardar teléfono en profiles para futuras reservas
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user && telefono.trim()) {
+      supabase.from('profiles').update({ telefono: telefono.trim() }).eq('id', session.user.id).then(() => {})
     }
 
     // Fire confirmation email (non-blocking)
