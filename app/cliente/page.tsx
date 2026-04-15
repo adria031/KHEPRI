@@ -209,7 +209,7 @@ function ClienteContent(){
       })))
     })
     Promise.all([
-      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,lat,lng,descripcion,visible'),
+      supabase.from('negocios').select('*'),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
     ]).then(([{data:ns,error:nsErr},{data:hs},{data:rs}])=>{
