@@ -94,6 +94,20 @@ export default function Reservar() {
 
   useEffect(() => {
     if (!id) return
+
+    // Precargar datos del cliente si tiene sesión
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('nombre, telefono, email')
+        .eq('id', session.user.id)
+        .single()
+      if (profile?.nombre)   setNombre(profile.nombre)
+      if (profile?.telefono) setTelefono(profile.telefono)
+      setEmail(profile?.email || session.user.email || '')
+    })
+
     Promise.all([
       supabase.from('negocios').select('nombre').eq('id', id).single(),
       supabase.from('servicios').select('id,nombre,duracion,precio').eq('negocio_id', id).eq('activo', true).order('nombre'),
