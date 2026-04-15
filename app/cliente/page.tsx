@@ -51,7 +51,7 @@ const TABS = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type Negocio      = {id:string;nombre:string;tipo:string;ciudad:string;logo_url:string|null;fotos:string[]|null;lat:number|null;lng:number|null;descripcion:string|null;visible:boolean|null}
+type Negocio      = {id:string;nombre:string;tipo:string;ciudad:string;logo_url:string|null;fotos:string[]|null;lat?:number|null;lng?:number|null;descripcion:string|null;visible:boolean|null}
 type ReservaCliente = {id:string;fecha:string;hora:string;estado:string;negocio_id:string;negocio_nombre:string;servicio_nombre:string;negocio_tipo:string}
 type HorarioDB    = {negocio_id:string;dia:string;abierto:boolean;hora_apertura:string;hora_cierre:string;hora_apertura2:string|null;hora_cierre2:string|null}
 type Filtro       = 'ninguno'|'abierto'|'valorados'|'cercanos'
@@ -209,12 +209,10 @@ function ClienteContent(){
       })))
     })
     Promise.all([
-      supabase.from('negocios').select('*'),
+      supabase.from('negocios').select('id,nombre,tipo,ciudad,logo_url,fotos,descripcion,visible'),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
-    ]).then(([{data:ns,error:nsErr},{data:hs},{data:rs}])=>{
-      console.log('NEGOCIOS:', ns, 'ERROR:', nsErr)
-      alert('Negocios: ' + JSON.stringify(ns?.length) + ' Error: ' + JSON.stringify(nsErr))
+    ]).then(([{data:ns},{data:hs},{data:rs}])=>{
       if(ns) setNegocios(ns.filter((n:any)=>n.visible!==false))
       if(hs){
         const m:Record<string,HorarioDB[]>={}
