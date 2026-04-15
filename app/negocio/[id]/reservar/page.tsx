@@ -98,14 +98,33 @@ export default function Reservar() {
     // Precargar datos del cliente si tiene sesión
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) return
+      const u = session.user
+
+      // Email siempre disponible
+      setEmail(u.email || '')
+
+      // Nombre: profiles → user_metadata (registro manual o Google)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('nombre, telefono, email')
-        .eq('id', session.user.id)
+        .select('nombre')
+        .eq('id', u.id)
         .single()
-      if (profile?.nombre)   setNombre(profile.nombre)
-      if (profile?.telefono) setTelefono(profile.telefono)
-      setEmail(profile?.email || session.user.email || '')
+      const nombreGuardado = profile?.nombre
+        || u.user_metadata?.nombre
+        || u.user_metadata?.full_name
+        || ''
+      if (nombreGuardado) setNombre(nombreGuardado)
+
+      // Teléfono: última reserva hecha con este email
+      const { data: ultimaReserva } = await supabase
+        .from('reservas')
+        .select('cliente_telefono')
+        .eq('cliente_email', u.email)
+        .not('cliente_telefono', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (ultimaReserva?.cliente_telefono) setTelefono(ultimaReserva.cliente_telefono)
     })
 
     Promise.all([
