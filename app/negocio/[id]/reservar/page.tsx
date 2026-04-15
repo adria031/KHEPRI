@@ -276,7 +276,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     if (!id) { setError('Error: negocio no identificado'); return }
     setError(''); setEnviando(true)
 
-    const { data: nueva, error: err } = await supabase.from('reservas').insert({
+    const { error: err } = await supabase.from('reservas').insert({
       negocio_id: id,
       servicio_id: servicio.id,
       trabajador_id: trabajador?.id || null,
@@ -286,7 +286,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
       fecha,
       hora,
       estado: 'confirmada',
-    }).select('id').single()
+    })
 
     if (err) {
       setError(`Error al guardar: ${err.message}${err.details ? ' — ' + err.details : ''}`)
@@ -301,14 +301,12 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
       supabase.from('profiles').update({ telefono: telefono.trim() }).eq('id', session.user.id).then(() => {})
     }
 
-    // Fire confirmation email (non-blocking)
-    if (nueva?.id) {
-      fetch('/api/reservas/confirmar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reserva_id: nueva.id }),
-      }).catch(() => {})
-    }
+    // Fire confirmation email (non-blocking, without needing the new row ID)
+    fetch('/api/reservas/confirmar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ negocio_id: id, cliente_email: email.trim(), fecha, hora }),
+    }).catch(() => {})
 
     setPaso(5)
   }
