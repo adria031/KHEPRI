@@ -581,7 +581,7 @@ function ClienteContent(){
       {tab==='mapa'&&(
         <div style={{height:'calc(100vh - 60px)'}}>
           <MapaNegocios
-            negocios={negocios.filter(n=>n.lat&&n.lng).map(n=>({id:n.id,nombre:n.nombre,tipo:n.tipo,ciudad:n.ciudad,logo_url:n.logo_url,lat:n.lat!,lng:n.lng!}))}
+            negocios={negocios.map(n=>({id:n.id,nombre:n.nombre,tipo:n.tipo,ciudad:n.ciudad,direccion:n.direccion,logo_url:n.logo_url,lat:n.lat??null,lng:n.lng??null}))}
             valPorNeg={vals}
             userPos={pos}
           />
