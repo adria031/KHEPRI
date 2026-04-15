@@ -66,15 +66,18 @@ export default function Onboarding() {
   const [ciudadCliente, setCiudadCliente] = useState('')
 
   useEffect(() => {
-    // Redirect only if the negocio actually exists in the DB
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return
-      const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', session.user.id).maybeSingle()
-      if (neg) {
+      const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
+      if (profile?.tipo === 'negocio') {
         window.location.href = window.location.origin + '/dashboard'
         return
       }
-      // No negocio → stay and let the user complete onboarding
+      if (profile?.tipo === 'cliente') {
+        window.location.href = window.location.origin + '/cliente'
+        return
+      }
+      // Sin perfil → quedar en onboarding
     })
   }, [])
 

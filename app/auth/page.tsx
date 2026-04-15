@@ -57,8 +57,9 @@ function AuthForm() {
       else {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
-          const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', session.user.id).maybeSingle()
-          if (neg) window.location.href = window.location.origin + '/dashboard'
+          const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
+          if (profile?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
+          else if (profile?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
           else window.location.href = window.location.origin + '/onboarding'
         }
       }
