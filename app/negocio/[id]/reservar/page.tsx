@@ -276,16 +276,15 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     if (!id) { setError('Error: negocio no identificado'); return }
     setError(''); setEnviando(true)
 
-    const { error: err } = await supabase.from('reservas').insert({
-      negocio_id: id,
-      servicio_id: servicio.id,
-      trabajador_id: trabajador?.id || null,
-      cliente_nombre: nombre.trim(),
-      cliente_telefono: telefono.trim(),
-      cliente_email: email.trim() || null,
-      fecha,
-      hora,
-      estado: 'confirmada',
+    const { error: err } = await supabase.rpc('crear_reserva', {
+      p_negocio_id: id,
+      p_servicio_id: servicio.id,
+      p_trabajador_id: trabajador?.id || null,
+      p_cliente_nombre: nombre.trim(),
+      p_cliente_telefono: telefono.trim(),
+      p_cliente_email: email.trim() || null,
+      p_fecha: fecha,
+      p_hora: hora,
     })
 
     if (err) {
