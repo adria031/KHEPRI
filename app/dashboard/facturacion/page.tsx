@@ -98,6 +98,7 @@ export default function Facturacion() {
   const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [negocioNombre, setNegocioNombre] = useState('')
+  const [negocioDatos, setNegocioDatos] = useState<{direccion:string|null;ciudad:string|null;codigo_postal:string|null;telefono:string|null}>({direccion:null,ciudad:null,codigo_postal:null,telefono:null})
   const [cargando, setCargando] = useState(true)
 
   const hoy = new Date()
@@ -202,10 +203,11 @@ export default function Facturacion() {
       const { session, db } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
-      const { data: neg } = await db.from('negocios').select('id, nombre').eq('user_id', user.id).single()
+      const { data: neg } = await db.from('negocios').select('id, nombre, direccion, ciudad, codigo_postal, telefono').eq('user_id', user.id).single()
       if (!neg) { window.location.href = '/onboarding'; return }
       setNegocioId(neg.id)
       setNegocioNombre(neg.nombre)
+      setNegocioDatos({ direccion: neg.direccion, ciudad: neg.ciudad, codigo_postal: neg.codigo_postal, telefono: neg.telefono })
       await Promise.all([
         cargarFacturas(neg.id, anio, mes),
         cargarGastos(neg.id, anio, mes),
@@ -403,6 +405,90 @@ export default function Facturacion() {
       if (match) await supabase.storage.from('facturas').remove([match[1]])
     }
     setGastos(prev => prev.filter(g => g.id !== gasto.id))
+  }
+
+  function generarPDF(f: Factura) {
+    const direccionNeg = [negocioDatos.direccion, negocioDatos.codigo_postal, negocioDatos.ciudad].filter(Boolean).join(', ')
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Factura ${f.numero}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #111827; background: white; padding: 48px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 2px solid #F1F5F9; }
+  .empresa-nombre { font-size: 22px; font-weight: 800; color: #111827; margin-bottom: 6px; }
+  .empresa-dato { font-size: 12px; color: #6B7280; line-height: 1.7; }
+  .factura-meta { text-align: right; }
+  .factura-titulo { font-size: 28px; font-weight: 900; color: #1D4ED8; letter-spacing: -1px; margin-bottom: 8px; }
+  .factura-num { font-size: 13px; color: #6B7280; }
+  .factura-fecha { font-size: 13px; color: #6B7280; margin-top: 2px; }
+  .section { margin-bottom: 28px; }
+  .section-label { font-size: 10px; font-weight: 700; color: #9CA3AF; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .cliente-nombre { font-size: 16px; font-weight: 700; color: #111827; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  thead tr { background: #F8FAFC; }
+  th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #E5E7EB; }
+  th:last-child, td:last-child { text-align: right; }
+  td { padding: 12px 14px; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #374151; }
+  .totales { margin-left: auto; width: 260px; }
+  .totales-fila { display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px; color: #374151; }
+  .totales-fila.bold { font-weight: 800; font-size: 16px; color: #111827; border-top: 2px solid #E5E7EB; padding-top: 12px; margin-top: 4px; }
+  .footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #F1F5F9; font-size: 11px; color: #9CA3AF; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="empresa-nombre">${negocioNombre}</div>
+      ${direccionNeg ? `<div class="empresa-dato">${direccionNeg}</div>` : ''}
+      ${negocioDatos.telefono ? `<div class="empresa-dato">Tel: ${negocioDatos.telefono}</div>` : ''}
+    </div>
+    <div class="factura-meta">
+      <div class="factura-titulo">FACTURA</div>
+      <div class="factura-num">Nº ${f.numero}</div>
+      <div class="factura-fecha">Fecha: ${new Date(f.fecha).toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' })}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Cliente</div>
+    <div class="cliente-nombre">${f.cliente}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Descripción</th>
+        <th>Base imponible</th>
+        <th>IVA</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${f.servicio}</td>
+        <td>${fmt(f.base)} €</td>
+        <td>${f.iva_pct}% (${fmt(f.cuota_iva)} €)</td>
+        <td>${fmt(f.total)} €</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totales">
+    <div class="totales-fila"><span>Base imponible</span><span>${fmt(f.base)} €</span></div>
+    <div class="totales-fila"><span>IVA (${f.iva_pct}%)</span><span>${fmt(f.cuota_iva)} €</span></div>
+    <div class="totales-fila bold"><span>Total</span><span>${fmt(f.total)} €</span></div>
+  </div>
+
+  <div class="footer">Generado por Khepria · ${negocioNombre}</div>
+
+  <script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }<\/script>
+</body>
+</html>`
+    const win = window.open('', '_blank')
+    if (win) { win.document.write(html); win.document.close() }
   }
 
   async function handleLogout() {
@@ -701,7 +787,7 @@ export default function Facturacion() {
                             <span>{fmt(f.total)} €</span>
                           </div>
                         </div>
-                        <button className="btn-pdf" onClick={() => window.print()}>
+                        <button className="btn-pdf" onClick={() => generarPDF(f)}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
                           </svg>
