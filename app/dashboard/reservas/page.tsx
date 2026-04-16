@@ -97,12 +97,13 @@ export default function Reservas() {
     if (!negocio) return
     setCargando(true)
     const { db } = await getSessionClient()
-    const { data } = await db
+    const { data, error } = await db
       .from('reservas')
       .select('*, servicios(nombre), trabajadores(nombre)')
       .eq('negocio_id', negocio.id)
       .eq('fecha', fecha)
       .order('hora')
+    console.log('RESERVAS:', data, 'ERROR:', error, 'negocio_id:', negocio.id, 'fecha:', fecha)
     setReservas((data as Reserva[]) || [])
     setCargando(false)
   }, [negocio, fecha])
