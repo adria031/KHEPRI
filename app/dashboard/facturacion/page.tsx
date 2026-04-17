@@ -296,9 +296,8 @@ export default function Facturacion() {
     try {
       const b64 = await fileToBase64(file)
       const mimeType = tipo === 'application/pdf' ? 'application/pdf' : tipo
-      const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY!
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`,
+        '/api/gemini',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

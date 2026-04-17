@@ -11,8 +11,7 @@ import {
   FUNCTION_DECLARATIONS,
 } from '../../../lib/chatbotFunctions'
 
-const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY!
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`
+const GEMINI_URL = '/api/gemini'
 
 type ChatMsg = { role: 'user' | 'bot'; text: string }
 
