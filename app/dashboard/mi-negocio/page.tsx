@@ -50,12 +50,14 @@ export default function MiNegocio() {
   const [importModal, setImportModal] = useState(false)
   const [importUrl, setImportUrl] = useState('')
   const [importLoading, setImportLoading] = useState(false)
+  const [importando, setImportando] = useState(false)
   const [importError, setImportError] = useState('')
   const [importData, setImportData] = useState<{
     nombre?: string; descripcion?: string; telefono?: string;
     direccion?: string; ciudad?: string; codigo_postal?: string;
     instagram?: string; whatsapp?: string; facebook?: string;
-    servicios?: string[];
+    servicios?: { nombre: string; precio: number | null; duracion: number | null }[];
+    horarios?: { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string }[];
   } | null>(null)
 
   const [form, setForm] = useState({
@@ -197,23 +199,59 @@ export default function MiNegocio() {
     setImportLoading(false)
   }
 
-  function aplicarImport() {
-    if (!importData) return
-    setForm(prev => ({
-      ...prev,
-      nombre: importData.nombre || prev.nombre,
-      descripcion: importData.descripcion || prev.descripcion,
-      telefono: importData.telefono || prev.telefono,
-      direccion: importData.direccion || prev.direccion,
-      ciudad: importData.ciudad || prev.ciudad,
-      codigo_postal: importData.codigo_postal || prev.codigo_postal,
-      instagram: importData.instagram || prev.instagram,
-      whatsapp: importData.whatsapp || prev.whatsapp,
-      facebook: importData.facebook || prev.facebook,
-    }))
+  async function aplicarImport() {
+    if (!importData || !negocioId) return
+    setImportando(true)
+
+    // 1. Actualizar campos básicos en el form y en Supabase
+    const camposBasicos = {
+      nombre: importData.nombre || form.nombre,
+      descripcion: importData.descripcion || form.descripcion,
+      telefono: importData.telefono || form.telefono,
+      direccion: importData.direccion || form.direccion,
+      ciudad: importData.ciudad || form.ciudad,
+      codigo_postal: importData.codigo_postal || form.codigo_postal,
+      instagram: importData.instagram || form.instagram,
+      whatsapp: importData.whatsapp || form.whatsapp,
+      facebook: importData.facebook || form.facebook,
+    }
+    setForm(prev => ({ ...prev, ...camposBasicos }))
+    await supabase.from('negocios').update(camposBasicos).eq('id', negocioId)
+
+    // 2. Guardar servicios
+    if (importData.servicios && importData.servicios.length > 0) {
+      const nuevosServicios = importData.servicios.map(s => ({
+        negocio_id: negocioId,
+        nombre: s.nombre,
+        precio: s.precio ?? 0,
+        duracion: s.duracion ?? 30,
+        iva: 21,
+        activo: true,
+      }))
+      await supabase.from('servicios').insert(nuevosServicios)
+    }
+
+    // 3. Guardar horarios
+    if (importData.horarios && importData.horarios.length > 0) {
+      for (const h of importData.horarios) {
+        await supabase.from('horarios').upsert({
+          negocio_id: negocioId,
+          dia: h.dia,
+          abierto: h.abierto,
+          hora_apertura: h.hora_apertura || '09:00',
+          hora_cierre: h.hora_cierre || '18:00',
+          hora_apertura2: null,
+          hora_cierre2: null,
+        }, { onConflict: 'negocio_id,dia' })
+      }
+    }
+
+    setImportando(false)
     setImportModal(false)
     setImportData(null)
     setImportUrl('')
+    setGuardado(true)
+    setTimeout(() => setGuardado(false), 3000)
   }
 
   async function eliminarFoto(url: string) {
@@ -702,8 +740,9 @@ export default function MiNegocio() {
 
             {importData && (
               <>
-                <div className="import-data-section">
-                  <div className="import-data-header">✅ Datos encontrados — revisa antes de importar</div>
+                {/* Datos básicos */}
+                <div className="import-data-section" style={{marginBottom:'12px'}}>
+                  <div className="import-data-header">📋 Información básica</div>
                   {[
                     { label: 'Nombre', val: importData.nombre },
                     { label: 'Descripción', val: importData.descripcion },
@@ -720,21 +759,60 @@ export default function MiNegocio() {
                       <span className="import-field-val">{f.val}</span>
                     </div>
                   ))}
-                  {importData.servicios && importData.servicios.length > 0 && (
-                    <div className="import-field-row">
-                      <span className="import-field-label">Servicios</span>
-                      <div className="import-servicios-list">
-                        {importData.servicios.map((s, i) => <div key={i}>• {s}</div>)}
-                      </div>
-                    </div>
-                  )}
                 </div>
+
+                {/* Servicios */}
+                {importData.servicios && importData.servicios.length > 0 && (
+                  <div className="import-data-section" style={{marginBottom:'12px'}}>
+                    <div className="import-data-header">🔧 Servicios ({importData.servicios.length})</div>
+                    <div style={{padding:'0 16px'}}>
+                      <table style={{width:'100%', borderCollapse:'collapse', fontSize:'13px'}}>
+                        <thead>
+                          <tr style={{borderBottom:'1px solid var(--border)'}}>
+                            <th style={{textAlign:'left', padding:'8px 0', color:'var(--muted)', fontWeight:600, fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.5px'}}>Servicio</th>
+                            <th style={{textAlign:'right', padding:'8px 0', color:'var(--muted)', fontWeight:600, fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.5px'}}>Precio</th>
+                            <th style={{textAlign:'right', padding:'8px 0', color:'var(--muted)', fontWeight:600, fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.5px'}}>Duración</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {importData.servicios.map((s, i) => (
+                            <tr key={i} style={{borderBottom:'1px solid var(--border)'}}>
+                              <td style={{padding:'8px 0', color:'var(--text)', fontWeight:500}}>{s.nombre}</td>
+                              <td style={{padding:'8px 0', textAlign:'right', color:'var(--text)'}}>{s.precio != null ? `${s.precio}€` : '—'}</td>
+                              <td style={{padding:'8px 0', textAlign:'right', color:'var(--muted)'}}>{s.duracion != null ? `${s.duracion} min` : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Horarios */}
+                {importData.horarios && importData.horarios.length > 0 && (
+                  <div className="import-data-section" style={{marginBottom:'12px'}}>
+                    <div className="import-data-header">⏰ Horarios ({importData.horarios.length} días)</div>
+                    <div style={{padding:'0 16px'}}>
+                      {importData.horarios.map((h, i) => (
+                        <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom: i < importData.horarios!.length - 1 ? '1px solid var(--border)' : 'none', fontSize:'13px'}}>
+                          <span style={{fontWeight:600, color:'var(--text)', textTransform:'capitalize'}}>{h.dia}</span>
+                          <span style={{color: h.abierto ? 'var(--text)' : 'var(--muted)'}}>
+                            {h.abierto ? `${h.hora_apertura} – ${h.hora_cierre}` : 'Cerrado'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <p style={{fontSize:'12px', color:'var(--muted)', marginBottom:'14px', lineHeight:1.5}}>
-                  Los servicios detectados no se importarán automáticamente — ve a la sección Servicios para añadirlos manualmente. Solo se importarán los campos de información básica.
+                  Se importará toda la información básica, servicios y horarios. Los servicios se añadirán a los existentes.
                 </p>
                 <div className="import-actions">
                   <button className="btn-import-cancel" onClick={() => setImportModal(false)}>Cancelar</button>
-                  <button className="btn-import-apply" onClick={aplicarImport}>Importar datos →</button>
+                  <button className="btn-import-apply" onClick={aplicarImport} disabled={importando}>
+                    {importando ? '⏳ Importando...' : '✓ Confirmar e importar'}
+                  </button>
                 </div>
               </>
             )}
