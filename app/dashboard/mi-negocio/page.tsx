@@ -165,7 +165,12 @@ export default function MiNegocio() {
     setSubiendo(true)
     const ext = file.name.split('.').pop()
     const path = `logos/${negocioId}/logo.${ext}`
-    await supabase.storage.from('fotos').upload(path, file, { upsert: true })
+    const { error: uploadErr } = await supabase.storage.from('fotos').upload(path, file, { upsert: true })
+    if (uploadErr) {
+      alert('Error al subir logo: ' + uploadErr.message)
+      setSubiendo(false)
+      return
+    }
     const { data: { publicUrl } } = supabase.storage.from('fotos').getPublicUrl(path)
     setForm(prev => ({ ...prev, logo_url: publicUrl }))
     const { error: errLogo } = await supabase.from('negocios').update({ logo_url: publicUrl }).eq('id', negocioId)

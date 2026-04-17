@@ -114,6 +114,12 @@ export default function Onboarding() {
         throw new Error(`Error al crear el negocio: ${negocioError.message} (código: ${negocioError.code})`)
       }
 
+      fetch('/api/bienvenida', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, nombre: nombreNegocio, tipo: 'negocio' }),
+      }).catch(() => {})
+
       window.location.href = window.location.origin + '/dashboard'
     } catch (e: any) {
       setError(e.message || 'Error al guardar. Inténtalo de nuevo.')
@@ -129,6 +135,13 @@ export default function Onboarding() {
       const user = session.user
       const { error: profErr } = await supabase.from('profiles').upsert({ id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email })
       if (profErr) throw profErr
+
+      fetch('/api/bienvenida', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, nombre: nombreCliente, tipo: 'cliente' }),
+      }).catch(() => {})
+
       window.location.href = window.location.origin + '/cliente'
     } catch (e: any) {
       setError(e.message || 'Error al guardar. Inténtalo de nuevo.')

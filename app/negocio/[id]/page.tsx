@@ -130,7 +130,7 @@ export default function FichaNegocio() {
         .foto-btn-r { right: 12px; }
         .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
         .profile-header { display: flex; align-items: flex-start; gap: 20px; padding: 24px 0; border-bottom: 1px solid rgba(0,0,0,0.08); margin-bottom: 24px; }
-        .logo-wrap { width: 72px; height: 72px; border-radius: 16px; border: 2px solid rgba(0,0,0,0.08); overflow: hidden; background: #F7F9FC; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; margin-top: -36px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .logo-wrap { width: 72px; height: 72px; border-radius: 16px; border: 2px solid rgba(0,0,0,0.08); overflow: hidden; background: #F7F9FC; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; margin-top: -36px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); position: relative; z-index: 2; }
         .logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
         .profile-info { flex: 1; }
         .negocio-tipo { font-size: 12px; font-weight: 600; color: #1D4ED8; background: rgba(184,216,248,0.3); padding: 3px 10px; border-radius: 100px; display: inline-block; margin-bottom: 6px; }

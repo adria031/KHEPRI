@@ -338,17 +338,17 @@ function ClienteContent(){
       /* NEG CARD */
       .ncard{background:white;border-radius:22px;overflow:hidden;border:1px solid #F1F5F9;box-shadow:0 2px 14px rgba(0,0,0,0.06);transition:transform 0.22s cubic-bezier(.34,1.56,.64,1),box-shadow 0.22s}
       .ncard:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,0.12)}
-      .ncard-cover{position:relative;width:100%;aspect-ratio:4/3;overflow:hidden;background:#F1F5F9}
-      .ncard-img{width:100%;height:100%;object-fit:cover;transition:transform 0.4s ease}
+      .ncard-cover{position:relative;width:100%;aspect-ratio:4/3;background:#F1F5F9;border-radius:22px 22px 0 0}
+      .ncard-img{width:100%;height:100%;object-fit:cover;transition:transform 0.4s ease;border-radius:22px 22px 0 0;overflow:hidden;display:block}
       .ncard:hover .ncard-img{transform:scale(1.04)}
-      .ncard-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+      .ncard-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:22px 22px 0 0;overflow:hidden}
       .ncard-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,0.6) 0%,transparent 55%)}
       .badge-open{position:absolute;top:11px;left:11px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:100px;background:rgba(34,197,94,0.9);color:white;backdrop-filter:blur(6px)}
       .badge-closed{position:absolute;top:11px;left:11px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:100px;background:rgba(15,23,42,0.55);color:rgba(255,255,255,0.8);backdrop-filter:blur(6px)}
       .btn-fav{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;transition:transform 0.15s;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
       .btn-fav:hover{transform:scale(1.18)}
       .ncard-logo{position:absolute;bottom:-16px;left:14px;width:38px;height:38px;border-radius:11px;border:3px solid white;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center}
-      .ncard-body{padding:24px 14px 14px}
+      .ncard-body{padding:28px 14px 14px}
       .ncard-nombre{font-size:15px;font-weight:800;color:#0F172A;margin-bottom:6px;line-height:1.3;letter-spacing:-0.2px}
       .ncard-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
       .ncard-tipo{font-size:11px;font-weight:700;padding:3px 8px;border-radius:100px}

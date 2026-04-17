@@ -22,7 +22,7 @@ function KhepriLogo() {
 function AuthForm() {
   const searchParams = useSearchParams()
   const modoInicial = searchParams?.get('modo') === 'login' ? 'login' : 'registro'
-  const [modo, setModo] = useState<'login' | 'registro'>(modoInicial)
+  const [modo, setModo] = useState<'login' | 'registro' | 'recuperar'>(modoInicial)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nombre, setNombre] = useState('')
@@ -67,6 +67,17 @@ function AuthForm() {
     setCargando(false)
   }
 
+  async function handleRecuperar() {
+    if (!email) { setMensaje('Introduce tu email.'); setEsError(true); return }
+    setCargando(true); setMensaje(''); setEsError(false)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+    if (error) { setMensaje(error.message); setEsError(true) }
+    else { setMensaje('Te hemos enviado un correo para restablecer tu contraseña.'); setEsError(false) }
+    setCargando(false)
+  }
+
   async function handleGoogle() {
     await ensureSignedOut()
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -102,6 +113,8 @@ function AuthForm() {
         .btn-google { width: 100%; padding: 13px; background: white; color: #111827; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 12px; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .footer-link { text-align: center; margin-top: 18px; font-size: 14px; color: #6B7280; }
         .footer-link a { color: #1D4ED8; font-weight: 600; text-decoration: none; }
+        .forgot-link { text-align: right; margin-top: -6px; margin-bottom: 10px; font-size: 13px; }
+        .forgot-link a { color: #1D4ED8; font-weight: 600; text-decoration: none; }
         @media (max-width: 480px) {
           .page { padding: 16px; align-items: flex-start; padding-top: 32px; }
           .card { padding: 28px 20px; border-radius: 20px; }
@@ -115,13 +128,15 @@ function AuthForm() {
             <Link href="/" style={{textDecoration:'none'}}><KhepriLogo /></Link>
           </div>
 
-          <h1>{modo === 'registro' ? 'Crea tu cuenta' : 'Bienvenido de nuevo'}</h1>
-          <p className="sub">{modo === 'registro' ? 'Crea tu cuenta y empieza a gestionar tu negocio.' : 'Accede a tu panel de gestión.'}</p>
+          <h1>{modo === 'recuperar' ? 'Recuperar contraseña' : modo === 'registro' ? 'Crea tu cuenta' : 'Bienvenido de nuevo'}</h1>
+          <p className="sub">{modo === 'recuperar' ? 'Te enviaremos un enlace para restablecer tu contraseña.' : modo === 'registro' ? 'Crea tu cuenta y empieza a gestionar tu negocio.' : 'Accede a tu panel de gestión.'}</p>
 
-          <div className="tabs">
-            <button className={`tab ${modo === 'registro' ? 'active' : ''}`} onClick={() => { setModo('registro'); setMensaje('') }}>Registro</button>
-            <button className={`tab ${modo === 'login' ? 'active' : ''}`} onClick={() => { setModo('login'); setMensaje('') }}>Iniciar sesión</button>
-          </div>
+          {modo !== 'recuperar' && (
+            <div className="tabs">
+              <button className={`tab ${modo === 'registro' ? 'active' : ''}`} onClick={() => { setModo('registro'); setMensaje('') }}>Registro</button>
+              <button className={`tab ${modo === 'login' ? 'active' : ''}`} onClick={() => { setModo('login'); setMensaje('') }}>Iniciar sesión</button>
+            </div>
+          )}
 
           {modo === 'registro' && (
             <div className="field">
@@ -133,34 +148,47 @@ function AuthForm() {
             <label>Email</label>
             <input type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" />
           </div>
-          <div className="field">
-            <label>Contraseña</label>
-            <input type="password" placeholder="Mínimo 8 caracteres" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
+          {modo !== 'recuperar' && (
+            <div className="field">
+              <label>Contraseña</label>
+              <input type="password" placeholder="Mínimo 8 caracteres" value={password} onChange={e => setPassword(e.target.value)} />
+            </div>
+          )}
+          {modo === 'login' && (
+            <p className="forgot-link">
+              <a href="#" onClick={e => { e.preventDefault(); setModo('recuperar'); setMensaje('') }}>¿Olvidaste tu contraseña?</a>
+            </p>
+          )}
 
-          <button className="btn" onClick={handleSubmit} disabled={cargando}>
-            {cargando ? 'Cargando...' : modo === 'registro' ? 'Crear cuenta' : 'Entrar'}
+          <button className="btn" onClick={modo === 'recuperar' ? handleRecuperar : handleSubmit} disabled={cargando}>
+            {cargando ? 'Cargando...' : modo === 'recuperar' ? 'Enviar enlace' : modo === 'registro' ? 'Crear cuenta' : 'Entrar'}
           </button>
 
           {mensaje && <div className={`mensaje ${esError ? 'err' : 'ok'}`}>{mensaje}</div>}
 
-          <div className="divider">o</div>
-
-          <button className="btn-google" onClick={handleGoogle}>
-            <svg width="18" height="18" viewBox="0 0 18 18">
-              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
-              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-              <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
-              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58z"/>
-            </svg>
-            Continuar con Google
-          </button>
+          {modo !== 'recuperar' && (
+            <>
+              <div className="divider">o</div>
+              <button className="btn-google" onClick={handleGoogle}>
+                <svg width="18" height="18" viewBox="0 0 18 18">
+                  <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+                  <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+                  <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
+                  <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58z"/>
+                </svg>
+                Continuar con Google
+              </button>
+            </>
+          )}
 
           <p className="footer-link">
-            {modo === 'registro' ? '¿Ya tienes cuenta? ' : '¿No tienes cuenta? '}
-            <a href="#" onClick={e => { e.preventDefault(); setModo(modo === 'registro' ? 'login' : 'registro'); setMensaje('') }}>
-              {modo === 'registro' ? 'Inicia sesión' : 'Regístrate'}
-            </a>
+            {modo === 'recuperar' ? (
+              <a href="#" onClick={e => { e.preventDefault(); setModo('login'); setMensaje('') }}>← Volver al inicio de sesión</a>
+            ) : modo === 'registro' ? (
+              <>¿Ya tienes cuenta? <a href="#" onClick={e => { e.preventDefault(); setModo('login'); setMensaje('') }}>Inicia sesión</a></>
+            ) : (
+              <>¿No tienes cuenta? <a href="#" onClick={e => { e.preventDefault(); setModo('registro'); setMensaje('') }}>Regístrate</a></>
+            )}
           </p>
         </div>
       </div>
