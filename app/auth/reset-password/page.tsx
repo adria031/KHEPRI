@@ -28,16 +28,15 @@ export default function ResetPassword() {
   const [sesionOk, setSesionOk] = useState(false)
 
   useEffect(() => {
-    // Supabase redirige con el token en el hash: #access_token=...&type=recovery
-    // Al cargar la página, supabase-js lo procesa automáticamente via onAuthStateChange
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setSesionOk(true)
-      }
-    })
-    // También comprobamos si ya hay sesión activa (por si el evento ya se disparó)
+    // El callback ya intercambió el código y estableció la sesión.
+    // Comprobamos sesión activa; también escuchamos PASSWORD_RECOVERY para el flujo hash.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setSesionOk(true)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        setSesionOk(true)
+      }
     })
     return () => subscription.unsubscribe()
   }, [])
