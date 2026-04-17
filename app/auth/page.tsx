@@ -21,7 +21,7 @@ function KhepriLogo() {
 
 function AuthForm() {
   const searchParams = useSearchParams()
-  const modoInicial = searchParams?.get('modo') === 'login' ? 'login' : 'registro'
+  const modoInicial = searchParams?.get('modo') === 'registro' ? 'registro' : 'login'
   const [modo, setModo] = useState<'login' | 'registro' | 'recuperar'>(modoInicial)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
