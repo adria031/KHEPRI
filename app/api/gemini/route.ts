@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY!
+const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY!
 
 // Proxy server-side para Gemini — la key nunca llega al navegador
 export async function POST(req: NextRequest) {
