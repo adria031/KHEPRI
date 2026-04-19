@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
-import { NegocioSelector } from '../NegocioSelector'
+import { DashboardShell } from '../DashboardShell'
 import {
   verificarDisponibilidad,
   crearReserva,
@@ -12,35 +12,7 @@ import {
   FUNCTION_DECLARATIONS,
 } from '../../lib/chatbotFunctions'
 
-function KhepriLogo() {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg, #B8D8F8, #D4C5F9, #B8EDD4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-          <path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.5"/>
-          <path d="M11 6L16 11L11 16L6 11Z" fill="white" opacity="0.7"/>
-          <circle cx="11" cy="11" r="2" fill="white"/>
-        </svg>
-      </div>
-      <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Khepria</span>
-    </div>
-  )
-}
 
-const navItems = [
-  { icon: '📊', label: 'Dashboard', href: '/dashboard' },
-  { icon: '🏪', label: 'Mi negocio', href: '/dashboard/mi-negocio' },
-  { icon: '📅', label: 'Reservas', href: '/dashboard/reservas' },
-  { icon: '🔧', label: 'Servicios', href: '/dashboard/servicios' },
-  { icon: '⏰', label: 'Horarios', href: '/dashboard/horarios' },
-  { icon: '🛍️', label: 'Productos', href: '/dashboard/productos' },
-  { icon: '👥', label: 'Equipo', href: '/dashboard/equipo' },
-  { icon: '🤖', label: 'Chatbot IA', href: '/dashboard/chatbot' },
-  { icon: '🧾', label: 'Facturación', href: '/dashboard/facturacion' },
-  { icon: '📱', label: 'Marketing', href: '/dashboard/marketing' },
-  { icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas' },
-  { icon: '💰', label: 'Caja', href: '/dashboard/caja' },
-]
 
 const GEMINI_URL = '/api/gemini'
 
@@ -125,8 +97,8 @@ Si no puedes ayudar con algo, indica que contacte directamente con ${negocio.nom
 }
 
 export default function ChatbotPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
+  const [negocioMin, setNegocioMin] = useState<NegMin | null>(null)
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
 
@@ -161,6 +133,7 @@ export default function ChatbotPage() {
       const { activo: negBase, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
       if (!negBase) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
+      setNegocioMin(negBase)
       // Re-fetch full fields for chatbot
       const { data: neg } = await db.from('negocios')
         .select('id, nombre, tipo, descripcion, direccion, ciudad, telefono')
@@ -317,10 +290,6 @@ export default function ChatbotPage() {
     resetChat()
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    window.location.href = '/'
-  }
 
   const statsData = [
     { label: 'Conversaciones este mes', value: '—', icon: '💬' },
@@ -330,7 +299,7 @@ export default function ChatbotPage() {
   ]
 
   return (
-    <>
+    <DashboardShell negocio={negocioMin} todosNegocios={todosNegocios}>
       <style>{`
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -447,45 +416,7 @@ export default function ChatbotPage() {
           .tono-btns { flex-wrap: wrap; }
         }
       `}</style>
-      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-      <div className="layout">
-        <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)} />
-        <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-          <div className="sidebar-logo"><KhepriLogo /></div>
-          <nav className="sidebar-nav">
-            {navItems.map(item => (
-              <Link key={item.href} href={item.href} className={`nav-item ${item.href === '/dashboard/chatbot' ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
-                <span className="nav-item-icon">{item.icon}</span>{item.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="sidebar-footer">
-            <button className="logout-btn" onClick={handleLogout}><span>🚪</span> Cerrar sesión</button>
-          </div>
-        </aside>
-
-        <div className="main">
-          <header className="topbar">
-            <div className="topbar-left">
-              <button className="hamburger" onClick={() => setSidebarOpen(true)}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="2" strokeLinecap="round">
-                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-              </button>
-              <span style={{fontSize:'16px', fontWeight:700, color:'#111827'}}>Chatbot IA</span>
-            </div>
-            <div style={{display:'flex', alignItems:'center', gap:'8px', fontSize:'12px', color:'var(--muted)', fontWeight:600}}>
-              <span style={{width:'8px', height:'8px', borderRadius:'50%', background: activo ? '#2E8A5E' : '#E5E7EB', display:'inline-block'}} />
-              {activo ? 'Activo' : 'Inactivo'}
-            </div>
-            <NegocioSelector negocios={todosNegocios} activoId={negocioId??''} />
-          </header>
-
-          {cargando ? (
-            <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)'}}>Cargando...</div>
-          ) : (
-            <main className="content">
               <div className="two-col">
 
                 {/* ── Columna izquierda ── */}
@@ -657,10 +588,6 @@ export default function ChatbotPage() {
                 </div>
 
               </div>
-            </main>
-          )}
-        </div>
-      </div>
-    </>
+    </DashboardShell>
   )
 }
