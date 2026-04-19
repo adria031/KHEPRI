@@ -6,265 +6,388 @@ import { supabase } from '../../lib/supabase'
 
 function KhepriLogo() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg, #B8D8F8, #D4C5F9, #B8EDD4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+    <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+      <div style={{ width:'34px', height:'34px', borderRadius:'10px', background:'linear-gradient(135deg,#B8D8F8,#D4C5F9,#B8EDD4)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
         <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
           <path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.5"/>
           <path d="M11 6L16 11L11 16L6 11Z" fill="white" opacity="0.7"/>
           <circle cx="11" cy="11" r="2" fill="white"/>
         </svg>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '17px', letterSpacing: '-0.5px', color: '#111827' }}>Khepria</span>
+      <span style={{ fontWeight:800, fontSize:'17px', letterSpacing:'-0.5px', color:'#111827' }}>Khepria</span>
     </div>
   )
 }
 
-const diasLabels: Record<string, string> = {
-  lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles',
-  jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado', domingo: 'Domingo'
+function Estrellas({ valor, total }: { valor: number; total: number }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+      <div style={{ display:'flex', gap:'2px' }}>
+        {[1,2,3,4,5].map(i => (
+          <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill={i <= Math.round(valor) ? '#F59E0B' : '#E5E7EB'}>
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        ))}
+      </div>
+      <span style={{ fontSize:'14px', fontWeight:700, color:'#111827' }}>{valor.toFixed(1)}</span>
+      <span style={{ fontSize:'13px', color:'#9CA3AF' }}>({total} reseñas)</span>
+    </div>
+  )
 }
-const diasOrden = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+
+const diasLabels: Record<string,string> = {
+  lunes:'Lunes', martes:'Martes', miercoles:'Miércoles',
+  jueves:'Jueves', viernes:'Viernes', sabado:'Sábado', domingo:'Domingo'
+}
+const diasOrden = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
 
 type Negocio = {
-  id: string; nombre: string; tipo: string; descripcion: string;
-  telefono: string; direccion: string; ciudad: string; codigo_postal: string;
-  instagram: string; whatsapp: string; facebook: string;
-  logo_url: string; fotos: string[]; metodos_pago: string[] | null
+  id:string; nombre:string; tipo:string; descripcion:string;
+  telefono:string; direccion:string; ciudad:string; codigo_postal:string;
+  instagram:string; whatsapp:string; facebook:string;
+  logo_url:string; fotos:string[]; metodos_pago:string[]|null
 }
-type Horario = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string | null; hora_cierre2: string | null }
-type Servicio = {
-  id: string; nombre: string; duracion: number; precio: number; iva: number
-  precio_descuento: number | null; descuento_inicio: string | null; descuento_fin: string | null
-}
+type Horario = { dia:string; abierto:boolean; hora_apertura:string; hora_cierre:string; hora_apertura2:string|null; hora_cierre2:string|null }
+type Servicio = { id:string; nombre:string; duracion:number; precio:number; precio_descuento:number|null; descuento_inicio:string|null; descuento_fin:string|null }
+type Resena = { id:string; valoracion:number; texto:string|null; created_at:string; autor_nombre:string|null }
 
-function ofertaActiva(s: Servicio): boolean {
+function ofertaActiva(s: Servicio) {
   if (!s.precio_descuento || !s.descuento_inicio || !s.descuento_fin) return false
   const hoy = new Date().toLocaleDateString('en-CA')
   return hoy >= s.descuento_inicio && hoy <= s.descuento_fin
 }
 
+function fmtH(h: string) { return h?.slice(0,5) ?? '' }
+function horarioTexto(h: Horario) {
+  if (!h.abierto) return 'Cerrado'
+  const base = `${fmtH(h.hora_apertura)} – ${fmtH(h.hora_cierre)}`
+  if (h.hora_apertura2) return `${base} / ${fmtH(h.hora_apertura2)} – ${fmtH(h.hora_cierre2!)}`
+  return base
+}
+
+// Agrupa servicios por prefijo heurístico
+function agruparServicios(servicios: Servicio[]): Record<string, Servicio[]> {
+  const grupos: Record<string, Servicio[]> = {}
+  for (const s of servicios) {
+    const primera = s.nombre.split(' ')[0].toLowerCase()
+    const clave = primera.length > 3 ? primera.charAt(0).toUpperCase() + primera.slice(1) : 'Otros'
+    if (!grupos[clave]) grupos[clave] = []
+    grupos[clave].push(s)
+  }
+  // Si solo hay un grupo o muchos grupos de 1, devolver "Todos"
+  const claves = Object.keys(grupos)
+  if (claves.length <= 1 || claves.every(k => grupos[k].length === 1)) {
+    return { 'Todos los servicios': servicios }
+  }
+  return grupos
+}
+
 export default function FichaNegocio() {
   const params = useParams()
   const id = params?.id as string
-  const [negocio, setNegocio] = useState<Negocio | null>(null)
+  const [negocio, setNegocio] = useState<Negocio|null>(null)
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
+  const [resenas, setResenas] = useState<Resena[]>([])
   const [fotoActiva, setFotoActiva] = useState(0)
   const [cargando, setCargando] = useState(true)
+  const [grupoAbierto, setGrupoAbierto] = useState<string|null>(null)
+
+  const hoyDia = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date().getDay()]
 
   useEffect(() => {
     if (!id) return
     Promise.all([
       supabase.from('negocios').select('*').eq('id', id).single(),
       supabase.from('horarios').select('*').eq('negocio_id', id),
-      supabase.from('servicios').select('*').eq('negocio_id', id).eq('activo', true)
-    ]).then(([{ data: neg }, { data: hor }, { data: ser }]) => {
+      supabase.from('servicios').select('*').eq('negocio_id', id).eq('activo', true),
+      supabase.from('resenas').select('*').eq('negocio_id', id).order('created_at', { ascending: false }),
+    ]).then(([{data:neg},{data:hor},{data:ser},{data:res}]) => {
       if (neg) setNegocio(neg)
       if (hor) setHorarios(hor)
-      if (ser) setServicios(ser)
+      if (ser) {
+        setServicios(ser)
+        const grupos = agruparServicios(ser)
+        setGrupoAbierto(Object.keys(grupos)[0])
+      }
+      if (res) setResenas(res)
       setCargando(false)
     })
   }, [id])
 
   function abrirGPS() {
     if (!negocio) return
-    const dir = encodeURIComponent(`${negocio.direccion}, ${negocio.ciudad}`)
-    window.open(`https://maps.google.com/?q=${dir}`, '_blank')
+    window.open(`https://maps.google.com/?q=${encodeURIComponent(`${negocio.direccion}, ${negocio.ciudad}`)}`, '_blank')
   }
 
-  function formatHora(h: string) {
-    if (!h) return ''
-    return h.slice(0, 5)
-  }
-
-  function horarioTexto(h: Horario) {
-    if (!h.abierto) return 'Cerrado'
-    if (h.hora_apertura2) return `${formatHora(h.hora_apertura)}-${formatHora(h.hora_cierre)} / ${formatHora(h.hora_apertura2)}-${formatHora(h.hora_cierre2!)}`
-    return `${formatHora(h.hora_apertura)} - ${formatHora(h.hora_cierre)}`
-  }
-
-  const hoyDia = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][new Date().getDay()]
+  const fotos = negocio?.fotos?.filter(Boolean) ?? []
   const horarioHoy = horarios.find(h => h.dia === hoyDia)
+  const mediaVal = resenas.length ? resenas.reduce((a,r) => a + r.valoracion, 0) / resenas.length : 0
+  const grupos = servicios.length ? agruparServicios(servicios) : {}
 
-  if (cargando) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F9FC', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
-          <div style={{ color: '#9CA3AF', fontSize: '14px' }}>Cargando...</div>
+  if (cargando) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#F8FAFF',fontFamily:'Plus Jakarta Sans,sans-serif'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{width:'48px',height:'48px',borderRadius:'14px',background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)',margin:'0 auto 16px',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.6"/><circle cx="11" cy="11" r="2.5" fill="white"/></svg>
         </div>
+        <div style={{color:'#9CA3AF',fontSize:'14px',fontWeight:500}}>Cargando...</div>
       </div>
-    )
-  }
+    </div>
+  )
 
-  if (!negocio) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F9FC', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔍</div>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827', marginBottom: '6px' }}>Negocio no encontrado</div>
-          <Link href="/cliente" style={{ color: '#1D4ED8', textDecoration: 'none', fontSize: '14px' }}>← Volver al inicio</Link>
-        </div>
+  if (!negocio) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#F8FAFF',fontFamily:'Plus Jakarta Sans,sans-serif'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{fontSize:'56px',marginBottom:'16px'}}>🔍</div>
+        <div style={{fontSize:'20px',fontWeight:800,color:'#111827',marginBottom:'8px'}}>Negocio no encontrado</div>
+        <Link href="/cliente" style={{color:'#6366F1',textDecoration:'none',fontSize:'14px',fontWeight:600}}>← Volver al inicio</Link>
       </div>
-    )
-  }
-
-  const fotos = negocio.fotos || []
+    </div>
+  )
 
   return (
     <>
       <style>{`
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { background: #F7F9FC !important; color: #111827 !important; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .topnav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(0,0,0,0.08); padding: 12px 48px; display: flex; align-items: center; justify-content: space-between; }
-        .btn-cita { background: #111827; color: white; border: none; padding: 11px 22px; border-radius: 100px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-cita:hover { background: #374151; }
-        .hero { position: relative; height: 340px; background: #EDF2F8; overflow: hidden; }
-        .hero img { width: 100%; height: 100%; object-fit: cover; }
-        .hero-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 80px; background: linear-gradient(135deg, rgba(184,216,248,0.3), rgba(212,197,249,0.3)); }
-        .fotos-nav { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
-        .foto-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.5); border: none; cursor: pointer; padding: 0; }
-        .foto-dot.active { background: white; }
-        .foto-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.85); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
-        .foto-btn-l { left: 12px; }
-        .foto-btn-r { right: 12px; }
-        .container { max-width: 860px; margin: 0 auto; padding: 0 24px; }
-        .profile-header { display: flex; align-items: flex-start; gap: 20px; padding: 24px 0; border-bottom: 1px solid rgba(0,0,0,0.08); margin-bottom: 24px; }
-        .logo-wrap { width: 72px; height: 72px; border-radius: 16px; border: 2px solid rgba(0,0,0,0.08); overflow: hidden; background: #F7F9FC; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; margin-top: -36px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); position: relative; z-index: 2; }
-        .logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
-        .profile-info { flex: 1; }
-        .negocio-tipo { font-size: 12px; font-weight: 600; color: #1D4ED8; background: rgba(184,216,248,0.3); padding: 3px 10px; border-radius: 100px; display: inline-block; margin-bottom: 6px; }
-        .negocio-nombre { font-size: 26px; font-weight: 800; color: #111827; letter-spacing: -0.5px; margin-bottom: 6px; }
-        .negocio-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .meta-item { font-size: 13px; color: #4B5563; display: flex; align-items: center; gap: 4px; }
-        .badge-abierto { background: rgba(184,237,212,0.4); color: #2E8A5E; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 700; }
-        .badge-cerrado { background: rgba(0,0,0,0.06); color: #9CA3AF; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 700; }
-        .grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; padding-bottom: 48px; }
-        .section { background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 18px; padding: 22px; margin-bottom: 16px; }
-        .section-title { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 14px; }
-        .descripcion { font-size: 14px; color: #4B5563; line-height: 1.7; }
-        .servicio-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
-        .servicio-row:last-child { border-bottom: none; }
-        .servicio-nombre { font-size: 14px; font-weight: 600; color: #111827; }
-        .servicio-dur { font-size: 12px; color: #9CA3AF; margin-top: 2px; }
-        .servicio-precio { font-size: 15px; font-weight: 800; color: #111827; }
-        .horario-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
-        .horario-row:last-child { border-bottom: none; }
-        .horario-dia { font-size: 13px; font-weight: 600; color: #111827; }
-        .horario-dia.hoy { color: #1D4ED8; }
-        .horario-hora { font-size: 13px; color: #4B5563; }
-        .horario-hora.cerrado { color: #9CA3AF; }
-        .redes { display: flex; gap: 10px; flex-wrap: wrap; }
-        .red-btn { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 100px; border: 1.5px solid rgba(0,0,0,0.08); background: white; font-family: inherit; font-size: 13px; font-weight: 600; color: #111827; cursor: pointer; text-decoration: none; transition: all 0.2s; }
-        .red-btn:hover { background: #F7F9FC; }
-        .sticky-card { position: sticky; top: 80px; }
-        .cita-card { background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 18px; padding: 22px; margin-bottom: 16px; }
-        .cita-card-title { font-size: 16px; font-weight: 800; color: #111827; margin-bottom: 6px; }
-        .cita-card-sub { font-size: 13px; color: #9CA3AF; margin-bottom: 18px; }
-        .btn-pedir-cita { display: block; width: 100%; padding: 14px; background: #111827; color: white; border: none; border-radius: 12px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; margin-bottom: 10px; }
-        .btn-pedir-cita:hover { background: #374151; }
-        .btn-whatsapp { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; background: #25D366; color: white; border: none; border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
-        .ubicacion-card { background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 18px; overflow: hidden; }
-        .mapa-mini { background: #EDF2F8; height: 140px; display: flex; align-items: center; justify-content: center; font-size: 36px; position: relative; }
-        .mapa-grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(0,0,0,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.05) 1px,transparent 1px); background-size: 24px 24px; }
-        .ubicacion-info { padding: 16px; }
-        .ubicacion-dir { font-size: 13px; color: #4B5563; margin-bottom: 12px; line-height: 1.5; }
-        .btn-gps { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px; background: #1D4ED8; color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html, body { background:#F8FAFF !important; font-family:'Plus Jakarta Sans',sans-serif; color:#111827; }
+
+        /* NAV */
+        .nav { position:sticky; top:0; z-index:100; background:rgba(255,255,255,0.92); backdrop-filter:blur(20px); border-bottom:1px solid rgba(0,0,0,0.06); padding:14px 40px; display:flex; align-items:center; justify-content:space-between; }
+        .btn-cita-nav { background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border:none; padding:12px 24px; border-radius:100px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(99,102,241,0.35); transition:transform 0.15s,box-shadow 0.15s; }
+        .btn-cita-nav:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(99,102,241,0.45); }
+
+        /* HERO */
+        .hero { position:relative; height:380px; background:linear-gradient(135deg,#EEF2FF,#F5F3FF,#EDE9FE); overflow:hidden; }
+        .hero img { width:100%; height:100%; object-fit:cover; }
+        .hero-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,0.4) 0%,transparent 60%); }
+        .hero-grad { width:100%; height:100%; display:flex; align-items:center; justify-content:center; position:relative; }
+        .hero-grad-circles { position:absolute; inset:0; overflow:hidden; }
+        .gc1 { position:absolute; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle,rgba(184,216,248,0.5),transparent 70%); top:-60px; left:-60px; }
+        .gc2 { position:absolute; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle,rgba(212,197,249,0.5),transparent 70%); bottom:-40px; right:-40px; }
+        .gc3 { position:absolute; width:200px; height:200px; border-radius:50%; background:radial-gradient(circle,rgba(184,237,212,0.4),transparent 70%); top:40px; right:100px; }
+        .foto-nav-dots { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:2; }
+        .foto-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.5); border:none; cursor:pointer; padding:0; transition:all 0.2s; }
+        .foto-dot.act { background:white; width:20px; border-radius:100px; }
+        .foto-btn { position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.9); border:none; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px; box-shadow:0 2px 12px rgba(0,0,0,0.15); z-index:2; transition:transform 0.15s; }
+        .foto-btn:hover { transform:translateY(-50%) scale(1.08); }
+        .foto-btn-l { left:16px; }
+        .foto-btn-r { right:16px; }
+        .foto-count { position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.55); color:white; font-size:12px; font-weight:600; padding:4px 10px; border-radius:100px; backdrop-filter:blur(6px); z-index:2; }
+
+        /* LAYOUT */
+        .wrap { max-width:1000px; margin:0 auto; padding:0 24px; }
+        .profile-block { padding:32px 0 28px; border-bottom:1px solid rgba(0,0,0,0.06); margin-bottom:32px; }
+        .profile-top { display:flex; align-items:flex-end; gap:20px; margin-bottom:16px; }
+        .logo-bubble { width:80px; height:80px; border-radius:20px; border:3px solid white; overflow:hidden; background:white; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:-44px; box-shadow:0 8px 24px rgba(0,0,0,0.12); position:relative; z-index:2; }
+        .logo-bubble img { width:100%; height:100%; object-fit:cover; }
+        .profile-name { font-size:32px; font-weight:800; color:#111827; letter-spacing:-0.8px; line-height:1.1; }
+        .profile-tipo { display:inline-flex; align-items:center; gap:6px; background:rgba(99,102,241,0.08); color:#6366F1; font-size:12px; font-weight:700; padding:4px 12px; border-radius:100px; margin-bottom:10px; letter-spacing:0.3px; }
+        .profile-meta { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:12px; }
+        .meta-chip { display:inline-flex; align-items:center; gap:5px; font-size:13px; color:#4B5563; font-weight:500; }
+        .badge-open { background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(52,211,153,0.12)); color:#059669; padding:5px 12px; border-radius:100px; font-size:12px; font-weight:700; border:1px solid rgba(16,185,129,0.2); }
+        .badge-closed { background:rgba(0,0,0,0.05); color:#9CA3AF; padding:5px 12px; border-radius:100px; font-size:12px; font-weight:700; }
+
+        /* GRID */
+        .page-grid { display:grid; grid-template-columns:1fr 320px; gap:28px; padding-bottom:60px; align-items:start; }
+
+        /* CARD */
+        .card { background:white; border:1px solid rgba(0,0,0,0.06); border-radius:20px; padding:28px; margin-bottom:16px; box-shadow:0 2px 12px rgba(0,0,0,0.04); }
+        .card-title { font-size:13px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:1px; margin-bottom:18px; }
+        .descripcion { font-size:15px; color:#374151; line-height:1.75; }
+
+        /* SERVICIOS ACCORDION */
+        .grupo-header { display:flex; align-items:center; justify-content:space-between; padding:14px 0; cursor:pointer; border-bottom:1px solid rgba(0,0,0,0.06); user-select:none; transition:color 0.15s; }
+        .grupo-header:first-child { padding-top:0; }
+        .grupo-nombre { font-size:15px; font-weight:700; color:#111827; }
+        .grupo-count { font-size:12px; color:#9CA3AF; font-weight:500; margin-left:8px; }
+        .grupo-arrow { color:#9CA3AF; font-size:18px; transition:transform 0.2s; }
+        .grupo-arrow.open { transform:rotate(180deg); }
+        .servicio-item { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid rgba(0,0,0,0.04); }
+        .servicio-item:last-child { border-bottom:none; }
+        .serv-info { flex:1; }
+        .serv-nombre { font-size:14px; font-weight:600; color:#111827; margin-bottom:3px; }
+        .serv-dur { font-size:12px; color:#9CA3AF; display:flex; align-items:center; gap:4px; }
+        .serv-precio-wrap { text-align:right; }
+        .serv-precio { font-size:16px; font-weight:800; color:#111827; }
+        .serv-precio-old { font-size:12px; color:#9CA3AF; text-decoration:line-through; font-weight:600; }
+        .serv-precio-oferta { font-size:16px; font-weight:800; color:#EF4444; }
+        .oferta-badge { display:inline-flex; align-items:center; gap:3px; background:rgba(239,68,68,0.1); color:#EF4444; border-radius:100px; font-size:10px; font-weight:700; padding:2px 8px; margin-left:8px; vertical-align:middle; }
+
+        /* HORARIOS */
+        .horario-item { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:12px; margin-bottom:4px; }
+        .horario-item.hoy { background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(139,92,246,0.08)); border:1px solid rgba(99,102,241,0.15); }
+        .horario-dia-txt { font-size:13px; font-weight:600; color:#374151; }
+        .horario-item.hoy .horario-dia-txt { color:#6366F1; font-weight:700; }
+        .horario-hoy-pill { font-size:10px; font-weight:700; background:#6366F1; color:white; padding:2px 7px; border-radius:100px; margin-left:8px; }
+        .horario-hora-txt { font-size:13px; color:#4B5563; font-weight:500; }
+        .horario-cerrado { color:#D1D5DB; }
+
+        /* VALORACIONES */
+        .val-media { display:flex; align-items:center; gap:20px; padding:20px 0; border-bottom:1px solid rgba(0,0,0,0.06); margin-bottom:20px; }
+        .val-numero { font-size:52px; font-weight:800; color:#111827; letter-spacing:-2px; line-height:1; }
+        .val-resena-item { padding:16px 0; border-bottom:1px solid rgba(0,0,0,0.05); }
+        .val-resena-item:last-child { border-bottom:none; }
+        .val-resena-autor { font-size:13px; font-weight:700; color:#111827; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+        .val-resena-fecha { font-size:11px; color:#9CA3AF; font-weight:400; }
+        .val-resena-texto { font-size:13px; color:#4B5563; line-height:1.6; margin-top:6px; }
+
+        /* REDES */
+        .redes-grid { display:flex; flex-wrap:wrap; gap:8px; }
+        .red-chip { display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:100px; border:1.5px solid rgba(0,0,0,0.08); background:white; font-family:inherit; font-size:13px; font-weight:600; color:#111827; text-decoration:none; transition:all 0.15s; }
+        .red-chip:hover { background:#F8FAFF; border-color:#6366F1; color:#6366F1; transform:translateY(-1px); }
+
+        /* STICKY RIGHT */
+        .sticky-col { position:sticky; top:80px; }
+        .cita-card { background:linear-gradient(135deg,#6366F1,#8B5CF6); border-radius:20px; padding:24px; margin-bottom:14px; box-shadow:0 8px 28px rgba(99,102,241,0.3); }
+        .cita-card-title { font-size:18px; font-weight:800; color:white; margin-bottom:4px; }
+        .cita-card-sub { font-size:13px; color:rgba(255,255,255,0.75); margin-bottom:20px; }
+        .btn-reservar { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:16px; background:white; color:#6366F1; border:none; border-radius:14px; font-family:inherit; font-size:15px; font-weight:800; cursor:pointer; text-decoration:none; box-shadow:0 4px 14px rgba(0,0,0,0.12); transition:transform 0.15s; }
+        .btn-reservar:hover { transform:scale(1.02); }
+        .btn-wa { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; background:#25D366; color:white; border:none; border-radius:14px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; text-decoration:none; margin-top:10px; transition:opacity 0.15s; }
+        .btn-wa:hover { opacity:0.92; }
+        .side-card { background:white; border:1px solid rgba(0,0,0,0.06); border-radius:20px; overflow:hidden; margin-bottom:14px; box-shadow:0 2px 12px rgba(0,0,0,0.04); }
+        .side-card-body { padding:20px; }
+        .side-label { font-size:11px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:12px; }
+        .mapa-bg { height:110px; background:linear-gradient(135deg,#EEF2FF,#F5F3FF); position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .mapa-grid { position:absolute; inset:0; background-image:linear-gradient(rgba(99,102,241,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.07) 1px,transparent 1px); background-size:20px 20px; }
+        .mapa-pin { position:relative; font-size:32px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.15)); }
+        .dir-txt { font-size:13px; color:#4B5563; line-height:1.6; margin-bottom:14px; }
+        .btn-gps { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; padding:11px; background:#6366F1; color:white; border:none; border-radius:12px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
+        .btn-gps:hover { opacity:0.9; }
+        .pago-chips { display:flex; flex-wrap:wrap; gap:7px; }
+        .pago-chip { display:inline-flex; align-items:center; gap:5px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); color:#6366F1; padding:6px 12px; border-radius:100px; font-size:12px; font-weight:600; }
+
+        /* MOBILE CTA FIXED */
+        .mobile-cta { display:none; position:fixed; bottom:0; left:0; right:0; padding:16px 20px; background:rgba(255,255,255,0.95); backdrop-filter:blur(12px); border-top:1px solid rgba(0,0,0,0.08); z-index:90; }
+        .mobile-cta a { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:15px; background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border-radius:14px; font-family:inherit; font-size:16px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(99,102,241,0.35); }
+
         @media (max-width: 768px) {
-          .topnav { padding: 12px 20px; }
-          .hero { height: 240px; }
-          .grid { grid-template-columns: 1fr; }
-          .sticky-card { position: static; }
-          .negocio-nombre { font-size: 22px; }
-          .container { padding: 0 16px; }
-          .foto-btn { width: 44px; height: 44px; }
+          .nav { padding:12px 20px; }
+          .btn-cita-nav { display:none; }
+          .hero { height:260px; }
+          .wrap { padding:0 16px; }
+          .profile-name { font-size:24px; }
+          .logo-bubble { width:64px; height:64px; margin-top:-36px; }
+          .page-grid { grid-template-columns:1fr; }
+          .sticky-col { position:static; display:none; }
+          .mobile-cta { display:block; }
+          body { padding-bottom:88px; }
+          .card { padding:20px; }
         }
       `}</style>
-      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 
       {/* NAV */}
-      <nav className="topnav">
+      <nav className="nav">
         <Link href="/cliente" style={{textDecoration:'none'}}><KhepriLogo /></Link>
-        <Link href={`/negocio/${id}/reservar`} className="btn-cita">📅 Pedir cita</Link>
+        <Link href={`/negocio/${id}/reservar`} className="btn-cita-nav">
+          <span>📅</span> Pedir cita
+        </Link>
       </nav>
 
-      {/* HERO FOTOS */}
+      {/* HERO */}
       <div className="hero">
         {fotos.length > 0 ? (
           <>
-            <img src={fotos[fotoActiva]} alt="Foto del local" />
+            <img src={fotos[fotoActiva]} alt="Foto del local"/>
+            <div className="hero-overlay"/>
             {fotos.length > 1 && (
               <>
-                <button className="foto-btn foto-btn-l" onClick={() => setFotoActiva(i => (i - 1 + fotos.length) % fotos.length)}>‹</button>
-                <button className="foto-btn foto-btn-r" onClick={() => setFotoActiva(i => (i + 1) % fotos.length)}>›</button>
-                <div className="fotos-nav">
-                  {fotos.map((_, i) => (
-                    <button key={i} className={`foto-dot ${i === fotoActiva ? 'active' : ''}`} onClick={() => setFotoActiva(i)} />
-                  ))}
+                <button className="foto-btn foto-btn-l" onClick={() => setFotoActiva(i => (i-1+fotos.length)%fotos.length)}>‹</button>
+                <button className="foto-btn foto-btn-r" onClick={() => setFotoActiva(i => (i+1)%fotos.length)}>›</button>
+                <div className="foto-nav-dots">
+                  {fotos.map((_,i) => <button key={i} className={`foto-dot ${i===fotoActiva?'act':''}`} onClick={() => setFotoActiva(i)}/>)}
                 </div>
+                <div className="foto-count">{fotoActiva+1} / {fotos.length}</div>
               </>
             )}
           </>
         ) : (
-          <div className="hero-placeholder">🏪</div>
+          <div className="hero-grad">
+            <div className="hero-grad-circles">
+              <div className="gc1"/><div className="gc2"/><div className="gc3"/>
+            </div>
+          </div>
         )}
       </div>
 
-      <div className="container">
-        {/* HEADER */}
-        <div className="profile-header">
-          <div className="logo-wrap">
-            {negocio.logo_url ? <img src={negocio.logo_url} alt="Logo" /> : <span>🏪</span>}
-          </div>
-          <div className="profile-info">
-            <div className="negocio-tipo">{negocio.tipo}</div>
-            <div className="negocio-nombre">{negocio.nombre}</div>
-            <div className="negocio-meta">
-              {negocio.ciudad && <span className="meta-item">📍 {negocio.ciudad}</span>}
-              {negocio.telefono && <span className="meta-item">📞 {negocio.telefono}</span>}
-              {horarioHoy && (
-                <span className={horarioHoy.abierto ? 'badge-abierto' : 'badge-cerrado'}>
-                  {horarioHoy.abierto ? '🟢 Abierto ahora' : '🔴 Cerrado ahora'}
-                </span>
-              )}
+      <div className="wrap">
+        {/* PERFIL */}
+        <div className="profile-block">
+          <div className="profile-top">
+            {negocio.logo_url && (
+              <div className="logo-bubble">
+                <img src={negocio.logo_url} alt="Logo"/>
+              </div>
+            )}
+            <div style={{flex:1, paddingTop: negocio.logo_url ? '0' : '16px'}}>
+              <div className="profile-tipo">{negocio.tipo}</div>
+              <div className="profile-name">{negocio.nombre}</div>
             </div>
+          </div>
+          <div className="profile-meta">
+            {negocio.ciudad && <span className="meta-chip">📍 {negocio.ciudad}</span>}
+            {negocio.telefono && <span className="meta-chip">📞 {negocio.telefono}</span>}
+            {resenas.length > 0 && (
+              <Estrellas valor={mediaVal} total={resenas.length}/>
+            )}
+            {horarioHoy && (
+              <span className={horarioHoy.abierto ? 'badge-open' : 'badge-closed'}>
+                {horarioHoy.abierto ? '● Abierto ahora' : '● Cerrado ahora'}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="grid">
+        <div className="page-grid">
           {/* COLUMNA IZQUIERDA */}
           <div>
-            {/* DESCRIPCION */}
+
+            {/* DESCRIPCIÓN */}
             {negocio.descripcion && (
-              <div className="section">
-                <div className="section-title">Sobre nosotros</div>
-                <div className="descripcion">{negocio.descripcion}</div>
+              <div className="card">
+                <div className="card-title">Sobre nosotros</div>
+                <p className="descripcion">{negocio.descripcion}</p>
               </div>
             )}
 
             {/* SERVICIOS */}
             {servicios.length > 0 && (
-              <div className="section">
-                <div className="section-title">Servicios y precios</div>
-                {servicios.map(s => (
-                  <div key={s.id} className="servicio-row">
-                    <div>
-                      <div className="servicio-nombre">
-                        {s.nombre}
-                        {ofertaActiva(s) && <span style={{display:'inline-flex', alignItems:'center', marginLeft:'6px', background:'rgba(220,38,38,0.1)', color:'#DC2626', borderRadius:'100px', fontSize:'10px', fontWeight:700, padding:'1px 7px'}}>🏷 OFERTA</span>}
+              <div className="card">
+                <div className="card-title">Servicios y precios</div>
+                {Object.entries(grupos).map(([grupo, items]) => (
+                  <div key={grupo}>
+                    {Object.keys(grupos).length > 1 && (
+                      <div className="grupo-header" onClick={() => setGrupoAbierto(grupoAbierto===grupo ? null : grupo)}>
+                        <span>
+                          <span className="grupo-nombre">{grupo}</span>
+                          <span className="grupo-count">{items.length}</span>
+                        </span>
+                        <span className={`grupo-arrow ${grupoAbierto===grupo?'open':''}`}>⌄</span>
                       </div>
-                      <div className="servicio-dur">⏱ {s.duracion} min</div>
-                    </div>
-                    <div style={{textAlign:'right'}}>
-                      {ofertaActiva(s) ? (
-                        <>
-                          <div style={{fontSize:'12px', color:'#9CA3AF', textDecoration:'line-through', fontWeight:600}}>€{s.precio.toFixed(2)}</div>
-                          <div className="servicio-precio" style={{color:'#DC2626', marginBottom:0}}>€{s.precio_descuento!.toFixed(2)}</div>
-                        </>
-                      ) : (
-                        <div className="servicio-precio" style={{marginBottom:0}}>€{s.precio.toFixed(2)}</div>
-                      )}
-                    </div>
+                    )}
+                    {(Object.keys(grupos).length === 1 || grupoAbierto === grupo) && items.map(s => (
+                      <div key={s.id} className="servicio-item">
+                        <div className="serv-info">
+                          <div className="serv-nombre">
+                            {s.nombre}
+                            {ofertaActiva(s) && <span className="oferta-badge">🏷 OFERTA</span>}
+                          </div>
+                          <div className="serv-dur">⏱ {s.duracion} min</div>
+                        </div>
+                        <div className="serv-precio-wrap">
+                          {ofertaActiva(s) ? (
+                            <>
+                              <div className="serv-precio-old">€{s.precio.toFixed(2)}</div>
+                              <div className="serv-precio-oferta">€{s.precio_descuento!.toFixed(2)}</div>
+                            </>
+                          ) : (
+                            <div className="serv-precio">€{s.precio.toFixed(2)}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -272,17 +395,18 @@ export default function FichaNegocio() {
 
             {/* HORARIOS */}
             {horarios.length > 0 && (
-              <div className="section">
-                <div className="section-title">Horario</div>
+              <div className="card">
+                <div className="card-title">Horario</div>
                 {diasOrden.map(dia => {
                   const h = horarios.find(x => x.dia === dia)
                   const esHoy = dia === hoyDia
                   return (
-                    <div key={dia} className="horario-row">
-                      <span className={`horario-dia ${esHoy ? 'hoy' : ''}`}>
-                        {esHoy ? '→ ' : ''}{diasLabels[dia]}
+                    <div key={dia} className={`horario-item ${esHoy?'hoy':''}`}>
+                      <span className="horario-dia-txt">
+                        {diasLabels[dia]}
+                        {esHoy && <span className="horario-hoy-pill">Hoy</span>}
                       </span>
-                      <span className={`horario-hora ${!h || !h.abierto ? 'cerrado' : ''}`}>
+                      <span className={`horario-hora-txt ${(!h||!h.abierto)?'horario-cerrado':''}`}>
                         {h ? horarioTexto(h) : 'Cerrado'}
                       </span>
                     </div>
@@ -291,25 +415,51 @@ export default function FichaNegocio() {
               </div>
             )}
 
+            {/* VALORACIONES */}
+            {resenas.length > 0 && (
+              <div className="card">
+                <div className="card-title">Valoraciones</div>
+                <div className="val-media">
+                  <div className="val-numero">{mediaVal.toFixed(1)}</div>
+                  <div>
+                    <Estrellas valor={mediaVal} total={resenas.length}/>
+                    <div style={{fontSize:'13px',color:'#9CA3AF',marginTop:'6px'}}>Puntuación media</div>
+                  </div>
+                </div>
+                {resenas.slice(0,4).map(r => (
+                  <div key={r.id} className="val-resena-item">
+                    <div className="val-resena-autor">
+                      {r.autor_nombre || 'Cliente'}
+                      <span className="val-resena-fecha">
+                        {new Date(r.created_at).toLocaleDateString('es-ES', {day:'numeric',month:'long',year:'numeric'})}
+                      </span>
+                    </div>
+                    <div style={{display:'flex',gap:'2px',marginBottom:'4px'}}>
+                      {[1,2,3,4,5].map(i => (
+                        <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill={i<=r.valoracion?'#F59E0B':'#E5E7EB'}>
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                      ))}
+                    </div>
+                    {r.texto && <p className="val-resena-texto">{r.texto}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* REDES */}
             {(negocio.instagram || negocio.whatsapp || negocio.facebook) && (
-              <div className="section">
-                <div className="section-title">Encuéntranos en</div>
-                <div className="redes">
+              <div className="card">
+                <div className="card-title">Encuéntranos en</div>
+                <div className="redes-grid">
                   {negocio.instagram && (
-                    <a href={`https://instagram.com/${negocio.instagram.replace('@','')}`} target="_blank" className="red-btn">
-                      📸 Instagram
-                    </a>
+                    <a href={`https://instagram.com/${negocio.instagram.replace('@','')}`} target="_blank" rel="noreferrer" className="red-chip">📸 Instagram</a>
                   )}
                   {negocio.whatsapp && (
-                    <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" className="red-btn">
-                      💬 WhatsApp
-                    </a>
+                    <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" rel="noreferrer" className="red-chip">💬 WhatsApp</a>
                   )}
                   {negocio.facebook && (
-                    <a href={negocio.facebook.startsWith('http') ? negocio.facebook : `https://${negocio.facebook}`} target="_blank" className="red-btn">
-                      👤 Facebook
-                    </a>
+                    <a href={negocio.facebook.startsWith('http') ? negocio.facebook : `https://${negocio.facebook}`} target="_blank" rel="noreferrer" className="red-chip">👤 Facebook</a>
                   )}
                 </div>
               </div>
@@ -317,61 +467,66 @@ export default function FichaNegocio() {
           </div>
 
           {/* COLUMNA DERECHA */}
-          <div className="sticky-card">
-            {/* PEDIR CITA */}
-            <div className="cita-card" id="pedir-cita">
-              <div className="cita-card-title">Reservar cita</div>
-              <div className="cita-card-sub">Elige servicio, día y hora</div>
-              <Link href={`/negocio/${id}/reservar`} className="btn-pedir-cita">📅 Pedir cita online</Link>
+          <div className="sticky-col">
+
+            {/* RESERVAR */}
+            <div className="cita-card">
+              <div className="cita-card-title">Reserva tu cita</div>
+              <div className="cita-card-sub">Elige servicio, día y hora en segundos</div>
+              <Link href={`/negocio/${id}/reservar`} className="btn-reservar">
+                📅 Pedir cita online
+              </Link>
               {negocio.whatsapp && (
-                <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" className="btn-whatsapp">
+                <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" rel="noreferrer" className="btn-wa">
                   💬 Reservar por WhatsApp
                 </a>
               )}
             </div>
 
-            {/* MÉTODOS DE PAGO */}
-            {negocio.metodos_pago && negocio.metodos_pago.length > 0 && (
-              <div style={{background:'white', borderRadius:'16px', border:'1px solid rgba(0,0,0,0.08)', padding:'18px 20px', marginBottom:'16px'}}>
-                <div style={{fontSize:'13px', fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'12px'}}>Métodos de pago</div>
-                <div style={{display:'flex', flexWrap:'wrap', gap:'8px'}}>
-                  {negocio.metodos_pago.map(m => {
-                    const info: Record<string, {icon:string; label:string}> = {
-                      pago_app: { icon: '📱', label: 'Pago por app' },
-                      efectivo: { icon: '💵', label: 'Efectivo' },
-                      datafono: { icon: '💳', label: 'Datáfono' },
-                    }
-                    const { icon, label } = info[m] ?? { icon: '💰', label: m }
-                    return (
-                      <span key={m} style={{display:'inline-flex', alignItems:'center', gap:'6px', padding:'6px 12px', background:'rgba(184,216,248,0.15)', border:'1px solid rgba(184,216,248,0.4)', borderRadius:'100px', fontSize:'13px', fontWeight:600, color:'#1D4ED8'}}>
-                        {icon} {label}
-                      </span>
-                    )
-                  })}
+            {/* UBICACIÓN */}
+            {(negocio.direccion || negocio.ciudad) && (
+              <div className="side-card">
+                <div className="mapa-bg">
+                  <div className="mapa-grid"/>
+                  <span className="mapa-pin">📍</span>
+                </div>
+                <div className="side-card-body">
+                  <div className="side-label">Ubicación</div>
+                  <div className="dir-txt">
+                    {negocio.direccion && <div>{negocio.direccion}</div>}
+                    {negocio.ciudad && <div>{negocio.ciudad}{negocio.codigo_postal ? `, ${negocio.codigo_postal}` : ''}</div>}
+                  </div>
+                  <button className="btn-gps" onClick={abrirGPS}>🗺️ Cómo llegar</button>
                 </div>
               </div>
             )}
 
-            {/* UBICACION */}
-            {(negocio.direccion || negocio.ciudad) && (
-              <div className="ubicacion-card">
-                <div className="mapa-mini">
-                  <div className="mapa-grid-bg"></div>
-                  <span style={{position:'relative', fontSize:'36px'}}>📍</span>
-                </div>
-                <div className="ubicacion-info">
-                  <div className="ubicacion-dir">
-                    {negocio.direccion && <div>{negocio.direccion}</div>}
-                    {negocio.ciudad && <div>{negocio.ciudad}{negocio.codigo_postal ? `, ${negocio.codigo_postal}` : ''}</div>}
+            {/* MÉTODOS DE PAGO */}
+            {negocio.metodos_pago && negocio.metodos_pago.length > 0 && (
+              <div className="side-card">
+                <div className="side-card-body">
+                  <div className="side-label">Métodos de pago</div>
+                  <div className="pago-chips">
+                    {negocio.metodos_pago.map(m => {
+                      const info: Record<string,{icon:string;label:string}> = {
+                        pago_app:{icon:'📱',label:'Pago por app'},
+                        efectivo:{icon:'💵',label:'Efectivo'},
+                        datafono:{icon:'💳',label:'Datáfono'},
+                      }
+                      const {icon,label} = info[m] ?? {icon:'💰',label:m}
+                      return <span key={m} className="pago-chip">{icon} {label}</span>
+                    })}
                   </div>
-                  <button className="btn-gps" onClick={abrirGPS}>
-                    🗺️ Cómo llegar
-                  </button>
                 </div>
               </div>
             )}
           </div>
         </div>
+      </div>
+
+      {/* MOBILE FIXED CTA */}
+      <div className="mobile-cta">
+        <Link href={`/negocio/${id}/reservar`}>📅 Pedir cita</Link>
       </div>
     </>
   )
