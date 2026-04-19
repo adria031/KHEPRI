@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export async function GET() {
+  const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${KEY}`)
+  const data = await res.json()
+  const names = (data.models ?? []).map((m: any) => m.name)
+  return NextResponse.json({ key_prefix: KEY.slice(0, 10), models: names })
+}
+
 const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
 const MODEL = 'gemini-1.5-flash-latest'
 
