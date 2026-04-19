@@ -71,7 +71,7 @@ function AuthForm() {
     if (!email) { setMensaje('Introduce tu email.'); setEsError(true); return }
     setCargando(true); setMensaje(''); setEsError(false)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/reset-password`,
     })
     if (error) { setMensaje(error.message); setEsError(true) }
     else { setMensaje('Te hemos enviado un correo para restablecer tu contraseña.'); setEsError(false) }
