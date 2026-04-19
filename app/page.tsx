@@ -517,10 +517,12 @@ export default function Home() {
       <footer>
         <Link href="/" style={{textDecoration:'none'}}><KhepriLogo /></Link>
         <div>© 2025 Khepria · Hecho en España 🇪🇸</div>
-        <div style={{display:'flex', gap:'20px'}}>
-          <a href="#">Privacidad</a>
-          <a href="#">Términos</a>
-          <a href="#">Contacto</a>
+        <div style={{display:'flex', gap:'20px', flexWrap:'wrap'}}>
+          <Link href="/privacidad">Privacidad</Link>
+          <Link href="/terminos">Términos</Link>
+          <Link href="/cookies">Cookies</Link>
+          <Link href="/aviso-legal">Aviso Legal</Link>
+          <a href="mailto:hola@khepria.app">Contacto</a>
         </div>
       </footer>
     </>

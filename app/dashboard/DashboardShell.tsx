@@ -278,7 +278,7 @@ export function DashboardShell({
             ))}
           </nav>
 
-          {/* Logout */}
+          {/* Logout + legal */}
           <div className="ds-footer">
             <button className="ds-logout" onClick={handleLogout}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -286,6 +286,12 @@ export function DashboardShell({
               </svg>
               Cerrar sesión
             </button>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px', paddingLeft: '4px' }}>
+              <Link href="/privacidad" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Privacidad</Link>
+              <Link href="/terminos" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Términos</Link>
+              <Link href="/cookies" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Cookies</Link>
+              <Link href="/aviso-legal" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Aviso Legal</Link>
+            </div>
           </div>
         </aside>
 
