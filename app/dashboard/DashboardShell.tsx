@@ -56,7 +56,8 @@ const PAGE_TITLES: Record<string, string> = {
 const PLAN_CFG: Record<string, { label: string; color: string; bg: string }> = {
   basico:  { label: 'Básico',   color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
   pro:     { label: 'Pro',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)' },
-  agencia: { label: 'Agencia',  color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
+  agencia: { label: 'Plus',     color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
+  plus:    { label: 'Plus',     color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
 }
 
 function KhepriLogo() {
@@ -86,11 +87,14 @@ export function DashboardShell({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname() ?? ''
 
+  const esTodos = negocio === null && todosNegocios.length > 1
   const planCfg = PLAN_CFG[negocio?.plan ?? ''] ?? PLAN_CFG.basico
   const pageTitle = PAGE_TITLES[pathname] ?? 'Dashboard'
-  const initials = negocio?.nombre
-    ? negocio.nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
-    : '?'
+  const initials = esTodos
+    ? '🏢'
+    : negocio?.nombre
+      ? negocio.nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+      : '?'
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -243,13 +247,20 @@ export function DashboardShell({
           </div>
 
           {/* Business card */}
-          <Link href="/dashboard/mi-negocio" className="ds-biz-card" onClick={() => setSidebarOpen(false)}>
-            <div className="ds-biz-av">{initials}</div>
+          <Link href={esTodos ? '/dashboard' : '/dashboard/mi-negocio'} className="ds-biz-card" onClick={() => setSidebarOpen(false)}>
+            <div className="ds-biz-av" style={esTodos ? { fontSize: '18px', background: 'linear-gradient(135deg,#B8EDD4,#B8D8F8)' } : {}}>{initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="ds-biz-name">{negocio?.nombre ?? 'Mi negocio'}</div>
-              <span className="ds-biz-badge" style={{ color: planCfg.color, background: planCfg.bg }}>
-                {planCfg.label}
-              </span>
+              <div className="ds-biz-name">{esTodos ? 'Todos los negocios' : (negocio?.nombre ?? 'Mi negocio')}</div>
+              {!esTodos && (
+                <span className="ds-biz-badge" style={{ color: planCfg.color, background: planCfg.bg }}>
+                  {planCfg.label}
+                </span>
+              )}
+              {esTodos && (
+                <span className="ds-biz-badge" style={{ color: '#6B7280', background: '#F3F4F6' }}>
+                  {todosNegocios.length} negocios
+                </span>
+              )}
             </div>
           </Link>
 

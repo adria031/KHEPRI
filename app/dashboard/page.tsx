@@ -6,7 +6,7 @@ import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
 import { DashboardShell } from './DashboardShell'
 
 const planLabel: Record<string, string> = {
-  basico: 'Plan Básico', pro: 'Plan Pro', agencia: 'Plan Agencia',
+  basico: 'Plan Básico', pro: 'Plan Pro', agencia: 'Plan Plus', plus: 'Plan Plus',
 }
 
 type ReservaHoy = {
@@ -57,7 +57,12 @@ export default function Dashboard() {
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
       if (!neg) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
-      setNegocio(neg)
+
+      const modoTodos = localStorage.getItem('negocio_activo_id') === 'todos' && todosNegs.length > 1
+      setNegocio(modoTodos ? null : neg)
+
+      // IDs a consultar: todos los negocios o solo el activo
+      const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
 
       const hoy = new Date()
       const hoyISO = isoLocal(hoy)
@@ -68,10 +73,10 @@ export default function Dashboard() {
       const hoyDia = (hoy.getDay() + 6) % 7 // 0=Mon...6=Sun
 
       const [r1, r2, r3, r4] = await Promise.all([
-        db.from('reservas').select('estado, servicios(precio)').eq('negocio_id', neg.id).eq('fecha', hoyISO),
-        db.from('reservas').select('fecha, estado, cliente_telefono, servicios(precio)').eq('negocio_id', neg.id).gte('fecha', hace6ISO).lte('fecha', hoyISO),
-        db.from('reservas').select('id, hora, cliente_nombre, estado, servicios(nombre)').eq('negocio_id', neg.id).eq('fecha', hoyISO).order('hora').limit(6),
-        db.from('resenas').select('valoracion').eq('negocio_id', neg.id),
+        db.from('reservas').select('estado, servicios(precio)').in('negocio_id', ids).eq('fecha', hoyISO),
+        db.from('reservas').select('fecha, estado, cliente_telefono, servicios(precio)').in('negocio_id', ids).gte('fecha', hace6ISO).lte('fecha', hoyISO),
+        db.from('reservas').select('id, hora, cliente_nombre, estado, servicios(nombre)').in('negocio_id', ids).eq('fecha', hoyISO).order('hora').limit(6),
+        db.from('resenas').select('valoracion').in('negocio_id', ids),
       ])
 
       const resHoy = r1.data; const resSemana = r2.data; const citasData = r3.data; const resenasData = r4.data
@@ -201,8 +206,16 @@ export default function Dashboard() {
 
       {/* Greeting */}
       <div className="db-greeting">
-        <div className="db-greeting-saludo">{saludo}, {negocio?.nombre || 'bienvenido'} 👋</div>
-        <div className="db-greeting-fecha">{fechaHoy}</div>
+        <div className="db-greeting-saludo">
+          {negocio === null && todosNegocios.length > 1
+            ? `${saludo} — Vista consolidada 🏢`
+            : `${saludo}, ${negocio?.nombre || 'bienvenido'} 👋`}
+        </div>
+        <div className="db-greeting-fecha">
+          {negocio === null && todosNegocios.length > 1
+            ? `${fechaHoy} · ${todosNegocios.length} negocios`
+            : fechaHoy}
+        </div>
       </div>
 
       {/* KPIs */}

@@ -477,7 +477,7 @@ export default function Home() {
           {/* AGENCIA */}
           <div className="plan-card">
             <div className="plan-icon">🏢</div>
-            <div className="plan-nombre">Agencia</div>
+            <div className="plan-nombre">Plus</div>
             <div className="plan-desc">Para franquicias, grupos y agencias que gestionan múltiples negocios.</div>
             <div className="plan-precio g">Precio — Próximamente</div>
             <div className="plan-divider" />

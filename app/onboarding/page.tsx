@@ -37,7 +37,7 @@ const planes = [
     features: ['Todo lo del Básico', 'E-commerce de productos', 'Facturación española', 'Analytics con IA', 'Marketing y fidelización', 'Servicios ilimitados']
   },
   {
-    id: 'agencia', nombre: 'Agencia', precio: 'Precio próximamente', color: '#B8EDD4', colorDark: '#2E8A5E',
+    id: 'agencia', nombre: 'Plus', precio: 'Precio próximamente', color: '#B8EDD4', colorDark: '#2E8A5E',
     features: ['Todo lo del Pro', 'Hasta 10 negocios', 'Panel multi-sede', 'Soporte prioritario', 'API personalizada']
   }
 ]

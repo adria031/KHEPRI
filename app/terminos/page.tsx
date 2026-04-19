@@ -35,7 +35,7 @@ export default function Terminos() {
       <div className="lg-section">
         <h2>4. Planes y facturación</h2>
         <h3>Planes disponibles</h3>
-        <p>Khepria ofrece distintos planes de suscripción (Básico, Pro, Agencia) con diferentes funcionalidades y límites. Consulta la página de precios para información actualizada.</p>
+        <p>Khepria ofrece distintos planes de suscripción (Básico, Pro, Plus) con diferentes funcionalidades y límites. Consulta la página de precios para información actualizada.</p>
         <h3>Pago</h3>
         <p>Los planes de pago se facturan mensualmente o anualmente según la opción elegida. Los pagos se procesan de forma segura a través de Stripe. Al suscribirte autorizas el cobro recurrente hasta que canceles la suscripción.</p>
         <h3>Cambios de precio</h3>

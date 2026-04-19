@@ -1,17 +1,24 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import type { NegMin } from '../lib/negocioActivo'
 
 const PLAN_COLOR: Record<string, string> = {
   basico: '#1D4ED8',
-  pro: '#6B4FD8',
-  agencia: '#2E8A5E',
+  pro:    '#6B4FD8',
+  agencia:'#2E8A5E',
+  plus:   '#2E8A5E',
 }
 
-/**
- * Dropdown selector shown in the topbar when the user owns >1 negocio.
- * On selection it writes to localStorage and reloads so the page re-fetches.
- */
+const PLAN_LABEL: Record<string, string> = {
+  basico: 'Básico',
+  pro:    'Pro',
+  agencia:'Plus',
+  plus:   'Plus',
+}
+
+export const TODOS_ID = 'todos'
+
 export function NegocioSelector({
   negocios,
   activoId,
@@ -21,15 +28,19 @@ export function NegocioSelector({
 }) {
   const [open, setOpen] = useState(false)
 
-  if (negocios.length <= 1) return null
+  if (negocios.length === 0) return null
 
-  const activo = negocios.find(n => n.id === activoId) ?? negocios[0]
+  const esTodos = activoId === TODOS_ID
+  const activo  = negocios.find(n => n.id === activoId) ?? negocios[0]
 
   function cambiar(id: string) {
     if (id === activoId) { setOpen(false); return }
     localStorage.setItem('negocio_activo_id', id)
     window.location.reload()
   }
+
+  const triggerLabel = esTodos ? 'Todos los negocios' : activo.nombre
+  const triggerColor = esTodos ? '#9CA3AF' : (PLAN_COLOR[activo.plan] ?? '#9CA3AF')
 
   return (
     <div style={{ position: 'relative', zIndex: 50 }}>
@@ -43,15 +54,15 @@ export function NegocioSelector({
           border: `1px solid ${open ? 'rgba(29,78,216,0.25)' : 'rgba(0,0,0,0.1)'}`,
           borderRadius: '10px', fontFamily: 'inherit', fontSize: '13px',
           fontWeight: 600, color: '#111827', cursor: 'pointer',
-          whiteSpace: 'nowrap', maxWidth: '180px', transition: 'all 0.15s',
+          whiteSpace: 'nowrap', maxWidth: '200px', transition: 'all 0.15s',
         }}
       >
         <span style={{
           width: '8px', height: '8px', borderRadius: '50%',
-          background: PLAN_COLOR[activo.plan] ?? '#9CA3AF', flexShrink: 0,
+          background: triggerColor, flexShrink: 0,
         }} />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-          {activo.nombre}
+          {triggerLabel}
         </span>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
           style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
@@ -61,10 +72,7 @@ export function NegocioSelector({
 
       {/* Backdrop */}
       {open && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 49 }}
-          onClick={() => setOpen(false)}
-        />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setOpen(false)} />
       )}
 
       {/* Dropdown */}
@@ -73,16 +81,45 @@ export function NegocioSelector({
           position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
           background: 'white', border: '1px solid rgba(0,0,0,0.1)',
           borderRadius: '14px', boxShadow: '0 8px 28px rgba(0,0,0,0.13)',
-          minWidth: '220px', padding: '6px', overflow: 'hidden',
+          minWidth: '230px', padding: '6px', overflow: 'hidden',
         }}>
           <p style={{
             padding: '6px 10px 8px', fontSize: '11px', fontWeight: 700,
-            color: '#9CA3AF', letterSpacing: '0.5px', textTransform: 'uppercase',
-            margin: 0,
+            color: '#9CA3AF', letterSpacing: '0.5px', textTransform: 'uppercase', margin: 0,
           }}>
             Mis negocios
           </p>
 
+          {/* Opción "Todos" solo si hay >1 negocio */}
+          {negocios.length > 1 && (
+            <button
+              onClick={() => cambiar(TODOS_ID)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '9px 10px', borderRadius: '9px', border: 'none',
+                background: esTodos ? 'rgba(184,216,248,0.2)' : 'transparent',
+                cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                transition: 'background 0.15s',
+              }}
+            >
+              <span style={{ fontSize: '15px', flexShrink: 0 }}>🏢</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
+                  Todos los negocios
+                </div>
+                <div style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                  Vista consolidada
+                </div>
+              </div>
+              {esTodos && (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2.5 7l3 3 6-6" stroke="#1D4ED8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
+          )}
+
+          {/* Lista de negocios */}
           {negocios.map(n => (
             <button
               key={n.id}
@@ -90,7 +127,7 @@ export function NegocioSelector({
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '9px 10px', borderRadius: '9px', border: 'none',
-                background: n.id === activoId ? 'rgba(184,216,248,0.2)' : 'transparent',
+                background: !esTodos && n.id === activoId ? 'rgba(184,216,248,0.2)' : 'transparent',
                 cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                 transition: 'background 0.15s',
               }}
@@ -107,16 +144,39 @@ export function NegocioSelector({
                   {n.nombre}
                 </div>
                 <div style={{ fontSize: '11px', color: '#9CA3AF', textTransform: 'capitalize' }}>
-                  Plan {n.plan}
+                  Plan {PLAN_LABEL[n.plan] ?? n.plan}
                 </div>
               </div>
-              {n.id === activoId && (
+              {!esTodos && n.id === activoId && (
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2.5 7l3 3 6-6" stroke="#1D4ED8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
             </button>
           ))}
+
+          {/* Separador + Añadir negocio */}
+          <div style={{ height: '1px', background: 'rgba(0,0,0,0.07)', margin: '6px 0' }} />
+          <Link
+            href="/dashboard/nuevo-negocio"
+            onClick={() => setOpen(false)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '9px 10px', borderRadius: '9px',
+              textDecoration: 'none', transition: 'background 0.15s',
+              color: '#4F46E5',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#EEF2FF')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <span style={{
+              width: '22px', height: '22px', borderRadius: '6px',
+              background: '#EEF2FF', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#4F46E5',
+              flexShrink: 0,
+            }}>+</span>
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>Añadir negocio</span>
+          </Link>
         </div>
       )}
     </div>
