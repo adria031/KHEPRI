@@ -11,7 +11,7 @@ export default function Privacidad() {
         <p>El responsable del tratamiento de los datos personales recogidos a través de Khepria es:</p>
         <div className="lg-box">
           <div className="lg-box-title">Khepria</div>
-          <p>Email de contacto: <a href="mailto:privacidad@khepria.app">privacidad@khepria.app</a><br/>
+          <p>Email de contacto: <a href="mailto:khepriacontact@gmail.com">khepriacontact@gmail.com</a><br/>
           País: España<br/>
           Plataforma: <a href="https://khepria.app">khepria.app</a></p>
         </div>
@@ -87,7 +87,7 @@ export default function Privacidad() {
           <div className="lg-box-title">Derecho a la portabilidad</div>
           <p>Puedes recibir tus datos en un formato estructurado y de uso común para transferirlos a otro servicio.</p>
         </div>
-        <p>Para ejercer cualquiera de estos derechos escríbenos a <a href="mailto:privacidad@khepria.app">privacidad@khepria.app</a>. Responderemos en un plazo máximo de 30 días. También tienes derecho a presentar una reclamación ante la <a href="https://www.aepd.es" target="_blank" rel="noreferrer">Agencia Española de Protección de Datos (AEPD)</a>.</p>
+        <p>Para ejercer cualquiera de estos derechos escríbenos a <a href="mailto:khepriacontact@gmail.com">khepriacontact@gmail.com</a>. Responderemos en un plazo máximo de 30 días. También tienes derecho a presentar una reclamación ante la <a href="https://www.aepd.es" target="_blank" rel="noreferrer">Agencia Española de Protección de Datos (AEPD)</a>.</p>
       </div>
 
       <div className="lg-section">

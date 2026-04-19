@@ -522,7 +522,7 @@ export default function Home() {
           <Link href="/terminos">Términos</Link>
           <Link href="/cookies">Cookies</Link>
           <Link href="/aviso-legal">Aviso Legal</Link>
-          <a href="mailto:hola@khepria.app">Contacto</a>
+          <a href="mailto:khepriacontact@gmail.com">Contacto</a>
         </div>
       </footer>
     </>

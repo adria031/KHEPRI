@@ -13,7 +13,7 @@ export default function AvisoLegal() {
           <div className="lg-box-title">Titular</div>
           <p>
             <strong>Nombre comercial:</strong> Khepria<br/>
-            <strong>Correo electrónico:</strong> <a href="mailto:hola@khepria.app">hola@khepria.app</a><br/>
+            <strong>Correo electrónico:</strong> <a href="mailto:khepriacontact@gmail.com">khepriacontact@gmail.com</a><br/>
             <strong>País:</strong> España<br/>
             <strong>Sitio web:</strong> <a href="https://khepria.app">https://khepria.app</a>
           </p>
@@ -74,7 +74,7 @@ export default function AvisoLegal() {
 
       <div className="lg-section">
         <h2>9. Contacto</h2>
-        <p>Para cualquier consulta relativa al presente aviso legal puedes contactar con nosotros en <a href="mailto:hola@khepria.app">hola@khepria.app</a>.</p>
+        <p>Para cualquier consulta relativa al presente aviso legal puedes contactar con nosotros en <a href="mailto:khepriacontact@gmail.com">khepriacontact@gmail.com</a>.</p>
       </div>
 
     </LegalLayout>

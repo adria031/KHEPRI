@@ -88,7 +88,7 @@ export default function Terminos() {
       <div className="lg-section">
         <h2>11. Legislación aplicable y jurisdicción</h2>
         <p>Estos términos se rigen por la ley española. Para cualquier controversia, las partes se someten a los juzgados y tribunales competentes de España, salvo que la normativa de protección de consumidores establezca otro fuero.</p>
-        <p>Para reclamaciones puedes contactarnos en <a href="mailto:hola@khepria.app">hola@khepria.app</a>.</p>
+        <p>Para reclamaciones puedes contactarnos en <a href="mailto:khepriacontact@gmail.com">khepriacontact@gmail.com</a>.</p>
       </div>
 
     </LegalLayout>

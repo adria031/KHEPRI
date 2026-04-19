@@ -74,7 +74,7 @@ export default function Cookies() {
       <div className="lg-section">
         <h2>5. Actualizaciones de esta política</h2>
         <p>Podemos actualizar esta política de cookies cuando añadamos nuevas funcionalidades o cambiemos los proveedores que utilizamos. La fecha de la última actualización siempre estará indicada al inicio del documento.</p>
-        <p>Para cualquier consulta sobre cookies puedes escribirnos a <a href="mailto:privacidad@khepria.app">privacidad@khepria.app</a>.</p>
+        <p>Para cualquier consulta sobre cookies puedes escribirnos a <a href="mailto:khepriacontact@gmail.com">khepriacontact@gmail.com</a>.</p>
       </div>
 
     </LegalLayout>
