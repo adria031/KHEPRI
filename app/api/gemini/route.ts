@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 const MODEL = 'gemini-2.0-flash'
 
 export async function GET() {
-  const KEY = process.env.GEMINI_API_KEY ?? ''
+  const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${KEY}`)
   const data = await res.json()
   const names = (data.models ?? []).map((m: any) => m.name)
@@ -11,9 +11,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const KEY = process.env.GEMINI_API_KEY ?? ''
+  const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
   if (!KEY) {
-    console.error('[gemini] GEMINI_API_KEY no configurada')
     return NextResponse.json({ error: 'API key no configurada' }, { status: 500 })
   }
 
