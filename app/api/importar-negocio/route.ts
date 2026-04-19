@@ -55,13 +55,8 @@ Reglas:
 Texto de la página:
 ${html}`
 
-  const isBearer = GEMINI_KEY.startsWith('AQ.')
-  const geminiVersion = isBearer ? 'v1' : 'v1beta'
-  const geminiUrl = isBearer
-    ? `https://generativelanguage.googleapis.com/${geminiVersion}/models/gemini-1.5-flash:generateContent`
-    : `https://generativelanguage.googleapis.com/${geminiVersion}/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`
   const geminiHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (isBearer) geminiHeaders['Authorization'] = `Bearer ${GEMINI_KEY}`
 
   const geminiRes = await fetch(geminiUrl, {
     method: 'POST',
