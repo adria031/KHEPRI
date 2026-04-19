@@ -13,6 +13,8 @@ type Trabajador = {
   nombre: string
   especialidad: string
   foto_url: string | null
+  email: string | null
+  telefono: string | null
   activo: boolean
 }
 
@@ -20,6 +22,8 @@ type FormState = {
   nombre: string
   especialidad: string
   foto_url: string | null
+  email: string
+  telefono: string
 }
 
 export default function Equipo() {
@@ -30,7 +34,7 @@ export default function Equipo() {
   const [cargando, setCargando] = useState(true)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState<Trabajador | null>(null)
-  const [form, setForm] = useState<FormState>({ nombre: '', especialidad: '', foto_url: null })
+  const [form, setForm] = useState<FormState>({ nombre: '', especialidad: '', foto_url: null, email: '', telefono: '' })
   const [fotoArchivo, setFotoArchivo] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -56,11 +60,11 @@ export default function Equipo() {
   function abrirModal(t?: Trabajador) {
     if (t) {
       setEditando(t)
-      setForm({ nombre: t.nombre, especialidad: t.especialidad || '', foto_url: t.foto_url })
+      setForm({ nombre: t.nombre, especialidad: t.especialidad || '', foto_url: t.foto_url, email: t.email || '', telefono: t.telefono || '' })
       setFotoPreview(t.foto_url)
     } else {
       setEditando(null)
-      setForm({ nombre: '', especialidad: '', foto_url: null })
+      setForm({ nombre: '', especialidad: '', foto_url: null, email: '', telefono: '' })
       setFotoPreview(null)
     }
     setFotoArchivo(null)
@@ -93,6 +97,7 @@ export default function Equipo() {
 
   async function guardar() {
     if (!form.nombre.trim()) { setError('El nombre es obligatorio.'); return }
+    if (!editando && !form.email.trim()) { setError('El email es obligatorio para enviar la invitación.'); return }
     setGuardando(true); setError('')
 
     let foto_url = form.foto_url
@@ -106,6 +111,8 @@ export default function Equipo() {
       nombre: form.nombre.trim(),
       especialidad: form.especialidad.trim(),
       foto_url,
+      email: form.email.trim() || null,
+      telefono: form.telefono.trim() || null,
     }
 
     if (editando) {
@@ -116,6 +123,24 @@ export default function Equipo() {
       const { data, error: err } = await dbMutation({ op: 'insert', table: 'trabajadores', negocioId: negocioId!, data: { ...datos, negocio_id: negocioId, activo: true } })
       if (err || !data) { setError(err || 'No se pudo guardar.'); setGuardando(false); return }
       setTrabajadores(prev => [...prev, data as Trabajador])
+
+      // Enviar email de invitación
+      if (datos.email) {
+        try {
+          await fetch('/api/invitar-empleado', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: datos.email,
+              nombreEmpleado: datos.nombre,
+              nombreNegocio: negocio?.nombre || 'tu negocio',
+              negocioId,
+            }),
+          })
+        } catch {
+          // No bloquear si falla el email
+        }
+      }
     }
 
     setGuardando(false)
@@ -235,6 +260,7 @@ export default function Equipo() {
                   {cargando ? 'Cargando...' : `${trabajadores.length} miembro${trabajadores.length !== 1 ? 's' : ''} · ${activos} activo${activos !== 1 ? 's' : ''}`}
                 </div>
               </div>
+              <button className="btn-nuevo" onClick={() => abrirModal()}>+ Añadir miembro</button>
             </div>
 
             {cargando ? (
@@ -264,6 +290,9 @@ export default function Equipo() {
 
                     <div className="trabajador-nombre">{t.nombre}</div>
                     <div className="trabajador-esp">{t.especialidad || '—'}</div>
+                    {t.email && (
+                      <div style={{fontSize:'12px', color:'var(--muted)', marginBottom:'8px', wordBreak:'break-all'}}>{t.email}</div>
+                    )}
                     <span className={`badge ${t.activo ? 'badge-activo' : 'badge-inactivo'}`}>
                       {t.activo ? 'Activo' : 'Inactivo'}
                     </span>
@@ -278,37 +307,6 @@ export default function Equipo() {
           <div className="modal">
             <div className="modal-title">{editando ? 'Editar miembro' : 'Nuevo miembro'}</div>
 
-            {/* Foto */}
-            <div className="foto-area">
-              {fotoPreview
-                ? <img src={fotoPreview} alt="Preview" className="foto-preview" />
-                : <div className="foto-preview-placeholder">
-                    {form.nombre ? iniciales(form.nombre) : '👤'}
-                  </div>
-              }
-              <div>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  style={{display:'none'}}
-                  onChange={onFotoChange}
-                />
-                <button className="btn-foto" onClick={() => fileRef.current?.click()}>
-                  {fotoPreview ? '📷 Cambiar foto' : '📷 Subir foto'}
-                </button>
-                {fotoPreview && (
-                  <button
-                    className="btn-foto"
-                    style={{marginTop:'6px', display:'block'}}
-                    onClick={() => { setFotoPreview(null); setFotoArchivo(null); setForm(f => ({...f, foto_url: null})) }}
-                  >
-                    🗑️ Quitar foto
-                  </button>
-                )}
-              </div>
-            </div>
-
             <div className="field">
               <label>Nombre *</label>
               <input
@@ -320,7 +318,7 @@ export default function Equipo() {
               />
             </div>
             <div className="field">
-              <label>Especialidad</label>
+              <label>Especialidad <span style={{fontWeight:400, color:'var(--muted)'}}>· opcional</span></label>
               <input
                 type="text"
                 placeholder="Ej: Colorista, Masajista, Esteticista..."
@@ -328,6 +326,67 @@ export default function Equipo() {
                 onChange={e => setForm(f => ({...f, especialidad: e.target.value}))}
                 autoComplete="off"
               />
+            </div>
+            <div className="field">
+              <label>Teléfono <span style={{fontWeight:400, color:'var(--muted)'}}>· opcional</span></label>
+              <input
+                type="tel"
+                placeholder="Ej: +34 600 000 000"
+                value={form.telefono}
+                onChange={e => setForm(f => ({...f, telefono: e.target.value}))}
+                autoComplete="off"
+              />
+            </div>
+            <div className="field">
+              <label>Email {!editando && <span style={{color:'#EF4444'}}>*</span>} {editando && <span style={{fontWeight:400, color:'var(--muted)'}}>· opcional al editar</span>}</label>
+              <input
+                type="email"
+                placeholder="empleado@email.com"
+                value={form.email}
+                onChange={e => setForm(f => ({...f, email: e.target.value}))}
+                autoComplete="off"
+              />
+              {!editando && (
+                <div style={{fontSize:'12px', color:'var(--muted)', marginTop:'5px'}}>
+                  Se enviará una invitación a este correo para que cree su cuenta.
+                </div>
+              )}
+            </div>
+
+            {/* Foto */}
+            <div style={{marginBottom:'14px'}}>
+              <div style={{fontSize:'13px', fontWeight:600, color:'var(--text)', marginBottom:'8px'}}>
+                Foto <span style={{fontWeight:400, color:'var(--muted)'}}>· opcional</span>
+              </div>
+              <div className="foto-area">
+                {fotoPreview
+                  ? <img src={fotoPreview} alt="Preview" className="foto-preview" />
+                  : <div className="foto-preview-placeholder">
+                      {form.nombre ? iniciales(form.nombre) : '👤'}
+                    </div>
+                }
+                <div>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    style={{display:'none'}}
+                    onChange={onFotoChange}
+                  />
+                  <button className="btn-foto" onClick={() => fileRef.current?.click()}>
+                    {fotoPreview ? '📷 Cambiar foto' : '📷 Subir foto'}
+                  </button>
+                  {fotoPreview && (
+                    <button
+                      className="btn-foto"
+                      style={{marginTop:'6px', display:'block'}}
+                      onClick={() => { setFotoPreview(null); setFotoArchivo(null); setForm(f => ({...f, foto_url: null})) }}
+                    >
+                      🗑️ Quitar foto
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {error && <div className="error-msg">{error}</div>}
