@@ -21,6 +21,20 @@ const CONTRATOS = [
 const SS_EMP_DEFAULT  = 29.9  // contingencias + desempleo + FOGASA + FP
 const SS_TRAB_DEFAULT = 6.35  // contingencias + desempleo + FP
 
+// IRPF 2024 — retención estimada sobre bruto anual (tramos estatales + autonómicos medios)
+function calcularIRPFAuto(brutoMensual: number): number {
+  const anual = brutoMensual * 12
+  const base = Math.max(0, anual - 5550) // mínimo personal básico
+  let cuota = 0
+  if (base <= 12450)       cuota = base * 0.19
+  else if (base <= 20200)  cuota = 2365.5  + (base - 12450) * 0.24
+  else if (base <= 35200)  cuota = 4225.5  + (base - 20200) * 0.30
+  else if (base <= 60000)  cuota = 8725.5  + (base - 35200) * 0.37
+  else if (base <= 300000) cuota = 17901.5 + (base - 60000) * 0.45
+  else                     cuota = 125901.5 + (base - 300000) * 0.47
+  return Math.max(2, Math.round((cuota / anual) * 1000) / 10)
+}
+
 type Trabajador = { id: string; nombre: string; especialidad: string; foto_url: string | null }
 type Nomina = {
   id: string; trabajador_id: string; mes: string
@@ -61,11 +75,17 @@ export default function Nominas() {
   const [guardando, setGuardando]       = useState(false)
   const [apiError, setApiError]         = useState('')
 
-  // IA
+  // IA por nómina
   const [iaLoading, setIaLoading]       = useState(false)
   const [iaResult, setIaResult]         = useState('')
   const [iaError, setIaError]           = useState('')
   const [iaTarget, setIaTarget]         = useState<string | null>(null) // nomina.id
+
+  // Chat IA general
+  type ChatMsg = { role: 'user' | 'ai'; text: string }
+  const [chatInput, setChatInput]       = useState('')
+  const [chatMsgs, setChatMsgs]         = useState<ChatMsg[]>([])
+  const [chatLoading, setChatLoading]   = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -203,6 +223,115 @@ Por favor proporciona:
     setIaLoading(false)
   }
 
+
+  function generarPDF(n: Nomina) {
+    const trab = trabajadores.find(t => t.id === n.trabajador_id)
+    const coste = +(n.salario_bruto * (1 + n.ss_empresa / 100)).toFixed(2)
+    const dedIRPF = +(n.salario_bruto * n.irpf / 100).toFixed(2)
+    const dedSS = +(n.salario_bruto * n.ss_trabajador / 100).toFixed(2)
+    const cuotaEmp = +(n.salario_bruto * n.ss_empresa / 100).toFixed(2)
+    const mesLabel = labelMes(n.mes)
+    const fmt2 = (v: number) => v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Nómina ${trab?.nombre} — ${mesLabel}</title>
+<style>
+  body { font-family: Arial, sans-serif; color: #111; margin: 0; padding: 32px; background: white; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #111; padding-bottom: 16px; margin-bottom: 24px; }
+  .logo { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+  .logo span { color: #4F46E5; }
+  .doc-title { font-size: 13px; color: #666; text-align: right; }
+  .doc-title strong { display: block; font-size: 18px; color: #111; margin-bottom: 2px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  .info-box { background: #f7f9fc; border-radius: 8px; padding: 14px 16px; }
+  .info-label { font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .info-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+  .info-val { font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th { background: #111; color: white; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; }
+  td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; }
+  .amount { text-align: right; font-weight: 600; }
+  .neg { color: #DC2626; }
+  .pos { color: #2E8A5E; }
+  .total-row td { font-size: 15px; font-weight: 900; background: #f7f9fc; }
+  .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; display: flex; justify-content: space-between; font-size: 11px; color: #999; }
+  .firma { border-top: 1px solid #333; padding-top: 8px; margin-top: 40px; font-size: 12px; color: #666; width: 200px; }
+  @media print { body { padding: 16px; } }
+</style></head><body>
+  <div class="header">
+    <div class="logo">Khe<span>pria</span></div>
+    <div class="doc-title"><strong>NÓMINA</strong>${mesLabel}</div>
+  </div>
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="info-label">Empresa / Negocio</div>
+      <div class="info-row"><span>Nombre</span><span class="info-val">${negocio?.nombre || '—'}</span></div>
+      <div class="info-row"><span>Mes</span><span class="info-val">${mesLabel}</span></div>
+    </div>
+    <div class="info-box">
+      <div class="info-label">Trabajador</div>
+      <div class="info-row"><span>Nombre</span><span class="info-val">${trab?.nombre || '—'}</span></div>
+      <div class="info-row"><span>Especialidad</span><span class="info-val">${trab?.especialidad || '—'}</span></div>
+      <div class="info-row"><span>Tipo contrato</span><span class="info-val">${CONTRATOS.find(c => c.id === (n as any).tipo_contrato)?.label || 'Indefinido'}</span></div>
+      <div class="info-row"><span>Jornada</span><span class="info-val">${(n as any).horas_semana || 40}h/semana</span></div>
+    </div>
+  </div>
+  <table>
+    <tr><th>Concepto</th><th style="text-align:right">Importe</th></tr>
+    <tr><td>Salario bruto</td><td class="amount">${fmt2(n.salario_bruto)}</td></tr>
+    <tr><td class="neg">— Retención IRPF (${n.irpf}%)</td><td class="amount neg">−${fmt2(dedIRPF)}</td></tr>
+    <tr><td class="neg">— Seg. Social trabajador (${n.ss_trabajador}%)</td><td class="amount neg">−${fmt2(dedSS)}</td></tr>
+    <tr class="total-row"><td class="pos">TOTAL NETO A PERCIBIR</td><td class="amount pos">${fmt2(n.salario_neto)}</td></tr>
+  </table>
+  <table>
+    <tr><th colspan="2">Costes empresa</th></tr>
+    <tr><td>Salario bruto</td><td class="amount">${fmt2(n.salario_bruto)}</td></tr>
+    <tr><td class="neg">+ Seg. Social empresa (${n.ss_empresa}%)</td><td class="amount neg">+${fmt2(cuotaEmp)}</td></tr>
+    <tr class="total-row"><td class="neg">COSTE TOTAL EMPRESA</td><td class="amount neg">${fmt2(coste)}</td></tr>
+  </table>
+  <div class="footer">
+    <span>Generado por Khepria · ${new Date().toLocaleDateString('es-ES')}</span>
+    <span>Documento de carácter informativo</span>
+  </div>
+  <div class="firma">Firma y sello empresa</div>
+</body></html>`
+    const w = window.open('', '_blank', 'width=800,height=900')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+    w.onload = () => w.print()
+  }
+
+  async function enviarChat() {
+    const texto = chatInput.trim()
+    if (!texto || chatLoading) return
+    setChatMsgs(prev => [...prev, { role: 'user', text: texto }])
+    setChatInput('')
+    setChatLoading(true)
+
+    const contexto = nominas.length > 0
+      ? `El negocio tiene ${nominas.length} trabajador(es) este mes. Masa salarial bruta: ${fmt(totalBruto)}. Coste total empresa: ${fmt(totalCoste)}.`
+      : 'Aún no hay nóminas registradas este mes.'
+
+    const prompt = `Eres un asesor laboral español experto en nóminas, Seguridad Social, IRPF y contratación. Responde en español, de forma clara y práctica, máximo 250 palabras. No uses markdown complejo, solo texto plano con saltos de línea si necesitas estructura.
+
+Contexto del negocio: ${contexto}
+
+Pregunta: ${texto}`
+
+    try {
+      const res = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      })
+      const json = await res.json()
+      const respuesta = json.candidates?.[0]?.content?.parts?.[0]?.text
+      setChatMsgs(prev => [...prev, { role: 'ai', text: respuesta || 'Sin respuesta de la IA.' }])
+    } catch {
+      setChatMsgs(prev => [...prev, { role: 'ai', text: 'Error al conectar con la IA. Inténtalo de nuevo.' }])
+    }
+    setChatLoading(false)
+  }
 
   const fmt = (n: number) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
 
@@ -453,14 +582,23 @@ Por favor proporciona:
                             </div>
                           </div>
 
-                          {/* Botón IA */}
-                          <button
-                            className="btn-ia"
-                            onClick={() => isIaOpen && iaResult ? (setIaTarget(null), setIaResult('')) : analizarConIA(n)}
-                            disabled={iaLoading && isIaOpen}
-                          >
-                            {iaLoading && isIaOpen ? '⏳ Analizando...' : isIaOpen && iaResult ? '✕ Cerrar análisis' : '✨ Analizar con IA — coste real y optimización'}
-                          </button>
+                          {/* Botones acción */}
+                          <div style={{display:'flex', gap:'8px', marginTop:'12px'}}>
+                            <button
+                              className="btn-ia"
+                              style={{flex:1}}
+                              onClick={() => isIaOpen && iaResult ? (setIaTarget(null), setIaResult('')) : analizarConIA(n)}
+                              disabled={iaLoading && isIaOpen}
+                            >
+                              {iaLoading && isIaOpen ? '⏳ Analizando...' : isIaOpen && iaResult ? '✕ Cerrar análisis' : '✨ Analizar con IA'}
+                            </button>
+                            <button
+                              onClick={() => generarPDF(n)}
+                              style={{padding:'10px 14px', background:'var(--bg)', border:'1.5px solid var(--border)', borderRadius:'10px', fontFamily:'inherit', fontSize:'13px', fontWeight:600, color:'var(--text2)', cursor:'pointer', whiteSpace:'nowrap'}}
+                            >
+                              📄 PDF
+                            </button>
+                          </div>
                           {isIaOpen && iaResult && <div className="ia-result">{iaResult}</div>}
                           {isIaOpen && iaError && <div className="ia-error">{iaError}</div>}
                         </div>
@@ -468,6 +606,56 @@ Por favor proporciona:
                     })}
                   </div>
                 )}
+                {/* Chat IA laboral */}
+                <div style={{marginTop:'28px', background:'white', border:'1px solid var(--border)', borderRadius:'16px', overflow:'hidden'}}>
+                  <div style={{padding:'16px 20px', borderBottom:'1px solid var(--border)', background:'linear-gradient(135deg,rgba(212,197,249,0.15),rgba(184,216,248,0.15))'}}>
+                    <div style={{fontSize:'15px', fontWeight:800, color:'var(--text)'}}>✨ Asesor laboral IA</div>
+                    <div style={{fontSize:'13px', color:'var(--muted)', marginTop:'2px'}}>Pregunta sobre contratos, SS, IRPF, bonificaciones...</div>
+                  </div>
+
+                  {chatMsgs.length > 0 && (
+                    <div style={{padding:'16px 20px', display:'flex', flexDirection:'column', gap:'10px', maxHeight:'320px', overflowY:'auto'}}>
+                      {chatMsgs.map((m, i) => (
+                        <div key={i} style={{display:'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start'}}>
+                          <div style={{
+                            maxWidth:'80%', padding:'10px 14px', borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                            background: m.role === 'user' ? '#111827' : 'rgba(212,197,249,0.2)',
+                            color: m.role === 'user' ? 'white' : 'var(--text)',
+                            fontSize:'13px', lineHeight:'1.6', whiteSpace:'pre-wrap'
+                          }}>
+                            {m.text}
+                          </div>
+                        </div>
+                      ))}
+                      {chatLoading && (
+                        <div style={{display:'flex', justifyContent:'flex-start'}}>
+                          <div style={{padding:'10px 14px', borderRadius:'14px 14px 14px 4px', background:'rgba(212,197,249,0.2)', fontSize:'13px', color:'var(--muted)'}}>
+                            Pensando...
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{padding:'12px 16px', borderTop: chatMsgs.length > 0 ? '1px solid var(--border)' : 'none', display:'flex', gap:'8px'}}>
+                    <input
+                      type="text"
+                      placeholder="¿Cuánto cuesta contratar a alguien por 1.400€? ¿Qué bonificaciones hay?"
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && enviarChat()}
+                      style={{flex:1, padding:'11px 14px', border:'1.5px solid var(--border)', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', color:'var(--text)', outline:'none', background:'var(--bg)'}}
+                    />
+                    <button
+                      onClick={enviarChat}
+                      disabled={chatLoading || !chatInput.trim()}
+                      style={{padding:'11px 18px', background:'#111827', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'13px', fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', opacity: chatLoading || !chatInput.trim() ? 0.5 : 1}}
+                    >
+                      Enviar
+                    </button>
+                  </div>
+                </div>
+
               </>
             )}
 
@@ -504,7 +692,17 @@ Por favor proporciona:
 
             <div className="grid3">
               <div className="field">
-                <label>IRPF %</label>
+                <label style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                  <span>IRPF %</span>
+                  {bruto > 0 && (
+                    <span
+                      onClick={() => setForm({...form, irpf: String(calcularIRPFAuto(bruto))})}
+                      style={{fontSize:'11px', fontWeight:700, color:'var(--blue-dark)', cursor:'pointer', textDecoration:'underline'}}
+                    >
+                      Auto ({calcularIRPFAuto(bruto)}%)
+                    </span>
+                  )}
+                </label>
                 <input type="number" min="0" max="50" step="0.5" value={form.irpf} onChange={e => setForm({...form, irpf: e.target.value})} />
               </div>
               <div className="field">
