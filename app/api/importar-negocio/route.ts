@@ -58,8 +58,8 @@ ${html}`
   const isBearer = GEMINI_KEY.startsWith('AQ.')
   const geminiVersion = isBearer ? 'v1' : 'v1beta'
   const geminiUrl = isBearer
-    ? `https://generativelanguage.googleapis.com/${geminiVersion}/models/gemini-2.0-flash:generateContent`
-    : `https://generativelanguage.googleapis.com/${geminiVersion}/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
+    ? `https://generativelanguage.googleapis.com/${geminiVersion}/models/gemini-1.5-flash:generateContent`
+    : `https://generativelanguage.googleapis.com/${geminiVersion}/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`
   const geminiHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
   if (isBearer) geminiHeaders['Authorization'] = `Bearer ${GEMINI_KEY}`
 

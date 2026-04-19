@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
-const MODEL = 'gemini-2.0-flash'
+const MODEL = 'gemini-1.5-flash'
 
 export async function POST(req: NextRequest) {
   if (!KEY) {
