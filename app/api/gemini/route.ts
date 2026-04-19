@@ -11,12 +11,13 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
 
-  // AQ. keys → Bearer header + v1beta sin ?key=
-  // AIzaSy keys → ?key= querystring
+  // AQ. keys → Bearer header + v1 (OAuth tokens no funcionan en v1beta)
+  // AIzaSy keys → ?key= querystring + v1beta
   const isBearer = KEY.startsWith('AQ.')
+  const version = isBearer ? 'v1' : 'v1beta'
   const url = isBearer
-    ? `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
-    : `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`
+    ? `https://generativelanguage.googleapis.com/${version}/models/${MODEL}:generateContent`
+    : `https://generativelanguage.googleapis.com/${version}/models/${MODEL}:generateContent?key=${KEY}`
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (isBearer) headers['Authorization'] = `Bearer ${KEY}`
