@@ -8,9 +8,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
     }
 
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceKey) {
+      return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY no configurada en el servidor' }, { status: 500 })
+    }
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      serviceKey
     )
 
     const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?negocio=${negocioId}&rol=empleado`
