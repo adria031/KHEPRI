@@ -9,7 +9,7 @@ export async function GET() {
 }
 
 const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
-const MODEL = 'gemini-1.5-flash-latest'
+const MODEL = 'gemini-2.0-flash'
 
 export async function POST(req: NextRequest) {
   if (!KEY) {

@@ -55,7 +55,7 @@ Reglas:
 Texto de la página:
 ${html}`
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
   const geminiHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
 
   const geminiRes = await fetch(geminiUrl, {
