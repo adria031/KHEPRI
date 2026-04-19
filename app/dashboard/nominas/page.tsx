@@ -208,7 +208,7 @@ Por favor proporciona:
 
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
+        '/api/gemini',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -323,7 +323,7 @@ Pregunta: ${texto}`
 
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
+        '/api/gemini',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
