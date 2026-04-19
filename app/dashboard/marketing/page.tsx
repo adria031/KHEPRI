@@ -142,7 +142,6 @@ export default function Marketing() {
   }
 
   // ── Gemini ────────────────────────────────────────────────────────────────
-  const GEMINI_URL = '/api/gemini'
   const MESES_NOMBRE = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 
   function buildContexto(): string {
@@ -155,17 +154,26 @@ Servicios principales: ${svcs}${negocioValoracion ? `\nValoración media de clie
   }
 
   async function llamarGemini(prompt: string): Promise<string> {
-    const res = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 900, temperature: 0.85 },
-      }),
-    })
-    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e?.error?.message || `HTTP ${res.status}`) }
-    const json = await res.json()
-    return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 900, temperature: 0.85 },
+        }),
+      }
+    )
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}))
+      console.error('[marketing] Gemini error:', e)
+      throw new Error(e?.error?.message || `HTTP ${response.status}`)
+    }
+    const data = await response.json()
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) console.error('[marketing] Gemini sin texto en respuesta:', data)
+    return text?.trim() ?? ''
   }
 
   async function generarPost() {

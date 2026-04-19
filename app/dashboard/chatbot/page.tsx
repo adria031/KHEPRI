@@ -14,7 +14,7 @@ import {
 
 
 
-const GEMINI_URL = '/api/gemini'
+const GEMINI_URL = '/api/gemini' // proxy → v1beta gemini-1.5-flash
 
 type Msg = { role: 'user' | 'bot'; text: string; ts: Date }
 
@@ -226,6 +226,7 @@ export default function ChatbotPage() {
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
+          console.error('[chatbot] Gemini error:', err)
           throw new Error(err?.error?.message || `HTTP ${res.status}`)
         }
 

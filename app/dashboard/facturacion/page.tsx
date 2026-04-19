@@ -269,7 +269,7 @@ export default function Facturacion() {
       const b64 = await fileToBase64(file)
       const mimeType = tipo === 'application/pdf' ? 'application/pdf' : tipo
       const res = await fetch(
-        '/api/gemini',
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -284,6 +284,10 @@ export default function Facturacion() {
           }),
         }
       )
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        console.error('[facturacion] Gemini error:', errData)
+      }
       if (res.ok) {
         const json = await res.json()
         const rawText: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''

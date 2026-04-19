@@ -7,7 +7,6 @@ import { DashboardShell } from '../DashboardShell'
 
 
 
-const GEMINI_URL = '/api/gemini'
 
 const CONTRATOS = [
   { id: 'indefinido',  label: 'Indefinido' },
@@ -208,16 +207,20 @@ Por favor proporciona:
 4. Comparativa breve: ¿saldría más económico como autónomo?`
 
     try {
-      const res = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      })
-      const json = await res.json()
-      const texto = json.candidates?.[0]?.content?.parts?.[0]?.text
-      if (!texto) throw new Error('Respuesta vacía de la IA')
-      setIaResult(texto)
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      )
+      const data = await response.json()
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!text) { console.error('[nominas] Gemini sin texto:', data); throw new Error('Respuesta vacía de la IA') }
+      setIaResult(text)
     } catch (e: any) {
+      console.error('[nominas] analizarConIA error:', e)
       setIaError(e.message || 'Error al conectar con la IA')
     }
     setIaLoading(false)
@@ -319,15 +322,20 @@ Contexto del negocio: ${contexto}
 Pregunta: ${texto}`
 
     try {
-      const res = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-      })
-      const json = await res.json()
-      const respuesta = json.candidates?.[0]?.content?.parts?.[0]?.text
-      setChatMsgs(prev => [...prev, { role: 'ai', text: respuesta || 'Sin respuesta de la IA.' }])
-    } catch {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      )
+      const data = await response.json()
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!text) console.error('[nominas] chat Gemini sin texto:', data)
+      setChatMsgs(prev => [...prev, { role: 'ai', text: text || 'Sin respuesta de la IA.' }])
+    } catch (e) {
+      console.error('[nominas] enviarChat error:', e)
       setChatMsgs(prev => [...prev, { role: 'ai', text: 'Error al conectar con la IA. Inténtalo de nuevo.' }])
     }
     setChatLoading(false)
