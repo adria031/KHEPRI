@@ -127,7 +127,7 @@ export default function Equipo() {
       // Enviar email de invitación
       if (datos.email) {
         try {
-          await fetch('/api/invitar-empleado', {
+          const emailRes = await fetch('/api/invitar-empleado', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -137,8 +137,18 @@ export default function Equipo() {
               negocioId,
             }),
           })
-        } catch {
-          // No bloquear si falla el email
+          if (!emailRes.ok) {
+            const emailErr = await emailRes.json().catch(() => ({}))
+            console.error('[invitar-empleado] error:', emailErr)
+            setError(`Miembro guardado, pero el email no se pudo enviar: ${JSON.stringify(emailErr)}`)
+            setGuardando(false)
+            return
+          }
+        } catch (e: any) {
+          console.error('[invitar-empleado] fetch error:', e)
+          setError(`Miembro guardado, pero el email falló: ${e.message}`)
+          setGuardando(false)
+          return
         }
       }
     }
