@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const MODEL = 'gemini-2.0-flash-lite'
+import { geminiGenerate } from '../../lib/gemini'
 
 export async function GET() {
   const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${KEY}`)
   const data = await res.json()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const names = (data.models ?? []).map((m: any) => m.name)
   return NextResponse.json({ key_prefix: KEY.slice(0, 10), models: names })
 }
@@ -13,20 +13,18 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
   if (!KEY) {
-    return NextResponse.json({ error: 'API key no configurada' }, { status: 500 })
+    return NextResponse.json({ error: { message: 'API key no configurada en el servidor' } }, { status: 500 })
   }
 
   const body = await req.json()
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`
+  const { ok, data, model, triedModels } = await geminiGenerate(body, KEY)
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  const data = await res.json()
+  if (!ok) {
+    console.error('[gemini/route] All models failed. Tried:', triedModels)
+  } else if (triedModels.length > 1) {
+    console.info(`[gemini/route] Responded with fallback model: ${model}`)
+  }
 
-  if (!res.ok) console.error('[gemini] error:', JSON.stringify(data).slice(0, 300))
-
-  return NextResponse.json(data, { status: res.status })
+  // Devolvemos la respuesta de Gemini tal cual — el cliente la interpreta
+  return NextResponse.json(data, { status: ok ? 200 : 429 })
 }

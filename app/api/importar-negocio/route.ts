@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { geminiGenerate } from '../../lib/gemini'
 
 const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY!
 
@@ -55,26 +56,24 @@ Reglas:
 Texto de la página:
 ${html}`
 
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_KEY}`
-  const geminiHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-
-  const geminiRes = await fetch(geminiUrl, {
-    method: 'POST',
-    headers: geminiHeaders,
-    body: JSON.stringify({
+  const { ok, data: geminiData, model, triedModels } = await geminiGenerate(
+    {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
-    }),
-  })
+    },
+    GEMINI_KEY
+  )
 
-  if (!geminiRes.ok) {
-    const errData = await geminiRes.json().catch(() => ({}))
-    console.error('[importar-negocio] Gemini error:', errData)
-    return NextResponse.json({ error: `Error de Gemini: ${JSON.stringify(errData)}` }, { status: 500 })
+  if (!ok) {
+    console.error('[importar-negocio] Gemini falló en todos los modelos:', triedModels)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const msg = (geminiData as any)?.error?.message ?? 'Cuota de Gemini agotada'
+    return NextResponse.json({ error: msg }, { status: 429 })
   }
+  if (triedModels.length > 1) console.info(`[importar-negocio] Usando modelo fallback: ${model}`)
 
-  const geminiData = await geminiRes.json()
-  const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const text: string = (geminiData as any)?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/)
