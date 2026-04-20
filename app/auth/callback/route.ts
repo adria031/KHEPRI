@@ -37,19 +37,29 @@ export async function GET(request: NextRequest) {
     return response
   }
 
+  const rol = searchParams.get('rol')
+  const negocioParam = searchParams.get('negocio')
+
   let redirectTo = `${origin}/onboarding`
 
   if (!error) {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      // Check if user already has a negocio → go to dashboard
-      // Otherwise → go to onboarding to complete setup
-      const { data: neg } = await supabase
-        .from('negocios')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (neg) redirectTo = `${origin}/dashboard`
+      if (rol === 'empleado' && negocioParam) {
+        // Create employee profile and link to negocio
+        await supabase.from('profiles').upsert({ id: user.id, tipo: 'empleado', email: user.email })
+        await supabase.from('trabajadores').update({ email: user.email }).eq('negocio_id', negocioParam).eq('email', user.email)
+        redirectTo = `${origin}/empleado`
+      } else {
+        // Check if user already has a negocio → go to dashboard
+        const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', user.id).maybeSingle()
+        if (profile?.tipo === 'empleado') {
+          redirectTo = `${origin}/empleado`
+        } else {
+          const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', user.id).maybeSingle()
+          if (neg) redirectTo = `${origin}/dashboard`
+        }
+      }
     }
   }
 

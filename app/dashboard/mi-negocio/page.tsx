@@ -40,6 +40,7 @@ export default function MiNegocio() {
     confirmacion_automatica: true as boolean,
     mensaje_cancelacion: '',
     metodos_pago: ['efectivo'] as string[],
+    visible: true as boolean,
   })
 
   const fileRef = useRef<HTMLInputElement>(null)
@@ -74,6 +75,7 @@ export default function MiNegocio() {
           confirmacion_automatica: data.confirmacion_automatica ?? true,
           mensaje_cancelacion: data.mensaje_cancelacion || '',
           metodos_pago: data.metodos_pago || ['efectivo'],
+          visible: data.visible ?? true,
         })
       }
       setCargando(false)
@@ -101,6 +103,7 @@ export default function MiNegocio() {
         confirmacion_automatica: form.confirmacion_automatica,
         mensaje_cancelacion: form.mensaje_cancelacion || null,
         metodos_pago: form.metodos_pago,
+        visible: form.visible,
       })
       .eq('id', negocioId)
     if (error) {
@@ -519,6 +522,26 @@ export default function MiNegocio() {
                     <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'8px'}}>
                       Los clientes podrán cancelar hasta {form.horas_cancelacion === 2 ? '2 horas' : form.horas_cancelacion === 24 ? '24 horas' : '48 horas'} antes de la cita.
                     </p>
+                  </div>
+
+                  <div className="toggle-row">
+                    <div>
+                      <div className="toggle-label">Negocio visible para clientes</div>
+                      <div className="toggle-sub">
+                        {form.visible
+                          ? 'Tu negocio aparece en el mapa y los clientes pueden reservar'
+                          : 'Tu negocio está oculto — no aparece en el mapa ni acepta reservas'}
+                      </div>
+                    </div>
+                    <label className="toggle">
+                      <input
+                        type="checkbox"
+                        checked={form.visible}
+                        onChange={e => setForm({ ...form, visible: e.target.checked })}
+                      />
+                      <div className="toggle-track" style={form.visible ? { background: '#16A34A', borderColor: '#16A34A' } : {}} />
+                      <div className="toggle-thumb" />
+                    </label>
                   </div>
 
                   <div className="toggle-row">

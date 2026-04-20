@@ -22,8 +22,11 @@ function KhepriLogo() {
 function AuthForm() {
   const searchParams = useSearchParams()
   const modoInicial = searchParams?.get('modo') === 'registro' ? 'registro' : 'login'
+  const emailParam  = searchParams?.get('email') ?? ''
+  const negocioParam = searchParams?.get('negocio') ?? ''
+  const rolParam    = searchParams?.get('rol') ?? ''
   const [modo, setModo] = useState<'login' | 'registro' | 'recuperar'>(modoInicial)
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(emailParam)
   const [password, setPassword] = useState('')
   const [nombre, setNombre] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -48,6 +51,11 @@ function AuthForm() {
           setMensaje('Este email ya está registrado. Redirigiendo...'); setEsError(true)
           setTimeout(() => { setModo('login'); setMensaje(''); setEsError(false) }, 2500)
         } else { setMensaje(error.message); setEsError(true) }
+      } else if (rolParam === 'empleado' && negocioParam && data.user) {
+        // Crear perfil empleado y ficha trabajador
+        await supabase.from('profiles').upsert({ id: data.user.id, tipo: 'empleado', nombre, email })
+        await supabase.from('trabajadores').update({ email }).eq('negocio_id', negocioParam).eq('email', email)
+        window.location.href = window.location.origin + '/empleado'
       } else {
         window.location.href = window.location.origin + '/onboarding'
       }
