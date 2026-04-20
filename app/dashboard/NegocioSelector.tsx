@@ -44,6 +44,11 @@ export function NegocioSelector({
   const esTodos = activoId === TODOS_ID
   const activo  = negocios.find(n => n.id === activoId) ?? negocios[0]
 
+  // Detectar nombres duplicados para mostrar info extra
+  const nombreCount: Record<string, number> = {}
+  negocios.forEach(n => { nombreCount[n.nombre] = (nombreCount[n.nombre] ?? 0) + 1 })
+  const tieneNombreDuplicado = (n: NegMin) => (nombreCount[n.nombre] ?? 0) > 1
+
   function cambiar(id: string) {
     if (id === activoId) { setOpen(false); return }
     localStorage.setItem('negocio_activo_id', id)
@@ -85,7 +90,12 @@ export function NegocioSelector({
     window.location.reload()
   }
 
-  const triggerLabel = esTodos ? 'Todos los negocios' : activo.nombre
+  const activoDuplicado = !esTodos && tieneNombreDuplicado(activo)
+  const triggerLabel = esTodos
+    ? 'Todos los negocios'
+    : activoDuplicado
+      ? `${activo.nombre} · ${activo.tipo ?? activo.ciudad ?? activo.id.slice(0, 6)}`
+      : activo.nombre
   const triggerColor = esTodos ? '#9CA3AF' : (PLAN_COLOR[activo.plan] ?? '#9CA3AF')
 
   return (
@@ -138,16 +148,22 @@ export function NegocioSelector({
               </button>
             )}
 
-            {negocios.map(n => (
-              <button key={n.id} onClick={() => cambiar(n.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '9px', border: 'none', background: !esTodos && n.id === activoId ? 'rgba(184,216,248,0.2)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: PLAN_COLOR[n.plan] ?? '#9CA3AF', flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.nombre}</div>
-                  <div style={{ fontSize: '11px', color: '#9CA3AF', textTransform: 'capitalize' }}>Plan {PLAN_LABEL[n.plan] ?? n.plan}</div>
-                </div>
-                {!esTodos && n.id === activoId && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#1D4ED8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              </button>
-            ))}
+            {negocios.map(n => {
+              const duplicado = tieneNombreDuplicado(n)
+              const subtitulo = duplicado
+                ? [n.tipo, n.ciudad].filter(Boolean).join(' · ') || `ID: ${n.id.slice(0, 6)}`
+                : `Plan ${PLAN_LABEL[n.plan] ?? n.plan}`
+              return (
+                <button key={n.id} onClick={() => cambiar(n.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', borderRadius: '9px', border: 'none', background: !esTodos && n.id === activoId ? 'rgba(184,216,248,0.2)' : 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: PLAN_COLOR[n.plan] ?? '#9CA3AF', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.nombre}</div>
+                    <div style={{ fontSize: '11px', color: duplicado ? '#F59E0B' : '#9CA3AF', textTransform: 'capitalize' }}>{subtitulo}</div>
+                  </div>
+                  {!esTodos && n.id === activoId && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#1D4ED8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </button>
+              )
+            })}
 
             <div style={{ height: '1px', background: 'rgba(0,0,0,0.07)', margin: '6px 0' }} />
             <button

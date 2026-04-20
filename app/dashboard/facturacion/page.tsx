@@ -175,7 +175,12 @@ export default function Facturacion() {
       const { session, db } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
-      const { data: neg } = await db.from('negocios').select('id, nombre, direccion, ciudad, codigo_postal, telefono').eq('user_id', user.id).single()
+      const { activo: negActivo, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
+      if (!negActivo) { window.location.href = '/onboarding'; return }
+      setTodosNegocios(todosNegs)
+      setNegocio(negActivo)
+      // Cargar datos completos del negocio activo
+      const { data: neg } = await db.from('negocios').select('id, nombre, direccion, ciudad, codigo_postal, telefono').eq('id', negActivo.id).single()
       if (!neg) { window.location.href = '/onboarding'; return }
       setNegocioId(neg.id)
       setNegocioNombre(neg.nombre)
