@@ -104,14 +104,24 @@ export default function Onboarding() {
         throw new Error(`Error al crear el perfil: ${profileError.message} (código: ${profileError.code})`)
       }
 
-      const { error: negocioError } = await supabase.from('negocios').insert({
+      const { data: negocioData, error: negocioError } = await supabase.from('negocios').insert({
         user_id: user.id, nombre: nombreNegocio, tipo: tipoNegocio,
         direccion, ciudad, codigo_postal: codigoPostal, telefono,
         instagram, whatsapp, facebook, plan: planSeleccionado, visible: true
-      })
+      }).select('id').single()
       if (negocioError) {
         console.error('[onboarding] negocio insert error:', negocioError.code, negocioError.message, negocioError.details, negocioError.hint)
         throw new Error(`Error al crear el negocio: ${negocioError.message} (código: ${negocioError.code})`)
+      }
+
+      if (negocioData?.id) {
+        supabase.from('trabajadores').insert({
+          negocio_id: negocioData.id,
+          nombre: nombreNegocio,
+          especialidad: 'Propietario',
+          activo: true,
+          email: user.email,
+        }).then(() => {})
       }
 
       fetch('/api/bienvenida', {

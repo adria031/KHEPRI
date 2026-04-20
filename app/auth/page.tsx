@@ -60,6 +60,7 @@ function AuthForm() {
           const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
           if (profile?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
           else if (profile?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
+          else if (profile?.tipo === 'empleado') window.location.href = window.location.origin + '/empleado'
           else window.location.href = window.location.origin + '/onboarding'
         }
       }
