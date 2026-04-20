@@ -310,7 +310,7 @@ export default function Dashboard() {
         .kpi-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.09); transform: translateY(-2px); }
         .kpi-icon { font-size: 24px; margin-bottom: 14px; line-height: 1; }
         .kpi-label { font-size: 12px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-        .kpi-val { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; color: #111827; letter-spacing: -1.5px; line-height: 1; margin-bottom: 10px; }
+        .kpi-val { font-size: 28px; font-weight: 800; color: #111827; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 10px; }
         .kpi-sub { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 100px; }
 
         /* ── Section label ── */
@@ -335,7 +335,7 @@ export default function Dashboard() {
         /* ── Bar chart ── */
         .db-chart-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid #F0F2F5; }
         .db-chart-footer-label { font-size: 12px; color: #9CA3AF; }
-        .db-chart-footer-val { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; color: #111827; }
+        .db-chart-footer-val { font-size: 15px; font-weight: 800; color: #111827; letter-spacing: -0.3px; }
 
         /* ── Stat mini rows ── */
         .db-stat-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #F3F4F6; }
@@ -399,7 +399,7 @@ export default function Dashboard() {
         }
         @media (max-width: 600px) {
           .db-kpis { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-          .kpi-val { font-size: 24px; }
+          .kpi-val { font-size: 22px; }
           .db-greet-title { font-size: 20px; }
         }
       `}</style>
@@ -676,11 +676,11 @@ export default function Dashboard() {
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 20 }}>
                   <div>
                     <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>Total este mes</div>
-                    <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 800, color: '#111827' }}>€{ingresosMes.toLocaleString('es-ES')}</div>
+                    <div style={{ fontFamily: 'inherit', fontSize: 16, fontWeight: 800, color: '#111827' }}>€{ingresosMes.toLocaleString('es-ES')}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>Hoy</div>
-                    <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 800, color: '#4F46E5' }}>€{ingresosHoy.toLocaleString('es-ES')}</div>
+                    <div style={{ fontFamily: 'inherit', fontSize: 16, fontWeight: 800, color: '#4F46E5' }}>€{ingresosHoy.toLocaleString('es-ES')}</div>
                   </div>
                 </div>
               </div>
