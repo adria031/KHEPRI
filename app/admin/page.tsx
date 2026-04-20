@@ -143,7 +143,8 @@ export default function Admin() {
     const cfg: Record<string, { bg: string; color: string; label: string }> = {
       basico:  { bg: 'rgba(184,216,248,0.25)', color: '#1D4ED8', label: 'Básico' },
       pro:     { bg: 'rgba(212,197,249,0.25)', color: '#6B4FD8', label: 'Pro' },
-      agencia: { bg: 'rgba(184,237,212,0.25)', color: '#2E8A5E', label: 'Agencia' },
+      agencia: { bg: 'rgba(184,237,212,0.25)', color: '#2E8A5E', label: 'Plus' },
+      plus:    { bg: 'rgba(184,237,212,0.25)', color: '#2E8A5E', label: 'Plus' },
     }
     const c = cfg[plan] || { bg: 'rgba(0,0,0,0.06)', color: '#6B7280', label: plan }
     return <span style={{ background: c.bg, color: c.color, fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{c.label}</span>
@@ -287,7 +288,7 @@ export default function Admin() {
               {[
                 { id: 'basico', nombre: 'Básico', precio: `${PRECIO_PLAN.basico} €/mes` },
                 { id: 'pro',    nombre: 'Pro',    precio: `${PRECIO_PLAN.pro} €/mes` },
-                { id: 'agencia',nombre: 'Agencia',precio: `${PRECIO_PLAN.agencia} €/mes` },
+                { id: 'agencia',nombre: 'Plus',   precio: `${PRECIO_PLAN.agencia} €/mes` },
               ].map(p => (
                 <div
                   key={p.id}
@@ -437,7 +438,7 @@ export default function Admin() {
                     {[
                       { id: 'basico',  nombre: 'Básico',  color: '#1D4ED8', fill: '#B8D8F8' },
                       { id: 'pro',     nombre: 'Pro',     color: '#6B4FD8', fill: '#D4C5F9' },
-                      { id: 'agencia', nombre: 'Agencia', color: '#2E8A5E', fill: '#B8EDD4' },
+                      { id: 'agencia', nombre: 'Plus',    color: '#2E8A5E', fill: '#B8EDD4' },
                     ].map(p => {
                       const count = porPlan[p.id as keyof typeof porPlan]
                       const ing = (PRECIO_PLAN[p.id] * count).toLocaleString('es-ES')
