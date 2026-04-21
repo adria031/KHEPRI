@@ -15,9 +15,14 @@ const tiposIVA = [
   { valor: 0, label: '0% Exento' },
 ]
 
+const CATEGORIAS_SUGERIDAS = [
+  'General','Cortes','Color','Tratamientos','Manicura','Pedicura','Masajes','Facial','Uñas','Depilación','Maquillaje','Otros',
+]
+
 type Servicio = {
   id?: string; nombre: string; duracion: number; precio: number; iva: number; activo: boolean
   precio_descuento: number | null; descuento_inicio: string | null; descuento_fin: string | null
+  categoria: string
 }
 
 function ofertaActiva(s: Servicio): boolean {
@@ -35,7 +40,7 @@ export default function Servicios() {
   const [guardando, setGuardando] = useState(false)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState<Servicio | null>(null)
-  const [form, setForm] = useState({ nombre: '', duracion: '30', precio: '', iva: '10', precio_descuento: '', descuento_inicio: '', descuento_fin: '' })
+  const [form, setForm] = useState({ nombre: '', duracion: '30', precio: '', iva: '10', precio_descuento: '', descuento_inicio: '', descuento_fin: '', categoria: 'General' })
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -63,10 +68,11 @@ export default function Servicios() {
         precio_descuento: servicio.precio_descuento != null ? String(servicio.precio_descuento) : '',
         descuento_inicio: servicio.descuento_inicio || '',
         descuento_fin: servicio.descuento_fin || '',
+        categoria: servicio.categoria || 'General',
       })
     } else {
       setEditando(null)
-      setForm({ nombre: '', duracion: '30', precio: '', iva: '10', precio_descuento: '', descuento_inicio: '', descuento_fin: '' })
+      setForm({ nombre: '', duracion: '30', precio: '', iva: '10', precio_descuento: '', descuento_inicio: '', descuento_fin: '', categoria: 'General' })
     }
     setError('')
     setModal(true)
@@ -81,6 +87,7 @@ export default function Servicios() {
       precio_descuento: form.precio_descuento ? parseFloat(form.precio_descuento) : null,
       descuento_inicio: form.descuento_inicio || null,
       descuento_fin: form.descuento_fin || null,
+      categoria: form.categoria || 'General',
     }
 
     if (editando?.id) {
@@ -227,6 +234,9 @@ export default function Servicios() {
                       )}
                     </div>
                     <div className="servicio-meta">
+                      {s.categoria && s.categoria !== 'General' && (
+                        <span className="tag" style={{background:'rgba(212,197,249,0.2)', color:'#6B4FD8', borderRadius:'100px'}}>📂 {s.categoria}</span>
+                      )}
                       <span className="tag tag-blue">⏱ {s.duracion} min</span>
                       <span className="tag tag-lila">IVA {s.iva}%</span>
                       <span className="tag tag-green">Base: €{((ofertaActiva(s) ? s.precio_descuento! : s.precio) / (1 + s.iva/100)).toFixed(2)}</span>
@@ -244,6 +254,19 @@ export default function Servicios() {
             <div className="field">
               <label>Nombre del servicio *</label>
               <input type="text" placeholder="Ej: Corte de pelo" value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} />
+            </div>
+            <div className="field">
+              <label>Categoría</label>
+              <input
+                type="text"
+                list="categorias-list"
+                placeholder="Ej: Cortes, Color, Masajes..."
+                value={form.categoria}
+                onChange={e => setForm({...form, categoria: e.target.value})}
+              />
+              <datalist id="categorias-list">
+                {CATEGORIAS_SUGERIDAS.map(c => <option key={c} value={c} />)}
+              </datalist>
             </div>
             <div className="grid2">
               <div className="field">

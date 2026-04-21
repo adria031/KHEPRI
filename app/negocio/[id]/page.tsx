@@ -48,7 +48,7 @@ type Negocio = {
   logo_url:string; fotos:string[]; metodos_pago:string[]|null
 }
 type Horario = { dia:string; abierto:boolean; hora_apertura:string; hora_cierre:string; hora_apertura2:string|null; hora_cierre2:string|null }
-type Servicio = { id:string; nombre:string; duracion:number; precio:number; precio_descuento:number|null; descuento_inicio:string|null; descuento_fin:string|null }
+type Servicio = { id:string; nombre:string; duracion:number; precio:number; precio_descuento:number|null; descuento_inicio:string|null; descuento_fin:string|null; categoria?:string|null }
 type Resena = { id:string; valoracion:number; texto:string|null; created_at:string; autor_nombre:string|null }
 
 function ofertaActiva(s: Servicio) {
@@ -65,20 +65,26 @@ function horarioTexto(h: Horario) {
   return base
 }
 
-// Agrupa servicios por prefijo heurístico
+const CAT_PALETTE = [
+  { bg:'#EFF6FF', color:'#1D4ED8', border:'rgba(191,219,254,0.6)', dot:'#60A5FA' },
+  { bg:'#F5F3FF', color:'#6D28D9', border:'rgba(221,214,254,0.6)', dot:'#A78BFA' },
+  { bg:'#ECFDF5', color:'#065F46', border:'rgba(167,243,208,0.6)', dot:'#34D399' },
+  { bg:'#FFFBEB', color:'#92400E', border:'rgba(253,230,138,0.6)', dot:'#FBBF24' },
+  { bg:'#FFF1F2', color:'#9F1239', border:'rgba(254,205,211,0.6)', dot:'#F87171' },
+  { bg:'#F0F9FF', color:'#075985', border:'rgba(186,230,253,0.6)', dot:'#38BDF8' },
+  { bg:'#F7FEE7', color:'#3F6212', border:'rgba(217,249,157,0.6)', dot:'#86EFAC' },
+]
+
 function agruparServicios(servicios: Servicio[]): Record<string, Servicio[]> {
   const grupos: Record<string, Servicio[]> = {}
   for (const s of servicios) {
-    const primera = s.nombre.split(' ')[0].toLowerCase()
-    const clave = primera.length > 3 ? primera.charAt(0).toUpperCase() + primera.slice(1) : 'Otros'
-    if (!grupos[clave]) grupos[clave] = []
-    grupos[clave].push(s)
+    const cat = (s.categoria && s.categoria.trim()) ? s.categoria.trim() : 'General'
+    if (!grupos[cat]) grupos[cat] = []
+    grupos[cat].push(s)
   }
-  // Si solo hay un grupo o muchos grupos de 1, devolver "Todos"
+  // Si todos los servicios son de la misma categoría, no usar accordion
   const claves = Object.keys(grupos)
-  if (claves.length <= 1 || claves.every(k => grupos[k].length === 1)) {
-    return { 'Todos los servicios': servicios }
-  }
+  if (claves.length <= 1) return { 'todos': servicios }
   return grupos
 }
 
@@ -197,13 +203,17 @@ export default function FichaNegocio() {
         .descripcion { font-size:15px; color:#374151; line-height:1.75; }
 
         /* SERVICIOS ACCORDION */
-        .grupo-header { display:flex; align-items:center; justify-content:space-between; padding:14px 0; cursor:pointer; border-bottom:1px solid rgba(0,0,0,0.06); user-select:none; transition:color 0.15s; }
-        .grupo-header:first-child { padding-top:0; }
-        .grupo-nombre { font-size:15px; font-weight:700; color:#111827; }
-        .grupo-count { font-size:12px; color:#9CA3AF; font-weight:500; margin-left:8px; }
-        .grupo-arrow { color:#9CA3AF; font-size:18px; transition:transform 0.2s; }
+        .grupo-wrap { margin-bottom:8px; border-radius:14px; overflow:hidden; border:1px solid rgba(0,0,0,0.06); }
+        .grupo-header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; cursor:pointer; user-select:none; transition:opacity 0.15s; }
+        .grupo-header:hover { opacity:0.85; }
+        .grupo-izq { display:flex; align-items:center; gap:10px; }
+        .grupo-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .grupo-nombre { font-size:14px; font-weight:700; }
+        .grupo-count { font-size:11px; font-weight:600; padding:2px 8px; border-radius:100px; background:rgba(0,0,0,0.07); color:inherit; opacity:0.7; }
+        .grupo-arrow { font-size:14px; transition:transform 0.22s; opacity:0.6; }
         .grupo-arrow.open { transform:rotate(180deg); }
-        .servicio-item { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid rgba(0,0,0,0.04); }
+        .grupo-body { background:white; padding:0 16px; }
+        .servicio-item { display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid rgba(0,0,0,0.04); }
         .servicio-item:last-child { border-bottom:none; }
         .serv-info { flex:1; }
         .serv-nombre { font-size:14px; font-weight:600; color:#111827; margin-bottom:3px; }
@@ -356,40 +366,63 @@ export default function FichaNegocio() {
             {servicios.length > 0 && (
               <div className="card">
                 <div className="card-title">Servicios y precios</div>
-                {Object.entries(grupos).map(([grupo, items]) => (
-                  <div key={grupo}>
-                    {Object.keys(grupos).length > 1 && (
-                      <div className="grupo-header" onClick={() => setGrupoAbierto(grupoAbierto===grupo ? null : grupo)}>
-                        <span>
-                          <span className="grupo-nombre">{grupo}</span>
-                          <span className="grupo-count">{items.length}</span>
-                        </span>
-                        <span className={`grupo-arrow ${grupoAbierto===grupo?'open':''}`}>⌄</span>
-                      </div>
-                    )}
-                    {(Object.keys(grupos).length === 1 || grupoAbierto === grupo) && items.map(s => (
-                      <div key={s.id} className="servicio-item">
-                        <div className="serv-info">
-                          <div className="serv-nombre">
-                            {s.nombre}
-                            {ofertaActiva(s) && <span className="oferta-badge">🏷 OFERTA</span>}
+                {(() => {
+                  const esUnica = Object.keys(grupos).length === 1
+                  return Object.entries(grupos).map(([grupo, items], gi) => {
+                    const pal = CAT_PALETTE[gi % CAT_PALETTE.length]
+                    const abierto = grupoAbierto === grupo
+                    const listaServicios = (
+                      <div className={esUnica ? '' : 'grupo-body'}>
+                        {items.map(s => (
+                          <div key={s.id} className="servicio-item">
+                            <div className="serv-info">
+                              <div className="serv-nombre">
+                                {s.nombre}
+                                {ofertaActiva(s) && <span className="oferta-badge">🏷 OFERTA</span>}
+                              </div>
+                              <div className="serv-dur">⏱ {s.duracion} min</div>
+                            </div>
+                            <div className="serv-precio-wrap">
+                              {ofertaActiva(s) ? (
+                                <>
+                                  <div className="serv-precio-old">€{s.precio.toFixed(2)}</div>
+                                  <div className="serv-precio-oferta">€{s.precio_descuento!.toFixed(2)}</div>
+                                </>
+                              ) : (
+                                <div className="serv-precio">€{s.precio.toFixed(2)}</div>
+                              )}
+                            </div>
                           </div>
-                          <div className="serv-dur">⏱ {s.duracion} min</div>
-                        </div>
-                        <div className="serv-precio-wrap">
-                          {ofertaActiva(s) ? (
-                            <>
-                              <div className="serv-precio-old">€{s.precio.toFixed(2)}</div>
-                              <div className="serv-precio-oferta">€{s.precio_descuento!.toFixed(2)}</div>
-                            </>
-                          ) : (
-                            <div className="serv-precio">€{s.precio.toFixed(2)}</div>
-                          )}
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ))}
+                    )
+
+                    if (esUnica) return <div key={grupo}>{listaServicios}</div>
+
+                    return (
+                      <div key={grupo} className="grupo-wrap" style={{ borderColor: pal.border }}>
+                        <div
+                          className="grupo-header"
+                          style={{ background: pal.bg, color: pal.color }}
+                          onClick={() => setGrupoAbierto(abierto ? null : grupo)}
+                        >
+                          <div className="grupo-izq">
+                            <span className="grupo-dot" style={{ background: pal.dot }} />
+                            <span className="grupo-nombre" style={{ color: pal.color }}>{grupo}</span>
+                            <span className="grupo-count">{items.length} servicio{items.length !== 1 ? 's' : ''}</span>
+                          </div>
+                          <svg
+                            className={`grupo-arrow ${abierto ? 'open' : ''}`}
+                            width="16" height="16" viewBox="0 0 16 16" fill="none"
+                          >
+                            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        {abierto && listaServicios}
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             )}
 
