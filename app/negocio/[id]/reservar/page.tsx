@@ -31,8 +31,18 @@ function KhepriLogo() {
 }
 
 type Servicio = { id: string; nombre: string; duracion: number; precio: number }
-type Trabajador = { id: string; nombre: string }
+type Trabajador = { id: string; nombre: string; especialidad?: string | null; color?: string | null }
 type Horario = { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string | null; hora_cierre2: string | null }
+
+const WORKER_COLORS  = ['#818CF8','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C','#A78BFA','#F87171']
+const WORKER_BG      = ['#EEF2FF','#ECFDF5','#FFFBEB','#FDF2F8','#F0F9FF','#FFF7ED','#F5F3FF','#FEF2F2']
+
+function trabajadorColor(t: Trabajador, idx: number): string {
+  return t.color || WORKER_COLORS[idx % WORKER_COLORS.length]
+}
+function trabajadorBg(t: Trabajador, idx: number): string {
+  return t.color ? `${t.color}22` : WORKER_BG[idx % WORKER_BG.length]
+}
 
 const diasNombre = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado']
 const mesesNombre = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
@@ -77,6 +87,8 @@ export default function Reservar() {
   const [email, setEmail] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
+  const [horasOcupadas, setHorasOcupadas] = useState<Set<string>>(new Set())
+  const [cargandoSlots, setCargandoSlots] = useState(false)
 
   // Chat widget
   const [chatOpen, setChatOpen] = useState(false)
@@ -119,7 +131,7 @@ export default function Reservar() {
     Promise.all([
       supabase.from('negocios').select('nombre').eq('id', id).single(),
       supabase.from('servicios').select('id,nombre,duracion,precio').eq('negocio_id', id).eq('activo', true).order('nombre'),
-      supabase.from('trabajadores').select('id,nombre').eq('negocio_id', id).eq('activo', true).order('nombre'),
+      supabase.from('trabajadores').select('id,nombre,especialidad,color').eq('negocio_id', id).eq('activo', true).order('nombre'),
       supabase.from('horarios').select('*').eq('negocio_id', id),
     ]).then(([{data: neg}, {data: ser}, {data: tra}, {data: hor}]) => {
       if (neg) setNegocioNombre(neg.nombre)
@@ -129,6 +141,23 @@ export default function Reservar() {
       setCargandoInit(false)
     })
   }, [id])
+
+  // Cargar horas ocupadas cuando llegamos al paso de hora
+  useEffect(() => {
+    if (paso !== 3 || !fecha || !servicio || !id) return
+    setCargandoSlots(true)
+    let query = supabase
+      .from('reservas')
+      .select('hora')
+      .eq('negocio_id', id)
+      .eq('fecha', fecha)
+      .neq('estado', 'cancelada')
+    if (trabajador?.id) query = query.eq('trabajador_id', trabajador.id)
+    query.then(({ data }) => {
+      setHorasOcupadas(new Set((data || []).map((r: { hora: string }) => r.hora.slice(0, 5))))
+      setCargandoSlots(false)
+    })
+  }, [paso, fecha, servicio, trabajador, id])
 
   // Generar slots para la fecha y servicio seleccionados
   const slots = useCallback((): string[] => {
@@ -387,6 +416,38 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
         .btn-primary:disabled { background: #9CA3AF; cursor: not-allowed; }
         .btn-back { background: none; border: none; font-family: inherit; font-size: 14px; font-weight: 600; color: #6B7280; cursor: pointer; padding: 4px 0; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
         .error-msg { background: rgba(251,207,232,0.3); color: #B5467A; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-top: 12px; }
+        /* Worker avatar circle */
+        .worker-circle { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; flex-shrink: 0; letter-spacing: -0.5px; }
+        .opcion-especialidad { font-size: 12px; color: #9CA3AF; margin-top: 2px; }
+        /* Horizontal day strip */
+        .day-strip-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
+        .day-strip-wrap::-webkit-scrollbar { height: 3px; }
+        .day-strip-wrap::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+        .day-strip { display: flex; gap: 8px; padding: 4px 2px 8px; width: max-content; }
+        .day-chip { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 12px; min-width: 52px; border-radius: 14px; cursor: pointer; border: 1.5px solid rgba(0,0,0,0.08); background: white; transition: all 0.15s; }
+        .day-chip.cerrado { cursor: default; opacity: 0.4; }
+        .day-chip.cerrado .day-num { text-decoration: line-through; }
+        .day-chip.disponible:hover { border-color: #1D4ED8; box-shadow: 0 0 0 3px rgba(29,78,216,0.07); }
+        .day-chip.seleccionado { background: #1D4ED8; border-color: #1D4ED8; color: white !important; }
+        .day-chip.seleccionado .day-label, .day-chip.seleccionado .day-num, .day-chip.seleccionado .day-month { color: white !important; }
+        .day-chip.es-hoy .day-num { font-weight: 800; }
+        .day-label { font-size: 10px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; }
+        .day-num { font-size: 20px; font-weight: 800; color: #111827; line-height: 1; }
+        .day-month { font-size: 10px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; }
+        /* Slot list */
+        .slot-list { display: flex; flex-direction: column; gap: 8px; }
+        .slot-item { display: flex; align-items: center; padding: 13px 16px; background: white; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 12px; cursor: pointer; transition: all 0.15s; gap: 14px; }
+        .slot-item:hover { border-color: #1D4ED8; box-shadow: 0 0 0 3px rgba(29,78,216,0.07); }
+        .slot-item.selected { background: #1D4ED8; border-color: #1D4ED8; }
+        .slot-item.selected .slot-hora, .slot-item.selected .slot-precio { color: white; }
+        .slot-item.ocupado { background: #F9FAFB; cursor: not-allowed; opacity: 0.5; }
+        .slot-item.ocupado .slot-hora { text-decoration: line-through; color: #9CA3AF; }
+        .slot-dot { width: 8px; height: 8px; border-radius: 50%; background: #34D399; flex-shrink: 0; }
+        .slot-item.ocupado .slot-dot { background: #F87171; }
+        .slot-item.selected .slot-dot { background: rgba(255,255,255,0.6); }
+        .slot-hora { font-size: 16px; font-weight: 800; color: #111827; flex: 1; }
+        .slot-precio { font-size: 14px; font-weight: 700; color: #6B7280; }
+        .slot-tag { font-size: 11px; font-weight: 700; color: #F87171; background: rgba(248,113,113,0.1); padding: 2px 8px; border-radius: 100px; }
         /* Éxito */
         .exito { text-align: center; padding: 40px 20px; }
         .exito-icon { font-size: 64px; margin-bottom: 16px; }
@@ -495,20 +556,26 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 </div>
                 <div className="opcion-lista">
                   <div className={`opcion ${!trabajador ? 'selected' : ''}`} onClick={() => { setTrabajador(null); setPaso(2) }}>
-                    <div className="opcion-icon">🎲</div>
+                    <div className="worker-circle" style={{background:'rgba(156,163,175,0.15)', color:'#6B7280', fontSize:'20px'}}>🎲</div>
                     <div>
                       <div className="opcion-nombre">Sin preferencia</div>
-                      <div className="opcion-sub">Asignar automáticamente</div>
+                      <div className="opcion-sub">Cualquier profesional disponible</div>
                     </div>
                   </div>
-                  {trabajadores.map(t => (
-                    <div key={t.id} className={`opcion ${trabajador?.id === t.id ? 'selected' : ''}`} onClick={() => { setTrabajador(t); setPaso(2) }}>
-                      <div className="opcion-icon" style={{background:'rgba(212,197,249,0.3)'}}>👤</div>
-                      <div>
-                        <div className="opcion-nombre">{t.nombre}</div>
+                  {trabajadores.map((t, idx) => {
+                    const initials = t.nombre.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase()
+                    return (
+                      <div key={t.id} className={`opcion ${trabajador?.id === t.id ? 'selected' : ''}`} onClick={() => { setTrabajador(t); setPaso(2) }}>
+                        <div className="worker-circle" style={{background: trabajadorBg(t, idx), color: trabajadorColor(t, idx)}}>
+                          {initials}
+                        </div>
+                        <div>
+                          <div className="opcion-nombre">{t.nombre}</div>
+                          {t.especialidad && <div className="opcion-especialidad">{t.especialidad}</div>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </>
             )}
@@ -519,51 +586,36 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 <button className="btn-back" onClick={() => setPaso(trabajadores.length > 1 ? 1 : 0)}>← Atrás</button>
                 <div className="step-header">
                   <h2>¿Qué día te viene bien?</h2>
-                  <p>Los días en gris no están disponibles</p>
+                  <p>Desliza para ver más fechas · días tachados cerrados</p>
                 </div>
-                <div className="cal">
-                  <div className="cal-header">
-                    <button
-                      className="cal-nav"
-                      disabled={calAnio === hoy.getFullYear() && calMes === hoy.getMonth()}
-                      style={{opacity: calAnio === hoy.getFullYear() && calMes === hoy.getMonth() ? 0.25 : 1}}
-                      onClick={() => {
-                        if (calMes === 0) { setCalMes(11); setCalAnio(y => y-1) } else setCalMes(m => m-1)
-                      }}
-                    >‹</button>
-                    <span className="cal-mes">{mesesNombre[calMes]} {calAnio}</span>
-                    <button className="cal-nav" onClick={() => {
-                      if (calMes === 11) { setCalMes(0); setCalAnio(y => y+1) } else setCalMes(m => m+1)
-                    }}>›</button>
-                  </div>
-                  <div className="cal-body">
-                    <div className="cal-dias-semana">
-                      {diasSemana.map(d => <div key={d} className="cal-dia-nombre">{d}</div>)}
-                    </div>
-                    <div className="cal-grid">
-                      {Array.from({length: primerDiaMes(calAnio, calMes)}).map((_, i) => <div key={`empty-${i}`} />)}
-                      {Array.from({length: diasEnMes(calAnio, calMes)}).map((_, i) => {
-                        const d = i + 1
-                        const disp = diaDisponible(calAnio, calMes, d)
-                        const fechaISO = formatFecha(calAnio, calMes, d)
-                        const esHoy = fechaISO === formatFecha(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
-                        const selec = fecha === fechaISO
-                        return (
-                          <div
-                            key={d}
-                            className={`cal-dia ${disp ? 'disponible' : ''} ${esHoy ? 'hoy' : ''} ${selec ? 'seleccionado' : ''}`}
-                            onClick={() => {
-                              if (!disp) return
-                              setFecha(fechaISO)
-                              setHora('')
-                              setPaso(3)
-                            }}
-                          >
-                            {d}
-                          </div>
-                        )
-                      })}
-                    </div>
+                <div className="day-strip-wrap">
+                  <div className="day-strip">
+                    {Array.from({ length: 60 }).map((_, i) => {
+                      const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + i)
+                      const y = d.getFullYear(), m = d.getMonth(), day = d.getDate()
+                      const fechaISO = formatFecha(y, m, day)
+                      const disp = diaDisponible(y, m, day)
+                      const esHoy = i === 0
+                      const selec = fecha === fechaISO
+                      const labelDia = diasSemana[(d.getDay() + 6) % 7]
+                      const labelMes = mesesNombre[m].slice(0,3).toUpperCase()
+                      return (
+                        <div
+                          key={fechaISO}
+                          className={`day-chip ${disp ? 'disponible' : 'cerrado'} ${selec ? 'seleccionado' : ''} ${esHoy ? 'es-hoy' : ''}`}
+                          onClick={() => {
+                            if (!disp) return
+                            setFecha(fechaISO)
+                            setHora('')
+                            setPaso(3)
+                          }}
+                        >
+                          <span className="day-label">{labelDia}</span>
+                          <span className="day-num">{day}</span>
+                          <span className="day-month">{labelMes}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </>
@@ -577,13 +629,29 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                   <h2>¿A qué hora?</h2>
                   <p>{fecha && new Date(fecha+'T00:00:00').toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'long'})}</p>
                 </div>
-                {slots().length === 0 ? (
+                {cargandoSlots ? (
+                  <div style={{textAlign:'center', padding:'40px', color:'#9CA3AF', fontSize:'14px'}}>Comprobando disponibilidad…</div>
+                ) : slots().length === 0 ? (
                   <div style={{textAlign:'center', padding:'40px', color:'#9CA3AF', fontSize:'14px'}}>No hay horas disponibles este día</div>
                 ) : (
-                  <div className="slots-grid">
-                    {slots().map(s => (
-                      <div key={s} className={`slot ${hora === s ? 'selected' : ''}`} onClick={() => { setHora(s); setPaso(4) }}>{s}</div>
-                    ))}
+                  <div className="slot-list">
+                    {slots().map(s => {
+                      const ocupado = horasOcupadas.has(s)
+                      return (
+                        <div
+                          key={s}
+                          className={`slot-item ${ocupado ? 'ocupado' : ''} ${hora === s ? 'selected' : ''}`}
+                          onClick={() => { if (!ocupado) { setHora(s); setPaso(4) } }}
+                        >
+                          <span className="slot-dot" />
+                          <span className="slot-hora">{s}</span>
+                          {ocupado
+                            ? <span className="slot-tag">Ocupado</span>
+                            : <span className="slot-precio">{servicio ? `€${servicio.precio.toFixed(2)}` : ''}</span>
+                          }
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </>

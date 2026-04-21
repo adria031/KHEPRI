@@ -71,10 +71,13 @@ const estadoConfig = {
   cancelada:   { label: 'Cancelada',   bg: 'rgba(251,207,232,0.3)',  color: '#B5467A' },
 }
 
+const WORKER_COLORS_RES = ['#818CF8','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C','#A78BFA','#F87171']
+
 export default function Reservas() {
   const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocio, setNegocio] = useState<{id: string, nombre: string, plan: string} | null>(null)
   const [reservas, setReservas] = useState<Reserva[]>([])
+  const [colorMap, setColorMap] = useState<Record<string, string>>({})
   const [fecha, setFecha] = useState(hoyISO())
   const [cargando, setCargando] = useState(true)
   const [actualizando, setActualizando] = useState<string | null>(null)
@@ -94,6 +97,21 @@ export default function Reservas() {
       if (data) setNegocio(data)
     })()
   }, [])
+
+  // Cargar trabajadores para colorMap
+  useEffect(() => {
+    if (!negocio) return
+    supabase.from('trabajadores')
+      .select('id,color')
+      .eq('negocio_id', negocio.id)
+      .then(({ data }) => {
+        const map: Record<string, string> = {}
+        ;(data || []).forEach((t: { id: string; color: string | null }, idx: number) => {
+          map[t.id] = t.color || WORKER_COLORS_RES[idx % WORKER_COLORS_RES.length]
+        })
+        setColorMap(map)
+      })
+  }, [negocio])
 
   // Cargar horarios
   useEffect(() => {
@@ -261,6 +279,8 @@ export default function Reservas() {
         .cal-dia.hoy .cal-num { color: var(--lila-dark); font-weight: 800; }
         .cal-dia.seleccionado .cal-num { color: var(--blue-dark); font-weight: 800; }
         .cal-badge { font-size: 10px; font-weight: 700; background: var(--blue-dark); color: white; border-radius: 100px; padding: 1px 5px; line-height: 1.5; }
+        /* Worker color bar */
+        .worker-bar { width: 4px; border-radius: 2px; align-self: stretch; flex-shrink: 0; min-height: 36px; }
         /* Slots */
         .slot-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--white); margin-bottom: 6px; }
         .slot-row.ocupado { background: rgba(184,216,248,0.08); border-color: rgba(184,216,248,0.4); }
@@ -406,6 +426,7 @@ export default function Reservas() {
                       const cfg = estadoConfig[r.estado] || estadoConfig.confirmada
                       return (
                         <div key={hora} className="slot-row ocupado">
+                          {r.trabajador_id && <div className="worker-bar" style={{background: colorMap[r.trabajador_id] || '#CBD5E1'}} />}
                           <span className="slot-hora-label">{hora}</span>
                           <div className="reserva-info">
                             <div className="reserva-cliente">{r.cliente_nombre}</div>
@@ -443,7 +464,7 @@ export default function Reservas() {
                       {reservas.map(r => {
                         const cfg = estadoConfig[r.estado] || estadoConfig.confirmada
                         return (
-                          <div key={r.id} className="reserva-card">
+                          <div key={r.id} className="reserva-card" style={r.trabajador_id ? {borderLeft: `4px solid ${colorMap[r.trabajador_id] || '#CBD5E1'}`} : {}}>
                             <div className="reserva-hora">{r.hora?.slice(0,5)}</div>
                             <div className="reserva-info">
                               <div className="reserva-cliente">{r.cliente_nombre}</div>
