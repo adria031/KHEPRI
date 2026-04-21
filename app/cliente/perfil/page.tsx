@@ -13,6 +13,7 @@ type Reserva = {
   negocio_id: string
   negocios: { id: string; nombre: string; tipo: string; logo_url: string | null } | null
   servicios: { nombre: string } | null
+  trabajadores: { nombre: string } | null
 }
 
 type NegFav = {
@@ -41,8 +42,6 @@ function formatFecha(fecha: string) {
   const [y, m, d] = fecha.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 }
-
-const FAVS_KEY = 'khepria_favs'
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -93,7 +92,7 @@ export default function PerfilCliente() {
     setCargandoReservas(true)
     supabase
       .from('reservas')
-      .select('id, fecha, hora, estado, negocio_id, negocios(id, nombre, tipo, logo_url), servicios(nombre)')
+      .select('id, fecha, hora, estado, negocio_id, negocios(id, nombre, tipo, logo_url), servicios(nombre), trabajadores(nombre)')
       .eq('cliente_email', form.email)
       .order('fecha', { ascending: false })
       .limit(30)
@@ -105,20 +104,23 @@ export default function PerfilCliente() {
 
   // Cargar favoritos cuando se activa esa sección
   useEffect(() => {
-    if (seccion !== 'favoritos') return
-    const ids: string[] = JSON.parse(localStorage.getItem(FAVS_KEY) || '[]')
-    setFavIds(ids)
-    if (ids.length === 0) return
+    if (seccion !== 'favoritos' || !userId) return
     setCargandoFavs(true)
     supabase
-      .from('negocios')
-      .select('id, nombre, tipo, ciudad, logo_url, fotos')
-      .in('id', ids)
+      .from('favoritos')
+      .select('negocio_id, negocios(id, nombre, tipo, ciudad, logo_url, fotos)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
       .then(({ data }) => {
-        setNegsFavs((data as NegFav[]) || [])
+        const negs = (data || [])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((row: any) => (Array.isArray(row.negocios) ? row.negocios[0] : row.negocios))
+          .filter(Boolean) as NegFav[]
+        setNegsFavs(negs)
+        setFavIds(negs.map(n => n.id))
         setCargandoFavs(false)
       })
-  }, [seccion])
+  }, [seccion, userId])
 
   // ── Acciones ──────────────────────────────────────────────────────────────
 
@@ -147,11 +149,12 @@ export default function PerfilCliente() {
     if (avatarRef.current) avatarRef.current.value = ''
   }
 
-  function quitarFav(id: string) {
-    const next = favIds.filter(f => f !== id)
-    setFavIds(next)
-    setNegsFavs(prev => prev.filter(n => n.id !== id))
-    localStorage.setItem(FAVS_KEY, JSON.stringify(next))
+  async function quitarFav(negocioId: string) {
+    setNegsFavs(prev => prev.filter(n => n.id !== negocioId))
+    setFavIds(prev => prev.filter(f => f !== negocioId))
+    if (userId) {
+      await supabase.from('favoritos').delete().eq('user_id', userId).eq('negocio_id', negocioId)
+    }
   }
 
   async function cerrarSesion() {
@@ -381,7 +384,7 @@ export default function PerfilCliente() {
                           {neg?.nombre ?? 'Negocio'}
                         </div>
                         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>
-                          {r.servicios?.nombre ?? '—'} · {formatFecha(r.fecha)} {r.hora?.slice(0,5)}
+                          {r.servicios?.nombre ?? '—'}{r.trabajadores?.nombre ? ` · ${r.trabajadores.nombre}` : ''} · {formatFecha(r.fecha)} {r.hora?.slice(0,5)}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span className="estado-badge" style={{ background: est.bg, color: est.color }}>
@@ -409,7 +412,7 @@ export default function PerfilCliente() {
               {favIds.length > 0 ? `${favIds.length} negocio${favIds.length > 1 ? 's' : ''} guardado${favIds.length > 1 ? 's' : ''}` : 'Negocios guardados'}
             </div>
 
-            {cargandoFavs ? (
+            {(cargandoFavs || !userId) ? (
               <div style={{ textAlign: 'center', padding: '52px 20px', color: '#9CA3AF', fontSize: '14px' }}>Cargando...</div>
             ) : favIds.length === 0 ? (
               <div className="empty">

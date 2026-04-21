@@ -98,6 +98,9 @@ export default function FichaNegocio() {
   const [fotoActiva, setFotoActiva] = useState(0)
   const [cargando, setCargando] = useState(true)
   const [grupoAbierto, setGrupoAbierto] = useState<string|null>(null)
+  const [userId, setUserId] = useState<string|null>(null)
+  const [esFav, setEsFav] = useState(false)
+  const [favCargando, setFavCargando] = useState(false)
 
   const hoyDia = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date().getDay()]
 
@@ -120,6 +123,34 @@ export default function FichaNegocio() {
       setCargando(false)
     })
   }, [id])
+
+  // Check/toggle favorite
+  useEffect(() => {
+    if (!id) return
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      setUserId(user.id)
+      supabase.from('favoritos')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('negocio_id', id)
+        .maybeSingle()
+        .then(({ data }) => setEsFav(!!data))
+    })
+  }, [id])
+
+  async function toggleFav() {
+    if (!userId) { window.location.href = '/auth'; return }
+    setFavCargando(true)
+    if (esFav) {
+      await supabase.from('favoritos').delete().eq('user_id', userId).eq('negocio_id', id)
+      setEsFav(false)
+    } else {
+      await supabase.from('favoritos').insert({ user_id: userId, negocio_id: id })
+      setEsFav(true)
+    }
+    setFavCargando(false)
+  }
 
   function abrirGPS() {
     if (!negocio) return
@@ -268,13 +299,20 @@ export default function FichaNegocio() {
         .pago-chips { display:flex; flex-wrap:wrap; gap:7px; }
         .pago-chip { display:inline-flex; align-items:center; gap:5px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.15); color:#6366F1; padding:6px 12px; border-radius:100px; font-size:12px; font-weight:600; }
 
+        /* FAV BUTTON */
+        .btn-fav { background:rgba(255,255,255,0.9); border:1.5px solid rgba(0,0,0,0.1); border-radius:100px; width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-size:20px; cursor:pointer; transition:all 0.15s; backdrop-filter:blur(8px); flex-shrink:0; }
+        .btn-fav:hover { transform:scale(1.1); border-color:rgba(239,68,68,0.4); }
+        .btn-fav.active { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.35); }
+        .btn-fav:disabled { opacity:0.5; cursor:not-allowed; }
         /* MOBILE CTA FIXED */
         .mobile-cta { display:none; position:fixed; bottom:0; left:0; right:0; padding:16px 20px; background:rgba(255,255,255,0.95); backdrop-filter:blur(12px); border-top:1px solid rgba(0,0,0,0.08); z-index:90; }
-        .mobile-cta a { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:15px; background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border-radius:14px; font-family:inherit; font-size:16px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(99,102,241,0.35); }
+        .mobile-cta-inner { display:flex; gap:10px; align-items:center; }
+        .mobile-cta a { display:flex; align-items:center; justify-content:center; gap:8px; flex:1; padding:15px; background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border-radius:14px; font-family:inherit; font-size:16px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(99,102,241,0.35); }
 
         @media (max-width: 768px) {
           .nav { padding:12px 20px; }
           .btn-cita-nav { display:none; }
+          .btn-fav { display:none; }
           .hero { height:260px; }
           .wrap { padding:0 16px; }
           .profile-name { font-size:24px; }
@@ -291,9 +329,19 @@ export default function FichaNegocio() {
       {/* NAV */}
       <nav className="nav">
         <Link href="/cliente" style={{textDecoration:'none'}}><KhepriLogo /></Link>
-        <Link href={`/negocio/${id}/reservar`} className="btn-cita-nav">
-          <span>📅</span> Pedir cita
-        </Link>
+        <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
+          <button
+            className={`btn-fav ${esFav ? 'active' : ''}`}
+            onClick={toggleFav}
+            disabled={favCargando}
+            title={esFav ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+          >
+            {esFav ? '❤️' : '🤍'}
+          </button>
+          <Link href={`/negocio/${id}/reservar`} className="btn-cita-nav">
+            <span>📅</span> Pedir cita
+          </Link>
+        </div>
       </nav>
 
       {/* HERO */}
@@ -559,7 +607,18 @@ export default function FichaNegocio() {
 
       {/* MOBILE FIXED CTA */}
       <div className="mobile-cta">
-        <Link href={`/negocio/${id}/reservar`}>📅 Pedir cita</Link>
+        <div className="mobile-cta-inner">
+          <button
+            className={`btn-fav ${esFav ? 'active' : ''}`}
+            onClick={toggleFav}
+            disabled={favCargando}
+            style={{background: esFav ? 'rgba(239,68,68,0.08)' : 'white'}}
+            title={esFav ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+          >
+            {esFav ? '❤️' : '🤍'}
+          </button>
+          <Link href={`/negocio/${id}/reservar`}>📅 Pedir cita</Link>
+        </div>
       </div>
     </>
   )
