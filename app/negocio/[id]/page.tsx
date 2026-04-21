@@ -101,6 +101,7 @@ export default function FichaNegocio() {
   const [userId, setUserId] = useState<string|null>(null)
   const [esFav, setEsFav] = useState(false)
   const [favCargando, setFavCargando] = useState(false)
+  const [clientePuntos, setClientePuntos] = useState<number|null>(null)
 
   const hoyDia = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date().getDay()]
 
@@ -124,7 +125,7 @@ export default function FichaNegocio() {
     })
   }, [id])
 
-  // Check/toggle favorite
+  // Check/toggle favorite + fetch client points
   useEffect(() => {
     if (!id) return
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -136,6 +137,11 @@ export default function FichaNegocio() {
         .eq('negocio_id', id)
         .maybeSingle()
         .then(({ data }) => setEsFav(!!data))
+      supabase.from('profiles')
+        .select('puntos')
+        .eq('id', user.id)
+        .maybeSingle()
+        .then(({ data }) => setClientePuntos((data as { puntos: number | null } | null)?.puntos ?? 0))
     })
   }, [id])
 
@@ -395,6 +401,14 @@ export default function FichaNegocio() {
                 {horarioHoy.abierto ? '● Abierto ahora' : '● Cerrado ahora'}
               </span>
             )}
+            {clientePuntos !== null && (() => {
+              const pts = clientePuntos
+              if (pts >= 1000) return <span style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'rgba(253,230,138,0.35)',color:'#92400E',fontSize:'12px',fontWeight:700,padding:'4px 11px',borderRadius:'100px',border:'1px solid rgba(253,230,138,0.6)'}}>⭐⭐⭐ Premium · {pts} pts</span>
+              if (pts >= 500)  return <span style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'rgba(212,197,249,0.35)',color:'#6D28D9',fontSize:'12px',fontWeight:700,padding:'4px 11px',borderRadius:'100px',border:'1px solid rgba(212,197,249,0.6)'}}>⭐⭐ VIP · {pts} pts</span>
+              if (pts >= 100)  return <span style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'rgba(184,216,248,0.35)',color:'#1D4ED8',fontSize:'12px',fontWeight:700,padding:'4px 11px',borderRadius:'100px',border:'1px solid rgba(184,216,248,0.6)'}}>⭐ Habitual · {pts} pts</span>
+              if (pts > 0)     return <span style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'rgba(243,244,246,0.8)',color:'#6B7280',fontSize:'12px',fontWeight:700,padding:'4px 11px',borderRadius:'100px',border:'1px solid rgba(0,0,0,0.08)'}}>🌱 {pts} pts</span>
+              return null
+            })()}
           </div>
         </div>
 

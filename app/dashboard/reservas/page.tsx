@@ -17,6 +17,7 @@ type Reserva = {
   estado: 'confirmada' | 'cancelada' | 'completada'
   servicio_id: string
   trabajador_id: string | null
+  puntos_ganados: number | null
   servicios: { nombre: string } | null
   trabajadores: { nombre: string } | null
 }
@@ -434,6 +435,7 @@ export default function Reservas() {
                               {r.servicios?.nombre && <span>🔧 {r.servicios.nombre}</span>}
                               {r.trabajadores?.nombre && <span>👤 {r.trabajadores.nombre}</span>}
                               {r.cliente_telefono && <span>📞 {r.cliente_telefono}</span>}
+                              {r.estado === 'completada' && r.puntos_ganados ? <span style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</span> : null}
                             </div>
                           </div>
                           <span className="reserva-estado" style={{background:cfg.bg,color:cfg.color}}>{cfg.label}</span>
@@ -472,6 +474,7 @@ export default function Reservas() {
                                 {r.servicios?.nombre && <span>🔧 {r.servicios.nombre}</span>}
                                 {r.trabajadores?.nombre && <span>👤 {r.trabajadores.nombre}</span>}
                                 {r.cliente_telefono && <span>📞 {r.cliente_telefono}</span>}
+                                {r.estado === 'completada' && r.puntos_ganados ? <span style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</span> : null}
                               </div>
                             </div>
                             <span className="reserva-estado" style={{background:cfg.bg,color:cfg.color}}>{cfg.label}</span>

@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
   // ── 1. Fetch all confirmed reservas from past days ───────────────────────
   const { data: pasadas, error: errPasadas } = await supabase
     .from('reservas')
-    .select('id, cliente_email, cliente_nombre, fecha, hora, negocio_id, resena_enviada, servicios(nombre, duracion), negocios(nombre, telefono), trabajadores(nombre)')
+    .select('id, cliente_email, cliente_nombre, fecha, hora, negocio_id, resena_enviada, servicios(nombre, duracion, precio), negocios(nombre, telefono), trabajadores(nombre)')
     .eq('estado', 'confirmada')
     .lt('fecha', hoy)
 
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
   // ── 2. Fetch today's confirmed reservas and filter by time ───────────────
   const { data: hoyReservas, error: errHoy } = await supabase
     .from('reservas')
-    .select('id, cliente_email, cliente_nombre, fecha, hora, negocio_id, resena_enviada, servicios(nombre, duracion), negocios(nombre, telefono), trabajadores(nombre)')
+    .select('id, cliente_email, cliente_nombre, fecha, hora, negocio_id, resena_enviada, servicios(nombre, duracion, precio), negocios(nombre, telefono), trabajadores(nombre)')
     .eq('estado', 'confirmada')
     .eq('fecha', hoy)
 
@@ -183,7 +183,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: errUpdate.message }, { status: 500 })
   }
 
-  // ── 4. Send review emails for those with email & resena_enviada = false ──
+  // ── 4. Award loyalty points ──────────────────────────────────────────────
+  for (const r of paraCompletar) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const servicio = (Array.isArray(r.servicios) ? r.servicios[0] : r.servicios) as any
+    const precio   = servicio?.precio ?? 0
+    const puntos   = Math.floor(precio)
+    if (puntos <= 0) continue
+
+    // Update puntos_ganados on the reserva
+    await supabase.from('reservas').update({ puntos_ganados: puntos }).eq('id', r.id)
+
+    // Increment client's total points in profiles
+    if (r.cliente_email) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, puntos')
+        .eq('email', r.cliente_email)
+        .maybeSingle()
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({ puntos: (profile.puntos ?? 0) + puntos })
+          .eq('id', profile.id)
+      }
+    }
+  }
+
+  // ── 5. Send review emails for those with email & resena_enviada = false ──
   let resenas = 0
   let erroresResena = 0
 

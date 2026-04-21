@@ -11,8 +11,9 @@ type Reserva = {
   hora: string
   estado: string
   negocio_id: string
+  puntos_ganados: number | null
   negocios: { id: string; nombre: string; tipo: string; logo_url: string | null } | null
-  servicios: { nombre: string } | null
+  servicios: { nombre: string; precio: number | null } | null
   trabajadores: { nombre: string } | null
 }
 
@@ -59,7 +60,11 @@ export default function PerfilCliente() {
   const [form, setForm] = useState({ nombre: '', email: '', ciudad: '', avatar_url: '' })
 
   // Sección activa
-  const [seccion, setSeccion] = useState<'datos' | 'reservas' | 'favoritos'>('datos')
+  const [seccion, setSeccion] = useState<'datos' | 'reservas' | 'favoritos' | 'puntos'>('datos')
+
+  // Puntos
+  const [puntosTotales, setPuntosTotales] = useState<number | null>(null)
+  const [reservasConPuntos, setReservasConPuntos] = useState<Reserva[]>([])
 
   // Reservas
   const [reservas,          setReservas]          = useState<Reserva[]>([])
@@ -88,19 +93,28 @@ export default function PerfilCliente() {
 
   // Cargar reservas cuando se activa esa sección
   useEffect(() => {
-    if (seccion !== 'reservas' || !form.email) return
+    if ((seccion !== 'reservas' && seccion !== 'puntos') || !form.email) return
     setCargandoReservas(true)
     supabase
       .from('reservas')
-      .select('id, fecha, hora, estado, negocio_id, negocios(id, nombre, tipo, logo_url), servicios(nombre), trabajadores(nombre)')
+      .select('id, fecha, hora, estado, negocio_id, puntos_ganados, negocios(id, nombre, tipo, logo_url), servicios(nombre, precio), trabajadores(nombre)')
       .eq('cliente_email', form.email)
       .order('fecha', { ascending: false })
-      .limit(30)
+      .limit(50)
       .then(({ data }) => {
-        setReservas((data as unknown as Reserva[]) || [])
+        const lista = (data as unknown as Reserva[]) || []
+        setReservas(lista)
+        setReservasConPuntos(lista.filter(r => r.puntos_ganados && r.puntos_ganados > 0))
         setCargandoReservas(false)
       })
   }, [seccion, form.email])
+
+  // Cargar puntos totales del perfil
+  useEffect(() => {
+    if (seccion !== 'puntos' || !userId) return
+    supabase.from('profiles').select('puntos').eq('id', userId).maybeSingle()
+      .then(({ data }) => setPuntosTotales((data as { puntos: number | null } | null)?.puntos ?? 0))
+  }, [seccion, userId])
 
   // Cargar favoritos cuando se activa esa sección
   useEffect(() => {
@@ -163,6 +177,13 @@ export default function PerfilCliente() {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  function nivelCliente(puntos: number) {
+    if (puntos >= 1000) return { label: 'Cliente Premium', stars: '⭐⭐⭐', color: '#92400E', bg: 'rgba(253,230,138,0.3)', next: null }
+    if (puntos >= 500)  return { label: 'Cliente VIP',     stars: '⭐⭐',   color: '#6D28D9', bg: 'rgba(212,197,249,0.3)', next: 1000 }
+    if (puntos >= 100)  return { label: 'Cliente habitual',stars: '⭐',    color: '#1D4ED8', bg: 'rgba(184,216,248,0.3)', next: 500 }
+    return                     { label: 'Nuevo cliente',   stars: '',      color: '#6B7280', bg: 'rgba(243,244,246,0.8)', next: 100 }
+  }
 
   if (cargando) {
     return (
@@ -281,7 +302,8 @@ export default function PerfilCliente() {
           {([
             { key: 'datos',     label: '👤 Datos' },
             { key: 'reservas',  label: '📅 Reservas' },
-            { key: 'favoritos', label: '❤️ Favoritos' },
+            { key: 'favoritos', label: '❤️ Favs' },
+            { key: 'puntos',    label: '⭐ Puntos' },
           ] as const).map(t => (
             <button key={t.key} className={`sec-tab ${seccion === t.key ? 'active' : ''}`} onClick={() => setSeccion(t.key)}>
               {t.label}
@@ -461,6 +483,99 @@ export default function PerfilCliente() {
             )}
           </>
         )}
+
+        {/* ── PUNTOS ── */}
+        {seccion === 'puntos' && (() => {
+          const pts = puntosTotales ?? 0
+          const nivel = nivelCliente(pts)
+          const progress = nivel.next ? Math.min(100, (pts / nivel.next) * 100) : 100
+          return (
+            <>
+              {/* Contador principal */}
+              <div style={{ background: 'white', borderRadius: '20px', padding: '24px 20px', border: '1px solid rgba(0,0,0,0.07)', marginBottom: '14px', textAlign: 'center' }}>
+                <div style={{ fontSize: '56px', fontWeight: 800, color: '#111827', letterSpacing: '-2px', lineHeight: 1 }}>
+                  {puntosTotales === null ? '…' : pts}
+                </div>
+                <div style={{ fontSize: '14px', color: '#9CA3AF', fontWeight: 600, marginTop: '4px', marginBottom: '16px' }}>puntos acumulados</div>
+
+                {/* Nivel badge */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: nivel.bg, padding: '8px 18px', borderRadius: '100px' }}>
+                  <span style={{ fontSize: '15px', fontWeight: 700, color: nivel.color }}>{nivel.label}</span>
+                  {nivel.stars && <span style={{ fontSize: '14px' }}>{nivel.stars}</span>}
+                </div>
+
+                {/* Barra de progreso */}
+                {nivel.next && (
+                  <div style={{ marginTop: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#9CA3AF', marginBottom: '6px' }}>
+                      <span>{pts} pts</span>
+                      <span>{nivel.next} pts para siguiente nivel</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#F3F4F6', borderRadius: '100px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg,#B8D8F8,#D4C5F9)', borderRadius: '100px', transition: 'width 0.5s' }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Niveles */}
+              <div style={{ background: 'white', borderRadius: '18px', padding: '16px 20px', border: '1px solid rgba(0,0,0,0.07)', marginBottom: '14px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#374151', marginBottom: '12px' }}>Niveles</div>
+                {[
+                  { label: 'Nuevo cliente',    min: 0,    max: 99,   stars: '',    color: '#6B7280', bg: 'rgba(243,244,246,0.8)' },
+                  { label: 'Cliente habitual', min: 100,  max: 499,  stars: '⭐',   color: '#1D4ED8', bg: 'rgba(184,216,248,0.3)' },
+                  { label: 'Cliente VIP',      min: 500,  max: 999,  stars: '⭐⭐',  color: '#6D28D9', bg: 'rgba(212,197,249,0.3)' },
+                  { label: 'Cliente Premium',  min: 1000, max: null, stars: '⭐⭐⭐', color: '#92400E', bg: 'rgba(253,230,138,0.3)' },
+                ].map(n => {
+                  const activo = pts >= n.min && (n.max === null || pts <= n.max)
+                  return (
+                    <div key={n.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: '10px', marginBottom: '6px', background: activo ? n.bg : 'transparent', border: activo ? `1px solid ${n.color}20` : '1px solid transparent' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '14px' }}>{n.stars || '🌱'}</span>
+                        <span style={{ fontSize: '13px', fontWeight: activo ? 700 : 500, color: activo ? n.color : '#9CA3AF' }}>{n.label}</span>
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 600 }}>
+                        {n.max !== null ? `${n.min}–${n.max} pts` : `${n.min}+ pts`}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Historial de puntos */}
+              <div style={{ fontSize: '13px', color: '#9CA3AF', marginBottom: '10px' }}>Historial de puntos</div>
+              {cargandoReservas ? (
+                <div style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF', fontSize: '14px' }}>Cargando...</div>
+              ) : reservasConPuntos.length === 0 ? (
+                <div className="empty">
+                  <div className="empty-emoji">⭐</div>
+                  <div className="empty-title">Sin puntos todavía</div>
+                  <div className="empty-sub">Ganas 1 punto por cada euro gastado en una reserva completada.</div>
+                </div>
+              ) : (
+                reservasConPuntos.map(r => {
+                  const neg = r.negocios
+                  const emoji = tipoEmoji[neg?.tipo?.toLowerCase() ?? ''] ?? '🏪'
+                  return (
+                    <div key={r.id} className="res-card">
+                      <div className="res-icon" style={{ background: 'rgba(253,230,138,0.25)' }}>
+                        {neg?.logo_url
+                          ? <img src={neg.logo_url} alt={neg?.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : emoji
+                        }
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827', marginBottom: '2px' }}>{neg?.nombre ?? 'Negocio'}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>{r.servicios?.nombre ?? '—'} · {formatFecha(r.fecha)}</div>
+                      </div>
+                      <div style={{ fontSize: '17px', fontWeight: 800, color: '#92400E', flexShrink: 0 }}>+{r.puntos_ganados} ⭐</div>
+                    </div>
+                  )
+                })
+              )}
+            </>
+          )
+        })()}
 
       </div>
 
