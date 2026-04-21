@@ -15,16 +15,15 @@ const MapaNegocios = dynamic(() => import('./MapaNegocios'), { ssr: false, loadi
 // ─── Datos ────────────────────────────────────────────────────────────────────
 
 const CATEGORIAS = [
-  { id:'todos',       label:'Todos',       emoji:'✨' },
   { id:'peluqueria',  label:'Peluquería',  emoji:'💈' },
-  { id:'estetica',    label:'Estética',    emoji:'💅' },
+  { id:'estetica',    label:'Uñas',        emoji:'💅' },
   { id:'spa',         label:'Spa',         emoji:'💆' },
   { id:'clinica',     label:'Clínica',     emoji:'🏥' },
-  { id:'yoga',        label:'Yoga',        emoji:'🧘' },
-  { id:'gimnasio',    label:'Gimnasio',    emoji:'🏋️' },
   { id:'dentista',    label:'Dentista',    emoji:'🦷' },
   { id:'veterinaria', label:'Veterinaria', emoji:'🐾' },
-  { id:'restaurante', label:'Restaurante', emoji:'🍕' },
+  { id:'yoga',        label:'Yoga',        emoji:'🧘' },
+  { id:'gimnasio',    label:'Gimnasio',    emoji:'🏋️' },
+  { id:'otros',       label:'Otros',       emoji:'🔧' },
 ]
 
 const TIPO_CFG: Record<string,{emoji:string;bg:string;grad:string;color:string}> = {
@@ -174,7 +173,7 @@ function ClienteContent(){
   const searchParams=useSearchParams()
   const tab=(searchParams?.get('tab')||'inicio') as string
 
-  const[cat,setCat]=useState('todos')
+  const[cats,setCats]=useState<string[]>([])
   const[q,setQ]=useState('')
   const[nombre,setNombre]=useState('Usuario')
   const[email,setEmail]=useState('')
@@ -242,9 +241,21 @@ function ClienteContent(){
 
   const toggleFav=(id:string)=>setFavs(p=>p.includes(id)?p.filter(f=>f!==id):[...p,id])
 
+  function toggleCat(id:string){
+    setCats(prev=>prev.includes(id)?prev.filter(c=>c!==id):[...prev,id])
+  }
+
+  const KNOWN_TIPOS = ['peluqueria','barberia','estetica','spa','clinica','yoga','gimnasio','dentista','veterinaria','restaurante']
+  function matchCat(tipo:string, selCats:string[]):boolean{
+    if(selCats.length===0) return true
+    const nt=normTipo(tipo||'')
+    const esOtro=!KNOWN_TIPOS.includes(nt)
+    return selCats.some(c=>c==='otros'?esOtro:c===nt)
+  }
+
   const negFiltrados=negocios.filter(n=>{
-    const mc=cat==='todos'||normTipo(n.tipo||'')===cat
-    const mq=!q||norm(n.nombre).includes(norm(q))
+    const mc=matchCat(n.tipo||'',cats)
+    const mq=!q||norm(n.nombre).includes(norm(q))||norm(n.ciudad||'').includes(norm(q))
     return mc&&mq
   })
 
@@ -451,7 +462,7 @@ function ClienteContent(){
             <div className="hero-sub">¿Qué buscas hoy?</div>
             <div className="sbar">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-              <input placeholder="Buscar negocios..." value={q} onChange={e=>setQ(e.target.value)}/>
+              <input placeholder="Buscar por nombre o ciudad..." value={q} onChange={e=>setQ(e.target.value)}/>
               {q&&<button onClick={()=>setQ('')} style={{background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:'16px',padding:0}}>✕</button>}
             </div>
           </div>
@@ -459,8 +470,15 @@ function ClienteContent(){
           {/* CATEGORÍAS */}
           <div className="cats-bar">
             <div className="cats-inner">
+              <button
+                className={`catbtn ${cats.length===0?'on':''}`}
+                onClick={()=>setCats([])}
+              >
+                <span className="ico">✨</span>
+                Todos
+              </button>
               {CATEGORIAS.map(c=>(
-                <button key={c.id} className={`catbtn ${cat===c.id?'on':''}`} onClick={()=>setCat(c.id)}>
+                <button key={c.id} className={`catbtn ${cats.includes(c.id)?'on':''}`} onClick={()=>toggleCat(c.id)}>
                   <span className="ico">{c.emoji}</span>
                   {c.label}
                 </button>
@@ -480,7 +498,7 @@ function ClienteContent(){
           <div className="content">
 
             {/* CITAS PRÓXIMAS */}
-            {proximasReservas.length>0&&!q&&cat==='todos'&&(
+            {proximasReservas.length>0&&!q&&cats.length===0&&(
               <div className="sec">
                 <div className="sec-h">
                   <span className="sec-t">Tus próximas citas</span>
@@ -503,7 +521,7 @@ function ClienteContent(){
             )}
 
             {/* MEJOR VALORADOS (solo si hay ratings y no hay búsqueda activa) */}
-            {negValTop.length>0&&!q&&cat==='todos'&&filtro==='ninguno'&&(
+            {negValTop.length>0&&!q&&cats.length===0&&filtro==='ninguno'&&(
               <div className="sec">
                 <div className="sec-h">
                   <span className="sec-t">⭐ Mejor valorados</span>
@@ -539,10 +557,37 @@ function ClienteContent(){
             <div className="sec">
               <div className="sec-h">
                 <span className="sec-t">
-                  {q?`"${q}"`:cat==='todos'?'Cerca de ti':CATEGORIAS.find(c=>c.id===cat)?.label}
+                  {q
+                    ? `"${q}"`
+                    : cats.length===0
+                      ? filtro==='ninguno' ? 'Cerca de ti' : filtro==='abierto' ? 'Abiertos ahora' : filtro==='valorados' ? 'Mejor valorados' : 'Más cercanos'
+                      : cats.length===1
+                        ? CATEGORIAS.find(c=>c.id===cats[0])?.label??'Negocios'
+                        : `${cats.length} categorías`
+                  }
                 </span>
                 <Link href="/cliente?tab=mapa" className="sec-l">Ver en mapa →</Link>
               </div>
+
+              {/* Contador de resultados */}
+              {!cargando&&(q||cats.length>0||filtro!=='ninguno')&&(
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px',padding:'10px 14px',background:'white',borderRadius:'12px',border:'1px solid #F1F5F9'}}>
+                  <span style={{fontSize:'13px',color:'#64748B',fontWeight:600}}>
+                    {negMostrados.length===0
+                      ? 'Sin resultados'
+                      : `${negMostrados.length} negocio${negMostrados.length!==1?'s':''} encontrado${negMostrados.length!==1?'s':''}`
+                    }
+                  </span>
+                  {(q||cats.length>0||filtro!=='ninguno')&&(
+                    <button
+                      onClick={()=>{setQ('');setCats([]);setFiltro('ninguno')}}
+                      style={{background:'none',border:'none',fontSize:'12px',fontWeight:700,color:'#6366F1',cursor:'pointer',padding:'2px 6px'}}
+                    >
+                      Limpiar todo ✕
+                    </button>
+                  )}
+                </div>
+              )}
 
               {cargando?(
                 <Skeleton/>
@@ -556,7 +601,14 @@ function ClienteContent(){
                 <div className="empty">
                   <div className="empty-ico" style={{background:'#F1F5F9'}}>🔍</div>
                   <div style={{fontSize:'20px',fontWeight:900,color:'#0F172A',marginBottom:'8px'}}>Sin resultados</div>
-                  <div style={{fontSize:'14px',color:'#94A3B8'}}>Prueba con otro nombre o categoría</div>
+                  <div style={{fontSize:'14px',color:'#94A3B8',marginBottom:'24px',lineHeight:1.6}}>
+                    {q?`No encontramos negocios para "${q}"`:'Ningún negocio coincide con los filtros seleccionados'}
+                  </div>
+                  <div style={{display:'flex',gap:'8px',justifyContent:'center',flexWrap:'wrap'}}>
+                    {q&&<button onClick={()=>setQ('')} style={{padding:'9px 16px',background:'#F1F5F9',border:'none',borderRadius:'100px',fontSize:'13px',fontWeight:700,color:'#475569',cursor:'pointer'}}>✕ Limpiar búsqueda</button>}
+                    {cats.length>0&&<button onClick={()=>setCats([])} style={{padding:'9px 16px',background:'#F1F5F9',border:'none',borderRadius:'100px',fontSize:'13px',fontWeight:700,color:'#475569',cursor:'pointer'}}>✕ Quitar categorías</button>}
+                    {filtro!=='ninguno'&&<button onClick={()=>setFiltro('ninguno')} style={{padding:'9px 16px',background:'#F1F5F9',border:'none',borderRadius:'100px',fontSize:'13px',fontWeight:700,color:'#475569',cursor:'pointer'}}>✕ Quitar filtros</button>}
+                  </div>
                 </div>
               ):(
                 <div className="neg-grid">
