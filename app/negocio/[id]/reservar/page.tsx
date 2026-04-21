@@ -48,16 +48,16 @@ const diasNombre = ['domingo','lunes','martes','miercoles','jueves','viernes','s
 const mesesNombre = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 const diasSemana = ['Lu','Ma','Mi','Ju','Vi','Sá','Do']
 
-function generarSlots(apertura: string, cierre: string, duracion: number): string[] {
+function generarSlots(apertura: string, cierre: string, duracion: number, intervalo: number, margen: number): string[] {
   if (!apertura || !cierre || duracion <= 0) return []
   const [ah, am] = apertura.split(':').map(Number)
   const [ch, cm] = cierre.split(':').map(Number)
   let mins = ah * 60 + am
   const finMins = ch * 60 + cm
   const slots: string[] = []
-  while (mins + duracion <= finMins) {
+  while (mins + duracion + margen <= finMins) {
     slots.push(`${String(Math.floor(mins/60)).padStart(2,'0')}:${String(mins%60).padStart(2,'0')}`)
-    mins += duracion
+    mins += intervalo
   }
   return slots
 }
@@ -77,6 +77,7 @@ export default function Reservar() {
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [cargandoInit, setCargandoInit] = useState(true)
   const [negocioPolitica, setNegocioPolitica] = useState<{ horas: number; mensaje: string }>({ horas: 24, mensaje: '' })
+  const [negocioAgenda, setNegocioAgenda] = useState({ intervalo: 15, margen: 0, anteMin: 60, anteMax: 43200, maxSimul: 1 })
 
   // Selecciones
   const [servicio, setServicio] = useState<Servicio | null>(null)
@@ -135,7 +136,7 @@ export default function Reservar() {
     })
 
     Promise.all([
-      supabase.from('negocios').select('nombre, horas_cancelacion, mensaje_cancelacion').eq('id', id).single(),
+      supabase.from('negocios').select('nombre, horas_cancelacion, mensaje_cancelacion, intervalo_agenda, margen_servicio, max_reservas_simultaneas, antelacion_minima, antelacion_maxima').eq('id', id).single(),
       supabase.from('servicios').select('id,nombre,duracion,precio').eq('negocio_id', id).eq('activo', true).order('nombre'),
       supabase.from('trabajadores').select('id,nombre,especialidad,color').eq('negocio_id', id).eq('activo', true).order('nombre'),
       supabase.from('horarios').select('*').eq('negocio_id', id),
@@ -143,6 +144,13 @@ export default function Reservar() {
       if (neg) {
         setNegocioNombre(neg.nombre)
         setNegocioPolitica({ horas: neg.horas_cancelacion ?? 24, mensaje: neg.mensaje_cancelacion || '' })
+        setNegocioAgenda({
+          intervalo: neg.intervalo_agenda ?? 15,
+          margen: neg.margen_servicio ?? 0,
+          anteMin: neg.antelacion_minima ?? 60,
+          anteMax: neg.antelacion_maxima ?? 43200,
+          maxSimul: neg.max_reservas_simultaneas ?? 1,
+        })
       }
       if (ser) setServicios(ser)
       if (tra) setTrabajadores(tra)
@@ -163,10 +171,18 @@ export default function Reservar() {
       .neq('estado', 'cancelada')
     if (trabajador?.id) query = query.eq('trabajador_id', trabajador.id)
     query.then(({ data }) => {
-      setHorasOcupadas(new Set((data || []).map((r: { hora: string }) => r.hora.slice(0, 5))))
+      // Count reservations per slot; mark as occupied when count >= maxSimul
+      const counts: Record<string, number> = {}
+      for (const r of data || []) {
+        const h = r.hora.slice(0, 5)
+        counts[h] = (counts[h] ?? 0) + 1
+      }
+      const { maxSimul } = negocioAgenda
+      const ocupados = new Set(Object.entries(counts).filter(([, n]) => n >= maxSimul).map(([h]) => h))
+      setHorasOcupadas(ocupados)
       setCargandoSlots(false)
     })
-  }, [paso, fecha, servicio, trabajador, id])
+  }, [paso, fecha, servicio, trabajador, id, negocioAgenda])
 
   // Generar slots para la fecha y servicio seleccionados
   const slots = useCallback((): string[] => {
@@ -175,15 +191,24 @@ export default function Reservar() {
     const diaNombre = diasNombre[new Date(y, m-1, d).getDay()]
     const horario = horarios.find(h => h.dia === diaNombre)
     if (!horario || !horario.abierto) return []
-    const s1 = generarSlots(horario.hora_apertura, horario.hora_cierre, servicio.duracion)
-    const s2 = horario.hora_apertura2 ? generarSlots(horario.hora_apertura2, horario.hora_cierre2!, servicio.duracion) : []
-    return [...s1, ...s2]
-  }, [fecha, servicio, horarios])
+    const { intervalo, margen, anteMin } = negocioAgenda
+    const s1 = generarSlots(horario.hora_apertura, horario.hora_cierre, servicio.duracion, intervalo, margen)
+    const s2 = horario.hora_apertura2 ? generarSlots(horario.hora_apertura2, horario.hora_cierre2!, servicio.duracion, intervalo, margen) : []
+    const ahora = Date.now()
+    return [...s1, ...s2].filter(slot => {
+      const [sh, sm] = slot.split(':').map(Number)
+      const slotTime = new Date(y, m - 1, d, sh, sm).getTime()
+      return slotTime >= ahora + anteMin * 60 * 1000
+    })
+  }, [fecha, servicio, horarios, negocioAgenda])
 
   function diaDisponible(y: number, m: number, d: number): boolean {
     const f = new Date(y, m, d)
     const h = new Date(); h.setHours(0,0,0,0)
     if (f < h) return false
+    const maxDias = Math.ceil(negocioAgenda.anteMax / 1440)
+    const limite = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + maxDias)
+    if (f >= limite) return false
     const diaNombre = diasNombre[f.getDay()]
     const horario = horarios.find(h => h.dia === diaNombre)
     return !!(horario?.abierto)
@@ -624,7 +649,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 </div>
                 <div className="day-strip-wrap">
                   <div className="day-strip">
-                    {Array.from({ length: 60 }).map((_, i) => {
+                    {Array.from({ length: Math.ceil(negocioAgenda.anteMax / 1440) }).map((_, i) => {
                       const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + i)
                       const y = d.getFullYear(), m = d.getMonth(), day = d.getDate()
                       const fechaISO = formatFecha(y, m, day)
