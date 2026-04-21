@@ -22,6 +22,16 @@ type Reserva = {
   trabajadores: { nombre: string } | null
 }
 
+type EsperaEntry = {
+  id: string
+  cliente_nombre: string
+  cliente_telefono: string | null
+  cliente_email: string | null
+  fecha: string
+  created_at: string
+  servicios: { nombre: string } | null
+}
+
 type Horario = {
   dia: string
   abierto: boolean
@@ -86,7 +96,9 @@ export default function Reservas() {
   const [reservasMes, setReservasMes] = useState<Record<string, number>>({})
   const [calMes, setCalMes] = useState(() => new Date().getMonth())
   const [calAnio, setCalAnio] = useState(() => new Date().getFullYear())
-  const [vista, setVista] = useState<'calendario' | 'dia'>('calendario')
+  const [vista, setVista] = useState<'calendario' | 'dia' | 'espera'>('calendario')
+  const [listaEspera, setListaEspera] = useState<EsperaEntry[]>([])
+  const [cargandoEspera, setCargandoEspera] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -143,6 +155,21 @@ export default function Reservas() {
         })
     })
   }, [negocio, calMes, calAnio])
+
+  // Cargar lista de espera
+  useEffect(() => {
+    if (vista !== 'espera' || !negocio) return
+    setCargandoEspera(true)
+    supabase
+      .from('lista_espera')
+      .select('id, cliente_nombre, cliente_telefono, cliente_email, fecha, created_at, servicios(nombre)')
+      .eq('negocio_id', negocio.id)
+      .order('fecha', { ascending: true })
+      .then(({ data }) => {
+        setListaEspera((data as unknown as EsperaEntry[]) || [])
+        setCargandoEspera(false)
+      })
+  }, [vista, negocio])
 
   // Cargar reservas del día seleccionado
   const cargarReservas = useCallback(async () => {
@@ -304,9 +331,10 @@ export default function Reservas() {
                 <h1>Reservas</h1>
                 <p>Gestiona las citas de tu negocio</p>
               </div>
-              <div style={{display:'flex',gap:'8px'}}>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
                 <button className={`tab-btn ${vista==='calendario'?'active':''}`} onClick={() => setVista('calendario')}>📅 Calendario</button>
                 <button className={`tab-btn ${vista==='dia'?'active':''}`} onClick={() => setVista('dia')}>📋 Día</button>
+                <button className={`tab-btn ${vista==='espera'?'active':''}`} onClick={() => setVista('espera')}>⏳ Espera</button>
               </div>
             </div>
 
@@ -494,6 +522,51 @@ export default function Reservas() {
                       })}
                     </div>
                   )
+                )}
+              </>
+            )}
+
+            {/* ── VISTA LISTA DE ESPERA ── */}
+            {vista === 'espera' && (
+              <>
+                <div style={{fontSize:'14px',color:'var(--text2)',marginBottom:'16px'}}>
+                  Clientes apuntados a la lista de espera. Se les notifica automáticamente cuando se cancela una cita.
+                </div>
+
+                {cargandoEspera ? (
+                  <div style={{textAlign:'center',padding:'40px',color:'var(--muted)',fontSize:'14px'}}>Cargando...</div>
+                ) : listaEspera.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">⏳</div>
+                    <div className="empty-state-title">Sin entradas en lista de espera</div>
+                    <div style={{fontSize:'13px'}}>Cuando un horario esté completo, los clientes podrán apuntarse</div>
+                  </div>
+                ) : (
+                  <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+                    {listaEspera.map(e => (
+                      <div key={e.id} className="reserva-card" style={{alignItems:'flex-start'}}>
+                        <div style={{fontSize:'28px',lineHeight:1,flexShrink:0,marginTop:'2px'}}>⏳</div>
+                        <div className="reserva-info">
+                          <div className="reserva-cliente">{e.cliente_nombre}</div>
+                          <div className="reserva-detalle">
+                            {e.servicios?.nombre && <span>🔧 {e.servicios.nombre}</span>}
+                            <span>📅 {new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'})}</span>
+                            {e.cliente_telefono && <span>📞 {e.cliente_telefono}</span>}
+                            {e.cliente_email && <span>✉️ {e.cliente_email}</span>}
+                          </div>
+                        </div>
+                        <button
+                          className="btn-cancelar"
+                          onClick={async () => {
+                            await supabase.from('lista_espera').delete().eq('id', e.id)
+                            setListaEspera(prev => prev.filter(x => x.id !== e.id))
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </>
             )}

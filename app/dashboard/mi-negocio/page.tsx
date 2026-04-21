@@ -506,9 +506,12 @@ export default function MiNegocio() {
                     <label style={{marginBottom:'10px', display:'block'}}>Tiempo mínimo para cancelar</label>
                     <div className="policy-opts">
                       {([
-                        { value: 2,  label: '2 horas' },
-                        { value: 24, label: '24 horas' },
-                        { value: 48, label: '48 horas' },
+                        { value: 1,  label: '1h' },
+                        { value: 2,  label: '2h' },
+                        { value: 6,  label: '6h' },
+                        { value: 12, label: '12h' },
+                        { value: 24, label: '24h' },
+                        { value: 48, label: '48h' },
                       ] as const).map(opt => (
                         <button
                           key={opt.value}
@@ -520,7 +523,7 @@ export default function MiNegocio() {
                       ))}
                     </div>
                     <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'8px'}}>
-                      Los clientes podrán cancelar hasta {form.horas_cancelacion === 2 ? '2 horas' : form.horas_cancelacion === 24 ? '24 horas' : '48 horas'} antes de la cita.
+                      Los clientes podrán cancelar hasta {form.horas_cancelacion === 1 ? '1 hora' : `${form.horas_cancelacion} horas`} antes de la cita.
                     </p>
                   </div>
 

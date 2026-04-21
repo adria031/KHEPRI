@@ -76,6 +76,7 @@ export default function Reservar() {
   const [trabajadores, setTrabajadores] = useState<Trabajador[]>([])
   const [horarios, setHorarios] = useState<Horario[]>([])
   const [cargandoInit, setCargandoInit] = useState(true)
+  const [negocioPolitica, setNegocioPolitica] = useState<{ horas: number; mensaje: string }>({ horas: 24, mensaje: '' })
 
   // Selecciones
   const [servicio, setServicio] = useState<Servicio | null>(null)
@@ -89,6 +90,11 @@ export default function Reservar() {
   const [error, setError] = useState('')
   const [horasOcupadas, setHorasOcupadas] = useState<Set<string>>(new Set())
   const [cargandoSlots, setCargandoSlots] = useState(false)
+
+  // Lista de espera
+  const [listaEsperaMode, setListaEsperaMode] = useState(false)
+  const [listaEsperaEnviada, setListaEsperaEnviada] = useState(false)
+  const [enviandoEspera, setEnviandoEspera] = useState(false)
 
   // Chat widget
   const [chatOpen, setChatOpen] = useState(false)
@@ -129,12 +135,15 @@ export default function Reservar() {
     })
 
     Promise.all([
-      supabase.from('negocios').select('nombre').eq('id', id).single(),
+      supabase.from('negocios').select('nombre, horas_cancelacion, mensaje_cancelacion').eq('id', id).single(),
       supabase.from('servicios').select('id,nombre,duracion,precio').eq('negocio_id', id).eq('activo', true).order('nombre'),
       supabase.from('trabajadores').select('id,nombre,especialidad,color').eq('negocio_id', id).eq('activo', true).order('nombre'),
       supabase.from('horarios').select('*').eq('negocio_id', id),
     ]).then(([{data: neg}, {data: ser}, {data: tra}, {data: hor}]) => {
-      if (neg) setNegocioNombre(neg.nombre)
+      if (neg) {
+        setNegocioNombre(neg.nombre)
+        setNegocioPolitica({ horas: neg.horas_cancelacion ?? 24, mensaje: neg.mensaje_cancelacion || '' })
+      }
       if (ser) setServicios(ser)
       if (tra) setTrabajadores(tra)
       if (hor) setHorarios(hor)
@@ -295,6 +304,21 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
       setChatEnviando(false)
       setTimeout(() => chatInputRef.current?.focus(), 50)
     }
+  }
+
+  async function inscribirEspera() {
+    if (!nombre.trim() || !id || !servicio || !fecha) return
+    setEnviandoEspera(true)
+    await supabase.from('lista_espera').insert({
+      negocio_id: id,
+      servicio_id: servicio.id,
+      cliente_nombre: nombre.trim(),
+      cliente_telefono: telefono.trim() || null,
+      cliente_email: email.trim() || null,
+      fecha,
+    })
+    setEnviandoEspera(false)
+    setListaEsperaEnviada(true)
   }
 
   async function confirmar() {
@@ -617,6 +641,8 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                             if (!disp) return
                             setFecha(fechaISO)
                             setHora('')
+                            setListaEsperaMode(false)
+                            setListaEsperaEnviada(false)
                             setPaso(3)
                           }}
                         >
@@ -644,25 +670,79 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 ) : slots().length === 0 ? (
                   <div style={{textAlign:'center', padding:'40px', color:'#9CA3AF', fontSize:'14px'}}>No hay horas disponibles este día</div>
                 ) : (
-                  <div className="slot-list">
-                    {slots().map(s => {
-                      const ocupado = horasOcupadas.has(s)
-                      return (
-                        <div
-                          key={s}
-                          className={`slot-item ${ocupado ? 'ocupado' : ''} ${hora === s ? 'selected' : ''}`}
-                          onClick={() => { if (!ocupado) { setHora(s); setPaso(4) } }}
-                        >
-                          <span className="slot-dot" />
-                          <span className="slot-hora">{s}</span>
-                          {ocupado
-                            ? <span className="slot-tag">Ocupado</span>
-                            : <span className="slot-precio">{servicio ? `€${servicio.precio.toFixed(2)}` : ''}</span>
-                          }
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <>
+                    <div className="slot-list">
+                      {slots().map(s => {
+                        const ocupado = horasOcupadas.has(s)
+                        return (
+                          <div
+                            key={s}
+                            className={`slot-item ${ocupado ? 'ocupado' : ''} ${hora === s ? 'selected' : ''}`}
+                            onClick={() => { if (!ocupado) { setHora(s); setPaso(4) } }}
+                          >
+                            <span className="slot-dot" />
+                            <span className="slot-hora">{s}</span>
+                            {ocupado
+                              ? <span className="slot-tag">Ocupado</span>
+                              : <span className="slot-precio">{servicio ? `€${servicio.precio.toFixed(2)}` : ''}</span>
+                            }
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Lista de espera — mostrar si TODOS los slots están ocupados */}
+                    {slots().length > 0 && slots().every(s => horasOcupadas.has(s)) && (
+                      <div style={{marginTop:'20px', padding:'18px', background:'rgba(253,230,138,0.15)', border:'1.5px solid rgba(253,230,138,0.5)', borderRadius:'14px'}}>
+                        <div style={{fontSize:'15px', fontWeight:700, color:'#92400E', marginBottom:'6px'}}>⏳ Agenda completa este día</div>
+                        <div style={{fontSize:'13px', color:'#6B7280', marginBottom:'14px'}}>Apúntate y te avisamos si se libera una plaza.</div>
+
+                        {listaEsperaEnviada ? (
+                          <div style={{textAlign:'center', padding:'12px', background:'rgba(184,237,212,0.3)', borderRadius:'10px', fontSize:'14px', fontWeight:700, color:'#166534'}}>
+                            ✓ ¡Apuntado! Te avisaremos si se libera algo.
+                          </div>
+                        ) : listaEsperaMode ? (
+                          <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+                            <input
+                              type="text"
+                              placeholder="Tu nombre *"
+                              value={nombre}
+                              onChange={e => setNombre(e.target.value)}
+                              style={{padding:'12px 14px', border:'1.5px solid rgba(0,0,0,0.1)', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', outline:'none'}}
+                            />
+                            <input
+                              type="tel"
+                              placeholder="Teléfono (opcional)"
+                              value={telefono}
+                              onChange={e => setTelefono(e.target.value)}
+                              style={{padding:'12px 14px', border:'1.5px solid rgba(0,0,0,0.1)', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', outline:'none'}}
+                            />
+                            <input
+                              type="email"
+                              placeholder="Email para avisar *"
+                              value={email}
+                              onChange={e => setEmail(e.target.value)}
+                              style={{padding:'12px 14px', border:'1.5px solid rgba(0,0,0,0.1)', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', outline:'none'}}
+                            />
+                            <button
+                              onClick={inscribirEspera}
+                              disabled={enviandoEspera || !nombre.trim() || !email.trim()}
+                              style={{padding:'13px', background:'#92400E', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor:'pointer', opacity: enviandoEspera ? 0.6 : 1}}
+                            >
+                              {enviandoEspera ? 'Apuntando...' : '⏳ Apuntarme a la lista de espera'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setListaEsperaMode(true)}
+                            style={{width:'100%', padding:'13px', background:'#92400E', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor:'pointer'}}
+                          >
+                            ⏳ Apuntarme a la lista de espera
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -685,6 +765,14 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                   <div className="resumen-row"><span className="resumen-label">Precio</span><span className="resumen-val">€{servicio?.precio.toFixed(2)}</span></div>
                   {nombre && <div className="resumen-row"><span className="resumen-label">Nombre</span><span className="resumen-val">{nombre}</span></div>}
                   {telefono && <div className="resumen-row"><span className="resumen-label">Teléfono</span><span className="resumen-val">{telefono}</span></div>}
+                </div>
+
+                {/* Política de cancelación */}
+                <div style={{padding:'12px 16px', background:'rgba(184,216,248,0.12)', border:'1px solid rgba(184,216,248,0.4)', borderRadius:'12px', marginBottom:'16px', fontSize:'13px', color:'#374151', lineHeight:1.6}}>
+                  <span style={{fontWeight:700, color:'#1D4ED8'}}>ℹ️ Política de cancelación:</span> Puedes cancelar hasta <strong>{negocioPolitica.horas === 1 ? '1 hora' : `${negocioPolitica.horas} horas`} antes</strong> de la cita sin penalización.
+                  {negocioPolitica.mensaje && (
+                    <div style={{marginTop:'6px', color:'#6B7280', fontStyle:'italic'}}>"{negocioPolitica.mensaje}"</div>
+                  )}
                 </div>
 
                 <div className="field">

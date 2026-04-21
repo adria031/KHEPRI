@@ -37,7 +37,7 @@ type Reserva = {
   cliente_nombre: string
   servicios: { nombre: string } | null
   trabajadores: { nombre: string } | null
-  negocios: { id: string; nombre: string; direccion: string | null; ciudad: string | null } | null
+  negocios: { id: string; nombre: string; direccion: string | null; ciudad: string | null; horas_cancelacion: number | null; mensaje_cancelacion: string | null } | null
 }
 
 export default function CancelarReserva() {
@@ -57,7 +57,7 @@ export default function CancelarReserva() {
         id, fecha, hora, estado, cliente_nombre,
         servicios (nombre),
         trabajadores (nombre),
-        negocios (id, nombre, direccion, ciudad)
+        negocios (id, nombre, direccion, ciudad, horas_cancelacion, mensaje_cancelacion)
       `)
       .eq('id', reservaId)
       .single()
@@ -77,8 +77,14 @@ export default function CancelarReserva() {
       .from('reservas')
       .update({ estado: 'cancelada' })
       .eq('id', reservaId)
+    if (error) { setCancelando(false); setEstado('error'); return }
+    // Notify first person on wait list (non-blocking)
+    fetch('/api/notificar-espera', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reserva_id: reservaId }),
+    }).catch(() => {})
     setCancelando(false)
-    if (error) { setEstado('error'); return }
     setEstado('cancelada')
   }
 
@@ -174,6 +180,23 @@ export default function CancelarReserva() {
             </div>
 
             <div className="card-inner">
+              {/* Aviso de política de cancelación */}
+              {(() => {
+                const horas = reserva.negocios?.horas_cancelacion ?? 24
+                const reservaDateTime = new Date(reserva.fecha + 'T' + (reserva.hora?.slice(0,5) ?? '00:00'))
+                const diffHoras = (reservaDateTime.getTime() - Date.now()) / (1000 * 60 * 60)
+                const fueraDePlazo = diffHoras < horas && diffHoras > 0
+                if (!fueraDePlazo) return null
+                return (
+                  <div style={{ marginBottom: '20px', padding: '12px 16px', background: 'rgba(254,202,202,0.3)', border: '1px solid rgba(252,165,165,0.5)', borderRadius: '12px', fontSize: '13px', color: '#991B1B', lineHeight: 1.6 }}>
+                    <strong>⚠️ Fuera del plazo de cancelación:</strong> Este negocio requiere cancelar con al menos <strong>{horas === 1 ? '1 hora' : `${horas} horas`}</strong> de antelación. Puedes cancelar igualmente, pero te recomendamos contactar directamente.
+                    {reserva.negocios?.mensaje_cancelacion && (
+                      <div style={{ marginTop: '6px', color: '#7F1D1D', fontStyle: 'italic' }}>"{reserva.negocios.mensaje_cancelacion}"</div>
+                    )}
+                  </div>
+                )
+              })()}
+
               {/* Details */}
               <div style={{ marginBottom: '28px' }}>
                 <div className="detail-row">
