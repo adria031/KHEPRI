@@ -196,15 +196,17 @@ function ClienteContent(){
       const{data:rd}=await supabase
         .from('reservas')
         .select('id,fecha,hora,estado,negocio_id,negocios(nombre,tipo),servicios(nombre)')
-        .eq('cliente_email',user.email)
-        .order('fecha',{ascending:true})
-        .limit(20)
-      if(rd) setReservas((rd as any[]).map(r=>({
+        .or(`cliente_email.eq.${user.email},user_id.eq.${user.id}`)
+        .order('fecha',{ascending:false})
+        .limit(50)
+      // Deduplicar por id (puede haber matches dobles si email Y user_id coinciden)
+      const seen=new Set<string>()
+      if(rd) setReservas((rd as any[]).filter(r=>{if(seen.has(r.id))return false;seen.add(r.id);return true}).map(r=>({
         id:r.id,fecha:r.fecha,hora:r.hora,estado:r.estado,
         negocio_id:r.negocio_id,
-        negocio_nombre:r.negocios?.nombre||'Negocio',
-        servicio_nombre:r.servicios?.nombre||'Servicio',
-        negocio_tipo:r.negocios?.tipo||'',
+        negocio_nombre:Array.isArray(r.negocios)?r.negocios[0]?.nombre:r.negocios?.nombre||'Negocio',
+        servicio_nombre:Array.isArray(r.servicios)?r.servicios[0]?.nombre:r.servicios?.nombre||'Servicio',
+        negocio_tipo:Array.isArray(r.negocios)?r.negocios[0]?.tipo:r.negocios?.tipo||'',
       })))
     })
     Promise.all([
@@ -265,7 +267,9 @@ function ClienteContent(){
   else if(filtro==='cercanos'&&pos) negMostrados=[...negMostrados].filter(n=>n.lat&&n.lng).sort((a,b)=>haversineKm(pos.lat,pos.lng,a.lat!,a.lng!)-haversineKm(pos.lat,pos.lng,b.lat!,b.lng!))
 
   const negValTop=[...negocios].filter(n=>vals[n.id]!=null).sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0)).slice(0,8)
-  const proximasReservas=reservas.filter(r=>r.estado!=='cancelada'&&r.fecha>=new Date().toISOString().slice(0,10))
+  const hoyISO=new Date().toISOString().slice(0,10)
+  const proximasReservas=reservas.filter(r=>r.estado==='confirmada'&&r.fecha>=hoyISO).sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora))
+  const historialReservas=reservas.filter(r=>r.estado==='cancelada'||r.estado==='completada'||r.fecha<hoyISO)
 
   function pedirGeo(f:Filtro){
     if(filtro===f){setFiltro('ninguno');return}
@@ -390,6 +394,7 @@ function ClienteContent(){
       .est-conf{font-size:11px;font-weight:800;padding:4px 10px;border-radius:100px;background:rgba(34,197,94,0.1);color:#059669}
       .est-pend{font-size:11px;font-weight:800;padding:4px 10px;border-radius:100px;background:rgba(251,191,36,0.15);color:#D97706}
       .est-canc{font-size:11px;font-weight:800;padding:4px 10px;border-radius:100px;background:rgba(239,68,68,0.1);color:#DC2626}
+      .est-comp{font-size:11px;font-weight:800;padding:4px 10px;border-radius:100px;background:rgba(99,102,241,0.1);color:#4F46E5}
 
       /* PERFIL */
       .perf-hero{background:linear-gradient(135deg,#EFF6FF 0%,#F5F3FF 100%);border-radius:24px;padding:28px;margin-bottom:18px;display:flex;align-items:center;gap:18px;border:1px solid rgba(99,102,241,0.08)}
@@ -686,22 +691,26 @@ function ClienteContent(){
                 </>
               )}
               {/* Pasadas/canceladas */}
-              {reservas.filter(r=>r.estado==='cancelada'||r.fecha<new Date().toISOString().slice(0,10)).length>0&&(
+              {historialReservas.length>0&&(
                 <>
                   <div style={{fontSize:'13px',fontWeight:800,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'0.8px',margin:'24px 0 12px'}}>Historial</div>
-                  {reservas.filter(r=>r.estado==='cancelada'||r.fecha<new Date().toISOString().slice(0,10)).map(r=>{
+                  {historialReservas.map(r=>{
                     const cfg=TIPO_CFG[normTipo(r.negocio_tipo||'')]||TIPO_DEF
-                    const esCancelada=r.estado==='cancelada'
+                    const estadoBadge=r.estado==='cancelada'
+                      ?<span className="est-canc">Cancelada</span>
+                      :r.estado==='completada'
+                        ?<span className="est-comp">Completada</span>
+                        :<span className="est-comp">Pasada</span>
                     return(
-                      <div key={r.id} className="rcard" style={{opacity:0.65}}>
+                      <div key={r.id} className="rcard" style={{opacity:0.7}}>
                         <div className="rcard-head">
                           <div className="rcard-ico" style={{background:cfg.grad,filter:'grayscale(0.3)'}}>{cfg.emoji}</div>
                           <div style={{flex:1,minWidth:0}}>
                             <div style={{fontSize:'15px',fontWeight:800,color:'#0F172A',marginBottom:'2px'}}>{r.negocio_nombre}</div>
                             <div style={{fontSize:'13px',color:'#64748B',marginBottom:'4px'}}>{r.servicio_nombre}</div>
-                            <div style={{fontSize:'12px',fontWeight:700,color:'#94A3B8'}}>📅 {formatFecha(r.fecha)} · {r.hora}</div>
+                            <div style={{fontSize:'12px',fontWeight:700,color:'#94A3B8'}}>📅 {formatFecha(r.fecha)} · {r.hora?.slice(0,5)}</div>
                           </div>
-                          <span className={esCancelada?'est-canc':'est-pend'} style={{opacity:1}}>{esCancelada?'Cancelada':'Completada'}</span>
+                          {estadoBadge}
                         </div>
                         <div className="rcard-actions">
                           <Link href={`/negocio/${r.negocio_id}/reservar`} className="btn-repetir">Repetir →</Link>
@@ -763,7 +772,7 @@ function ClienteContent(){
             {[
               {label:'Reservas',val:reservas.filter(r=>r.estado!=='cancelada').length,color:'#6366F1',bg:'#F5F3FF'},
               {label:'Favoritos',val:favs.length,color:'#BE185D',bg:'#FDF2F8'},
-              {label:'Completadas',val:reservas.filter(r=>r.fecha<new Date().toISOString().slice(0,10)&&r.estado!=='cancelada').length,color:'#059669',bg:'#F0FDF4'},
+              {label:'Completadas',val:historialReservas.filter(r=>r.estado!=='cancelada').length,color:'#059669',bg:'#F0FDF4'},
             ].map((s,i)=>(
               <div key={i} style={{background:s.bg,borderRadius:'16px',padding:'16px',textAlign:'center'}}>
                 <div style={{fontSize:'24px',fontWeight:900,color:s.color,marginBottom:'2px'}}>{s.val}</div>

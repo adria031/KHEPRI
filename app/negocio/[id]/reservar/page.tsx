@@ -322,10 +322,20 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
       return
     }
 
-    // Guardar teléfono en profiles para futuras reservas
+    // Guardar teléfono y vincular reserva al usuario (historial cross-device)
     const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user && telefono.trim()) {
-      supabase.from('profiles').update({ telefono: telefono.trim() }).eq('id', session.user.id).then(() => {})
+    if (session?.user) {
+      if (telefono.trim()) {
+        supabase.from('profiles').update({ telefono: telefono.trim() }).eq('id', session.user.id).then(() => {})
+      }
+      // Vincular la reserva recién creada al user_id para que aparezca en móvil/PC
+      supabase.from('reservas')
+        .update({ user_id: session.user.id })
+        .eq('negocio_id', id)
+        .eq('fecha', fecha)
+        .eq('hora', hora)
+        .is('user_id', null)
+        .then(() => {})
     }
 
     // Fire confirmation email (non-blocking, without needing the new row ID)
@@ -686,7 +696,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                   <input type="tel" placeholder="612 345 678" value={telefono} onChange={e => setTelefono(e.target.value)} autoComplete="tel" inputMode="tel" />
                 </div>
                 <div className="field">
-                  <label>Email <span style={{fontSize:'11px', color:'#9CA3AF', fontWeight:500}}>(para recibir confirmación)</span></label>
+                  <label>Email <span style={{fontSize:'11px', color:'#6366F1', fontWeight:600}}>(para confirmación y ver tu historial)</span></label>
                   <input type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" />
                 </div>
 
