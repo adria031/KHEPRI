@@ -41,11 +41,11 @@ const TIPO_CFG: Record<string,{emoji:string;bg:string;grad:string;color:string}>
 const TIPO_DEF = {emoji:'🏪',bg:'#F8FAFC',grad:'linear-gradient(135deg,#E2E8F0,#CBD5E1)',color:'#475569'}
 
 const TABS = [
-  {id:'inicio',   icon:'⊞',  label:'Inicio'},
-  {id:'mapa',     icon:'◎',  label:'Mapa'},
-  {id:'reservas', icon:'◷',  label:'Reservas'},
-  {id:'favoritos',icon:'♡',  label:'Guardados'},
-  {id:'perfil',   icon:'◯',  label:'Perfil'},
+  {id:'inicio',   icon:'🏠',  label:'Inicio'},
+  {id:'mapa',     icon:'🗺️',  label:'Mapa'},
+  {id:'reservas', icon:'📅',  label:'Reservas'},
+  {id:'favoritos',icon:'❤️',  label:'Guardados'},
+  {id:'perfil',   icon:'👤',  label:'Perfil'},
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -191,23 +191,56 @@ function ClienteContent(){
   useEffect(()=>{
     supabase.auth.getUser().then(async({data:{user}})=>{
       if(!user){window.location.href='/auth';return}
-      setNombre(user.user_metadata?.nombre?.split(' ')[0]||user.email?.split('@')[0]||'Usuario')
-      setEmail(user.email||'')
-      const{data:rd}=await supabase
-        .from('reservas')
-        .select('id,fecha,hora,estado,negocio_id,negocios(nombre,tipo),servicios(nombre)')
-        .or(`cliente_email.eq.${user.email},user_id.eq.${user.id}`)
-        .order('fecha',{ascending:false})
-        .limit(50)
-      // Deduplicar por id (puede haber matches dobles si email Y user_id coinciden)
-      const seen=new Set<string>()
-      if(rd) setReservas((rd as any[]).filter(r=>{if(seen.has(r.id))return false;seen.add(r.id);return true}).map(r=>({
-        id:r.id,fecha:r.fecha,hora:r.hora,estado:r.estado,
-        negocio_id:r.negocio_id,
-        negocio_nombre:Array.isArray(r.negocios)?r.negocios[0]?.nombre:r.negocios?.nombre||'Negocio',
-        servicio_nombre:Array.isArray(r.servicios)?r.servicios[0]?.nombre:r.servicios?.nombre||'Servicio',
-        negocio_tipo:Array.isArray(r.negocios)?r.negocios[0]?.tipo:r.negocios?.tipo||'',
-      })))
+      const userEmail = user.email || ''
+      const userId    = user.id
+      setNombre(user.user_metadata?.nombre?.split(' ')[0]||userEmail.split('@')[0]||'Usuario')
+      setEmail(userEmail)
+
+      // Fetch por email (siempre funciona) + por user_id si la columna existe
+      // Hacemos dos queries separadas para no romper si user_id no existe aún en la tabla
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function normalizeRow(r: any): ReservaCliente {
+        return {
+          id:r.id, fecha:r.fecha, hora:r.hora, estado:r.estado,
+          negocio_id:r.negocio_id,
+          negocio_nombre:Array.isArray(r.negocios)?r.negocios[0]?.nombre:r.negocios?.nombre||'Negocio',
+          servicio_nombre:Array.isArray(r.servicios)?r.servicios[0]?.nombre:r.servicios?.nombre||'Servicio',
+          negocio_tipo:Array.isArray(r.negocios)?r.negocios[0]?.tipo:r.negocios?.tipo||'',
+        }
+      }
+
+      const seen = new Set<string>()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function mergeRows(rows: any[]){ rows.forEach(r=>{if(!seen.has(r.id)){seen.add(r.id);allRows.push(normalizeRow(r))}}) }
+      const allRows: ReservaCliente[] = []
+
+      // Query 1: por email
+      if (userEmail) {
+        const { data: byEmail } = await supabase
+          .from('reservas')
+          .select('id,fecha,hora,estado,negocio_id,negocios(nombre,tipo),servicios(nombre)')
+          .eq('cliente_email', userEmail)
+          .order('fecha', { ascending: false })
+          .limit(50)
+        if (byEmail) mergeRows(byEmail)
+      }
+
+      // Query 2: por user_id (solo si la columna existe — no falla el query principal si no)
+      try {
+        const { data: byUid, error: errUid } = await supabase
+          .from('reservas')
+          .select('id,fecha,hora,estado,negocio_id,negocios(nombre,tipo),servicios(nombre)')
+          .eq('user_id', userId)
+          .order('fecha', { ascending: false })
+          .limit(50)
+        if (!errUid && byUid) mergeRows(byUid)
+      } catch {
+        // columna user_id no existe todavía — ignorar
+      }
+
+      // Ordenar por fecha desc
+      allRows.sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora))
+      setReservas(allRows)
     })
     Promise.all([
       supabase.from('negocios').select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible'),
@@ -418,7 +451,7 @@ function ClienteContent(){
       .bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,0.97);border-top:1px solid #F1F5F9;z-index:200;backdrop-filter:blur(20px)}
       .bnav-inner{display:flex;align-items:center;padding:6px 0 max(10px,env(safe-area-inset-bottom))}
       .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;text-decoration:none}
-      .bnav-ico{font-size:9px;font-weight:900;letter-spacing:-0.5px;color:#94A3B8;line-height:1}
+      .bnav-ico{font-size:22px;line-height:1;display:block}
       .bnav-lbl{font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:0.2px}
       .bnav-item.on .bnav-lbl{color:#0F172A}
       .bnav-item.on .bnav-ico{color:#0F172A}
