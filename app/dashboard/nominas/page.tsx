@@ -16,22 +16,33 @@ const CONTRATOS = [
   { id: 'parcial',     label: 'Tiempo parcial' },
 ]
 
-// Tasas SS España 2024 (simplificadas)
-const SS_EMP_DEFAULT  = 29.9  // contingencias + desempleo + FOGASA + FP
-const SS_TRAB_DEFAULT = 6.35  // contingencias + desempleo + FP
+// ── Tasas oficiales España 2026 ──────────────────────────────────────────────
+const SS_EMP_DEFAULT  = 31.3  // contingencias 23.6% + desempleo 5.5% + FOGASA 0.2% + FP 0.6% + MEI 0.58% + otros
+const SS_TRAB_DEFAULT = 6.35  // contingencias 4.70% + desempleo 1.55% + FP 0.10%
+const SMI_2026        = 1184  // €/mes en 14 pagas (16.576 €/año)
+const AUTONOMO_TARIFA_PLANA = 80   // €/mes primer año tarifa plana 2026
+const AUTONOMO_BASE_MINIMA  = 230  // €/mes base mínima aprox. (cuota mínima cotización)
 
-// IRPF 2024 — retención estimada sobre bruto anual (tramos estatales + autonómicos medios)
+// IRPF 2026 — retención estimada sobre bruto anual (tramos estatales vigentes)
+// Mínimo personal y familiar básico: 5.550 €
 function calcularIRPFAuto(brutoMensual: number): number {
   const anual = brutoMensual * 12
-  const base = Math.max(0, anual - 5550) // mínimo personal básico
+  if (anual <= 0) return 0
+  const base = Math.max(0, anual - 5550) // mínimo personal básico 2026
   let cuota = 0
-  if (base <= 12450)       cuota = base * 0.19
-  else if (base <= 20200)  cuota = 2365.5  + (base - 12450) * 0.24
-  else if (base <= 35200)  cuota = 4225.5  + (base - 20200) * 0.30
-  else if (base <= 60000)  cuota = 8725.5  + (base - 35200) * 0.37
-  else if (base <= 300000) cuota = 17901.5 + (base - 60000) * 0.45
-  else                     cuota = 125901.5 + (base - 300000) * 0.47
+  if      (base <= 12450)   cuota = base * 0.19
+  else if (base <= 20200)   cuota = 2365.50  + (base - 12450)  * 0.24
+  else if (base <= 35200)   cuota = 4225.50  + (base - 20200)  * 0.30
+  else if (base <= 60000)   cuota = 8725.50  + (base - 35200)  * 0.37
+  else if (base <= 300000)  cuota = 17901.50 + (base - 60000)  * 0.45
+  else                      cuota = 125901.50 + (base - 300000) * 0.47
+  // Retención mensual efectiva (%)
   return Math.max(2, Math.round((cuota / anual) * 1000) / 10)
+}
+
+// Detalle IRPF mensual (euros, no %)
+function irpfMensual(brutoMensual: number): number {
+  return +(brutoMensual * calcularIRPFAuto(brutoMensual) / 100).toFixed(2)
 }
 
 type Trabajador = { id: string; nombre: string; especialidad: string; foto_url: string | null }
@@ -94,6 +105,7 @@ export default function Nominas() {
       const { activo, todos } = await getNegocioActivo(user.id, session.access_token)
       if (!activo) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todos)
+      setNegocio(activo)
       setNegocioId(activo.id)
       const { data: tr } = await db.from('trabajadores').select('id,nombre,especialidad,foto_url').eq('negocio_id', activo.id).eq('activo', true).order('nombre')
       setTrabajadores(tr || [])
@@ -146,6 +158,12 @@ export default function Nominas() {
     }
     setApiError('')
     setModal(true)
+  }
+
+  // Auto-recalcular IRPF cuando cambia el bruto
+  function onBrutoChange(val: string) {
+    const b = parseFloat(val) || 0
+    setForm(f => ({ ...f, salario_bruto: val, irpf: b > 0 ? String(calcularIRPFAuto(b)) : f.irpf }))
   }
 
   async function guardar() {
@@ -227,81 +245,153 @@ Por favor proporciona:
   }
 
 
-  function generarPDF(n: Nomina) {
+  async function generarPDF(n: Nomina) {
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
     const trab = trabajadores.find(t => t.id === n.trabajador_id)
     const coste = +(n.salario_bruto * (1 + n.ss_empresa / 100)).toFixed(2)
     const dedIRPF = +(n.salario_bruto * n.irpf / 100).toFixed(2)
     const dedSS = +(n.salario_bruto * n.ss_trabajador / 100).toFixed(2)
     const cuotaEmp = +(n.salario_bruto * n.ss_empresa / 100).toFixed(2)
     const mesLabel = labelMes(n.mes)
-    const fmt2 = (v: number) => v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
-    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Nómina ${trab?.nombre} — ${mesLabel}</title>
-<style>
-  body { font-family: Arial, sans-serif; color: #111; margin: 0; padding: 32px; background: white; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #111; padding-bottom: 16px; margin-bottom: 24px; }
-  .logo { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
-  .logo span { color: #4F46E5; }
-  .doc-title { font-size: 13px; color: #666; text-align: right; }
-  .doc-title strong { display: block; font-size: 18px; color: #111; margin-bottom: 2px; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-  .info-box { background: #f7f9fc; border-radius: 8px; padding: 14px 16px; }
-  .info-label { font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-  .info-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
-  .info-val { font-weight: 600; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-  th { background: #111; color: white; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; }
-  td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; }
-  .amount { text-align: right; font-weight: 600; }
-  .neg { color: #DC2626; }
-  .pos { color: #2E8A5E; }
-  .total-row td { font-size: 15px; font-weight: 900; background: #f7f9fc; }
-  .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; display: flex; justify-content: space-between; font-size: 11px; color: #999; }
-  .firma { border-top: 1px solid #333; padding-top: 8px; margin-top: 40px; font-size: 12px; color: #666; width: 200px; }
-  @media print { body { padding: 16px; } }
-</style></head><body>
-  <div class="header">
-    <div class="logo">Khe<span>pria</span></div>
-    <div class="doc-title"><strong>NÓMINA</strong>${mesLabel}</div>
-  </div>
-  <div class="info-grid">
-    <div class="info-box">
-      <div class="info-label">Empresa / Negocio</div>
-      <div class="info-row"><span>Nombre</span><span class="info-val">${negocio?.nombre || '—'}</span></div>
-      <div class="info-row"><span>Mes</span><span class="info-val">${mesLabel}</span></div>
-    </div>
-    <div class="info-box">
-      <div class="info-label">Trabajador</div>
-      <div class="info-row"><span>Nombre</span><span class="info-val">${trab?.nombre || '—'}</span></div>
-      <div class="info-row"><span>Especialidad</span><span class="info-val">${trab?.especialidad || '—'}</span></div>
-      <div class="info-row"><span>Tipo contrato</span><span class="info-val">${CONTRATOS.find(c => c.id === (n as any).tipo_contrato)?.label || 'Indefinido'}</span></div>
-      <div class="info-row"><span>Jornada</span><span class="info-val">${(n as any).horas_semana || 40}h/semana</span></div>
-    </div>
-  </div>
-  <table>
-    <tr><th>Concepto</th><th style="text-align:right">Importe</th></tr>
-    <tr><td>Salario bruto</td><td class="amount">${fmt2(n.salario_bruto)}</td></tr>
-    <tr><td class="neg">— Retención IRPF (${n.irpf}%)</td><td class="amount neg">−${fmt2(dedIRPF)}</td></tr>
-    <tr><td class="neg">— Seg. Social trabajador (${n.ss_trabajador}%)</td><td class="amount neg">−${fmt2(dedSS)}</td></tr>
-    <tr class="total-row"><td class="pos">TOTAL NETO A PERCIBIR</td><td class="amount pos">${fmt2(n.salario_neto)}</td></tr>
-  </table>
-  <table>
-    <tr><th colspan="2">Costes empresa</th></tr>
-    <tr><td>Salario bruto</td><td class="amount">${fmt2(n.salario_bruto)}</td></tr>
-    <tr><td class="neg">+ Seg. Social empresa (${n.ss_empresa}%)</td><td class="amount neg">+${fmt2(cuotaEmp)}</td></tr>
-    <tr class="total-row"><td class="neg">COSTE TOTAL EMPRESA</td><td class="amount neg">${fmt2(coste)}</td></tr>
-  </table>
-  <div class="footer">
-    <span>Generado por Khepria · ${new Date().toLocaleDateString('es-ES')}</span>
-    <span>Documento de carácter informativo</span>
-  </div>
-  <div class="firma">Firma y sello empresa</div>
-</body></html>`
-    const w = window.open('', '_blank', 'width=800,height=900')
-    if (!w) return
-    w.document.write(html)
-    w.document.close()
-    w.onload = () => w.print()
+    const contratoLabel = CONTRATOS.find(c => c.id === (n as any).tipo_contrato)?.label || 'Indefinido'
+    const f = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+    const W = 210, mL = 14, mR = 196
+    let y = 0
+
+    // ── Cabecera ──────────────────────────────────────────────────────────────
+    doc.setFillColor(17, 24, 39)
+    doc.rect(0, 0, W, 22, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(15)
+    doc.text('KHEPRIA', mL, 13)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text('RECIBO DE SALARIO', 105, 9, { align: 'center' })
+    doc.setFontSize(8)
+    doc.text(mesLabel.toUpperCase(), 105, 16, { align: 'center' })
+    doc.text('Página 1 de 1', mR, 14, { align: 'right' })
+
+    y = 30
+
+    // ── Datos empresa / trabajador ────────────────────────────────────────────
+    // Empresa
+    doc.setFillColor(247, 249, 252)
+    doc.setDrawColor(229, 231, 235)
+    doc.roundedRect(mL, y, 85, 32, 3, 3, 'FD')
+    doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(153, 153, 153)
+    doc.text('EMPRESA', mL + 4, y + 7)
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(17, 24, 39)
+    doc.text(negocio?.nombre || '—', mL + 4, y + 15)
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(75, 85, 99)
+    doc.text(`Período: ${mesLabel}`, mL + 4, y + 22)
+    doc.text('CIF/NIF: ________________', mL + 4, y + 28)
+
+    // Trabajador
+    doc.setFillColor(247, 249, 252)
+    doc.roundedRect(111, y, 85, 32, 3, 3, 'FD')
+    doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(153, 153, 153)
+    doc.text('TRABAJADOR', 115, y + 7)
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(17, 24, 39)
+    doc.text(trab?.nombre || '—', 115, y + 15)
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(75, 85, 99)
+    doc.text(`Categoría: ${trab?.especialidad || '—'}`, 115, y + 22)
+    doc.text(`Contrato: ${contratoLabel} · ${(n as any).horas_semana || 40}h/sem`, 115, y + 28)
+
+    y += 42
+
+    // ── Tabla devengos / deducciones ──────────────────────────────────────────
+    doc.setFillColor(17, 24, 39)
+    doc.rect(mL, y, mR - mL, 8, 'F')
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+    doc.text('DEVENGOS Y DEDUCCIONES — TRABAJADOR', mL + 3, y + 5.5)
+    doc.text('IMPORTE', mR - 3, y + 5.5, { align: 'right' })
+    y += 8
+
+    const rowsTrab: [string, string, number, number, number][] = [
+      ['Salario base mensual', f(n.salario_bruto), 17, 24, 39],
+      [`Retención IRPF (${n.irpf}%)  [tramos 2026]`, '−' + f(dedIRPF), 220, 38, 38],
+      [`Seg. Social trabajador (${n.ss_trabajador}%)`, '−' + f(dedSS), 220, 38, 38],
+    ]
+    rowsTrab.forEach(([label, val, r, g, b], i) => {
+      const ry = y + i * 9
+      doc.setFillColor(i % 2 === 0 ? 255 : 250, i % 2 === 0 ? 255 : 250, i % 2 === 0 ? 255 : 252)
+      doc.rect(mL, ry, mR - mL, 9, 'F')
+      doc.setTextColor(r, g, b); doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      doc.text(label, mL + 3, ry + 6)
+      doc.setFont('helvetica', 'bold')
+      doc.text(val, mR - 3, ry + 6, { align: 'right' })
+    })
+    y += rowsTrab.length * 9
+
+    // Total neto
+    doc.setFillColor(184, 237, 212)
+    doc.rect(mL, y, mR - mL, 11, 'F')
+    doc.setTextColor(46, 138, 94); doc.setFont('helvetica', 'bold'); doc.setFontSize(11)
+    doc.text('LÍQUIDO A PERCIBIR', mL + 3, y + 7.5)
+    doc.text(f(n.salario_neto), mR - 3, y + 7.5, { align: 'right' })
+    y += 18
+
+    // ── Tabla coste empresa ───────────────────────────────────────────────────
+    doc.setFillColor(17, 24, 39)
+    doc.rect(mL, y, mR - mL, 8, 'F')
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+    doc.text('COSTE TOTAL PARA LA EMPRESA', mL + 3, y + 5.5)
+    doc.text('IMPORTE', mR - 3, y + 5.5, { align: 'right' })
+    y += 8
+
+    const rowsEmp: [string, string, number, number, number][] = [
+      ['Salario bruto', f(n.salario_bruto), 17, 24, 39],
+      [`Cuota Seg. Social empresa (${n.ss_empresa}%)`, '+' + f(cuotaEmp), 220, 38, 38],
+    ]
+    rowsEmp.forEach(([label, val, r, g, b], i) => {
+      const ry = y + i * 9
+      doc.setFillColor(i % 2 === 0 ? 255 : 250, i % 2 === 0 ? 255 : 250, i % 2 === 0 ? 255 : 252)
+      doc.rect(mL, ry, mR - mL, 9, 'F')
+      doc.setTextColor(r, g, b); doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      doc.text(label, mL + 3, ry + 6)
+      doc.setFont('helvetica', 'bold')
+      doc.text(val, mR - 3, ry + 6, { align: 'right' })
+    })
+    y += rowsEmp.length * 9
+
+    doc.setFillColor(254, 226, 226)
+    doc.rect(mL, y, mR - mL, 11, 'F')
+    doc.setTextColor(220, 38, 38); doc.setFont('helvetica', 'bold'); doc.setFontSize(11)
+    doc.text('COSTE TOTAL EMPRESA', mL + 3, y + 7.5)
+    doc.text(f(coste), mR - 3, y + 7.5, { align: 'right' })
+    y += 18
+
+    // ── Referencia SMI 2026 ───────────────────────────────────────────────────
+    doc.setFillColor(235, 242, 255)
+    doc.setDrawColor(184, 216, 248)
+    doc.roundedRect(mL, y, mR - mL, 18, 3, 3, 'FD')
+    doc.setTextColor(29, 78, 216); doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+    doc.text('Referencia 2026', mL + 4, y + 7)
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(75, 85, 99); doc.setFontSize(8)
+    const ratio = n.salario_neto > 0 ? ((coste / n.salario_neto - 1) * 100).toFixed(1) : '0'
+    doc.text(`SMI 2026: ${f(SMI_2026)}/mes (14 pagas)  ·  Por cada ${f(n.salario_neto)} neto, la empresa desembolsa ${f(coste)} (+${ratio}%)`, mL + 4, y + 13)
+    y += 26
+
+    // ── Firmas ────────────────────────────────────────────────────────────────
+    doc.setDrawColor(180, 180, 180)
+    doc.line(mL, y + 22, mL + 72, y + 22)
+    doc.line(mR - 72, y + 22, mR, y + 22)
+    doc.setTextColor(120, 120, 120); doc.setFontSize(8); doc.setFont('helvetica', 'normal')
+    doc.text('Firma y sello empresa', mL + 36, y + 27, { align: 'center' })
+    doc.text('Firma trabajador', mR - 36, y + 27, { align: 'center' })
+
+    // ── Pie ───────────────────────────────────────────────────────────────────
+    doc.setFillColor(247, 249, 252)
+    doc.rect(0, 285, W, 12, 'F')
+    doc.setDrawColor(229, 231, 235)
+    doc.line(0, 285, W, 285)
+    doc.setTextColor(153, 153, 153); doc.setFontSize(7)
+    doc.text(`Generado con Khepria · ${new Date().toLocaleDateString('es-ES')} · Documento informativo conforme a plantillas SEPE 2026`, 105, 292, { align: 'center' })
+
+    const filename = `nomina-${(trab?.nombre || 'trabajador').toLowerCase().replace(/\s+/g, '-')}-${n.mes}.pdf`
+    doc.save(filename)
   }
 
   async function enviarChat() {
@@ -695,7 +785,7 @@ Pregunta: ${texto}`
 
             <div className="field">
               <label>Salario bruto mensual (€) *</label>
-              <input type="number" placeholder="0.00" min="0" step="0.01" value={form.salario_bruto} onChange={e => setForm({...form, salario_bruto: e.target.value})} />
+              <input type="number" placeholder="0.00" min="0" step="0.01" value={form.salario_bruto} onChange={e => onBrutoChange(e.target.value)} />
             </div>
 
             <div className="grid3">
