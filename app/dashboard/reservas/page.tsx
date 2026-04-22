@@ -22,6 +22,8 @@ type Reserva = {
   trabajadores: { nombre: string } | null
 }
 
+type ClienteStat = { total: number; cancelaciones: number; tasa: number }
+
 type EsperaEntry = {
   id: string
   cliente_nombre: string
@@ -99,6 +101,7 @@ export default function Reservas() {
   const [vista, setVista] = useState<'calendario' | 'dia' | 'espera'>('calendario')
   const [listaEspera, setListaEspera] = useState<EsperaEntry[]>([])
   const [cargandoEspera, setCargandoEspera] = useState(false)
+  const [clienteStats, setClienteStats] = useState<Record<string, ClienteStat>>({})
 
   useEffect(() => {
     ;(async () => {
@@ -133,6 +136,31 @@ export default function Reservas() {
       .select('dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2')
       .eq('negocio_id', negocio.id)
       .then(({ data }) => { if (data) setHorarios(data as Horario[]) })
+  }, [negocio])
+
+  // Cargar estadísticas históricas de clientes para badge de riesgo
+  useEffect(() => {
+    if (!negocio) return
+    supabase
+      .from('reservas')
+      .select('cliente_telefono, estado')
+      .eq('negocio_id', negocio.id)
+      .in('estado', ['completada', 'cancelada'])
+      .then(({ data }) => {
+        const stats: Record<string, ClienteStat> = {}
+        for (const r of data || []) {
+          const tel = r.cliente_telefono
+          if (!tel) continue
+          if (!stats[tel]) stats[tel] = { total: 0, cancelaciones: 0, tasa: 0 }
+          if (r.estado === 'completada') stats[tel].total++
+          else if (r.estado === 'cancelada') stats[tel].cancelaciones++
+        }
+        for (const tel in stats) {
+          const s = stats[tel]
+          s.tasa = s.total > 0 ? Math.round(s.cancelaciones / s.total * 100) : 0
+        }
+        setClienteStats(stats)
+      })
   }, [negocio])
 
   // Cargar conteo de reservas del mes para el calendario
@@ -199,6 +227,17 @@ export default function Reservas() {
     setVista('dia')
   }
 
+  function badgeRiesgo(telefono: string | null) {
+    if (!telefono) return null
+    const s = clienteStats[telefono]
+    if (!s) return null
+    const totalHist = s.total + s.cancelaciones
+    if (totalHist <= 3) return null
+    if (s.tasa > 50) return <span style={{fontSize:'11px',fontWeight:700,padding:'2px 8px',borderRadius:'100px',background:'#FEE2E2',color:'#DC2626',whiteSpace:'nowrap'}}>🔴 Alto riesgo</span>
+    if (s.tasa > 25) return <span style={{fontSize:'11px',fontWeight:700,padding:'2px 8px',borderRadius:'100px',background:'#FEF3C7',color:'#D97706',whiteSpace:'nowrap'}}>🟡 Riesgo medio</span>
+    return <span style={{fontSize:'11px',fontWeight:700,padding:'2px 8px',borderRadius:'100px',background:'#ECFDF5',color:'#059669',whiteSpace:'nowrap'}}>🟢 Fiable</span>
+  }
+
   function getSlotsDelDia() {
     const [y, m, d] = fecha.split('-').map(Number)
     const diaNombre = DIAS_NOMBRE[new Date(y, m-1, d).getDay()]
@@ -216,12 +255,29 @@ export default function Reservas() {
     setActualizando(id)
     const { error } = await supabase.from('reservas').update({ estado }).eq('id', id)
     if (!error) {
+      const prevEstado = reservas.find(r => r.id === id)?.estado
+      const tel = reservas.find(r => r.id === id)?.cliente_telefono ?? null
       setReservas(prev => prev.map(r => r.id === id ? { ...r, estado } : r))
       // Update month count
       if (estado === 'cancelada') {
         setReservasMes(prev => ({ ...prev, [fecha]: Math.max(0, (prev[fecha] || 1) - 1) }))
       } else if (estado === 'confirmada') {
         setReservasMes(prev => ({ ...prev, [fecha]: (prev[fecha] || 0) + 1 }))
+      }
+      // Update client stats for risk badge
+      if (tel) {
+        setClienteStats(prev => {
+          const s = prev[tel] ?? { total: 0, cancelaciones: 0, tasa: 0 }
+          let { total, cancelaciones } = s
+          // Undo previous state contribution
+          if (prevEstado === 'completada') total = Math.max(0, total - 1)
+          if (prevEstado === 'cancelada') cancelaciones = Math.max(0, cancelaciones - 1)
+          // Apply new state
+          if (estado === 'completada') total++
+          if (estado === 'cancelada') cancelaciones++
+          const tasa = total > 0 ? Math.round(cancelaciones / total * 100) : 0
+          return { ...prev, [tel]: { total, cancelaciones, tasa } }
+        })
       }
     }
     setActualizando(null)
@@ -458,7 +514,10 @@ export default function Reservas() {
                           {r.trabajador_id && <div className="worker-bar" style={{background: colorMap[r.trabajador_id] || '#CBD5E1'}} />}
                           <span className="slot-hora-label">{hora}</span>
                           <div className="reserva-info">
-                            <div className="reserva-cliente">{r.cliente_nombre}</div>
+                            <div className="reserva-cliente" style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                              {r.cliente_nombre}
+                              {badgeRiesgo(r.cliente_telefono)}
+                            </div>
                             <div className="reserva-detalle">
                               {r.servicios?.nombre && <span>🔧 {r.servicios.nombre}</span>}
                               {r.trabajadores?.nombre && <span>👤 {r.trabajadores.nombre}</span>}
@@ -497,7 +556,10 @@ export default function Reservas() {
                           <div key={r.id} className="reserva-card" style={r.trabajador_id ? {borderLeft: `4px solid ${colorMap[r.trabajador_id] || '#CBD5E1'}`} : {}}>
                             <div className="reserva-hora">{r.hora?.slice(0,5)}</div>
                             <div className="reserva-info">
-                              <div className="reserva-cliente">{r.cliente_nombre}</div>
+                              <div className="reserva-cliente" style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                                {r.cliente_nombre}
+                                {badgeRiesgo(r.cliente_telefono)}
+                              </div>
                               <div className="reserva-detalle">
                                 {r.servicios?.nombre && <span>🔧 {r.servicios.nombre}</span>}
                                 {r.trabajadores?.nombre && <span>👤 {r.trabajadores.nombre}</span>}

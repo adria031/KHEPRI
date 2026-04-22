@@ -95,6 +95,7 @@ export default function Dashboard() {
   const [totalResenas, setTotalResenas]     = useState(0)
   const [noShows, setNoShows]               = useState(0)
   const [tasaExito, setTasaExito]           = useState(0)
+  const [reservasEnRiesgo, setReservasEnRiesgo] = useState(0)
 
   // Charts
   const [barras7, setBarras7]   = useState<DiaBar[]>([])
@@ -181,6 +182,29 @@ export default function Dashboard() {
       const totalMes = resMesActual.length
       setNoShows(resMesActual.filter((r: { estado: string }) => r.estado === 'cancelada' || r.estado === 'no_show').length)
       setTasaExito(totalMes > 0 ? Math.round(resMesActual.filter((r: { estado: string }) => r.estado === 'completada').length / totalMes * 100) : 0)
+
+      // Reservas en riesgo hoy: clientes con tasa_noshow > 50% y más de 3 reservas previas
+      const statsPorTel: Record<string, { total: number; cancelaciones: number }> = {}
+      for (const r of periodData) {
+        const tel: string = r.cliente_telefono
+        if (!tel) continue
+        if (!statsPorTel[tel]) statsPorTel[tel] = { total: 0, cancelaciones: 0 }
+        if (r.estado === 'completada') statsPorTel[tel].total++
+        else if (r.estado === 'cancelada') statsPorTel[tel].cancelaciones++
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hoyPeriod = periodData.filter((r: any) => r.fecha === hoyISO && (r.estado === 'confirmada' || r.estado === 'pendiente'))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const enRiesgo = hoyPeriod.filter((r: any) => {
+        const tel: string = r.cliente_telefono
+        if (!tel) return false
+        const s = statsPorTel[tel]
+        if (!s) return false
+        const totalHist = s.total + s.cancelaciones
+        if (totalHist <= 3) return false
+        return s.total > 0 && (s.cancelaciones / s.total * 100) > 50
+      })
+      setReservasEnRiesgo(enRiesgo.length)
 
       const resSemActual = periodData.filter((r: { fecha: string }) => r.fecha >= inicioSemISO && r.fecha <= hoyISO)
       const resSemAntD   = periodData.filter((r: { fecha: string }) => r.fecha >= inicioSemAntISO && r.fecha < inicioSemISO)
@@ -538,6 +562,15 @@ export default function Dashboard() {
                     <div style={{ width: `${tasaExito}%`, height: '100%', background: tasaExito >= 70 ? '#10B981' : tasaExito >= 40 ? '#F59E0B' : '#EF4444', borderRadius: 3 }} />
                   </div>
                 )}
+              </div>
+            </div>
+            <div className="db-stat-row">
+              <div className="db-stat-icon" style={{ background: '#FEF2F2' }}>🔴</div>
+              <div>
+                <div className="db-stat-label">Reservas en riesgo hoy</div>
+                <div className="db-stat-val" style={{ color: reservasEnRiesgo > 0 ? '#DC2626' : '#111827' }}>
+                  {cargando ? '—' : reservasEnRiesgo > 0 ? `${reservasEnRiesgo} cliente${reservasEnRiesgo > 1 ? 's' : ''} alto riesgo` : 'Sin riesgo detectado'}
+                </div>
               </div>
             </div>
           </div>
