@@ -98,10 +98,14 @@ export default function Reservas() {
   const [reservasMes, setReservasMes] = useState<Record<string, number>>({})
   const [calMes, setCalMes] = useState(() => new Date().getMonth())
   const [calAnio, setCalAnio] = useState(() => new Date().getFullYear())
-  const [vista, setVista] = useState<'calendario' | 'dia' | 'espera'>('calendario')
+  const [vista, setVista] = useState<'calendario' | 'dia' | 'espera' | 'stats'>('calendario')
   const [listaEspera, setListaEspera] = useState<EsperaEntry[]>([])
   const [cargandoEspera, setCargandoEspera] = useState(false)
   const [clienteStats, setClienteStats] = useState<Record<string, ClienteStat>>({})
+  // Estadísticas históricas
+  const [statsHistoricos, setStatsHistoricos] = useState({ horaPunta: '', diaPunta: '', mesPunta: '' })
+  const [cancelacionesSem, setCancelacionesSem] = useState(0)
+  const [serviciosSinReservar, setServiciosSinReservar] = useState<string[]>([])
 
   useEffect(() => {
     ;(async () => {
@@ -161,6 +165,79 @@ export default function Reservas() {
         }
         setClienteStats(stats)
       })
+  }, [negocio])
+
+  // Estadísticas históricas: hora punta, día punta, mes con más ingresos
+  useEffect(() => {
+    if (!negocio) return
+    const hace6 = new Date(); hace6.setMonth(hace6.getMonth() - 6)
+    const desde = dateToISO(hace6)
+    supabase
+      .from('reservas')
+      .select('hora, fecha, servicios(precio)')
+      .eq('negocio_id', negocio.id)
+      .neq('estado', 'cancelada')
+      .gte('fecha', desde)
+      .then(({ data }) => {
+        if (!data?.length) return
+        const DIAS_ES = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado']
+        const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+        const porHora: Record<number, number> = {}
+        const porDia:  Record<number, number> = {}
+        const porMes:  Record<number, number> = {}
+        for (const r of data) {
+          const h = parseInt((r.hora as string ?? '00').slice(0, 2), 10)
+          porHora[h] = (porHora[h] ?? 0) + 1
+          const [ry, rm, rd] = (r.fecha as string).split('-').map(Number)
+          const dow = new Date(ry, rm - 1, rd).getDay()
+          porDia[dow] = (porDia[dow] ?? 0) + 1
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const precio = ((Array.isArray(r.servicios) ? r.servicios[0] : r.servicios) as any)?.precio ?? 0
+          porMes[rm - 1] = (porMes[rm - 1] ?? 0) + precio
+        }
+        const top = (obj: Record<number, number>) => Object.entries(obj).sort((a, b) => b[1] - a[1])[0]?.[0]
+        const hTop = top(porHora)
+        const dTop = top(porDia)
+        const mTop = top(porMes)
+        setStatsHistoricos({
+          horaPunta: hTop !== undefined ? `${hTop}:00 h` : '',
+          diaPunta:  dTop !== undefined ? DIAS_ES[Number(dTop)] : '',
+          mesPunta:  mTop !== undefined ? MESES_ES[Number(mTop)] : '',
+        })
+      })
+  }, [negocio])
+
+  // Cancelaciones esta semana
+  useEffect(() => {
+    if (!negocio) return
+    const now = new Date()
+    const inicioSem = new Date(now)
+    inicioSem.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+    inicioSem.setHours(0, 0, 0, 0)
+    supabase
+      .from('reservas')
+      .select('id')
+      .eq('negocio_id', negocio.id)
+      .eq('estado', 'cancelada')
+      .gte('fecha', dateToISO(inicioSem))
+      .then(({ data }) => setCancelacionesSem(data?.length ?? 0))
+  }, [negocio])
+
+  // Servicios sin reservar en los últimos 30 días
+  useEffect(() => {
+    if (!negocio) return
+    const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
+    const desde30 = dateToISO(hace30)
+    Promise.all([
+      supabase.from('servicios').select('id,nombre').eq('negocio_id', negocio.id).eq('activo', true),
+      supabase.from('reservas').select('servicio_id').eq('negocio_id', negocio.id).gte('fecha', desde30).neq('estado', 'cancelada'),
+    ]).then(([{ data: srvs }, { data: recientes }]) => {
+      const reservadosSet = new Set((recientes || []).map((r: { servicio_id: string }) => r.servicio_id))
+      const sin = (srvs || [])
+        .filter((s: { id: string }) => !reservadosSet.has(s.id))
+        .map((s: { nombre: string }) => s.nombre)
+      setServiciosSinReservar(sin)
+    })
   }, [negocio])
 
   // Cargar conteo de reservas del mes para el calendario
@@ -289,6 +366,39 @@ export default function Reservas() {
   const slots = vista === 'dia' ? getSlotsDelDia() : []
   const slotsLibres = slots.filter(s => !s.reserva).length
 
+  // Ocupación y huecos entre reservas
+  const slotsOcupados = slots.filter(s => s.reserva && s.reserva.estado !== 'cancelada').length
+  const ocupacionPct = slots.length > 0 ? Math.round(slotsOcupados / slots.length * 100) : 0
+
+  function detectarHuecos() {
+    const ocupados = slots.map(s => !!(s.reserva && s.reserva.estado !== 'cancelada'))
+    if (ocupados.filter(Boolean).length < 2) return 0
+    const primerOc = ocupados.findIndex(Boolean)
+    const ultimoOc = ocupados.length - 1 - [...ocupados].reverse().findIndex(Boolean)
+    let huecos = 0; let i = primerOc + 1
+    while (i <= ultimoOc) {
+      if (!ocupados[i]) {
+        let gapSize = 0
+        while (i <= ultimoOc && !ocupados[i]) { gapSize++; i++ }
+        if (i <= ultimoOc && gapSize * 30 > 30) huecos++
+      } else { i++ }
+    }
+    return huecos
+  }
+  const huecosEntreCitas = detectarHuecos()
+
+  // Sugerencias automáticas
+  const sugerencias: { icon: string; msg: string; color: string; bg: string }[] = []
+  if (slots.length > 0 && ocupacionPct < 50) {
+    sugerencias.push({ icon: '💡', msg: 'Ocupación baja hoy. Considera activar un descuento para atraer más clientes.', color: '#D97706', bg: 'rgba(253,230,138,0.15)' })
+  }
+  if (cancelacionesSem >= 3) {
+    sugerencias.push({ icon: '⚠️', msg: `Alta tasa de cancelaciones esta semana (${cancelacionesSem}). Revisa tu política de cancelación.`, color: '#DC2626', bg: 'rgba(254,202,202,0.2)' })
+  }
+  for (const srv of serviciosSinReservar) {
+    sugerencias.push({ icon: '🔧', msg: `El servicio "${srv}" lleva más de 30 días sin reservarse. Considera destacarlo o ajustar el precio.`, color: '#6B4FD8', bg: 'rgba(212,197,249,0.15)' })
+  }
+
   return (
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
       <style>{`
@@ -372,6 +482,23 @@ export default function Reservas() {
         .slot-libre-label { font-size: 13px; color: var(--muted); font-weight: 500; font-style: italic; }
         .tab-btn { padding: 8px 18px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--white); font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
         .tab-btn.active { background: var(--blue-dark); color: white; border-color: var(--blue-dark); }
+        /* Ocupación */
+        .ocu-bar-wrap { height: 6px; border-radius: 3px; background: rgba(0,0,0,0.07); overflow: hidden; margin-top: 6px; }
+        .ocu-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
+        /* Huecos banner */
+        .hueco-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; background: rgba(184,216,248,0.12); border: 1px solid rgba(184,216,248,0.4); font-size: 13px; color: #1D4ED8; font-weight: 600; }
+        /* Sugerencias */
+        .sug-card { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.06); }
+        .sug-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
+        .sug-msg { font-size: 13px; font-weight: 600; line-height: 1.5; }
+        /* Stats panel */
+        .stat-hist-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 14px; }
+        .stat-hist-title { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 14px; letter-spacing: -0.3px; }
+        .stat-hist-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .stat-hist-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .stat-hist-ico { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .stat-hist-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+        .stat-hist-val { font-size: 15px; font-weight: 800; color: var(--text); text-transform: capitalize; }
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); }
           .sidebar-overlay.open { display: block; } .hamburger { display: flex; }
@@ -391,6 +518,7 @@ export default function Reservas() {
                 <button className={`tab-btn ${vista==='calendario'?'active':''}`} onClick={() => setVista('calendario')}>📅 Calendario</button>
                 <button className={`tab-btn ${vista==='dia'?'active':''}`} onClick={() => setVista('dia')}>📋 Día</button>
                 <button className={`tab-btn ${vista==='espera'?'active':''}`} onClick={() => setVista('espera')}>⏳ Espera</button>
+                <button className={`tab-btn ${vista==='stats'?'active':''}`} onClick={() => setVista('stats')}>📊 Stats</button>
               </div>
             </div>
 
@@ -469,7 +597,7 @@ export default function Reservas() {
                 </div>
 
                 {/* Estadísticas del día */}
-                <div className="stats-row" style={{marginBottom:'20px'}}>
+                <div className="stats-row" style={{marginBottom:'12px'}}>
                   <div className="stat-mini">
                     <div className="stat-mini-val">{reservas.length}</div>
                     <div className="stat-mini-label">Total reservas</div>
@@ -483,10 +611,43 @@ export default function Reservas() {
                     <div className="stat-mini-label">Completadas</div>
                   </div>
                   <div className="stat-mini">
-                    <div className="stat-mini-val" style={{color:'var(--muted)'}}>{slotsLibres}</div>
-                    <div className="stat-mini-label">Horas libres</div>
+                    <div className="stat-mini-val" style={{color: ocupacionPct >= 80 ? '#2E8A5E' : ocupacionPct >= 50 ? '#D97706' : '#9CA3AF'}}>
+                      {slots.length > 0 ? `${ocupacionPct}%` : '—'}
+                    </div>
+                    <div className="stat-mini-label">Ocupación</div>
+                    {slots.length > 0 && (
+                      <div className="ocu-bar-wrap">
+                        <div className="ocu-bar" style={{
+                          width: `${ocupacionPct}%`,
+                          background: ocupacionPct >= 80 ? '#2E8A5E' : ocupacionPct >= 50 ? '#F59E0B' : '#CBD5E1'
+                        }} />
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Banner huecos entre citas */}
+                {huecosEntreCitas > 0 && (
+                  <div className="hueco-banner" style={{marginBottom:'12px'}}>
+                    <span style={{fontSize:'20px'}}>🕐</span>
+                    <span>
+                      Tienes <strong>{huecosEntreCitas} hueco{huecosEntreCitas > 1 ? 's' : ''} libre{huecosEntreCitas > 1 ? 's' : ''}</strong> de más de 30 min hoy —{' '}
+                      <a href={negocio?.id ? `/negocio/${negocio.id}/reservar` : '#'} target="_blank" rel="noreferrer" style={{color:'#1D4ED8',textDecoration:'underline'}}>comparte tu enlace de reserva</a>
+                    </span>
+                  </div>
+                )}
+
+                {/* Sugerencias del día */}
+                {sugerencias.length > 0 && (
+                  <div style={{marginBottom:'16px'}}>
+                    {sugerencias.map((s, i) => (
+                      <div key={i} className="sug-card" style={{background: s.bg, borderColor: `${s.color}30`}}>
+                        <span className="sug-icon">{s.icon}</span>
+                        <span className="sug-msg" style={{color: s.color}}>{s.msg}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {cargando ? (
                   <div style={{textAlign:'center',padding:'40px',color:'var(--muted)',fontSize:'14px'}}>Cargando...</div>
@@ -585,6 +746,64 @@ export default function Reservas() {
                     </div>
                   )
                 )}
+              </>
+            )}
+
+            {/* ── VISTA ESTADÍSTICAS ── */}
+            {vista === 'stats' && (
+              <>
+                {/* Históricos */}
+                <div className="stat-hist-card">
+                  <div className="stat-hist-title">📈 Estadísticas históricas (últimos 6 meses)</div>
+                  <div className="stat-hist-row">
+                    <div className="stat-hist-ico" style={{background:'#EEF2FF'}}>⏰</div>
+                    <div>
+                      <div className="stat-hist-label">Hora punta</div>
+                      <div className="stat-hist-val">{statsHistoricos.horaPunta || '—'}</div>
+                    </div>
+                  </div>
+                  <div className="stat-hist-row">
+                    <div className="stat-hist-ico" style={{background:'#F0FDF4'}}>📅</div>
+                    <div>
+                      <div className="stat-hist-label">Día más ocupado de la semana</div>
+                      <div className="stat-hist-val">{statsHistoricos.diaPunta || '—'}</div>
+                    </div>
+                  </div>
+                  <div className="stat-hist-row">
+                    <div className="stat-hist-ico" style={{background:'#FFFBEB'}}>💶</div>
+                    <div>
+                      <div className="stat-hist-label">Mes con más ingresos</div>
+                      <div className="stat-hist-val">{statsHistoricos.mesPunta || '—'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sugerencias globales */}
+                <div className="stat-hist-card">
+                  <div className="stat-hist-title">💡 Sugerencias inteligentes</div>
+                  {cancelacionesSem >= 3 && (
+                    <div className="sug-card" style={{background:'rgba(254,202,202,0.2)',borderColor:'rgba(220,38,38,0.2)'}}>
+                      <span className="sug-icon">⚠️</span>
+                      <span className="sug-msg" style={{color:'#DC2626'}}>
+                        Alta tasa de cancelaciones esta semana ({cancelacionesSem}). Revisa tu política de cancelación en <a href="/dashboard/mi-negocio" style={{color:'#DC2626',textDecoration:'underline'}}>Mi negocio</a>.
+                      </span>
+                    </div>
+                  )}
+                  {serviciosSinReservar.map((srv, i) => (
+                    <div key={i} className="sug-card" style={{background:'rgba(212,197,249,0.15)',borderColor:'rgba(107,79,216,0.2)'}}>
+                      <span className="sug-icon">🔧</span>
+                      <span className="sug-msg" style={{color:'#6B4FD8'}}>
+                        El servicio <strong>"{srv}"</strong> lleva más de 30 días sin reservarse. Considera destacarlo o ajustar el precio.
+                      </span>
+                    </div>
+                  ))}
+                  {cancelacionesSem < 3 && serviciosSinReservar.length === 0 && (
+                    <div style={{textAlign:'center',padding:'20px',color:'var(--muted)',fontSize:'13px'}}>
+                      <div style={{fontSize:'32px',marginBottom:'8px'}}>✅</div>
+                      Todo en orden. Sin alertas activas.
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
