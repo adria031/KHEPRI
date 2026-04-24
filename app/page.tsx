@@ -43,6 +43,28 @@ export default function Home() {
           --muted: #9CA3AF;
           --border: rgba(0,0,0,0.09);
         }
+        html.dark {
+          --bg: #0d0d0d; --bg2: #1a1a1a;
+          --text: #f9fafb; --text2: #9CA3AF; --muted: #6B7280;
+          --border: rgba(255,255,255,0.08);
+          --blue-soft: rgba(184,216,248,0.12); --lila-soft: rgba(212,197,249,0.12); --green-soft: rgba(184,237,212,0.12);
+        }
+        html.dark body { background: #0d0d0d; color: #f9fafb; }
+        html.dark nav { background: rgba(13,13,13,0.96); border-color: rgba(255,255,255,0.08); }
+        html.dark .nav-links a { color: #9CA3AF; }
+        html.dark .nav-links a:hover { color: #f9fafb; }
+        html.dark .nav-cta { background: #f9fafb; color: #111827 !important; }
+        html.dark .nav-cta:hover { background: #e5e7eb; }
+        html.dark .btn-p { background: #f9fafb; color: #111827; }
+        html.dark .btn-p:hover { background: #e5e7eb; }
+        html.dark .btn-s { background: #1a1a1a; color: var(--blue-dark); }
+        html.dark .btn-s:hover { background: rgba(184,216,248,0.15); }
+        html.dark .mockup { background: #1a1a1a; }
+        html.dark .mock-body { background: #1a1a1a; }
+        html.dark .vc { background: #1a1a1a; }
+        html.dark .plan-card { background: #1a1a1a; }
+        html.dark .feat-card:hover { background: #242424; box-shadow: 0 8px 28px rgba(0,0,0,0.4); }
+        html.dark footer { background: #0d0d0d; }
         html { scroll-behavior: smooth; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; line-height: 1.6; }
 

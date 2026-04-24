@@ -2,16 +2,25 @@
 
 *, *::before, *::after {
   box-sizing: border-box;
-}
-
-:root {
-  color-scheme: light only;
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
 
 body {
   background: #F7F9FC;
   color: #111827;
   -webkit-tap-highlight-color: transparent;
+}
+
+html.dark body {
+  background: #0d0d0d;
+  color: #f9fafb;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light) body {
+    background: #0d0d0d;
+    color: #f9fafb;
+  }
 }
 
 button, input, select, textarea {

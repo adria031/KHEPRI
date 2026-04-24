@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { NegocioSelector } from './NegocioSelector'
 import type { NegMin } from '../lib/negocioActivo'
+import { useTheme } from '../components/ThemeProvider'
 
 const NAV_GROUPS = [
   {
@@ -88,6 +89,7 @@ export function DashboardShell({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname() ?? ''
+  const { theme, toggle: toggleTheme } = useTheme()
 
   const esTodos = negocio === null && todosNegocios.length > 1
   const planCfg = PLAN_CFG[negocio?.plan ?? ''] ?? PLAN_CFG.basico
@@ -224,6 +226,20 @@ export function DashboardShell({
         .main { display: contents; }
         .layout { display: contents; }
 
+        /* ── DARK MODE ── */
+        html.dark {
+          --ds-bg: #0d0d0d; --ds-white: #1a1a1a; --ds-border: rgba(255,255,255,0.08); --ds-border2: rgba(255,255,255,0.05);
+          --ds-text: #f9fafb; --ds-text2: #9CA3AF; --ds-muted: #6B7280;
+          --ds-active-bg: rgba(79,70,229,0.18); --ds-active: #818CF8; --ds-hover: rgba(255,255,255,0.05);
+          --bg: #0d0d0d; --white: #1a1a1a; --border: rgba(255,255,255,0.08);
+          --text: #f9fafb; --text2: #9CA3AF; --muted: #6B7280;
+          --blue-soft: rgba(184,216,248,0.12); --lila-soft: rgba(212,197,249,0.12); --green-soft: rgba(184,237,212,0.12);
+          --yellow: rgba(253,233,162,0.2); --pink: rgba(251,207,232,0.2);
+          --blue-dark: #93C5FD; --lila-dark: #A78BFA; --green-dark: #6EE7B7; --yellow-dark: #FCD34D;
+        }
+        html.dark .ds-logout:hover { background: rgba(220,38,38,0.15); color: #F87171; border-color: rgba(248,113,113,0.3); }
+        html.dark .ds-biz-card:hover { background: rgba(79,70,229,0.1); }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
           .ds-sidebar { transform: translateX(-100%); }
@@ -322,6 +338,26 @@ export function DashboardShell({
             </div>
             <div className="ds-topbar-right">
               <NegocioSelector negocios={todosNegocios} activoId={negocio?.id ?? ''} />
+              <button
+                onClick={toggleTheme}
+                className="ds-bell"
+                aria-label={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+                title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              >
+                {theme === 'dark' ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                )}
+              </button>
               <button className="ds-bell" aria-label="Notificaciones">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>

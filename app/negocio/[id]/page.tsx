@@ -329,6 +329,37 @@ export default function FichaNegocio() {
           body { padding-bottom:88px; }
           .card { padding:20px; }
         }
+        /* ── DARK MODE ── */
+        html.dark, html.dark body { background:#0d0d0d !important; color:#f9fafb !important; }
+        html.dark .nav { background:rgba(13,13,13,0.95); border-color:rgba(255,255,255,0.06); }
+        html.dark .card { background:#1a1a1a; border-color:rgba(255,255,255,0.06); box-shadow:0 2px 12px rgba(0,0,0,0.4); }
+        html.dark .card-title { color:#6B7280; }
+        html.dark .descripcion { color:#9CA3AF; }
+        html.dark .profile-name { color:#f9fafb; }
+        html.dark .profile-tipo { background:rgba(99,102,241,0.15); }
+        html.dark .meta-chip { color:#9CA3AF; }
+        html.dark .profile-block { border-color:rgba(255,255,255,0.06); }
+        html.dark .grupo-wrap { border-color:rgba(255,255,255,0.06); }
+        html.dark .grupo-body { background:#1a1a1a; }
+        html.dark .servicio-item { border-color:rgba(255,255,255,0.04); }
+        html.dark .serv-nombre { color:#f9fafb; }
+        html.dark .serv-precio { color:#f9fafb; }
+        html.dark .horario-item { background:transparent; }
+        html.dark .horario-item.hoy { background:rgba(99,102,241,0.1); border-color:rgba(99,102,241,0.2); }
+        html.dark .horario-dia-txt { color:#9CA3AF; }
+        html.dark .horario-hora-txt { color:#9CA3AF; }
+        html.dark .val-numero { color:#f9fafb; }
+        html.dark .val-media { border-color:rgba(255,255,255,0.06); }
+        html.dark .val-resena-item { border-color:rgba(255,255,255,0.04); }
+        html.dark .val-resena-autor { color:#f9fafb; }
+        html.dark .val-resena-texto { color:#9CA3AF; }
+        html.dark .red-chip { background:#1a1a1a; border-color:rgba(255,255,255,0.08); color:#f9fafb; }
+        html.dark .red-chip:hover { background:#242424; border-color:#6366F1; color:#818CF8; }
+        html.dark .side-card { background:#1a1a1a; border-color:rgba(255,255,255,0.06); box-shadow:0 2px 12px rgba(0,0,0,0.4); }
+        html.dark .dir-txt { color:#9CA3AF; }
+        html.dark .logo-bubble { border-color:#1a1a1a; background:#1a1a1a; }
+        html.dark .btn-fav { background:rgba(26,26,26,0.9); border-color:rgba(255,255,255,0.1); }
+        html.dark .mobile-cta { background:rgba(13,13,13,0.97); border-color:rgba(255,255,255,0.06); }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 

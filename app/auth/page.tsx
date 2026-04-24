@@ -128,6 +128,25 @@ function AuthForm() {
           .page { padding: 16px; align-items: flex-start; padding-top: 32px; }
           .card { padding: 28px 20px; border-radius: 20px; }
         }
+        /* ── DARK MODE ── */
+        html.dark body, html.dark .page { background: #0d0d0d; }
+        html.dark .card { background: #1a1a1a; border-color: rgba(255,255,255,0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        html.dark h1 { color: #f9fafb; }
+        html.dark .sub { color: #9CA3AF; }
+        html.dark .tabs { background: #0d0d0d; }
+        html.dark .tab { color: #9CA3AF; }
+        html.dark .tab.active { background: #1a1a1a; color: #f9fafb; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+        html.dark label { color: #f9fafb; }
+        html.dark input { background: #111111; color: #f9fafb; border-color: rgba(255,255,255,0.1); }
+        html.dark input:focus { border-color: #818CF8; }
+        html.dark .btn { background: #f9fafb; color: #111827; }
+        html.dark .btn:disabled { background: #374151; color: #9CA3AF; }
+        html.dark .btn-google { background: #1a1a1a; color: #f9fafb; border-color: rgba(255,255,255,0.1); }
+        html.dark .footer-link { color: #9CA3AF; }
+        html.dark .footer-link a { color: #818CF8; }
+        html.dark .forgot-link a { color: #818CF8; }
+        html.dark .divider { color: #6B7280; }
+        html.dark .divider::before, html.dark .divider::after { background: rgba(255,255,255,0.08); }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 

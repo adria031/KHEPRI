@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { Suspense } from 'react'
+import { useTheme } from '../components/ThemeProvider'
 
 const MapaNegocios = dynamic(() => import('./MapaNegocios'), { ssr: false, loading: () => (
   <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#F1F5F9', color:'#94A3B8', fontSize:'14px', fontWeight:600, gap:'8px' }}>
@@ -172,6 +173,7 @@ function ClienteContent(){
   const router=useRouter()
   const searchParams=useSearchParams()
   const tab=(searchParams?.get('tab')||'inicio') as string
+  const{theme,toggle:toggleTheme}=useTheme()
 
   const[cats,setCats]=useState<string[]>([])
   const[q,setQ]=useState('')
@@ -327,7 +329,8 @@ function ClienteContent(){
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <style>{`
       *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-      html,body{background:#F8FAFC!important;color:#0F172A!important;color-scheme:light only!important}
+      html,body{background:#F8FAFC!important;color:#0F172A!important}
+      html.dark,html.dark body{background:#0d0d0d!important;color:#f9fafb!important}
       :root{--cols:3}
       @keyframes sk{0%{background-position:400% 0}100%{background-position:-400% 0}}
       @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -473,6 +476,43 @@ function ClienteContent(){
         .neg-grid{gap:14px}
         .sbar input{font-size:16px}
       }
+      /* ── DARK MODE ── */
+      html.dark .tnav{background:rgba(13,13,13,0.97);border-color:rgba(255,255,255,0.06)}
+      html.dark .tnav-links a{color:#9CA3AF}
+      html.dark .tnav-links a:hover,html.dark .tnav-links a.on{color:#f9fafb}
+      html.dark .hero{background:linear-gradient(160deg,#0a1628 0%,#110d24 55%,#0a1a14 100%)}
+      html.dark .hero-title{color:#f9fafb}
+      html.dark .hero-sub{color:#9CA3AF}
+      html.dark .sbar{background:#1a1a1a;border-color:rgba(255,255,255,0.1)}
+      html.dark .sbar:focus-within{border-color:#818CF8;box-shadow:0 4px 24px rgba(129,140,248,0.15)}
+      html.dark .sbar input{color:#f9fafb}
+      html.dark .cats-bar{background:#0d0d0d;border-color:rgba(255,255,255,0.06)}
+      html.dark .catbtn{color:#9CA3AF}
+      html.dark .catbtn:hover{background:#1a1a1a;color:#f9fafb}
+      html.dark .catbtn.on{background:#f9fafb;color:#111827;border-color:#f9fafb}
+      html.dark .fbar{background:#0d0d0d}
+      html.dark .fchip{background:#1a1a1a;border-color:rgba(255,255,255,0.08);color:#9CA3AF}
+      html.dark .fchip:hover{border-color:#f9fafb;color:#f9fafb}
+      html.dark .fchip.on{background:#f9fafb;border-color:#f9fafb;color:#111827}
+      html.dark .content{background:#0d0d0d}
+      html.dark .sec-t{color:#f9fafb}
+      html.dark .ncard{background:#1a1a1a;border-color:rgba(255,255,255,0.06)}
+      html.dark .ncard:hover{box-shadow:0 16px 40px rgba(0,0,0,0.5)}
+      html.dark .ncard-nombre{color:#f9fafb}
+      html.dark .ncard-logo{border-color:#1a1a1a}
+      html.dark .btn-reservar{background:#f9fafb;color:#111827}
+      html.dark .btn-reservar:hover{background:#6366F1;color:white}
+      html.dark .hn-card{background:#1a1a1a;border-color:rgba(255,255,255,0.06)}
+      html.dark .cita-c{background:#1a1a1a;border-color:rgba(255,255,255,0.06)}
+      html.dark .rcard{background:#1a1a1a;border-color:rgba(255,255,255,0.06)}
+      html.dark .perf-hero{background:linear-gradient(135deg,#0a1628 0%,#110d24 100%);border-color:rgba(99,102,241,0.15)}
+      html.dark .perf-menu{background:#1a1a1a;border-color:rgba(255,255,255,0.06)}
+      html.dark .perf-item{border-color:rgba(255,255,255,0.04)}
+      html.dark .perf-item:hover{background:#242424}
+      html.dark .bnav{background:rgba(13,13,13,0.97);border-color:rgba(255,255,255,0.06)}
+      html.dark .bnav-lbl{color:#6B7280}
+      html.dark .bnav-item.on .bnav-lbl{color:#f9fafb}
+      html.dark .Skeleton div{background:#1a1a1a;border-color:rgba(255,255,255,0.06)}
     `}</style>
 
     {/* ── TOP NAV ── */}
@@ -483,7 +523,27 @@ function ClienteContent(){
           <Link key={t.id} href={`/cliente?tab=${t.id}`} className={tab===t.id?'on':''}>{t.label}</Link>
         ))}
       </div>
-      <Link href="/cliente?tab=perfil" className="tnav-av">{nombre.charAt(0).toUpperCase()}</Link>
+      <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+        <button
+          onClick={toggleTheme}
+          title={theme==='dark'?'Modo claro':'Modo oscuro'}
+          style={{width:'36px',height:'36px',borderRadius:'10px',background:'transparent',border:'1.5px solid rgba(0,0,0,0.08)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#64748B',flexShrink:0}}
+        >
+          {theme==='dark'?(
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          ):(
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          )}
+        </button>
+        <Link href="/cliente?tab=perfil" className="tnav-av">{nombre.charAt(0).toUpperCase()}</Link>
+      </div>
     </div>
 
     <div style={{paddingTop:'60px',minHeight:'100vh'}}>

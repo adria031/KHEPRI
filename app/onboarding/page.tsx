@@ -226,6 +226,33 @@ export default function Onboarding() {
           h2 { font-size: 20px; }
           input, select { font-size: 16px; }
         }
+        /* ── DARK MODE ── */
+        html.dark body, html.dark .page { background: #0d0d0d; }
+        html.dark .card { background: #1a1a1a; border-color: rgba(255,255,255,0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        html.dark .progress-bar { background: rgba(255,255,255,0.08); }
+        html.dark h2 { color: #f9fafb; }
+        html.dark .sub, html.dark .step-label { color: #9CA3AF; }
+        html.dark label { color: #f9fafb; }
+        html.dark input, html.dark select { background: #111111; color: #f9fafb; border-color: rgba(255,255,255,0.1); }
+        html.dark input:focus, html.dark select:focus { border-color: #818CF8; }
+        html.dark .btn-primary { background: #f9fafb; color: #111827; }
+        html.dark .btn-primary:hover { background: #e5e7eb; }
+        html.dark .btn-primary:disabled { background: #374151; color: #9CA3AF; }
+        html.dark .btn-secondary { color: #9CA3AF; border-color: rgba(255,255,255,0.1); }
+        html.dark .btn-secondary:hover { background: #242424; }
+        html.dark .error { background: rgba(185,28,28,0.15); color: #FCA5A5; }
+        html.dark .tipo-card { border-color: rgba(255,255,255,0.08); background: #1a1a1a; }
+        html.dark .tipo-card:hover { border-color: rgba(184,216,248,0.4); }
+        html.dark .tipo-card.selected { border-color: #818CF8; background: rgba(129,140,248,0.1); }
+        html.dark .tipo-title { color: #f9fafb; }
+        html.dark .tipo-desc { color: #9CA3AF; }
+        html.dark .tipo-negocio-item { border-color: rgba(255,255,255,0.08); background: #1a1a1a; color: #9CA3AF; }
+        html.dark .tipo-negocio-item:hover { border-color: rgba(184,216,248,0.4); }
+        html.dark .tipo-negocio-item.selected { border-color: #818CF8; background: rgba(129,140,248,0.12); color: #818CF8; }
+        html.dark .plan-card { background: #1a1a1a; border-color: rgba(255,255,255,0.08); }
+        html.dark .plan-nombre { color: #f9fafb; }
+        html.dark .plan-precio { color: #6B7280; }
+        html.dark .plan-feature { color: #9CA3AF; }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
