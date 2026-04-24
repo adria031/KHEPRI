@@ -33,6 +33,7 @@ const NAV_GROUPS = [
       { icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas' },
       { icon: '💰', label: 'Caja', href: '/dashboard/caja' },
       { icon: '💸', label: 'Nóminas', href: '/dashboard/nominas' },
+      { icon: '📈', label: 'Analytics', href: '/dashboard/analytics' },
     ],
   },
 ]
@@ -51,6 +52,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/resenas': 'Reseñas',
   '/dashboard/caja': 'Caja',
   '/dashboard/nominas': 'Nóminas',
+  '/dashboard/analytics': 'Analytics',
 }
 
 const PLAN_CFG: Record<string, { label: string; color: string; bg: string }> = {
