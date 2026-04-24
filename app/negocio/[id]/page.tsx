@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { LanguageSelector } from '../../components/LanguageSelector'
 
 function KhepriLogo() {
   return (
@@ -367,6 +368,7 @@ export default function FichaNegocio() {
       <nav className="nav">
         <Link href="/cliente" style={{textDecoration:'none'}}><KhepriLogo /></Link>
         <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
+          <LanguageSelector />
           <button
             className={`btn-fav ${esFav ? 'active' : ''}`}
             onClick={toggleFav}

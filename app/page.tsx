@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { LandingLangSelector } from './components/LandingLangSelector'
 
 function KhepriLogo({ white = false }: { white?: boolean }) {
   return (
@@ -264,6 +265,7 @@ export default function Home() {
           <Link href="/cliente" style={{color:'var(--text2)', textDecoration:'none', fontWeight:500, fontSize:'14px'}}>App clientes</Link>
         </div>
         <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+          <LandingLangSelector />
           <Link href="/auth?modo=login" className="nav-login">Iniciar sesión</Link>
           <Link href="/auth?modo=registro" className="nav-cta">Registrarse</Link>
           <button className="nav-menu-btn" aria-label="Menú">

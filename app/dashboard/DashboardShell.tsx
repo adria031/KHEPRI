@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase'
 import { NegocioSelector } from './NegocioSelector'
 import type { NegMin } from '../lib/negocioActivo'
 import { useTheme } from '../components/ThemeProvider'
+import { useTranslations } from 'next-intl'
+import { LanguageSelector } from '../components/LanguageSelector'
 
 const NAV_GROUPS = [
   {
@@ -90,10 +92,52 @@ export function DashboardShell({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname() ?? ''
   const { theme, toggle: toggleTheme } = useTheme()
+  const t = useTranslations('dashboard')
+
+  // Translated nav labels keyed by href
+  const NAV_LABELS: Record<string, string> = {
+    '/dashboard':             t('nav.dashboard'),
+    '/dashboard/mi-negocio':  t('nav.myBusiness'),
+    '/dashboard/reservas':    t('nav.reservations'),
+    '/dashboard/servicios':   t('nav.services'),
+    '/dashboard/horarios':    t('nav.schedules'),
+    '/dashboard/productos':   t('nav.products'),
+    '/dashboard/equipo':      t('nav.team'),
+    '/dashboard/chatbot':     t('nav.chatbot'),
+    '/dashboard/facturacion': t('nav.invoicing'),
+    '/dashboard/marketing':   t('nav.marketing'),
+    '/dashboard/resenas':     t('nav.reviews'),
+    '/dashboard/caja':        t('nav.cash'),
+    '/dashboard/nominas':     t('nav.payroll'),
+    '/dashboard/analytics':   t('nav.analytics'),
+  }
+
+  const GROUP_LABELS: Record<string, string> = {
+    'Principal':   t('groups.principal'),
+    'Gestión':     t('groups.gestion'),
+    'Herramientas': t('groups.herramientas'),
+  }
+
+  const PAGE_TITLES_I18N: Record<string, string> = {
+    '/dashboard':             t('titles.dashboard'),
+    '/dashboard/mi-negocio':  t('titles.myBusiness'),
+    '/dashboard/reservas':    t('titles.reservations'),
+    '/dashboard/servicios':   t('titles.services'),
+    '/dashboard/horarios':    t('titles.schedules'),
+    '/dashboard/productos':   t('titles.products'),
+    '/dashboard/equipo':      t('titles.team'),
+    '/dashboard/chatbot':     t('titles.chatbot'),
+    '/dashboard/facturacion': t('titles.invoicing'),
+    '/dashboard/marketing':   t('titles.marketing'),
+    '/dashboard/resenas':     t('titles.reviews'),
+    '/dashboard/caja':        t('titles.cash'),
+    '/dashboard/nominas':     t('titles.payroll'),
+    '/dashboard/analytics':   t('titles.analytics'),
+  }
 
   const esTodos = negocio === null && todosNegocios.length > 1
   const planCfg = PLAN_CFG[negocio?.plan ?? ''] ?? PLAN_CFG.basico
-  const pageTitle = PAGE_TITLES[pathname] ?? 'Dashboard'
+  const pageTitle = PAGE_TITLES_I18N[pathname] ?? PAGE_TITLES[pathname] ?? 'Dashboard'
   const initials = esTodos
     ? '🏢'
     : negocio?.nombre
@@ -288,7 +332,7 @@ export function DashboardShell({
           <nav className="ds-nav">
             {NAV_GROUPS.map((group) => (
               <div key={group.label}>
-                <div className="ds-nav-section">{group.label}</div>
+                <div className="ds-nav-section">{GROUP_LABELS[group.label] ?? group.label}</div>
                 {group.items.map((item) => {
                   const isActive = pathname === item.href
                   return (
@@ -299,7 +343,7 @@ export function DashboardShell({
                       onClick={() => setSidebarOpen(false)}
                     >
                       <span className="ds-nav-icon">{item.icon}</span>
-                      {item.label}
+                      {NAV_LABELS[item.href] ?? item.label}
                     </Link>
                   )
                 })}
@@ -309,11 +353,14 @@ export function DashboardShell({
 
           {/* Logout + legal */}
           <div className="ds-footer">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
+              <LanguageSelector style={{ flex: 1 }} />
+            </div>
             <button className="ds-logout" onClick={handleLogout}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
-              Cerrar sesión
+              {t('logout')}
             </button>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px', paddingLeft: '4px' }}>
               <Link href="/privacidad" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Privacidad</Link>

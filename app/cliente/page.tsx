@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { Suspense } from 'react'
 import { useTheme } from '../components/ThemeProvider'
+import { LanguageSelector } from '../components/LanguageSelector'
 
 const MapaNegocios = dynamic(() => import('./MapaNegocios'), { ssr: false, loading: () => (
   <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#F1F5F9', color:'#94A3B8', fontSize:'14px', fontWeight:600, gap:'8px' }}>
@@ -524,6 +525,7 @@ function ClienteContent(){
         ))}
       </div>
       <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+        <LanguageSelector />
         <button
           onClick={toggleTheme}
           title={theme==='dark'?'Modo claro':'Modo oscuro'}

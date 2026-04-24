@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { CookieBanner } from "./components/CookieBanner";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { LocaleProvider } from "./components/LocaleProvider";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -60,9 +61,11 @@ export default function RootLayout({
         `}} />
       </head>
       <body>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <LocaleProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </LocaleProvider>
         <CookieBanner />
       </body>
     </html>
