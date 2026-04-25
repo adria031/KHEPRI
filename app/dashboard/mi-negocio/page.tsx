@@ -41,6 +41,12 @@ export default function MiNegocio() {
     mensaje_cancelacion: '',
     metodos_pago: ['efectivo'] as string[],
     visible: true as boolean,
+    // Configuración de agenda
+    intervalo_agenda: 15 as number,
+    margen_servicio: 0 as number,
+    max_reservas_simultaneas: 1 as number,
+    antelacion_minima: 60 as number,
+    antelacion_maxima: 43200 as number,
   })
 
   const fileRef = useRef<HTMLInputElement>(null)
@@ -76,15 +82,44 @@ export default function MiNegocio() {
           mensaje_cancelacion: data.mensaje_cancelacion || '',
           metodos_pago: data.metodos_pago || ['efectivo'],
           visible: data.visible ?? true,
+          intervalo_agenda: data.intervalo_agenda ?? 15,
+          margen_servicio: data.margen_servicio ?? 0,
+          max_reservas_simultaneas: data.max_reservas_simultaneas ?? 1,
+          antelacion_minima: data.antelacion_minima ?? 60,
+          antelacion_maxima: data.antelacion_maxima ?? 43200,
         })
       }
       setCargando(false)
     })()
   }, [])
 
+  async function geocodificar(direccion: string, ciudad: string): Promise<{ lat: number; lng: number } | null> {
+    const query = [direccion, ciudad, 'España'].filter(Boolean).join(', ')
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+    if (!token || !query.trim()) return null
+    try {
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&country=es&limit=1&language=es`
+      )
+      const data = await res.json()
+      const coords = data?.features?.[0]?.center
+      if (!coords) return null
+      return { lng: coords[0], lat: coords[1] }
+    } catch {
+      return null
+    }
+  }
+
   async function guardar() {
     if (!negocioId) return
     setGuardando(true); setApiError('')
+
+    // Geocodificar si hay dirección o ciudad
+    let coords: { lat: number; lng: number } | null = null
+    if (form.direccion || form.ciudad) {
+      coords = await geocodificar(form.direccion, form.ciudad)
+    }
+
     const { error } = await supabase
       .from('negocios')
       .update({
@@ -104,6 +139,12 @@ export default function MiNegocio() {
         mensaje_cancelacion: form.mensaje_cancelacion || null,
         metodos_pago: form.metodos_pago,
         visible: form.visible,
+        intervalo_agenda: form.intervalo_agenda,
+        margen_servicio: form.margen_servicio,
+        max_reservas_simultaneas: form.max_reservas_simultaneas,
+        antelacion_minima: form.antelacion_minima,
+        antelacion_maxima: form.antelacion_maxima,
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
       })
       .eq('id', negocioId)
     if (error) {
@@ -495,6 +536,69 @@ export default function MiNegocio() {
                       <label>👤 Facebook</label>
                       <input type="text" placeholder="facebook.com/tunegocio" value={form.facebook} onChange={e => setForm({...form, facebook: e.target.value})} />
                     </div>
+                  </div>
+                </div>
+
+                {/* ── CONFIGURACIÓN DE AGENDA ── */}
+                <div className="section">
+                  <div className="section-title">🗓️ Configuración de agenda</div>
+
+                  {/* Intervalo entre citas */}
+                  <div className="field" style={{marginBottom:'18px'}}>
+                    <label style={{marginBottom:'10px',display:'block'}}>Intervalo entre citas</label>
+                    <div className="policy-opts">
+                      {([{v:10,l:'10 min'},{v:15,l:'15 min'},{v:20,l:'20 min'},{v:30,l:'30 min'}] as const).map(o=>(
+                        <button key={o.v} className={`policy-opt ${form.intervalo_agenda===o.v?'active':''}`} onClick={()=>setForm({...form,intervalo_agenda:o.v})}>{o.l}</button>
+                      ))}
+                    </div>
+                    <p style={{fontSize:'12px',color:'var(--muted)',marginTop:'8px'}}>Cada cuánto tiempo se ofrecen nuevos huecos en la agenda.</p>
+                  </div>
+
+                  {/* Margen entre servicios */}
+                  <div className="field" style={{marginBottom:'18px'}}>
+                    <label style={{marginBottom:'10px',display:'block'}}>Tiempo de preparación entre servicios</label>
+                    <div className="policy-opts">
+                      {([{v:0,l:'Sin margen'},{v:5,l:'5 min'},{v:10,l:'10 min'},{v:15,l:'15 min'},{v:20,l:'20 min'}] as const).map(o=>(
+                        <button key={o.v} className={`policy-opt ${form.margen_servicio===o.v?'active':''}`} onClick={()=>setForm({...form,margen_servicio:o.v})}>{o.l}</button>
+                      ))}
+                    </div>
+                    <p style={{fontSize:'12px',color:'var(--muted)',marginTop:'8px'}}>Tiempo extra reservado tras cada servicio para preparar el siguiente.</p>
+                  </div>
+
+                  {/* Máximo simultáneas */}
+                  <div className="field" style={{marginBottom:'18px'}}>
+                    <label>Máximo de reservas simultáneas</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={form.max_reservas_simultaneas}
+                      onChange={e=>setForm({...form,max_reservas_simultaneas:Math.max(1,parseInt(e.target.value)||1)})}
+                      style={{width:'120px'}}
+                    />
+                    <p style={{fontSize:'12px',color:'var(--muted)',marginTop:'4px'}}>Número de citas que pueden coincidir al mismo tiempo (útil con varios trabajadores).</p>
+                  </div>
+
+                  {/* Antelación mínima */}
+                  <div className="field" style={{marginBottom:'18px'}}>
+                    <label style={{marginBottom:'10px',display:'block'}}>Antelación mínima para reservar</label>
+                    <div className="policy-opts">
+                      {([{v:60,l:'1h'},{v:120,l:'2h'},{v:360,l:'6h'},{v:720,l:'12h'},{v:1440,l:'24h'}] as const).map(o=>(
+                        <button key={o.v} className={`policy-opt ${form.antelacion_minima===o.v?'active':''}`} onClick={()=>setForm({...form,antelacion_minima:o.v})}>{o.l}</button>
+                      ))}
+                    </div>
+                    <p style={{fontSize:'12px',color:'var(--muted)',marginTop:'8px'}}>Los clientes no podrán reservar con menos de {form.antelacion_minima<120?`${form.antelacion_minima} minutos`:form.antelacion_minima<1440?`${form.antelacion_minima/60} horas`:'24 horas'} de antelación.</p>
+                  </div>
+
+                  {/* Antelación máxima */}
+                  <div className="field" style={{marginBottom:0}}>
+                    <label style={{marginBottom:'10px',display:'block'}}>Antelación máxima para reservar</label>
+                    <div className="policy-opts">
+                      {([{v:10080,l:'1 semana'},{v:20160,l:'2 semanas'},{v:43200,l:'1 mes'},{v:129600,l:'3 meses'}] as const).map(o=>(
+                        <button key={o.v} className={`policy-opt ${form.antelacion_maxima===o.v?'active':''}`} onClick={()=>setForm({...form,antelacion_maxima:o.v})}>{o.l}</button>
+                      ))}
+                    </div>
+                    <p style={{fontSize:'12px',color:'var(--muted)',marginTop:'8px'}}>Los clientes solo podrán reservar dentro de este horizonte.</p>
                   </div>
                 </div>
 
