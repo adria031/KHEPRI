@@ -157,6 +157,7 @@ export default function MapaNegocios({
   const userMarkerRef   = useRef<mapboxgl.Marker | null>(null)
   const popupRef        = useRef<mapboxgl.Popup | null>(null)
   const latestDataRef   = useRef<GeoJSON.FeatureCollection | null>(null)
+  const markersRef      = useRef<mapboxgl.Marker[]>([])
 
   const [filtroTipo,  setFiltroTipo]  = useState('todos')
   const [busqueda,    setBusqueda]    = useState('')
@@ -272,49 +273,70 @@ export default function MapaNegocios({
         paint: { 'text-color': '#fff' },
       })
 
-      // ── Individual point: outer glow ──
-      map.addLayer({
-        id:     'unclustered-glow',
-        type:   'circle',
-        source: 'businesses',
-        filter: ['!', ['has', 'point_count']],
-        paint:  {
-          'circle-color':   ['get', 'bg'],
-          'circle-radius':  30,
-          'circle-opacity': 0.35,
-          'circle-blur':    0.6,
-        },
-      })
-
-      // ── Individual point: circle ──
-      map.addLayer({
-        id:     'unclustered-point',
-        type:   'circle',
-        source: 'businesses',
-        filter: ['!', ['has', 'point_count']],
-        paint:  {
-          'circle-color':        ['get', 'bg'],
-          'circle-radius':       20,
-          'circle-stroke-width': 2.5,
-          'circle-stroke-color': ['get', 'color'],
-        },
-      })
-
-      // ── Individual point: emoji ──
-      map.addLayer({
-        id:     'unclustered-emoji',
-        type:   'symbol',
-        source: 'businesses',
-        filter: ['!', ['has', 'point_count']],
-        layout: {
-          'text-field':         ['get', 'emoji'],
-          'text-size':          14,
-          'text-allow-overlap': true,
-          'text-ignore-placement': true,
-        },
-      })
-
       setMapReady(true)
+
+      // ── HTML markers for individual points ──
+      function createMarkerEl(props: Record<string, unknown>): HTMLDivElement {
+        const logoUrl = props.logo_url as string
+        const color   = props.color as string
+        const bg      = props.bg as string
+        const emoji   = props.emoji as string
+        const el = document.createElement('div')
+        el.style.cssText = `
+          width:48px;height:48px;border-radius:50%;
+          border:2.5px solid ${color};background:${bg};
+          overflow:hidden;cursor:pointer;
+          box-shadow:0 2px 12px rgba(0,0,0,0.18);
+          display:flex;align-items:center;justify-content:center;
+          font-size:20px;transition:transform 0.15s,box-shadow 0.15s;
+        `
+        el.onmouseenter = () => { el.style.transform='scale(1.12)'; el.style.boxShadow='0 4px 20px rgba(0,0,0,0.28)' }
+        el.onmouseleave = () => { el.style.transform='scale(1)';    el.style.boxShadow='0 2px 12px rgba(0,0,0,0.18)' }
+        if (logoUrl) {
+          const img = document.createElement('img')
+          img.src = logoUrl
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;'
+          img.onerror = () => { img.remove(); el.textContent = emoji }
+          el.appendChild(img)
+        } else {
+          el.textContent = emoji
+        }
+        return el
+      }
+
+      function renderMarkers() {
+        markersRef.current.forEach(m => m.remove())
+        markersRef.current = []
+        const features = map.querySourceFeatures('businesses', {
+          filter: ['!', ['has', 'point_count']],
+        })
+        const seen = new Set<string>()
+        features.forEach(feat => {
+          const props = feat.properties as Record<string, unknown>
+          const id = props?.id as string
+          if (!id || seen.has(id)) return
+          seen.add(id)
+          const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number]
+          const el = createMarkerEl(props)
+          el.addEventListener('click', () => {
+            popupRef.current?.remove()
+            popupRef.current = new mapboxgl.Popup({
+              closeButton: true, closeOnClick: false,
+              maxWidth: '260px', className: 'khepria-mapbox-popup', offset: [0, -26],
+            })
+              .setLngLat(coords)
+              .setHTML(buildPopupHtml(props))
+              .addTo(map)
+          })
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+            .setLngLat(coords)
+            .addTo(map)
+          markersRef.current.push(marker)
+        })
+      }
+
+      // Re-render markers after each map movement/zoom/data update
+      map.on('idle', renderMarkers)
 
       // ── Click: cluster → zoom ──
       map.on('click', 'clusters', e => {
@@ -332,35 +354,15 @@ export default function MapaNegocios({
           })
       })
 
-      // ── Click: individual → popup ──
-      map.on('click', 'unclustered-point', e => {
-        const feat = e.features?.[0]
-        if (!feat) return
-        const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number]
-        const props  = feat.properties as Record<string, unknown>
-
-        popupRef.current?.remove()
-        popupRef.current = new mapboxgl.Popup({
-          closeButton:      true,
-          closeOnClick:     false,
-          maxWidth:         '260px',
-          className:        'khepria-mapbox-popup',
-          offset:           [0, -18],
-        })
-          .setLngLat(coords)
-          .setHTML(buildPopupHtml(props))
-          .addTo(map)
-      })
-
-      // ── Cursors ──
-      for (const layer of ['clusters', 'unclustered-point']) {
-        map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
-        map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
-      }
+      // ── Cursor on clusters ──
+      map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
+      map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = '' })
     })
 
     return () => {
       popupRef.current?.remove()
+      markersRef.current.forEach(m => m.remove())
+      markersRef.current = []
       map.remove()
       mapRef.current    = null
       mapLoadedRef.current = false
