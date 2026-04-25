@@ -163,6 +163,7 @@ export default function MapaNegocios({
   const [localizando, setLocalizando] = useState(false)
   const [mapReady,    setMapReady]    = useState(false)
   const [userMarked,  setUserMarked]  = useState(false)
+  const [tokenError,  setTokenError]  = useState(false)
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const negociosFiltrados = useMemo(() => negocios.filter(n => {
@@ -194,6 +195,12 @@ export default function MapaNegocios({
   // ── Init map ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
+
+    if (!TOKEN) {
+      console.error('[MapaNegocios] NEXT_PUBLIC_MAPBOX_TOKEN no está configurado')
+      setTokenError(true)
+      return
+    }
 
     mapboxgl.accessToken = TOKEN
 
@@ -428,6 +435,18 @@ export default function MapaNegocios({
   )
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  if (tokenError) {
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', gap: '12px' }}>
+        <span style={{ fontSize: '40px' }}>🗺️</span>
+        <div style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A' }}>Mapa no disponible</div>
+        <div style={{ fontSize: '13px', color: '#64748B', textAlign: 'center', maxWidth: '260px' }}>
+          Falta configurar <code style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: '6px', fontSize: '12px' }}>NEXT_PUBLIC_MAPBOX_TOKEN</code> en las variables de entorno.
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
