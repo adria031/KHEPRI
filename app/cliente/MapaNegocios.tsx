@@ -278,26 +278,70 @@ export default function MapaNegocios({
 
       // ── HTML markers for individual points ──
       function createMarkerEl(props: Record<string, unknown>): HTMLDivElement {
-        const color  = props.color as string
-        const bg     = props.bg as string
-        const nombre = props.nombre as string
+        const color   = props.color as string
+        const bg      = props.bg as string
+        const nombre  = props.nombre as string
+        const logoUrl = props.logo_url as string
         const initial = (nombre?.[0] ?? '?').toUpperCase()
-        const el = document.createElement('div')
-        el.style.cssText = `
-          width:44px;height:44px;border-radius:50%;
-          border:2.5px solid ${color};background:${bg};
-          cursor:pointer;
-          box-shadow:0 2px 12px rgba(0,0,0,0.18);
-          display:flex;align-items:center;justify-content:center;
-          font-size:17px;font-weight:800;color:${color};
-          font-family:'Plus Jakarta Sans',system-ui,sans-serif;
-          transition:transform 0.15s,box-shadow 0.15s;
-          user-select:none;
+
+        // Wrapper: fixed size, holds position stable — Mapbox only touches this element
+        const wrapper = document.createElement('div')
+        wrapper.style.cssText = 'width:48px;height:48px;cursor:pointer;position:relative;'
+
+        // Pulse ring (always visible, low opacity)
+        const ring = document.createElement('div')
+        ring.style.cssText = `
+          position:absolute;inset:-6px;border-radius:50%;
+          border:2px solid ${color};opacity:0;
+          transition:opacity 0.2s,transform 0.3s;
+          pointer-events:none;
         `
-        el.textContent = initial
-        el.onmouseenter = () => { el.style.transform='scale(1.15)'; el.style.boxShadow='0 4px 20px rgba(0,0,0,0.28)' }
-        el.onmouseleave = () => { el.style.transform='scale(1)';    el.style.boxShadow='0 2px 12px rgba(0,0,0,0.18)' }
-        return el
+        wrapper.appendChild(ring)
+
+        // Inner circle — this is the only element that scales on hover
+        const inner = document.createElement('div')
+        inner.style.cssText = `
+          width:48px;height:48px;border-radius:50%;
+          border:2.5px solid ${color};background:${bg};
+          overflow:hidden;
+          box-shadow:0 2px 14px rgba(0,0,0,0.14);
+          display:flex;align-items:center;justify-content:center;
+          font-size:18px;font-weight:800;color:${color};
+          font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+          transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),
+                     box-shadow 0.2s,border-color 0.2s;
+          transform-origin:center center;
+          user-select:none;position:relative;z-index:1;
+        `
+
+        if (logoUrl) {
+          const img = document.createElement('img')
+          img.src = logoUrl
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;'
+          img.onerror = () => { img.remove(); inner.textContent = initial }
+          inner.appendChild(img)
+        } else {
+          inner.textContent = initial
+        }
+
+        wrapper.appendChild(inner)
+
+        wrapper.onmouseenter = () => {
+          inner.style.transform = 'scale(1.22)'
+          inner.style.boxShadow = `0 0 0 3px ${bg}, 0 8px 28px rgba(0,0,0,0.22)`
+          inner.style.borderColor = color
+          ring.style.opacity = '0.5'
+          ring.style.transform = 'scale(1.1)'
+        }
+        wrapper.onmouseleave = () => {
+          inner.style.transform = 'scale(1)'
+          inner.style.boxShadow = '0 2px 14px rgba(0,0,0,0.14)'
+          inner.style.borderColor = color
+          ring.style.opacity = '0'
+          ring.style.transform = 'scale(1)'
+        }
+
+        return wrapper
       }
 
       function renderMarkers() {
@@ -313,18 +357,18 @@ export default function MapaNegocios({
           if (!id || seen.has(id)) return
           seen.add(id)
           const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number]
-          const el = createMarkerEl(props)
-          el.addEventListener('click', () => {
+          const wrapper = createMarkerEl(props)
+          wrapper.addEventListener('click', () => {
             popupRef.current?.remove()
             popupRef.current = new mapboxgl.Popup({
               closeButton: true, closeOnClick: false,
-              maxWidth: '260px', className: 'khepria-mapbox-popup', offset: [0, -26],
+              maxWidth: '260px', className: 'khepria-mapbox-popup', offset: [0, -28],
             })
               .setLngLat(coords)
               .setHTML(buildPopupHtml(props))
               .addTo(map)
           })
-          const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+          const marker = new mapboxgl.Marker({ element: wrapper, anchor: 'center' })
             .setLngLat(coords)
             .addTo(map)
           markersRef.current.push(marker)
