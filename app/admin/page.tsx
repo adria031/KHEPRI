@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 
 const ADMIN_EMAIL = 'adria.gaitan.sola@gmail.com'
-
-// Precios estimados por plan (EUR/mes) — ajustar cuando se fijen
 const PRECIO_PLAN: Record<string, number> = { basico: 29, pro: 59, agencia: 99 }
-// Coste estimado Gemini por mensaje (USD) — gemini-1.5-flash ~$0.00015 / 1k tokens, ~800 tokens/msg
 const COSTE_GEMINI_POR_MSG = 0.00012
+// Costes plataforma mensuales estimados (EUR)
+const COSTE_VERCEL_MES = 20
+const COSTE_SUPABASE_MES = 25
+const COSTE_OTROS_MES = 5
+const EUR_PER_USD = 0.92
 
 type Negocio = {
   id: string
@@ -19,6 +21,7 @@ type Negocio = {
   created_at: string
   suspendido: boolean | null
   user_id: string
+  visible: boolean | null
 }
 
 type Cliente = {
@@ -27,46 +30,64 @@ type Cliente = {
   ciudad: string | null
   created_at: string
   email: string | null
+  user_id?: string
 }
 
-type Reserva = {
-  negocio_id: string
-  created_at: string
-}
+type TabActiva = 'overview' | 'negocios' | 'clientes' | 'fiscal'
 
 export default function Admin() {
   const [cargando, setCargando] = useState(true)
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [msgsPorNegocio, setMsgsPorNegocio] = useState<Record<string, number>>({})
+  const [reservasPorCliente, setReservasPorCliente] = useState<Record<string, number>>({})
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [tabActiva, setTabActiva] = useState<'overview' | 'negocios' | 'clientes'>('overview')
+  const [tabActiva, setTabActiva] = useState<TabActiva>('overview')
   const [busqNeg, setBusqNeg] = useState('')
   const [busqCli, setBusqCli] = useState('')
   const [filtroPlan, setFiltroPlan] = useState('todos')
   const [cambiandoPlan, setCambiandoPlan] = useState<string | null>(null)
   const [planModal, setPlanModal] = useState<{ id: string; nombre: string; planActual: string } | null>(null)
   const [planNuevo, setPlanNuevo] = useState('')
+  // Notas y descuentos (admin-local, guardado en localStorage)
+  const [notasNegocio, setNotasNegocio] = useState<Record<string, string>>({})
+  const [descuentoNegocio, setDescuentoNegocio] = useState<Record<string, number>>({})
+  const [editandoNota, setEditandoNota] = useState<string | null>(null)
+  // Modal días gratis
+  const [diasGratisModal, setDiasGratisModal] = useState<{ id: string; nombre: string } | null>(null)
+  const [diasGratisInput, setDiasGratisInput] = useState('')
+  const [guardandoDias, setGuardandoDias] = useState(false)
+  // Calculadora fiscal
+  const [costeVercel, setCosteVercel] = useState(COSTE_VERCEL_MES)
+  const [costeSupabase, setCosteSupabase] = useState(COSTE_SUPABASE_MES)
+  const [costeOtros, setCosteOtros] = useState(COSTE_OTROS_MES)
+  const [tasaIrpf, setTasaIrpf] = useState(20)
+  const [cuotaAutonomos, setCuotaAutonomos] = useState(80)
 
   useEffect(() => {
+    // Cargar notas y descuentos desde localStorage
+    try {
+      const n = localStorage.getItem('admin-notas')
+      if (n) setNotasNegocio(JSON.parse(n))
+      const d = localStorage.getItem('admin-descuentos')
+      if (d) setDescuentoNegocio(JSON.parse(d))
+    } catch {}
+
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/auth'; return }
       if (user.email !== ADMIN_EMAIL) { window.location.href = '/dashboard'; return }
 
-      // Cargar negocios con emails de los dueños
       const { data: negs } = await supabase
         .from('negocios')
-        .select('id, nombre, tipo, plan, ciudad, created_at, suspendido, user_id')
+        .select('id, nombre, tipo, plan, ciudad, created_at, suspendido, user_id, visible')
         .order('created_at', { ascending: false })
 
-      // Cargar clientes con emails desde profiles
       const { data: clis } = await supabase
         .from('clientes')
         .select('id, nombre, ciudad, created_at, user_id')
         .order('created_at', { ascending: false })
 
-      // Cargar emails de clientes desde profiles
       let clientesConEmail: Cliente[] = []
       if (clis && clis.length > 0) {
         const userIds = clis.map((c: any) => c.user_id).filter(Boolean)
@@ -78,29 +99,40 @@ export default function Admin() {
         if (profiles) profiles.forEach((p: any) => { emailMap[p.id] = p.email })
         clientesConEmail = clis.map((c: any) => ({
           id: c.id, nombre: c.nombre, ciudad: c.ciudad, created_at: c.created_at,
-          email: emailMap[c.user_id] || null
+          email: emailMap[c.user_id] || null, user_id: c.user_id,
         }))
       }
 
-      // Estimar consumo Gemini: usar reservas como proxy de actividad
-      // (cada reserva = ~3 mensajes promedio al chatbot)
       const { data: reservas } = await supabase
         .from('reservas')
-        .select('negocio_id, created_at')
+        .select('negocio_id, cliente_id, created_at')
 
       const msgsMap: Record<string, number> = {}
+      const resCliMap: Record<string, number> = {}
       if (reservas) {
         reservas.forEach((r: any) => {
           msgsMap[r.negocio_id] = (msgsMap[r.negocio_id] || 0) + 3
+          if (r.cliente_id) resCliMap[r.cliente_id] = (resCliMap[r.cliente_id] || 0) + 1
         })
       }
 
       setNegocios((negs as Negocio[]) || [])
       setClientes(clientesConEmail)
       setMsgsPorNegocio(msgsMap)
+      setReservasPorCliente(resCliMap)
       setCargando(false)
     })()
   }, [])
+
+  function saveNotas(newNotas: Record<string, string>) {
+    setNotasNegocio(newNotas)
+    try { localStorage.setItem('admin-notas', JSON.stringify(newNotas)) } catch {}
+  }
+
+  function saveDescuentos(newDesc: Record<string, number>) {
+    setDescuentoNegocio(newDesc)
+    try { localStorage.setItem('admin-descuentos', JSON.stringify(newDesc)) } catch {}
+  }
 
   async function cambiarPlan(negId: string, nuevoPlan: string) {
     setCambiandoPlan(negId)
@@ -116,6 +148,30 @@ export default function Admin() {
     setNegocios(prev => prev.map(n => n.id === neg.id ? { ...n, suspendido: nuevo } : n))
   }
 
+  async function toggleVisible(neg: Negocio) {
+    const nuevo = !neg.visible
+    await supabase.from('negocios').update({ visible: nuevo }).eq('id', neg.id)
+    setNegocios(prev => prev.map(n => n.id === neg.id ? { ...n, visible: nuevo } : n))
+  }
+
+  async function addDiasGratis() {
+    if (!diasGratisModal || !diasGratisInput) return
+    const dias = parseInt(diasGratisInput)
+    if (isNaN(dias) || dias <= 0) return
+    setGuardandoDias(true)
+    // Calcular nueva fecha de expiración (plan_expiry) desde hoy + días
+    const expiry = new Date()
+    expiry.setDate(expiry.getDate() + dias)
+    const { error } = await supabase
+      .from('negocios')
+      .update({ plan_expiry: expiry.toISOString() })
+      .eq('id', diasGratisModal.id)
+    setGuardandoDias(false)
+    setDiasGratisModal(null)
+    setDiasGratisInput('')
+    if (error) alert('Error al guardar: ' + error.message)
+  }
+
   // ── Stats ──
   const totalNegocios = negocios.length
   const totalClientes = clientes.length
@@ -124,6 +180,20 @@ export default function Admin() {
   const ingresosMes = Object.entries(porPlan).reduce((s, [p, c]) => s + (PRECIO_PLAN[p] || 0) * c, 0)
   const totalMsgs = Object.values(msgsPorNegocio).reduce((s, v) => s + v, 0)
   const costeGeminiTotal = (totalMsgs * COSTE_GEMINI_POR_MSG).toFixed(2)
+
+  // Nuevos esta semana vs semana pasada
+  const ahora = Date.now()
+  const semana = 7 * 24 * 3600 * 1000
+  const negsSemana = negocios.filter(n => ahora - new Date(n.created_at).getTime() < semana).length
+  const negsSemAnt = negocios.filter(n => {
+    const d = ahora - new Date(n.created_at).getTime()
+    return d >= semana && d < 2 * semana
+  }).length
+  const clisSemana = clientes.filter(c => ahora - new Date(c.created_at).getTime() < semana).length
+  const clisSemAnt = clientes.filter(c => {
+    const d = ahora - new Date(c.created_at).getTime()
+    return d >= semana && d < 2 * semana
+  }).length
 
   const negociosFiltrados = negocios.filter(n => {
     const matchPlan = filtroPlan === 'todos' || n.plan === filtroPlan
@@ -134,6 +204,65 @@ export default function Admin() {
   const clientesFiltrados = clientes.filter(c =>
     !busqCli || c.nombre?.toLowerCase().includes(busqCli.toLowerCase()) || c.email?.toLowerCase().includes(busqCli.toLowerCase())
   )
+
+  // ── Cumplimiento legal ──
+  const mrr = ingresosMes
+  const faseCompliance = mrr < 500 ? 1 : mrr < 800 ? 2 : mrr < 1134 ? 3 : 4
+
+  // ── Fiscal ──
+  const costeGeminiEur = parseFloat(costeGeminiTotal) * EUR_PER_USD
+  const costesTotalesPlataforma = costeVercel + costeSupabase + costeOtros + costeGeminiEur
+  const baseImponible = mrr
+  const ivaRepercutido = baseImponible * 0.21
+  const ivaaSoportado = costesTotalesPlataforma * 0.21
+  const ivaTrimestral = (ivaRepercutido - ivaaSoportado) * 3
+  const irpfRetencion = baseImponible * (tasaIrpf / 100)
+  const beneficioNeto = mrr - costesTotalesPlataforma - cuotaAutonomos - irpfRetencion
+
+  // ── CSV export ──
+  function exportCSV() {
+    const hoy = new Date().toLocaleDateString('es-ES')
+    const mes = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+
+    // Ingresos por negocio
+    const rows = [
+      ['Kit para Gestor — Khepria', `Generado: ${hoy}`],
+      [],
+      ['== RESUMEN MENSUAL =='],
+      ['Mes', mes],
+      ['MRR estimado (EUR)', mrr],
+      ['Coste Vercel (EUR)', costeVercel],
+      ['Coste Supabase (EUR)', costeSupabase],
+      ['Coste Gemini (EUR aprox)', costeGeminiEur.toFixed(2)],
+      ['Coste otros (EUR)', costeOtros],
+      ['Total costes plataforma', costesTotalesPlataforma.toFixed(2)],
+      ['Cuota autónomos (EUR)', cuotaAutonomos],
+      ['IRPF estimado (EUR)', irpfRetencion.toFixed(2)],
+      ['Beneficio neto estimado (EUR)', beneficioNeto.toFixed(2)],
+      [],
+      ['== IVA TRIMESTRAL =='],
+      ['IVA repercutido (ingresos × 21% × 3 meses)', (ivaRepercutido * 3).toFixed(2)],
+      ['IVA soportado (costes × 21% × 3 meses)', (ivaaSoportado * 3).toFixed(2)],
+      ['A pagar Hacienda este trimestre', ivaTrimestral.toFixed(2)],
+      [],
+      ['== NEGOCIOS =='],
+      ['Nombre', 'Plan', 'Ciudad', 'Precio/mes', 'Suspendido', 'Visible', 'Descuento%'],
+      ...negocios.map(n => [
+        n.nombre, n.plan, n.ciudad || '', PRECIO_PLAN[n.plan] || 0,
+        n.suspendido ? 'Sí' : 'No', n.visible ? 'Sí' : 'No',
+        descuentoNegocio[n.id] || 0,
+      ]),
+    ]
+
+    const csv = rows.map(r => r.join(';')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `khepria-gestor-${new Date().toISOString().slice(0, 7)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   function fmtFecha(iso: string) {
     return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -148,6 +277,14 @@ export default function Admin() {
     }
     const c = cfg[plan] || { bg: 'rgba(0,0,0,0.06)', color: '#6B7280', label: plan }
     return <span style={{ background: c.bg, color: c.color, fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{c.label}</span>
+  }
+
+  function deltaChip(current: number, prev: number) {
+    const diff = current - prev
+    if (diff === 0) return <span style={{ fontSize: '11px', color: '#64748B' }}>= sin cambios</span>
+    const color = diff > 0 ? '#4ADE80' : '#F87171'
+    const arrow = diff > 0 ? '▲' : '▼'
+    return <span style={{ fontSize: '11px', color, fontWeight: 600 }}>{arrow} {Math.abs(diff)} vs sem. ant.</span>
   }
 
   if (cargando) {
@@ -243,10 +380,18 @@ export default function Admin() {
         .btn-suspend:hover { border-color: #EF4444; color: #F87171; background: rgba(239,68,68,0.08); }
         .btn-reactivar { padding: 5px 10px; border-radius: 7px; border: 1px solid rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); font-family: inherit; font-size: 11px; font-weight: 600; color: #4ADE80; cursor: pointer; transition: all 0.2s; }
         .btn-reactivar:hover { background: rgba(34,197,94,0.15); }
+        .btn-dias { padding: 5px 10px; border-radius: 7px; border: 1px solid rgba(184,216,248,0.2); background: rgba(184,216,248,0.06); font-family: inherit; font-size: 11px; font-weight: 600; color: #B8D8F8; cursor: pointer; transition: all 0.2s; }
+        .btn-dias:hover { background: rgba(184,216,248,0.14); border-color: rgba(184,216,248,0.4); }
         .suspended-badge { background: rgba(239,68,68,0.15); color: #F87171; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; }
         .gemini-bar { height: 6px; background: rgba(212,197,249,0.15); border-radius: 3px; width: 80px; overflow: hidden; }
         .gemini-fill { height: 100%; background: linear-gradient(90deg, #D4C5F9, #6B4FD8); border-radius: 3px; }
         .gemini-val { font-size: 11px; color: #94A3B8; margin-top: 3px; }
+
+        /* ── Inline inputs ── */
+        .inline-input { width: 60px; padding: 3px 6px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; font-family: inherit; font-size: 12px; color: #F1F5F9; outline: none; text-align: center; }
+        .inline-input:focus { border-color: #F59E0B; }
+        .nota-input { width: 100%; padding: 4px 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; font-family: inherit; font-size: 11px; color: #CBD5E1; outline: none; resize: none; }
+        .nota-input:focus { border-color: rgba(184,216,248,0.4); }
 
         /* ── Modal ── */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -263,9 +408,41 @@ export default function Admin() {
         .modal-btn-cancel { flex: 1; padding: 11px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; color: #94A3B8; cursor: pointer; }
         .modal-btn-confirm { flex: 1; padding: 11px; background: #F59E0B; border: none; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700; color: #0F172A; cursor: pointer; transition: opacity 0.2s; }
         .modal-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+        .modal-input { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; font-family: inherit; font-size: 15px; color: #F1F5F9; outline: none; text-align: center; margin-bottom: 16px; }
+        .modal-input:focus { border-color: #B8D8F8; }
+
+        /* ── Compliance cards ── */
+        .compliance-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+        .compliance-card { display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px; border-radius: 14px; border: 1px solid; }
+        .compliance-card.active { background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.3); }
+        .compliance-card.done { background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.2); }
+        .compliance-card.pending { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.06); }
+        .compliance-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+        .compliance-dot.active { background: #F59E0B; box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+        .compliance-dot.done { background: #4ADE80; }
+        .compliance-dot.pending { background: #334155; }
+        .compliance-title { font-size: 14px; font-weight: 700; color: #F1F5F9; margin-bottom: 4px; }
+        .compliance-desc { font-size: 12px; color: #94A3B8; line-height: 1.5; }
+
+        /* ── Fiscal cards ── */
+        .fiscal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+        .fiscal-card { background: #1E293B; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; }
+        .fiscal-card-title { font-size: 13px; font-weight: 700; color: #64748B; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .fiscal-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .fiscal-row:last-child { border-bottom: none; }
+        .fiscal-row-label { font-size: 13px; color: #94A3B8; }
+        .fiscal-row-val { font-size: 13px; font-weight: 700; color: #F1F5F9; font-family: monospace; }
+        .fiscal-row-val.green { color: #4ADE80; }
+        .fiscal-row-val.red { color: #F87171; }
+        .fiscal-row-val.yellow { color: #F59E0B; }
+        .fiscal-editable { display: flex; align-items: center; gap: 6px; }
+        .fiscal-edit-input { width: 60px; padding: 3px 6px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; font-family: monospace; font-size: 13px; color: #F1F5F9; outline: none; text-align: right; }
+        .fiscal-edit-input:focus { border-color: #F59E0B; }
+        .export-btn { display: flex; align-items: center; gap: 8px; padding: 11px 20px; background: linear-gradient(135deg, rgba(184,216,248,0.15), rgba(212,197,249,0.15)); border: 1px solid rgba(184,216,248,0.25); border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 700; color: #B8D8F8; cursor: pointer; transition: all 0.2s; }
+        .export-btn:hover { background: linear-gradient(135deg, rgba(184,216,248,0.25), rgba(212,197,249,0.25)); border-color: rgba(184,216,248,0.4); }
 
         /* ── Responsive ── */
-        @media (max-width: 1024px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } .planes-row { grid-template-columns: 1fr; } }
+        @media (max-width: 1024px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } .planes-row { grid-template-columns: 1fr; } .fiscal-grid { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); }
           .sidebar-overlay.open { display: block; } .hamburger { display: block; }
@@ -322,6 +499,41 @@ export default function Admin() {
         </div>
       )}
 
+      {/* ── Días gratis modal ── */}
+      {diasGratisModal && (
+        <div className="modal-overlay" onClick={() => setDiasGratisModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Añadir días gratis</h3>
+            <p className="modal-sub">{diasGratisModal.nombre}</p>
+            <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '16px', lineHeight: '1.5' }}>
+              El negocio tendrá acceso premium durante N días adicionales desde hoy, independientemente del plan actual.
+            </p>
+            <input
+              type="number"
+              min="1"
+              max="365"
+              className="modal-input"
+              placeholder="30"
+              value={diasGratisInput}
+              onChange={e => setDiasGratisInput(e.target.value)}
+            />
+            <p style={{ fontSize: '12px', color: '#64748B', textAlign: 'center', marginBottom: '20px' }}>
+              {diasGratisInput ? `Expira el ${new Date(Date.now() + parseInt(diasGratisInput || '0') * 86400000).toLocaleDateString('es-ES')}` : 'Introduce el número de días'}
+            </p>
+            <div className="modal-btns">
+              <button className="modal-btn-cancel" onClick={() => { setDiasGratisModal(null); setDiasGratisInput('') }}>Cancelar</button>
+              <button
+                className="modal-btn-confirm"
+                disabled={!diasGratisInput || parseInt(diasGratisInput) <= 0 || guardandoDias}
+                onClick={addDiasGratis}
+              >
+                {guardandoDias ? 'Guardando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="layout">
         <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
@@ -345,6 +557,7 @@ export default function Admin() {
               { id: 'overview', icon: '📊', label: 'Resumen' },
               { id: 'negocios', icon: '🏢', label: `Negocios (${totalNegocios})` },
               { id: 'clientes', icon: '👥', label: `Clientes (${totalClientes})` },
+              { id: 'fiscal',   icon: '🧾', label: 'Fiscal y legal' },
             ] as const).map(item => (
               <button
                 key={item.id}
@@ -387,6 +600,7 @@ export default function Admin() {
                   {tabActiva === 'overview' && '📊 Resumen general'}
                   {tabActiva === 'negocios' && '🏢 Gestión de negocios'}
                   {tabActiva === 'clientes' && '👥 Gestión de clientes'}
+                  {tabActiva === 'fiscal' && '🧾 Fiscal y cumplimiento legal'}
                 </div>
                 <div className="topbar-sub">Panel de administrador · Khepria</div>
               </div>
@@ -403,25 +617,34 @@ export default function Admin() {
             {/* ══ OVERVIEW ══ */}
             {tabActiva === 'overview' && (
               <>
-                {/* Stats principales */}
                 <div className="stat-grid">
                   <div className="stat-card">
                     <div className="stat-icon" style={{ background: 'rgba(251,191,36,0.12)' }}>🏢</div>
                     <div className="stat-label">Negocios registrados</div>
                     <div className="stat-val">{totalNegocios}</div>
-                    <div className="stat-sub">{negocios.filter(n => n.suspendido).length} suspendidos</div>
+                    <div className="stat-sub" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span>{negocios.filter(n => n.suspendido).length} suspendidos</span>
+                      {deltaChip(negsSemana, negsSemAnt)}
+                    </div>
                   </div>
                   <div className="stat-card">
                     <div className="stat-icon" style={{ background: 'rgba(184,216,248,0.12)' }}>👥</div>
                     <div className="stat-label">Clientes registrados</div>
                     <div className="stat-val">{totalClientes}</div>
-                    <div className="stat-sub">usuarios finales</div>
+                    <div className="stat-sub" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span>usuarios finales</span>
+                      {deltaChip(clisSemana, clisSemAnt)}
+                    </div>
                   </div>
                   <div className="stat-card">
                     <div className="stat-icon" style={{ background: 'rgba(184,237,212,0.12)' }}>💰</div>
-                    <div className="stat-label">Ingresos est. / mes</div>
+                    <div className="stat-label">MRR estimado</div>
                     <div className="stat-val">{ingresosMes.toLocaleString('es-ES')} €</div>
-                    <div className="stat-sub">precios estimados</div>
+                    <div className="stat-sub">
+                      <span style={{ fontSize: '11px', color: mrr < 500 ? '#64748B' : mrr < 800 ? '#F59E0B' : '#4ADE80', fontWeight: 600 }}>
+                        {mrr < 500 ? 'Fase 1: sin obligaciones' : mrr < 800 ? 'Fase 2: alta Hacienda recomendada' : mrr < 1134 ? 'Fase 3: preparar autónomos' : 'Fase 4: alta autónomos obligatoria'}
+                      </span>
+                    </div>
                   </div>
                   <div className="stat-card">
                     <div className="stat-icon" style={{ background: 'rgba(212,197,249,0.12)' }}>🤖</div>
@@ -431,7 +654,6 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* Breakdown por plan */}
                 <div style={{ marginBottom: '12px' }}>
                   <div className="section-title" style={{ marginBottom: '14px' }}>Distribución por plan</div>
                   <div className="planes-row">
@@ -462,7 +684,6 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* Consumo Gemini por negocio */}
                 <div className="section-header">
                   <div>
                     <div className="section-title">Consumo estimado Gemini por negocio</div>
@@ -549,10 +770,11 @@ export default function Admin() {
                     <thead>
                       <tr>
                         <th>Negocio</th>
-                        <th>Tipo</th>
                         <th>Plan</th>
                         <th>Ciudad</th>
-                        <th>Registro</th>
+                        <th>Visible</th>
+                        <th>Descuento %</th>
+                        <th>Notas internas</th>
                         <th>Estado</th>
                         <th>Acciones</th>
                       </tr>
@@ -562,11 +784,58 @@ export default function Admin() {
                         <tr key={n.id} className={n.suspendido ? 'suspended-row' : ''}>
                           <td>
                             <div className="cell-name">{n.nombre}</div>
+                            <div className="cell-sub">{n.tipo?.replace(/^.+? /, '') || '—'} · {fmtFecha(n.created_at)}</div>
                           </td>
-                          <td style={{ color: '#94A3B8' }}>{n.tipo?.replace(/^.+? /, '') || '—'}</td>
                           <td>{planBadge(n.plan)}</td>
                           <td style={{ color: '#94A3B8' }}>{n.ciudad || '—'}</td>
-                          <td style={{ color: '#64748B', fontSize: '12px' }}>{fmtFecha(n.created_at)}</td>
+                          <td>
+                            <button
+                              onClick={() => toggleVisible(n)}
+                              style={{
+                                padding: '3px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                                fontFamily: 'inherit', fontSize: '11px', fontWeight: 700,
+                                background: n.visible ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)',
+                                color: n.visible ? '#4ADE80' : '#475569',
+                              }}
+                            >
+                              {n.visible ? '● Visible' : '○ Oculto'}
+                            </button>
+                          </td>
+                          <td>
+                            <div className="fiscal-editable">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                className="inline-input"
+                                value={descuentoNegocio[n.id] ?? ''}
+                                placeholder="0"
+                                onChange={e => saveDescuentos({ ...descuentoNegocio, [n.id]: parseFloat(e.target.value) || 0 })}
+                              />
+                              <span style={{ fontSize: '11px', color: '#64748B' }}>%</span>
+                            </div>
+                          </td>
+                          <td style={{ minWidth: '160px' }}>
+                            {editandoNota === n.id ? (
+                              <textarea
+                                className="nota-input"
+                                rows={2}
+                                defaultValue={notasNegocio[n.id] || ''}
+                                autoFocus
+                                onBlur={e => {
+                                  saveNotas({ ...notasNegocio, [n.id]: e.target.value })
+                                  setEditandoNota(null)
+                                }}
+                              />
+                            ) : (
+                              <div
+                                onClick={() => setEditandoNota(n.id)}
+                                style={{ fontSize: '11px', color: notasNegocio[n.id] ? '#CBD5E1' : '#334155', cursor: 'pointer', minHeight: '28px', lineHeight: '1.4' }}
+                              >
+                                {notasNegocio[n.id] || '+ Añadir nota…'}
+                              </div>
+                            )}
+                          </td>
                           <td>
                             {n.suspendido
                               ? <span className="suspended-badge">Suspendido</span>
@@ -581,6 +850,12 @@ export default function Admin() {
                               >
                                 📋 Plan
                               </button>
+                              <button
+                                className="btn-dias"
+                                onClick={() => { setDiasGratisModal({ id: n.id, nombre: n.nombre }); setDiasGratisInput('') }}
+                              >
+                                🎁 Días
+                              </button>
                               {n.suspendido
                                 ? <button className="btn-reactivar" onClick={() => toggleSuspender(n)}>✓ Reactivar</button>
                                 : <button className="btn-suspend" onClick={() => toggleSuspender(n)}>⛔ Suspender</button>
@@ -590,7 +865,7 @@ export default function Admin() {
                         </tr>
                       ))}
                       {negociosFiltrados.length === 0 && (
-                        <tr><td colSpan={7} style={{ textAlign: 'center', color: '#475569', padding: '32px' }}>Sin resultados</td></tr>
+                        <tr><td colSpan={8} style={{ textAlign: 'center', color: '#475569', padding: '32px' }}>Sin resultados</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -623,30 +898,217 @@ export default function Admin() {
                         <th>Cliente</th>
                         <th>Email</th>
                         <th>Ciudad</th>
+                        <th>Reservas</th>
                         <th>Registro</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {clientesFiltrados.map(c => (
-                        <tr key={c.id}>
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(184,216,248,0.3), rgba(212,197,249,0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#94A3B8', flexShrink: 0 }}>
-                                {c.nombre?.charAt(0)?.toUpperCase() || '?'}
-                              </div>
-                              <div className="cell-name">{c.nombre || '—'}</div>
-                            </div>
-                          </td>
-                          <td style={{ color: '#94A3B8', fontSize: '13px' }}>{c.email || '—'}</td>
-                          <td style={{ color: '#64748B' }}>{c.ciudad || '—'}</td>
-                          <td style={{ color: '#64748B', fontSize: '12px' }}>{fmtFecha(c.created_at)}</td>
-                        </tr>
-                      ))}
+                      {clientesFiltrados
+                        .slice()
+                        .sort((a, b) => (reservasPorCliente[b.id] || 0) - (reservasPorCliente[a.id] || 0))
+                        .map(c => {
+                          const totalRes = reservasPorCliente[c.id] || 0
+                          return (
+                            <tr key={c.id}>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(184,216,248,0.3), rgba(212,197,249,0.3))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#94A3B8', flexShrink: 0 }}>
+                                    {c.nombre?.charAt(0)?.toUpperCase() || '?'}
+                                  </div>
+                                  <div className="cell-name">{c.nombre || '—'}</div>
+                                </div>
+                              </td>
+                              <td style={{ color: '#94A3B8', fontSize: '13px' }}>{c.email || '—'}</td>
+                              <td style={{ color: '#64748B' }}>{c.ciudad || '—'}</td>
+                              <td>
+                                <span style={{
+                                  fontSize: '12px', fontWeight: 700,
+                                  color: totalRes > 5 ? '#4ADE80' : totalRes > 0 ? '#B8D8F8' : '#334155',
+                                  background: totalRes > 5 ? 'rgba(74,222,128,0.1)' : totalRes > 0 ? 'rgba(184,216,248,0.1)' : 'rgba(255,255,255,0.04)',
+                                  padding: '2px 8px', borderRadius: '6px',
+                                }}>
+                                  {totalRes} reserva{totalRes !== 1 ? 's' : ''}
+                                </span>
+                              </td>
+                              <td style={{ color: '#64748B', fontSize: '12px' }}>{fmtFecha(c.created_at)}</td>
+                            </tr>
+                          )
+                        })}
                       {clientesFiltrados.length === 0 && (
-                        <tr><td colSpan={4} style={{ textAlign: 'center', color: '#475569', padding: '32px' }}>Sin clientes registrados</td></tr>
+                        <tr><td colSpan={5} style={{ textAlign: 'center', color: '#475569', padding: '32px' }}>Sin clientes registrados</td></tr>
                       )}
                     </tbody>
                   </table>
+                </div>
+              </>
+            )}
+
+            {/* ══ FISCAL Y LEGAL ══ */}
+            {tabActiva === 'fiscal' && (
+              <>
+                {/* Monitor cumplimiento legal */}
+                <div className="section-title" style={{ marginBottom: '16px' }}>Monitor de cumplimiento legal</div>
+                <div style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px' }}>
+                  MRR actual: <strong style={{ color: '#F1F5F9' }}>{mrr.toLocaleString('es-ES')} €/mes</strong>
+                  {' '}· Basado en {totalNegocios} negocios activos con precios estimados.
+                </div>
+                <div className="compliance-grid">
+                  {[
+                    {
+                      fase: 1, umbral: '< 500 €/mes',
+                      titulo: 'Fase 1 — Sin obligaciones formales',
+                      desc: 'Ingresos inferiores al umbral de notificación. Puedes operar sin alta en Hacienda ni en autónomos. Guarda todos los registros por si te los solicitan.',
+                    },
+                    {
+                      fase: 2, umbral: '> 500 €/mes',
+                      titulo: 'Fase 2 — Consideración de alta en Hacienda',
+                      desc: 'Por encima de 500 €/mes es recomendable darte de alta en Hacienda como empresario individual (modelo 037). Empieza a emitir facturas y llevar registro de ingresos/gastos.',
+                    },
+                    {
+                      fase: 3, umbral: '> 800 €/mes',
+                      titulo: 'Fase 3 — Prepara el alta como autónomo',
+                      desc: 'Cerca del umbral del SMI (~1.134 €). Consulta con un gestor para planificar el alta en autónomos. Cuota mínima ~292 €/mes (tarifa plana 80 € primer año). Presentarás 303 (IVA) y 130 (IRPF) trimestralmente.',
+                    },
+                    {
+                      fase: 4, umbral: '> SMI (1.134 €/mes)',
+                      titulo: 'Fase 4 — Alta en autónomos obligatoria',
+                      desc: 'Superado el SMI, la ley exige el alta en RETA. Obligaciones: IVA (modelo 303), IRPF pagos fraccionados (modelo 130), declaración anual (modelo 100), autoliquidación IVA anual (modelo 390).',
+                    },
+                  ].map(item => {
+                    const status = faseCompliance === item.fase ? 'active' : faseCompliance > item.fase ? 'done' : 'pending'
+                    return (
+                      <div key={item.fase} className={`compliance-card ${status}`}>
+                        <div className={`compliance-dot ${status}`} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                            <div className="compliance-title">{item.titulo}</div>
+                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '5px', flexShrink: 0,
+                              background: status === 'active' ? 'rgba(251,191,36,0.15)' : status === 'done' ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.04)',
+                              color: status === 'active' ? '#F59E0B' : status === 'done' ? '#4ADE80' : '#334155',
+                            }}>
+                              {status === 'active' ? '● ACTUAL' : status === 'done' ? '✓ SUPERADO' : 'PENDIENTE'}
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#475569', marginLeft: 'auto' }}>{item.umbral}</span>
+                          </div>
+                          <div className="compliance-desc">{item.desc}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Calculadora fiscal */}
+                <div className="section-title" style={{ marginBottom: '16px', marginTop: '8px' }}>Calculadora fiscal mensual</div>
+                <div className="fiscal-grid">
+                  <div className="fiscal-card">
+                    <div className="fiscal-card-title">Ingresos y costes</div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">MRR estimado</span>
+                      <span className="fiscal-row-val">{mrr.toLocaleString('es-ES')} €</span>
+                    </div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">Coste Vercel (€/mes)</span>
+                      <div className="fiscal-editable">
+                        <input type="number" className="fiscal-edit-input" value={costeVercel} onChange={e => setCosteVercel(parseFloat(e.target.value) || 0)} />
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>€</span>
+                      </div>
+                    </div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">Coste Supabase (€/mes)</span>
+                      <div className="fiscal-editable">
+                        <input type="number" className="fiscal-edit-input" value={costeSupabase} onChange={e => setCosteSupabase(parseFloat(e.target.value) || 0)} />
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>€</span>
+                      </div>
+                    </div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">Coste Gemini (est.)</span>
+                      <span className="fiscal-row-val">{costeGeminiEur.toFixed(2)} €</span>
+                    </div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">Otros costes (€/mes)</span>
+                      <div className="fiscal-editable">
+                        <input type="number" className="fiscal-edit-input" value={costeOtros} onChange={e => setCosteOtros(parseFloat(e.target.value) || 0)} />
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>€</span>
+                      </div>
+                    </div>
+                    <div className="fiscal-row" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '4px', paddingTop: '10px' }}>
+                      <span className="fiscal-row-label" style={{ color: '#F87171' }}>Total costes plataforma</span>
+                      <span className="fiscal-row-val red">−{costesTotalesPlataforma.toFixed(2)} €</span>
+                    </div>
+                  </div>
+
+                  <div className="fiscal-card">
+                    <div className="fiscal-card-title">Retenciones e impuestos</div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">IVA repercutido (21%)</span>
+                      <span className="fiscal-row-val yellow">{ivaRepercutido.toFixed(2)} €</span>
+                    </div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">IVA soportado (21% costes)</span>
+                      <span className="fiscal-row-val" style={{ color: '#4ADE80' }}>−{ivaaSoportado.toFixed(2)} €</span>
+                    </div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">IRPF tasa (%)</span>
+                      <div className="fiscal-editable">
+                        <input type="number" className="fiscal-edit-input" min="0" max="50" value={tasaIrpf} onChange={e => setTasaIrpf(parseFloat(e.target.value) || 0)} />
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>%</span>
+                      </div>
+                    </div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">IRPF retención</span>
+                      <span className="fiscal-row-val red">−{irpfRetencion.toFixed(2)} €</span>
+                    </div>
+                    <div className="fiscal-row">
+                      <span className="fiscal-row-label">Cuota autónomos (€/mes)</span>
+                      <div className="fiscal-editable">
+                        <input type="number" className="fiscal-edit-input" value={cuotaAutonomos} onChange={e => setCuotaAutonomos(parseFloat(e.target.value) || 0)} />
+                        <span style={{ fontSize: '12px', color: '#64748B' }}>€</span>
+                      </div>
+                    </div>
+                    <div className="fiscal-row" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '4px', paddingTop: '10px' }}>
+                      <span className="fiscal-row-label" style={{ fontWeight: 700, color: '#F1F5F9' }}>Beneficio neto estimado</span>
+                      <span className={`fiscal-row-val ${beneficioNeto >= 0 ? 'green' : 'red'}`} style={{ fontSize: '16px' }}>
+                        {beneficioNeto.toFixed(2)} €
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* IVA trimestral */}
+                <div className="fiscal-card" style={{ marginBottom: '28px' }}>
+                  <div className="fiscal-card-title">IVA trimestral — Modelo 303</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '6px' }}>IVA repercutido (3 meses)</div>
+                      <div style={{ fontSize: '22px', fontWeight: 800, color: '#F59E0B' }}>{(ivaRepercutido * 3).toFixed(2)} €</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '6px' }}>IVA soportado (3 meses)</div>
+                      <div style={{ fontSize: '22px', fontWeight: 800, color: '#4ADE80' }}>{(ivaaSoportado * 3).toFixed(2)} €</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '6px' }}>A pagar a Hacienda</div>
+                      <div style={{ fontSize: '22px', fontWeight: 800, color: ivaTrimestral >= 0 ? '#F87171' : '#4ADE80' }}>
+                        {ivaTrimestral.toFixed(2)} €
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Kit para gestor */}
+                <div className="section-title" style={{ marginBottom: '16px' }}>Kit para gestor</div>
+                <div style={{ background: '#1E293B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '20px', marginBottom: '28px' }}>
+                  <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '16px', lineHeight: '1.6' }}>
+                    Exporta un CSV con el resumen mensual de ingresos, costes de plataforma (Vercel, Supabase, Gemini), cálculo de IVA trimestral, y el detalle de todos los negocios. Listo para entregar a tu gestor o asesor fiscal.
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button className="export-btn" onClick={exportCSV}>
+                      📥 Descargar CSV — {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                    </button>
+                    <span style={{ fontSize: '12px', color: '#475569' }}>
+                      Incluye: MRR · costes · IVA 303 · IRPF · {totalNegocios} negocios
+                    </span>
+                  </div>
                 </div>
               </>
             )}
