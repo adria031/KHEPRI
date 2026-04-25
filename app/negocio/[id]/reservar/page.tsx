@@ -591,7 +591,10 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 ) : (
                   <div className="opcion-lista">
                     {servicios.map(s => (
-                      <div key={s.id} className={`opcion ${servicio?.id === s.id ? 'selected' : ''}`} onClick={() => avanzarServicio(s)}>
+                      <div key={s.id} className={`opcion ${servicio?.id === s.id ? 'selected' : ''}`}
+                        onClick={() => avanzarServicio(s)}
+                        onTouchEnd={(e) => { e.preventDefault(); avanzarServicio(s) }}
+                      >
                         <div className="opcion-icon">🔧</div>
                         <div>
                           <div className="opcion-nombre">{s.nombre}</div>
@@ -614,7 +617,10 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                   <p>Elige tu profesional de confianza</p>
                 </div>
                 <div className="opcion-lista">
-                  <div className={`opcion ${!trabajador ? 'selected' : ''}`} onClick={() => { setTrabajador(null); setPaso(2) }}>
+                  <div className={`opcion ${!trabajador ? 'selected' : ''}`}
+                    onClick={() => { setTrabajador(null); setPaso(2) }}
+                    onTouchEnd={(e) => { e.preventDefault(); setTrabajador(null); setPaso(2) }}
+                  >
                     <div className="worker-circle" style={{background:'rgba(156,163,175,0.15)', color:'#6B7280', fontSize:'20px'}}>🎲</div>
                     <div>
                       <div className="opcion-nombre">Sin preferencia</div>
@@ -624,7 +630,10 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                   {trabajadores.map((t, idx) => {
                     const initials = t.nombre.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase()
                     return (
-                      <div key={t.id} className={`opcion ${trabajador?.id === t.id ? 'selected' : ''}`} onClick={() => { setTrabajador(t); setPaso(2) }}>
+                      <div key={t.id} className={`opcion ${trabajador?.id === t.id ? 'selected' : ''}`}
+                        onClick={() => { setTrabajador(t); setPaso(2) }}
+                        onTouchEnd={(e) => { e.preventDefault(); setTrabajador(t); setPaso(2) }}
+                      >
                         <div className="worker-circle" style={{background: trabajadorBg(t, idx), color: trabajadorColor(t, idx)}}>
                           {initials}
                         </div>
@@ -664,11 +673,12 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                           className={`day-chip ${disp ? 'disponible' : 'cerrado'} ${selec ? 'seleccionado' : ''} ${esHoy ? 'es-hoy' : ''}`}
                           onClick={() => {
                             if (!disp) return
-                            setFecha(fechaISO)
-                            setHora('')
-                            setListaEsperaMode(false)
-                            setListaEsperaEnviada(false)
-                            setPaso(3)
+                            setFecha(fechaISO); setHora(''); setListaEsperaMode(false); setListaEsperaEnviada(false); setPaso(3)
+                          }}
+                          onTouchEnd={(e) => {
+                            if (!disp) return
+                            e.preventDefault()
+                            setFecha(fechaISO); setHora(''); setListaEsperaMode(false); setListaEsperaEnviada(false); setPaso(3)
                           }}
                         >
                           <span className="day-label">{labelDia}</span>
@@ -704,6 +714,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                             key={s}
                             className={`slot-item ${ocupado ? 'ocupado' : ''} ${hora === s ? 'selected' : ''}`}
                             onClick={() => { if (!ocupado) { setHora(s); setPaso(4) } }}
+                            onTouchEnd={(e) => { if (!ocupado) { e.preventDefault(); setHora(s); setPaso(4) } }}
                           >
                             <span className="slot-dot" />
                             <span className="slot-hora">{s}</span>
@@ -815,7 +826,11 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
 
                 {error && <div className="error-msg">{error}</div>}
 
-                <button className="btn-primary" onClick={confirmar} disabled={enviando}>
+                <button className="btn-primary"
+                  onClick={confirmar}
+                  onTouchEnd={(e) => { e.preventDefault(); if (!enviando) confirmar() }}
+                  disabled={enviando}
+                >
                   {enviando ? 'Confirmando...' : '✓ Confirmar reserva'}
                 </button>
               </>

@@ -10,8 +10,11 @@ export async function GET() {
   return NextResponse.json({ key_prefix: KEY.slice(0, 10), models: names })
 }
 
+// Clave de respaldo si NEXT_PUBLIC_GEMINI_API_KEY no está configurada en Vercel
+const FALLBACK_KEY = 'AIzaSyBwszdn-eYK3UQN2SBmJNzhdPkgOgkilns'
+
 export async function POST(req: NextRequest) {
-  const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY ?? ''
+  const KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || FALLBACK_KEY
   if (!KEY) {
     return NextResponse.json({ error: { message: 'API key no configurada en el servidor' } }, { status: 500 })
   }

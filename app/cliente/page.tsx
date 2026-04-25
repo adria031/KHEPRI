@@ -180,6 +180,7 @@ function ClienteContent(){
   const[q,setQ]=useState('')
   const[nombre,setNombre]=useState('Usuario')
   const[email,setEmail]=useState('')
+  const[userId,setUserId]=useState<string|null>(null)
   const[favs,setFavs]=useState<string[]>([])
   const[negocios,setNegocios]=useState<Negocio[]>([])
   const[cargando,setCargando]=useState(true)
@@ -198,6 +199,20 @@ function ClienteContent(){
       const userId    = user.id
       setNombre(user.user_metadata?.nombre?.split(' ')[0]||userEmail.split('@')[0]||'Usuario')
       setEmail(userEmail)
+      setUserId(userId)
+
+      // Cargar favoritos desde Supabase
+      try {
+        const { data: favsData } = await supabase
+          .from('favoritos')
+          .select('negocio_id')
+          .eq('user_id', userId)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (favsData) setFavs(favsData.map((f: any) => f.negocio_id))
+      } catch {
+        // tabla favoritos no existe — cargar desde localStorage
+        try { const lf = localStorage.getItem('favs'); if (lf) setFavs(JSON.parse(lf)) } catch {}
+      }
 
       // Fetch por email (siempre funciona) + por user_id si la columna existe
       // Hacemos dos queries separadas para no romper si user_id no existe aún en la tabla
@@ -277,7 +292,24 @@ function ClienteContent(){
     setCancelando(null)
   }
 
-  const toggleFav=(id:string)=>setFavs(p=>p.includes(id)?p.filter(f=>f!==id):[...p,id])
+  const toggleFav=async(negocioId:string)=>{
+    const uid=userId
+    const adding=!favs.includes(negocioId)
+    // Actualizar estado local inmediatamente
+    setFavs(p=>adding?[...p,negocioId]:p.filter(f=>f!==negocioId))
+    // Persistir
+    if(uid){
+      if(adding){
+        const {error}=await supabase.from('favoritos').insert({user_id:uid,negocio_id:negocioId})
+        if(error&&error.code!=='23505') console.error('[favs] insert error:',error)
+      } else {
+        await supabase.from('favoritos').delete().eq('user_id',uid).eq('negocio_id',negocioId)
+      }
+    } else {
+      // Fallback localStorage si no hay sesión
+      try{const nf=favs.filter(f=>f!==negocioId);if(adding)nf.push(negocioId);localStorage.setItem('favs',JSON.stringify(nf))}catch{}
+    }
+  }
 
   function toggleCat(id:string){
     setCats(prev=>prev.includes(id)?prev.filter(c=>c!==id):[...prev,id])

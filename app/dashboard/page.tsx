@@ -129,7 +129,9 @@ export default function Dashboard() {
       if (!neg) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs)
 
-      const modoTodos = localStorage.getItem('negocio_activo_id') === 'todos' && todosNegs.length > 1
+      const savedId = localStorage.getItem('negocio_activo_id')
+      // Vista consolidada cuando: no hay selección guardada O está en 'todos', Y hay >1 negocio
+      const modoTodos = (!savedId || savedId === 'todos') && todosNegs.length > 1
       setNegocio(modoTodos ? null : neg)
       const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
 
