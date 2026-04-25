@@ -19,6 +19,7 @@ export type NegocioMapa = {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
+const STYLE = process.env.NEXT_PUBLIC_MAPBOX_STYLE || 'mapbox://styles/mapbox/light-v11'
 
 const tipoConfig: Record<string, { emoji: string; color: string; bg: string }> = {
   peluqueria:  { emoji: '💈', color: '#1D4ED8', bg: '#DBEAFE' },
@@ -207,7 +208,7 @@ export default function MapaNegocios({
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style:  'mapbox://styles/mapbox/light-v11',
+      style:  STYLE,
       center: [-3.7038, 40.4168],
       zoom:   6,
       attributionControl: false,
@@ -277,30 +278,25 @@ export default function MapaNegocios({
 
       // ── HTML markers for individual points ──
       function createMarkerEl(props: Record<string, unknown>): HTMLDivElement {
-        const logoUrl = props.logo_url as string
-        const color   = props.color as string
-        const bg      = props.bg as string
-        const emoji   = props.emoji as string
+        const color  = props.color as string
+        const bg     = props.bg as string
+        const nombre = props.nombre as string
+        const initial = (nombre?.[0] ?? '?').toUpperCase()
         const el = document.createElement('div')
         el.style.cssText = `
-          width:48px;height:48px;border-radius:50%;
+          width:44px;height:44px;border-radius:50%;
           border:2.5px solid ${color};background:${bg};
-          overflow:hidden;cursor:pointer;
+          cursor:pointer;
           box-shadow:0 2px 12px rgba(0,0,0,0.18);
           display:flex;align-items:center;justify-content:center;
-          font-size:20px;transition:transform 0.15s,box-shadow 0.15s;
+          font-size:17px;font-weight:800;color:${color};
+          font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+          transition:transform 0.15s,box-shadow 0.15s;
+          user-select:none;
         `
-        el.onmouseenter = () => { el.style.transform='scale(1.12)'; el.style.boxShadow='0 4px 20px rgba(0,0,0,0.28)' }
+        el.textContent = initial
+        el.onmouseenter = () => { el.style.transform='scale(1.15)'; el.style.boxShadow='0 4px 20px rgba(0,0,0,0.28)' }
         el.onmouseleave = () => { el.style.transform='scale(1)';    el.style.boxShadow='0 2px 12px rgba(0,0,0,0.18)' }
-        if (logoUrl) {
-          const img = document.createElement('img')
-          img.src = logoUrl
-          img.style.cssText = 'width:100%;height:100%;object-fit:cover;'
-          img.onerror = () => { img.remove(); el.textContent = emoji }
-          el.appendChild(img)
-        } else {
-          el.textContent = emoji
-        }
         return el
       }
 
