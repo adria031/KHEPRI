@@ -4,19 +4,33 @@
  * prueba el siguiente hasta agotar la lista.
  */
 
-// gemini-1.5-flash es el modelo primario; el resto son fallbacks por cuota
+// Modelos ordenados de más disponible a menos — se prueban en cascada
 const FALLBACK_MODELS = [
-  'gemini-1.5-flash',
+  'gemini-2.0-flash',
   'gemini-2.0-flash-lite',
   'gemini-1.5-flash-8b',
-  'gemini-2.0-flash',
+  'gemini-1.5-flash',
   'gemini-1.5-pro',
 ]
 
-function isQuotaError(status: number, body: unknown): boolean {
-  if (status === 429) return true
+/**
+ * Devuelve true cuando el error es recuperable probando el siguiente modelo:
+ *  - 429 quota / rate-limit
+ *  - 404 modelo no encontrado o no disponible con esta clave
+ *  - 503 servicio no disponible
+ */
+function shouldRetry(status: number, body: unknown): boolean {
+  if (status === 429 || status === 404 || status === 503) return true
   const str = JSON.stringify(body).toLowerCase()
-  return str.includes('quota') || str.includes('resource_exhausted') || str.includes('limit:') || str.includes('exceeded')
+  return (
+    str.includes('quota') ||
+    str.includes('resource_exhausted') ||
+    str.includes('limit:') ||
+    str.includes('exceeded') ||
+    str.includes('not found') ||
+    str.includes('not supported') ||
+    str.includes('not available')
+  )
 }
 
 export async function geminiGenerate(
@@ -50,13 +64,13 @@ export async function geminiGenerate(
       return { ok: true, data, model, triedModels: tried }
     }
 
-    if (isQuotaError(res.status, data)) {
-      console.warn(`[gemini] ${model} quota exceeded (${res.status}), trying next model…`)
+    if (shouldRetry(res.status, data)) {
+      console.warn(`[gemini] ${model} → ${res.status}, probando siguiente modelo…`)
       continue
     }
 
-    // Error no relacionado con cuota — devolver tal cual
-    console.error(`[gemini] ${model} non-quota error ${res.status}:`, JSON.stringify(data).slice(0, 200))
+    // Error no recuperable (ej. 400 bad request, 401 auth) — devolver tal cual
+    console.error(`[gemini] ${model} error no recuperable ${res.status}:`, JSON.stringify(data).slice(0, 200))
     return { ok: false, data, model, triedModels: tried }
   }
 
