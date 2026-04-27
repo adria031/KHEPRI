@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
@@ -51,6 +51,8 @@ type Negocio = {
 type Horario = { dia:string; abierto:boolean; hora_apertura:string; hora_cierre:string; hora_apertura2:string|null; hora_cierre2:string|null }
 type Servicio = { id:string; nombre:string; duracion:number; precio:number; precio_descuento:number|null; descuento_inicio:string|null; descuento_fin:string|null; categoria?:string|null }
 type Resena = { id:string; valoracion:number; texto:string|null; created_at:string; autor_nombre:string|null }
+type Trabajador = { id:string; nombre:string; especialidad:string|null }
+type ChatMsg = { rol:'usuario'|'bot'; texto:string }
 
 function ofertaActiva(s: Servicio) {
   if (!s.precio_descuento || !s.descuento_inicio || !s.descuento_fin) return false
@@ -103,6 +105,14 @@ export default function FichaNegocio() {
   const [esFav, setEsFav] = useState(false)
   const [favCargando, setFavCargando] = useState(false)
   const [clientePuntos, setClientePuntos] = useState<number|null>(null)
+  const [trabajadores, setTrabajadores] = useState<Trabajador[]>([])
+  // Chat
+  const [chatAbierto, setChatAbierto] = useState(false)
+  const [mensajes, setMensajes] = useState<ChatMsg[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatCargando, setChatCargando] = useState(false)
+  const [reservaConfirmada, setReservaConfirmada] = useState(false)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   const hoyDia = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date().getDay()]
 
@@ -113,7 +123,8 @@ export default function FichaNegocio() {
       supabase.from('horarios').select('*').eq('negocio_id', id),
       supabase.from('servicios').select('*').eq('negocio_id', id).eq('activo', true),
       supabase.from('resenas').select('*').eq('negocio_id', id).order('created_at', { ascending: false }),
-    ]).then(([{data:neg},{data:hor},{data:ser},{data:res}]) => {
+      supabase.from('trabajadores').select('id,nombre,especialidad').eq('negocio_id', id).eq('activo', true).order('nombre'),
+    ]).then(([{data:neg},{data:hor},{data:ser},{data:res},{data:trab}]) => {
       if (neg) setNegocio(neg)
       if (hor) setHorarios(hor)
       if (ser) {
@@ -122,6 +133,7 @@ export default function FichaNegocio() {
         setGrupoAbierto(Object.keys(grupos)[0])
       }
       if (res) setResenas(res)
+      if (trab) setTrabajadores(trab as Trabajador[])
       setCargando(false)
     })
   }, [id])
@@ -157,6 +169,67 @@ export default function FichaNegocio() {
       setEsFav(true)
     }
     setFavCargando(false)
+  }
+
+  function abrirChat() {
+    setChatAbierto(true)
+    if (mensajes.length === 0) {
+      setMensajes([{ rol: 'bot', texto: `¡Hola! 👋 Soy el asistente de ${negocio?.nombre ?? 'este negocio'}. ¿En qué puedo ayudarte? Puedo informarte sobre servicios, horarios o ayudarte a gestionar una reserva.` }])
+    }
+  }
+
+  async function enviarMensaje(textoOverride?: string) {
+    const texto = textoOverride ?? chatInput.trim()
+    if (!texto || chatCargando) return
+    const nuevos: ChatMsg[] = [...mensajes, { rol: 'usuario', texto }]
+    setMensajes(nuevos)
+    setChatInput('')
+    setChatCargando(true)
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+
+    try {
+      const res = await fetch('/api/chat-negocio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: nuevos, negocioId: id }),
+      })
+      const data = await res.json()
+      const respuesta: string = data.respuesta ?? 'Lo siento, hubo un error.'
+      setMensajes(prev => [...prev, { rol: 'bot', texto: respuesta }])
+    } catch {
+      setMensajes(prev => [...prev, { rol: 'bot', texto: 'Error de conexión. Inténtalo de nuevo.' }])
+    }
+    setChatCargando(false)
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }
+
+  async function crearReservaChatbot(datos: { nombre:string; telefono:string; servicio:string; trabajador:string; fecha:string; hora:string }) {
+    const servMatch = servicios.find(s => s.nombre.toLowerCase().includes(datos.servicio.toLowerCase()) || datos.servicio.toLowerCase().includes(s.nombre.toLowerCase()))
+    const trabMatch = datos.trabajador && datos.trabajador !== 'cualquiera'
+      ? trabajadores.find(t => t.nombre.toLowerCase().includes(datos.trabajador.toLowerCase()))
+      : null
+
+    const { error } = await supabase.rpc('crear_reserva', {
+      p_negocio_id: id,
+      p_servicio_id: servMatch?.id ?? null,
+      p_trabajador_id: trabMatch?.id ?? null,
+      p_cliente_nombre: datos.nombre,
+      p_cliente_telefono: datos.telefono,
+      p_cliente_email: null,
+      p_fecha: datos.fecha,
+      p_hora: datos.hora,
+    })
+
+    if (error) {
+      setMensajes(prev => [...prev, { rol: 'bot', texto: `No pude crear la reserva: ${error.message}. Intenta reservar directamente en el formulario.` }])
+    } else {
+      setReservaConfirmada(true)
+      setMensajes(prev => [...prev, {
+        rol: 'bot',
+        texto: `✅ ¡Reserva confirmada!\n\n👤 ${datos.nombre}\n📞 ${datos.telefono}\n✂️ ${datos.servicio}\n📅 ${datos.fecha} a las ${datos.hora}\n\nTe esperamos. ¡Hasta pronto!`
+      }])
+    }
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
   function abrirGPS() {
@@ -361,6 +434,52 @@ export default function FichaNegocio() {
         html.dark .logo-bubble { border-color:#1a1a1a; background:#1a1a1a; }
         html.dark .btn-fav { background:rgba(26,26,26,0.9); border-color:rgba(255,255,255,0.1); }
         html.dark .mobile-cta { background:rgba(13,13,13,0.97); border-color:rgba(255,255,255,0.06); }
+
+        /* ── CHATBOT ── */
+        .chat-fab { position:fixed; bottom:100px; right:22px; width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#6366F1,#8B5CF6); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 4px 20px rgba(99,102,241,0.45); z-index:200; transition:transform 0.18s,box-shadow 0.18s; }
+        .chat-fab:hover { transform:scale(1.1); box-shadow:0 6px 28px rgba(99,102,241,0.55); }
+        .chat-panel { position:fixed; bottom:170px; right:22px; width:360px; max-height:520px; background:white; border-radius:20px; box-shadow:0 8px 40px rgba(0,0,0,0.18); z-index:200; display:flex; flex-direction:column; overflow:hidden; animation:chatIn 0.22s ease; }
+        @keyframes chatIn { from { opacity:0; transform:translateY(16px) scale(0.97); } to { opacity:1; transform:none; } }
+        .chat-header { background:linear-gradient(135deg,#6366F1,#8B5CF6); padding:14px 18px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+        .chat-header-info { display:flex; align-items:center; gap:10px; }
+        .chat-avatar { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+        .chat-header-name { font-size:14px; font-weight:700; color:white; }
+        .chat-header-status { font-size:11px; color:rgba(255,255,255,0.75); display:flex; align-items:center; gap:4px; }
+        .chat-close { background:rgba(255,255,255,0.18); border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; color:white; font-size:16px; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+        .chat-close:hover { background:rgba(255,255,255,0.3); }
+        .chat-msgs { flex:1; overflow-y:auto; padding:14px 14px 8px; display:flex; flex-direction:column; gap:10px; }
+        .chat-msg-wrap { display:flex; flex-direction:column; }
+        .chat-msg-wrap.usuario { align-items:flex-end; }
+        .chat-msg-wrap.bot { align-items:flex-start; }
+        .chat-bubble { max-width:80%; padding:10px 13px; border-radius:14px; font-size:13px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+        .chat-bubble.usuario { background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border-bottom-right-radius:4px; }
+        .chat-bubble.bot { background:#F3F4F6; color:#111827; border-bottom-left-radius:4px; }
+        html.dark .chat-bubble.bot { background:#2a2a2a; color:#f9fafb; }
+        html.dark .chat-panel { background:#1a1a1a; }
+        html.dark .chat-input-row { background:#1a1a1a; border-color:rgba(255,255,255,0.06); }
+        html.dark .chat-input { background:#242424; color:#f9fafb; border-color:rgba(255,255,255,0.1); }
+        .chat-opts { display:flex; flex-direction:column; gap:7px; margin-top:8px; width:100%; }
+        .chat-opt-btn { display:flex; align-items:center; gap:8px; padding:10px 14px; border:1.5px solid rgba(99,102,241,0.25); border-radius:12px; background:white; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; color:#6366F1; transition:all 0.15s; text-align:left; }
+        .chat-opt-btn:hover { background:#EEF2FF; border-color:#6366F1; }
+        html.dark .chat-opt-btn { background:#1a1a1a; border-color:rgba(99,102,241,0.35); }
+        html.dark .chat-opt-btn:hover { background:#242424; }
+        .chat-confirm-btn { padding:10px 16px; background:linear-gradient(135deg,#10B981,#059669); color:white; border:none; border-radius:10px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; margin-top:8px; transition:opacity 0.15s; }
+        .chat-confirm-btn:hover { opacity:0.9; }
+        .chat-typing { display:flex; gap:5px; padding:10px 13px; background:#F3F4F6; border-radius:14px; border-bottom-left-radius:4px; align-self:flex-start; }
+        .chat-dot { width:7px; height:7px; border-radius:50%; background:#9CA3AF; animation:dotPulse 1.4s infinite; }
+        .chat-dot:nth-child(2) { animation-delay:0.2s; }
+        .chat-dot:nth-child(3) { animation-delay:0.4s; }
+        @keyframes dotPulse { 0%,80%,100% { transform:scale(0.7); opacity:0.5; } 40% { transform:scale(1); opacity:1; } }
+        .chat-input-row { padding:10px 12px; border-top:1px solid rgba(0,0,0,0.06); display:flex; gap:8px; align-items:center; flex-shrink:0; }
+        .chat-input { flex:1; border:1.5px solid rgba(0,0,0,0.1); border-radius:100px; padding:9px 15px; font-family:inherit; font-size:13px; outline:none; transition:border-color 0.15s; background:white; }
+        .chat-input:focus { border-color:#6366F1; }
+        .chat-send { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#6366F1,#8B5CF6); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform 0.15s; }
+        .chat-send:hover { transform:scale(1.08); }
+        .chat-send:disabled { opacity:0.45; cursor:not-allowed; transform:none; }
+        @media (max-width:768px) {
+          .chat-panel { width:calc(100vw - 32px); right:16px; bottom:160px; }
+          .chat-fab { bottom:96px; right:16px; }
+        }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 
@@ -667,6 +786,86 @@ export default function FichaNegocio() {
           <Link href={`/negocio/${id}/reservar`}>📅 Pedir cita</Link>
         </div>
       </div>
+
+      {/* CHAT FLOATING BUTTON */}
+      <button className="chat-fab" onClick={() => chatAbierto ? setChatAbierto(false) : abrirChat()} title="Asistente virtual">
+        {chatAbierto ? '✕' : '💬'}
+      </button>
+
+      {/* CHAT PANEL */}
+      {chatAbierto && (
+        <div className="chat-panel">
+          <div className="chat-header">
+            <div className="chat-header-info">
+              <div className="chat-avatar">🤖</div>
+              <div>
+                <div className="chat-header-name">Asistente de {negocio.nombre}</div>
+                <div className="chat-header-status"><span style={{width:'7px',height:'7px',borderRadius:'50%',background:'#4ADE80',display:'inline-block'}}/>En línea</div>
+              </div>
+            </div>
+            <button className="chat-close" onClick={() => setChatAbierto(false)}>✕</button>
+          </div>
+
+          <div className="chat-msgs">
+            {mensajes.map((m, i) => {
+              const tieneOpciones = m.rol === 'bot' && m.texto.includes('[MOSTRAR_OPCIONES]')
+              const reservaMatch = m.rol === 'bot' ? m.texto.match(/\[RESERVA:(\{[^}]+(?:\{[^}]*\}[^}]*)*\})\]/) : null
+              const textoLimpio = m.texto
+                .replace('[MOSTRAR_OPCIONES]', '')
+                .replace(/\[RESERVA:\{[^}]+(?:\{[^}]*\}[^}]*)*\}\]/g, '')
+                .trim()
+
+              return (
+                <div key={i} className={`chat-msg-wrap ${m.rol}`}>
+                  <div className={`chat-bubble ${m.rol}`}>{textoLimpio}</div>
+                  {tieneOpciones && !reservaConfirmada && (
+                    <div className="chat-opts">
+                      <a href={`/negocio/${id}/reservar`} className="chat-opt-btn" target="_self">
+                        🔗 <span><strong>Reservar yo mismo</strong> — formulario online</span>
+                      </a>
+                      <button className="chat-opt-btn" onClick={() => enviarMensaje('Prefiero que lo gestiones tú.')}>
+                        🤖 <span><strong>Que lo gestione el asistente</strong></span>
+                      </button>
+                    </div>
+                  )}
+                  {reservaMatch && !reservaConfirmada && (() => {
+                    try {
+                      const datos = JSON.parse(reservaMatch[1])
+                      return (
+                        <button className="chat-confirm-btn" onClick={() => crearReservaChatbot(datos)}>
+                          ✅ Confirmar reserva
+                        </button>
+                      )
+                    } catch { return null }
+                  })()}
+                </div>
+              )
+            })}
+            {chatCargando && (
+              <div className="chat-typing">
+                <div className="chat-dot"/><div className="chat-dot"/><div className="chat-dot"/>
+              </div>
+            )}
+            <div ref={chatEndRef}/>
+          </div>
+
+          <div className="chat-input-row">
+            <input
+              className="chat-input"
+              placeholder="Escribe tu mensaje..."
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && enviarMensaje()}
+              disabled={chatCargando}
+            />
+            <button className="chat-send" onClick={() => enviarMensaje()} disabled={chatCargando || !chatInput.trim()}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
