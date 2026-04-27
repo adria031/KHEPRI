@@ -60,6 +60,17 @@ export default function Marketing() {
   const [ofertaResultado, setOfertaResultado] = useState('')
   const [ofertaCopiado, setOfertaCopiado] = useState(false)
 
+  // Posts IG — tono + partes separadas
+  const [postTono, setPostTono] = useState<'profesional'|'cercano'|'divertido'>('cercano')
+  const [postPartes, setPostPartes] = useState<{texto:string;hashtags:string;imagen:string}|null>(null)
+  const [textoCopy, setTextoCopy] = useState(false)
+  const [tagsCopy, setTagsCopy] = useState(false)
+
+  // Reseñas BD + editable
+  const [resenasDB, setResenasDB] = useState<{id:string;valoracion:number;texto:string;autor_nombre:string|null;created_at:string}[]>([])
+  const [reseñaEditable, setReseñaEditable] = useState('')
+  const [reseñaEditCopy, setReseñaEditCopy] = useState(false)
+
   useEffect(() => {
     (async () => {
       const { session, db } = await getSessionClient()
@@ -72,17 +83,19 @@ export default function Marketing() {
       setNegocioId(data.id)
       setNegocioNombre(data.nombre)
 
-      const [{ data: neg }, { data: svcs }, { data: resenas }] = await Promise.all([
+      const [{ data: neg }, { data: svcs }, { data: resenas }, { data: resenasTexto }] = await Promise.all([
         db.from('negocios').select('tipo, descripcion').eq('id', data.id).single(),
         db.from('servicios').select('nombre, precio').eq('negocio_id', data.id).eq('activo', true).limit(8),
-        db.from('resenas').select('puntuacion').eq('negocio_id', data.id),
+        db.from('resenas').select('valoracion').eq('negocio_id', data.id),
+        db.from('resenas').select('id, valoracion, texto, autor_nombre, created_at').eq('negocio_id', data.id).not('texto', 'is', null).order('created_at', { ascending: false }).limit(20),
       ])
       if (neg) setNegocioTipo(neg.tipo || '')
       if (svcs) setNegocioServicios(svcs as {nombre:string; precio:number}[])
       if (resenas && resenas.length > 0) {
-        const avg = (resenas as any[]).reduce((s, r) => s + (r.puntuacion || 0), 0) / resenas.length
+        const avg = (resenas as any[]).reduce((s, r) => s + (r.valoracion || 0), 0) / resenas.length
         setNegocioValoracion(Math.round(avg * 10) / 10)
       }
+      if (resenasTexto) setResenasDB(resenasTexto as any)
     })()
   }, [])
 
@@ -141,6 +154,30 @@ export default function Marketing() {
     win.document.close()
   }
 
+  function imprimirCalendario(contenido: string) {
+    const win = window.open('', '_blank')
+    if (!win) return
+    const mesNom = MESES_NOMBRE[estrategiaMes]?.charAt(0).toUpperCase() + MESES_NOMBRE[estrategiaMes]?.slice(1)
+    win.document.write(`<!DOCTYPE html><html><head><title>Calendario ${mesNom} — ${negocioNombre}</title>
+      <style>
+        body{font-family:'Segoe UI',sans-serif;max-width:720px;margin:0 auto;padding:28px 32px;color:#111827;}
+        h1{font-size:20px;font-weight:800;margin-bottom:4px;}
+        p.sub{font-size:13px;color:#6B7280;margin-bottom:24px;}
+        pre{white-space:pre-wrap;font-size:13px;line-height:1.7;color:#374151;}
+        hr{border:none;border-top:1px solid #E5E7EB;margin:20px 0;}
+        .footer{font-size:11px;color:#9CA3AF;text-align:center;margin-top:24px;}
+        @media print{@page{margin:20mm}}
+      </style></head>
+      <body onload="window.print()">
+        <h1>📅 Calendario de contenido — ${mesNom} ${estrategiaAnio}</h1>
+        <p class="sub">Generado con IA para ${negocioNombre} · Khepria</p>
+        <hr/>
+        <pre>${contenido.replace(/</g,'&lt;')}</pre>
+        <div class="footer">Khepria — Marketing IA</div>
+      </body></html>`)
+    win.document.close()
+  }
+
   // ── Gemini ────────────────────────────────────────────────────────────────
   const MESES_NOMBRE = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 
@@ -178,7 +215,7 @@ Servicios principales: ${svcs}${negocioValoracion ? `\nValoración media de clie
 
   async function generarPost() {
     if (!negocioNombre) return
-    setGenerando(true); setIaError(''); setPostResultado('')
+    setGenerando(true); setIaError(''); setPostResultado(''); setPostPartes(null)
     const temaLabels: Record<string,string> = {
       promocion: 'Promoción u oferta especial',
       nuevo_servicio: 'Presentación de un nuevo servicio',
@@ -187,27 +224,43 @@ Servicios principales: ${svcs}${negocioValoracion ? `\nValoración media de clie
       agradecimiento: 'Agradecimiento y conexión con la comunidad',
       detras: 'Behind the scenes — día a día del negocio',
     }
+    const tonoDesc: Record<string,string> = {
+      profesional: 'profesional y experto, transmitiendo autoridad y confianza',
+      cercano: 'cercano y cálido, como si hablaras con un amigo',
+      divertido: 'divertido y desenfadado, con humor y personalidad',
+    }
     const prompt = `Eres un experto en marketing digital para negocios locales en España.
 ${buildContexto()}
 
-Genera un post completo y listo para publicar en Instagram sobre el siguiente tema: ${temaLabels[postTema] || postTema}.
+Genera un post para Instagram sobre: ${temaLabels[postTema] || postTema}.
+Tono: ${tonoDesc[postTono] || postTono}
 ${postContexto ? `Contexto adicional: ${postContexto}` : ''}
 
-El post debe:
-- Tener entre 180-220 palabras
-- Usar emojis de forma natural y atractiva
-- Incluir una llamada a la acción clara
-- Sonar auténtico, no corporativo
-- Adaptarse perfectamente al tipo de negocio
+Responde con este formato EXACTO (incluye las etiquetas en mayúsculas con dos puntos):
 
-Tras el texto, añade una línea con tres guiones (---) y luego entre 20 y 25 hashtags relevantes:
-- Mezcla español e inglés
-- Incluye hashtags de nicho específicos del tipo de negocio
-- Incluye hashtags de ciudad (usa "Madrid" como ejemplo)
-- Incluye hashtags populares relacionados`
+TEXTO:
+[texto del post entre 150-200 palabras, con emojis, SIN hashtags, con llamada a la acción]
+
+HASHTAGS:
+[exactamente 20-25 hashtags en una sola línea separados por espacios, mezcla español/inglés, incluye hashtags de nicho, ciudad y populares]
+
+IMAGEN:
+[descripción en 1-2 frases de la foto o vídeo ideal para este post]`
 
     try {
-      setPostResultado(await llamarGemini(prompt))
+      const raw = await llamarGemini(prompt)
+      setPostResultado(raw)
+      // Parse sections
+      const sec = { texto: '', hashtags: '', imagen: '' }
+      let current: keyof typeof sec | '' = ''
+      for (const line of raw.split('\n')) {
+        const t = line.trim()
+        if (t === 'TEXTO:') { current = 'texto'; continue }
+        if (t === 'HASHTAGS:') { current = 'hashtags'; continue }
+        if (t === 'IMAGEN:') { current = 'imagen'; continue }
+        if (current) sec[current] += (sec[current] ? '\n' : '') + line
+      }
+      setPostPartes({ texto: sec.texto.trim(), hashtags: sec.hashtags.trim(), imagen: sec.imagen.trim() })
     } catch (e: any) { setIaError(e.message) }
     finally { setGenerando(false) }
   }
@@ -239,7 +292,9 @@ OPCIÓN 2:
 [respuesta]`
 
     try {
-      setReseñaResultado(await llamarGemini(prompt))
+      const res = await llamarGemini(prompt)
+      setReseñaResultado(res)
+      setReseñaEditable(res)
     } catch (e: any) { setIaError(e.message) }
     finally { setGenerando(false) }
   }
@@ -422,6 +477,36 @@ Las ofertas deben ser:
         .tono-btn { flex: 1; padding: 8px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 9px; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
         .tono-btn.active { background: #111827; border-color: #111827; color: white; }
 
+        /* Post parts */
+        .post-section { border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+        .post-section-head { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; background: var(--bg); border-bottom: 1px solid var(--border); }
+        .post-section-label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+        .post-section-body { padding: 13px 14px; font-size: 14px; color: var(--text); line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+        .post-section-body.hashtags { color: #1D4ED8; font-size: 13px; }
+        .post-section-body.imagen { color: var(--text2); font-style: italic; }
+        .btn-copy-sm { padding: 5px 12px; background: white; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+        .btn-copy-sm:hover { border-color: #111827; }
+        .btn-copy-sm.ok { background: #111827; color: white; border-color: #111827; }
+
+        /* Reseñas DB */
+        .resenas-list { max-height: 220px; overflow-y: auto; border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 14px; }
+        .resena-item { padding: 11px 14px; cursor: pointer; transition: background 0.12s; border-bottom: 1px solid var(--border); }
+        .resena-item:last-child { border-bottom: none; }
+        .resena-item:hover { background: var(--bg); }
+        .resena-item.sel { background: rgba(29,78,216,0.06); border-left: 3px solid #1D4ED8; }
+        .resena-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .resena-stars { font-size: 12px; }
+        .resena-autor { font-size: 12px; font-weight: 700; color: var(--text2); }
+        .resena-fecha { font-size: 11px; color: var(--muted); margin-left: auto; }
+        .resena-texto { font-size: 13px; color: var(--text); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .resena-empty { padding: 20px; text-align: center; font-size: 13px; color: var(--muted); }
+        .ia-resp-edit { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 13px; color: var(--text); line-height: 1.65; resize: vertical; min-height: 120px; outline: none; }
+        .ia-resp-edit:focus { border-color: #111827; }
+
+        /* PDF btn */
+        .btn-pdf { display: flex; align-items: center; gap: 6px; padding: 7px 14px; background: white; border: 1.5px solid var(--border); border-radius: 9px; font-family: inherit; font-size: 12px; font-weight: 700; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+        .btn-pdf:hover { border-color: #111827; color: #111827; }
+
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); }
           .sidebar-overlay.open { display: block; } .hamburger { display: flex; }
@@ -565,25 +650,69 @@ Las ofertas deben ser:
                     </div>
                   </div>
                   <div className="ia-form-row">
+                    <label className="ia-label">Tono</label>
+                    <div className="tono-row">
+                      {([
+                        {key:'profesional', label:'💼 Profesional'},
+                        {key:'cercano',     label:'😊 Cercano'},
+                        {key:'divertido',   label:'🎉 Divertido'},
+                      ] as const).map(t => (
+                        <button key={t.key} className={`tono-btn ${postTono === t.key ? 'active' : ''}`} onClick={() => setPostTono(t.key)}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="ia-form-row">
                     <label className="ia-label">Contexto adicional <span style={{fontWeight:400, color:'var(--muted)'}}>(opcional)</span></label>
                     <textarea
                       className="ia-textarea"
                       placeholder="Ej: Tenemos un 20% de descuento este fin de semana, nueva máquina de tratamiento facial..."
                       value={postContexto}
                       onChange={e => setPostContexto(e.target.value)}
-                      rows={3}
+                      rows={2}
                     />
                   </div>
                   <button className="btn-ia" onClick={generarPost} disabled={generando || !negocioNombre}>
                     {generando ? '⏳ Generando post...' : '✨ Generar post para Instagram'}
                   </button>
                   {iaError && <div className="ia-error">⚠️ {iaError}</div>}
-                  {postResultado && (
+                  {postPartes && (
                     <div className="ia-result-wrap">
-                      <div className="ia-result-box">
-                        {postResultado}
-                        <button className={`ia-copy-btn ${postCopiado ? 'ok' : ''}`} onClick={() => copiarIA(postResultado, setPostCopiado)}>
-                          {postCopiado ? '✓ Copiado' : 'Copiar'}
+                      {/* Texto del post */}
+                      <div className="post-section">
+                        <div className="post-section-head">
+                          <span className="post-section-label">📝 Texto del post</span>
+                          <button className={`btn-copy-sm ${textoCopy ? 'ok' : ''}`} onClick={() => copiarIA(postPartes.texto, setTextoCopy)}>
+                            {textoCopy ? '✓ Copiado' : 'Copiar texto'}
+                          </button>
+                        </div>
+                        <div className="post-section-body">{postPartes.texto}</div>
+                      </div>
+                      {/* Hashtags */}
+                      {postPartes.hashtags && (
+                        <div className="post-section">
+                          <div className="post-section-head">
+                            <span className="post-section-label"># Hashtags</span>
+                            <button className={`btn-copy-sm ${tagsCopy ? 'ok' : ''}`} onClick={() => copiarIA(postPartes.hashtags, setTagsCopy)}>
+                              {tagsCopy ? '✓ Copiado' : 'Copiar hashtags'}
+                            </button>
+                          </div>
+                          <div className="post-section-body hashtags">{postPartes.hashtags}</div>
+                        </div>
+                      )}
+                      {/* Sugerencia imagen */}
+                      {postPartes.imagen && (
+                        <div className="post-section">
+                          <div className="post-section-head">
+                            <span className="post-section-label">📸 Sugerencia de imagen</span>
+                          </div>
+                          <div className="post-section-body imagen">{postPartes.imagen}</div>
+                        </div>
+                      )}
+                      <div style={{display:'flex', justifyContent:'flex-end', marginTop:'6px'}}>
+                        <button className={`btn-copy-sm ${postCopiado ? 'ok' : ''}`} onClick={() => copiarIA(postResultado, setPostCopiado)} style={{fontSize:'12px', padding:'6px 14px'}}>
+                          {postCopiado ? '✓ Copiado todo' : '📋 Copiar todo'}
                         </button>
                       </div>
                     </div>
@@ -594,17 +723,33 @@ Las ofertas deben ser:
               {/* ── Tab: Respuestas a reseñas ── */}
               {iaTab === 'resenas' && (
                 <div>
+                  {/* Reseñas desde BD */}
                   <div className="ia-form-row">
-                    <label className="ia-label">Puntuación de la reseña</label>
-                    <div className="stars-row">
-                      {[1,2,3,4,5].map(n => (
-                        <button key={n} className="star-btn" onClick={() => setReseñaEstrellas(n)}>
-                          {n <= reseñaEstrellas ? '⭐' : '☆'}
-                        </button>
-                      ))}
-                      <span style={{marginLeft:'6px', fontSize:'13px', color:'var(--text2)', alignSelf:'center'}}>{reseñaEstrellas} estrella{reseñaEstrellas !== 1 ? 's' : ''}</span>
+                    <label className="ia-label">
+                      Reseñas de clientes
+                      {resenasDB.length > 0 && <span style={{fontWeight:400, color:'var(--muted)', marginLeft:'6px'}}>— selecciona una para responder</span>}
+                    </label>
+                    <div className="resenas-list">
+                      {resenasDB.length === 0
+                        ? <div className="resena-empty">No hay reseñas con texto aún</div>
+                        : resenasDB.map(r => (
+                          <div
+                            key={r.id}
+                            className={`resena-item ${reseñaTexto === r.texto && reseñaEstrellas === r.valoracion ? 'sel' : ''}`}
+                            onClick={() => { setReseñaTexto(r.texto); setReseñaEstrellas(r.valoracion); setReseñaResultado(''); setReseñaEditable('') }}
+                          >
+                            <div className="resena-item-head">
+                              <span className="resena-stars">{'⭐'.repeat(r.valoracion)}{'☆'.repeat(5 - r.valoracion)}</span>
+                              <span className="resena-autor">{r.autor_nombre || 'Cliente'}</span>
+                              <span className="resena-fecha">{new Date(r.created_at).toLocaleDateString('es-ES', {day:'numeric', month:'short'})}</span>
+                            </div>
+                            <div className="resena-texto">{r.texto}</div>
+                          </div>
+                        ))
+                      }
                     </div>
                   </div>
+
                   <div className="ia-form-row">
                     <label className="ia-label">Tono de la respuesta</label>
                     <div className="tono-row">
@@ -620,25 +765,33 @@ Las ofertas deben ser:
                     </div>
                   </div>
                   <div className="ia-form-row">
-                    <label className="ia-label">Texto de la reseña</label>
+                    <label className="ia-label">Texto de la reseña <span style={{fontWeight:400, color:'var(--muted)'}}>(o escribe directamente)</span></label>
                     <textarea
                       className="ia-textarea"
-                      placeholder="Pega aquí el texto de la reseña que quieres responder..."
+                      placeholder="Selecciona una reseña arriba o escribe aquí el texto..."
                       value={reseñaTexto}
                       onChange={e => setReseñaTexto(e.target.value)}
-                      rows={4}
+                      rows={3}
                     />
                   </div>
                   <button className="btn-ia" onClick={generarRespuestaResena} disabled={generando || !reseñaTexto.trim()}>
-                    {generando ? '⏳ Generando respuestas...' : '💬 Generar 2 respuestas'}
+                    {generando ? '⏳ Generando respuestas...' : '💬 Generar 2 opciones de respuesta'}
                   </button>
                   {iaError && <div className="ia-error">⚠️ {iaError}</div>}
-                  {reseñaResultado && (
+                  {reseñaEditable && (
                     <div className="ia-result-wrap">
-                      <div className="ia-result-box">
-                        {reseñaResultado}
-                        <button className={`ia-copy-btn ${reseñaCopiado ? 'ok' : ''}`} onClick={() => copiarIA(reseñaResultado, setReseñaCopiado)}>
-                          {reseñaCopiado ? '✓ Copiado' : 'Copiar'}
+                      <label className="ia-label" style={{marginBottom:'8px', display:'block'}}>
+                        ✏️ Respuesta generada — edita antes de publicar
+                      </label>
+                      <textarea
+                        className="ia-resp-edit"
+                        value={reseñaEditable}
+                        onChange={e => setReseñaEditable(e.target.value)}
+                        rows={8}
+                      />
+                      <div style={{display:'flex', justifyContent:'flex-end', marginTop:'8px'}}>
+                        <button className={`btn-copy-sm ${reseñaEditCopy ? 'ok' : ''}`} onClick={() => copiarIA(reseñaEditable, setReseñaEditCopy)} style={{padding:'7px 16px', fontSize:'13px'}}>
+                          {reseñaEditCopy ? '✓ Copiado' : '📋 Copiar respuesta'}
                         </button>
                       </div>
                     </div>
@@ -682,6 +835,11 @@ Las ofertas deben ser:
                         {estrategiaResultado}
                         <button className={`ia-copy-btn ${estrategiaCopiado ? 'ok' : ''}`} onClick={() => copiarIA(estrategiaResultado, setEstrategiaCopiado)}>
                           {estrategiaCopiado ? '✓ Copiado' : 'Copiar'}
+                        </button>
+                      </div>
+                      <div style={{display:'flex', justifyContent:'flex-end', marginTop:'8px'}}>
+                        <button className="btn-pdf" onClick={() => imprimirCalendario(estrategiaResultado)}>
+                          🖨️ Exportar / Imprimir PDF
                         </button>
                       </div>
                     </div>
