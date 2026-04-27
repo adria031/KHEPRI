@@ -30,7 +30,7 @@ export default function RootLayout({
     <html lang="es" className={jakarta.variable}>
       <head>
         {/* Anti-flash: set dark/light class before first paint to avoid FOUC */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(!t)t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.classList.add(t)}catch(e){}})()` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme')||'light';document.documentElement.classList.add(t)}catch(e){document.documentElement.classList.add('light')}})()` }} />
 
         {/* PWA */}
         <link rel="manifest" href="/manifest.json" />
