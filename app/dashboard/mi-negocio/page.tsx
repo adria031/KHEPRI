@@ -30,7 +30,9 @@ export default function MiNegocio() {
     instagram?: string; whatsapp?: string; facebook?: string;
     servicios?: { nombre: string; precio: number | null; duracion: number | null }[];
     horarios?: { dia: string; abierto: boolean; hora_apertura: string; hora_cierre: string }[];
+    trabajadores?: { nombre: string; especialidad?: string }[];
   } | null>(null)
+  const [importModel, setImportModel] = useState('')
 
   const [form, setForm] = useState({
     nombre: '', tipo: '', descripcion: '', telefono: '',
@@ -210,6 +212,7 @@ export default function MiNegocio() {
       const json = await res.json()
       if (json.error) { setImportError(json.error); setImportLoading(false); return }
       setImportData(json.data)
+      setImportModel(json.model || '')
     } catch (e: unknown) {
       setImportError((e as Error).message)
     }
@@ -263,10 +266,22 @@ export default function MiNegocio() {
       }
     }
 
+    // 4. Guardar trabajadores
+    if (importData.trabajadores && importData.trabajadores.length > 0) {
+      const nuevosT = importData.trabajadores.map(t => ({
+        negocio_id: negocioId,
+        nombre: t.nombre,
+        especialidad: t.especialidad || '',
+        activo: true,
+      }))
+      await supabase.from('trabajadores').insert(nuevosT)
+    }
+
     setImportando(false)
     setImportModal(false)
     setImportData(null)
     setImportUrl('')
+    setImportModel('')
     setGuardado(true)
     setTimeout(() => setGuardado(false), 3000)
   }
@@ -370,27 +385,61 @@ export default function MiNegocio() {
         .pago-opt.active .pago-check { background: var(--blue-dark); border-color: var(--blue-dark); color: white; font-size: 12px; }
 
         /* IMPORT MODAL */
-        .import-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
-        .import-modal { background: white; border-radius: 20px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 28px; }
-        .import-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
-        .import-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
-        .import-url-row { display: flex; gap: 8px; margin-bottom: 16px; }
-        .import-url-input { flex: 1; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 14px; color: var(--text); outline: none; }
-        .import-url-input:focus { border-color: var(--blue-dark); }
-        .btn-analizar { padding: 11px 20px; background: var(--text); color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-        .btn-analizar:disabled { background: var(--muted); cursor: not-allowed; }
-        .import-platforms { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
-        .import-platform-tag { padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 100px; font-size: 12px; color: var(--text2); font-weight: 500; cursor: pointer; transition: all 0.15s; }
-        .import-platform-tag:hover { background: var(--blue-soft); color: var(--blue-dark); border-color: var(--blue-dark); }
-        .import-data-section { border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
-        .import-data-header { padding: 12px 16px; background: var(--bg); font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
-        .import-field-row { padding: 10px 16px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: start; }
+        .import-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .import-modal { background: white; border-radius: 24px; width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.25); }
+        .import-header { background: linear-gradient(135deg, #0F172A 0%, #1D4ED8 100%); padding: 28px 28px 24px; border-radius: 24px 24px 0 0; position: sticky; top: 0; z-index: 2; }
+        .import-title { font-size: 20px; font-weight: 800; color: white; margin-bottom: 4px; letter-spacing: -0.3px; }
+        .import-sub { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.5; }
+        .import-body { padding: 24px 28px 28px; }
+        .import-platforms { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+        .import-platform-tag { display: flex; align-items: center; gap: 5px; padding: 6px 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 100px; font-size: 12px; color: var(--text2); font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .import-platform-tag:hover { background: var(--blue-soft); color: var(--blue-dark); border-color: var(--blue-dark); transform: translateY(-1px); }
+        .import-url-row { display: flex; gap: 8px; margin-bottom: 6px; }
+        .import-url-input { flex: 1; padding: 13px 16px; border: 2px solid var(--border); border-radius: 14px; font-family: inherit; font-size: 14px; color: var(--text); outline: none; transition: border-color 0.15s; background: var(--bg); }
+        .import-url-input:focus { border-color: var(--blue-dark); background: white; }
+        .btn-analizar { padding: 13px 22px; background: linear-gradient(135deg,#1D4ED8,#6B4FD8); color: white; border: none; border-radius: 14px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: opacity 0.15s, transform 0.15s; }
+        .btn-analizar:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+        .btn-analizar:disabled { background: var(--muted); cursor: not-allowed; transform: none; }
+        .import-loading { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px 0; }
+        .import-loading-dots { display: flex; gap: 8px; }
+        .import-loading-dots span { width: 10px; height: 10px; border-radius: 50%; background: #1D4ED8; animation: dotBounce 1.2s ease-in-out infinite; }
+        .import-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .import-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotBounce { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-10px);opacity:1} }
+        .import-loading-text { font-size: 14px; font-weight: 600; color: var(--text2); }
+        .import-loading-sub { font-size: 12px; color: var(--muted); }
+        .import-section { border: 1.5px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 14px; }
+        .import-section-head { padding: 13px 16px; background: var(--bg); font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
+        .import-section-head-left { display: flex; align-items: center; gap: 8px; }
+        .import-count-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: #DBEAFE; color: #1D4ED8; }
+        .import-field-row { padding: 10px 16px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: start; }
         .import-field-label { font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 2px; }
-        .import-field-val { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
-        .import-servicios-list { font-size: 12px; color: var(--text2); line-height: 2; }
-        .import-actions { display: flex; gap: 10px; justify-content: flex-end; }
-        .btn-import-cancel { padding: 11px 20px; background: none; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
-        .btn-import-apply { padding: 11px 24px; background: var(--blue-dark); color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+        .import-field-val { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; font-weight: 500; }
+        .import-svc-row { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .import-svc-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .import-svc-meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .import-svc-price { font-size: 13px; font-weight: 700; color: #059669; background: #ECFDF5; padding: 2px 8px; border-radius: 8px; }
+        .import-svc-dur { font-size: 11px; color: var(--muted); background: var(--bg); padding: 2px 7px; border-radius: 8px; font-weight: 600; }
+        .import-hours-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 14px 16px; }
+        .import-day-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--bg); }
+        .import-day-cell.open { background: #EFF6FF; border-color: #BFDBFE; }
+        .import-day-name { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+        .import-day-cell.open .import-day-name { color: #1D4ED8; }
+        .import-day-hours { font-size: 9px; color: var(--text2); text-align: center; line-height: 1.4; font-weight: 600; }
+        .import-day-closed { font-size: 9px; color: var(--muted); font-weight: 500; }
+        .import-workers-grid { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
+        .import-worker-chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 100px; }
+        .import-worker-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#1D4ED8,#6B4FD8); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: white; flex-shrink: 0; }
+        .import-worker-name { font-size: 13px; font-weight: 600; color: var(--text); }
+        .import-worker-role { font-size: 11px; color: var(--muted); }
+        .import-actions { display: flex; gap: 10px; justify-content: space-between; align-items: center; padding-top: 6px; }
+        .import-model-badge { font-size: 11px; color: var(--muted); }
+        .import-actions-right { display: flex; gap: 10px; }
+        .btn-import-cancel { padding: 11px 20px; background: none; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+        .btn-import-cancel:hover { background: var(--bg); }
+        .btn-import-apply { padding: 12px 24px; background: linear-gradient(135deg,#0F172A,#1D4ED8); color: white; border: none; border-radius: 12px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.15s; }
+        .btn-import-apply:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+        .btn-import-apply:disabled { background: var(--muted); cursor: not-allowed; transform: none; }
         .btn-importar-abrir { display: flex; align-items: center; gap: 7px; padding: 9px 16px; background: none; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; margin-bottom: 16px; }
         .btn-importar-abrir:hover { background: var(--blue-soft); color: var(--blue-dark); border-color: var(--blue-dark); }
 
@@ -764,43 +813,72 @@ export default function MiNegocio() {
       {importModal && (
         <div className="import-overlay" onClick={e => { if (e.target === e.currentTarget) setImportModal(false) }}>
           <div className="import-modal">
-            <div className="import-title">📥 Importar desde otra app</div>
-            <div className="import-sub">Pega la URL de tu negocio en Fresha, Treatwell, Booksy, Google Maps o Instagram. Khepria extraerá los datos automáticamente.</div>
 
-            <div style={{marginBottom:'10px'}}>
-              <div style={{fontSize:'12px', fontWeight:600, color:'var(--muted)', marginBottom:'6px'}}>Plataformas compatibles:</div>
+            {/* ── Header ── */}
+            <div className="import-header">
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px'}}>
+                <div className="import-title">✦ Importar negocio con IA</div>
+                <button onClick={() => setImportModal(false)} style={{background:'rgba(255,255,255,0.15)', border:'none', borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', color:'white', fontSize:'18px', display:'flex', alignItems:'center', justifyContent:'center'}}>×</button>
+              </div>
+              <div className="import-sub">Pega la URL de tu negocio en Fresha, Treatwell, Booksy, Google Maps, Instagram o cualquier web. La IA extrae todos los datos automáticamente.</div>
+            </div>
+
+            {/* ── Body ── */}
+            <div className="import-body">
+
+              {/* Plataformas */}
               <div className="import-platforms">
-                {['fresha.com', 'treatwell.es', 'booksy.com', 'google.com/maps', 'instagram.com'].map(p => (
-                  <span key={p} className="import-platform-tag" onClick={() => setImportUrl('https://' + p + '/')}>{p}</span>
+                {[
+                  { label: 'Fresha', emoji: '✂️', url: 'https://www.fresha.com/' },
+                  { label: 'Treatwell', emoji: '💆', url: 'https://www.treatwell.es/' },
+                  { label: 'Booksy', emoji: '📅', url: 'https://booksy.com/' },
+                  { label: 'Google Maps', emoji: '📍', url: 'https://maps.google.com/' },
+                  { label: 'Instagram', emoji: '📸', url: 'https://www.instagram.com/' },
+                ].map(p => (
+                  <span key={p.label} className="import-platform-tag" onClick={() => setImportUrl(p.url)}>
+                    {p.emoji} {p.label}
+                  </span>
                 ))}
               </div>
-            </div>
 
-            <div className="import-url-row">
-              <input
-                className="import-url-input"
-                type="url"
-                placeholder="https://www.fresha.com/providers/tu-negocio-..."
-                value={importUrl}
-                onChange={e => setImportUrl(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && analizarImport()}
-              />
-              <button className="btn-analizar" onClick={analizarImport} disabled={importLoading || !importUrl.trim()}>
-                {importLoading ? '⏳ Analizando...' : '🔍 Analizar'}
-              </button>
-            </div>
-
-            {importError && (
-              <div style={{padding:'12px 14px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:'10px', fontSize:'13px', color:'#DC2626', marginBottom:'16px'}}>
-                {importError}
+              {/* URL input */}
+              <div className="import-url-row">
+                <input
+                  className="import-url-input"
+                  type="url"
+                  placeholder="https://www.fresha.com/es/a/tu-negocio-..."
+                  value={importUrl}
+                  onChange={e => setImportUrl(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !importLoading && analizarImport()}
+                  autoFocus
+                />
+                <button className="btn-analizar" onClick={analizarImport} disabled={importLoading || !importUrl.trim()}>
+                  {importLoading ? '⏳' : '🔍'} {importLoading ? 'Analizando' : 'Analizar'}
+                </button>
               </div>
-            )}
 
-            {importData && (
-              <>
-                {/* Datos básicos */}
-                <div className="import-data-section" style={{marginBottom:'12px'}}>
-                  <div className="import-data-header">📋 Información básica</div>
+              {/* Error */}
+              {importError && (
+                <div style={{padding:'12px 16px', background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:'12px', fontSize:'13px', color:'#DC2626', marginBottom:'16px', fontWeight:500}}>
+                  ⚠️ {importError}
+                </div>
+              )}
+
+              {/* Loading */}
+              {importLoading && (
+                <div className="import-loading">
+                  <div className="import-loading-dots">
+                    <span/><span/><span/>
+                  </div>
+                  <div className="import-loading-text">Analizando con IA...</div>
+                  <div className="import-loading-sub">Extrayendo servicios, horarios y trabajadores</div>
+                </div>
+              )}
+
+              {/* Resultados */}
+              {importData && !importLoading && (
+                <>
+                  {/* Info básica */}
                   {[
                     { label: 'Nombre', val: importData.nombre },
                     { label: 'Descripción', val: importData.descripcion },
@@ -810,76 +888,119 @@ export default function MiNegocio() {
                     { label: 'Código postal', val: importData.codigo_postal },
                     { label: 'Instagram', val: importData.instagram },
                     { label: 'WhatsApp', val: importData.whatsapp },
-                    { label: 'Facebook', val: importData.facebook },
-                  ].filter(f => f.val).map(f => (
-                    <div key={f.label} className="import-field-row">
-                      <span className="import-field-label">{f.label}</span>
-                      <span className="import-field-val">{f.val}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Servicios */}
-                {importData.servicios && importData.servicios.length > 0 && (
-                  <div className="import-data-section" style={{marginBottom:'12px'}}>
-                    <div className="import-data-header">🔧 Servicios ({importData.servicios.length})</div>
-                    <div style={{padding:'0 16px'}}>
-                      <table style={{width:'100%', borderCollapse:'collapse', fontSize:'13px'}}>
-                        <thead>
-                          <tr style={{borderBottom:'1px solid var(--border)'}}>
-                            <th style={{textAlign:'left', padding:'8px 0', color:'var(--muted)', fontWeight:600, fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.5px'}}>Servicio</th>
-                            <th style={{textAlign:'right', padding:'8px 0', color:'var(--muted)', fontWeight:600, fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.5px'}}>Precio</th>
-                            <th style={{textAlign:'right', padding:'8px 0', color:'var(--muted)', fontWeight:600, fontSize:'11px', textTransform:'uppercase', letterSpacing:'0.5px'}}>Duración</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {importData.servicios.map((s, i) => (
-                            <tr key={i} style={{borderBottom:'1px solid var(--border)'}}>
-                              <td style={{padding:'8px 0', color:'var(--text)', fontWeight:500}}>{s.nombre}</td>
-                              <td style={{padding:'8px 0', textAlign:'right', color:'var(--text)'}}>{s.precio != null ? `${s.precio}€` : '—'}</td>
-                              <td style={{padding:'8px 0', textAlign:'right', color:'var(--muted)'}}>{s.duracion != null ? `${s.duracion} min` : '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* Horarios */}
-                {importData.horarios && importData.horarios.length > 0 && (
-                  <div className="import-data-section" style={{marginBottom:'12px'}}>
-                    <div className="import-data-header">⏰ Horarios ({importData.horarios.length} días)</div>
-                    <div style={{padding:'0 16px'}}>
-                      {importData.horarios.map((h, i) => (
-                        <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom: i < importData.horarios!.length - 1 ? '1px solid var(--border)' : 'none', fontSize:'13px'}}>
-                          <span style={{fontWeight:600, color:'var(--text)', textTransform:'capitalize'}}>{h.dia}</span>
-                          <span style={{color: h.abierto ? 'var(--text)' : 'var(--muted)'}}>
-                            {h.abierto ? `${h.hora_apertura} – ${h.hora_cierre}` : 'Cerrado'}
-                          </span>
+                  ].some(f => f.val) && (
+                    <div className="import-section">
+                      <div className="import-section-head">
+                        <div className="import-section-head-left">📋 Información básica</div>
+                      </div>
+                      {[
+                        { label: 'Nombre', val: importData.nombre },
+                        { label: 'Descripción', val: importData.descripcion },
+                        { label: 'Teléfono', val: importData.telefono },
+                        { label: 'Dirección', val: importData.direccion },
+                        { label: 'Ciudad', val: importData.ciudad },
+                        { label: 'Código postal', val: importData.codigo_postal },
+                        { label: 'Instagram', val: importData.instagram },
+                        { label: 'WhatsApp', val: importData.whatsapp },
+                      ].filter(f => f.val).map(f => (
+                        <div key={f.label} className="import-field-row">
+                          <span className="import-field-label">{f.label}</span>
+                          <span className="import-field-val">{f.val}</span>
                         </div>
                       ))}
                     </div>
+                  )}
+
+                  {/* Servicios */}
+                  {importData.servicios && importData.servicios.length > 0 && (
+                    <div className="import-section">
+                      <div className="import-section-head">
+                        <div className="import-section-head-left">✂️ Servicios</div>
+                        <span className="import-count-badge">{importData.servicios.length}</span>
+                      </div>
+                      {importData.servicios.map((s, i) => (
+                        <div key={i} className="import-svc-row">
+                          <span className="import-svc-name">{s.nombre}</span>
+                          <div className="import-svc-meta">
+                            {s.precio != null && <span className="import-svc-price">{s.precio}€</span>}
+                            {s.duracion != null && <span className="import-svc-dur">{s.duracion} min</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Horarios */}
+                  {importData.horarios && importData.horarios.length > 0 && (() => {
+                    const DIAS_ORDER = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
+                    const DIAS_SHORT: Record<string,string> = {lunes:'Lun',martes:'Mar',miercoles:'Mié',jueves:'Jue',viernes:'Vie',sabado:'Sáb',domingo:'Dom'}
+                    const horariosMap = Object.fromEntries(importData.horarios!.map(h => [h.dia, h]))
+                    return (
+                      <div className="import-section">
+                        <div className="import-section-head">
+                          <div className="import-section-head-left">⏰ Horarios</div>
+                          <span className="import-count-badge">{importData.horarios!.filter(h=>h.abierto).length} días abiertos</span>
+                        </div>
+                        <div className="import-hours-grid">
+                          {DIAS_ORDER.map(dia => {
+                            const h = horariosMap[dia]
+                            return (
+                              <div key={dia} className={`import-day-cell${h?.abierto ? ' open' : ''}`}>
+                                <span className="import-day-name">{DIAS_SHORT[dia]}</span>
+                                {h?.abierto
+                                  ? <span className="import-day-hours">{h.hora_apertura}<br/>{h.hora_cierre}</span>
+                                  : <span className="import-day-closed">—</span>
+                                }
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Trabajadores */}
+                  {importData.trabajadores && importData.trabajadores.length > 0 && (
+                    <div className="import-section">
+                      <div className="import-section-head">
+                        <div className="import-section-head-left">👥 Trabajadores</div>
+                        <span className="import-count-badge">{importData.trabajadores.length}</span>
+                      </div>
+                      <div className="import-workers-grid">
+                        {importData.trabajadores.map((t, i) => (
+                          <div key={i} className="import-worker-chip">
+                            <div className="import-worker-avatar">{t.nombre[0]?.toUpperCase()}</div>
+                            <div>
+                              <div className="import-worker-name">{t.nombre}</div>
+                              {t.especialidad && <div className="import-worker-role">{t.especialidad}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="import-actions">
+                    <span className="import-model-badge">✦ {importModel}</span>
+                    <div className="import-actions-right">
+                      <button className="btn-import-cancel" onClick={() => { setImportModal(false); setImportData(null); setImportUrl('') }}>Cancelar</button>
+                      <button className="btn-import-apply" onClick={aplicarImport} disabled={importando}>
+                        {importando ? '⏳ Importando...' : `✓ Importar todo`}
+                      </button>
+                    </div>
                   </div>
-                )}
+                </>
+              )}
 
-                <p style={{fontSize:'12px', color:'var(--muted)', marginBottom:'14px', lineHeight:1.5}}>
-                  Se importará toda la información básica, servicios y horarios. Los servicios se añadirán a los existentes.
-                </p>
-                <div className="import-actions">
-                  <button className="btn-import-cancel" onClick={() => setImportModal(false)}>Cancelar</button>
-                  <button className="btn-import-apply" onClick={aplicarImport} disabled={importando}>
-                    {importando ? '⏳ Importando...' : '✓ Confirmar e importar'}
-                  </button>
+              {/* Sin datos aún */}
+              {!importData && !importLoading && !importError && (
+                <div style={{textAlign:'center', padding:'24px 0', color:'var(--muted)', fontSize:'13px'}}>
+                  Pega una URL arriba y pulsa Analizar
                 </div>
-              </>
-            )}
+              )}
 
-            {!importData && (
-              <div className="import-actions">
-                <button className="btn-import-cancel" onClick={() => setImportModal(false)}>Cancelar</button>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}
