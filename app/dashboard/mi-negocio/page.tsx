@@ -33,6 +33,7 @@ export default function MiNegocio() {
     trabajadores?: { nombre: string; especialidad?: string }[];
   } | null>(null)
   const [importModel, setImportModel] = useState('')
+  const [importSteps, setImportSteps] = useState<{label:string;status:'pending'|'running'|'done'|'error'}[]>([])
 
   const [form, setForm] = useState({
     nombre: '', tipo: '', descripcion: '', telefono: '',
@@ -219,11 +220,32 @@ export default function MiNegocio() {
     setImportLoading(false)
   }
 
-  async function aplicarImport() {
+  async function aplicarImport(soloBasico = false) {
     if (!importData || !negocioId) return
     setImportando(true)
 
-    // 1. Actualizar campos básicos en el form y en Supabase
+    type StepStatus = 'pending'|'running'|'done'|'error'
+    const mkSteps = (): {label:string;status:StepStatus}[] => {
+      const base = [{ label: 'Actualizando información básica', status: 'pending' as StepStatus }]
+      if (soloBasico) return base
+      if (importData.servicios?.length) base.push({ label: `Guardando ${importData.servicios.length} servicios`, status: 'pending' as StepStatus })
+      if (importData.horarios?.length) base.push({ label: 'Guardando horarios de apertura', status: 'pending' as StepStatus })
+      if (importData.trabajadores?.length) base.push({ label: `Guardando ${importData.trabajadores.length} trabajadores`, status: 'pending' as StepStatus })
+      return base
+    }
+    const steps = mkSteps()
+    setImportSteps(steps)
+
+    let si = 0 // step index
+
+    const stepDone = (err?: boolean) => {
+      setImportSteps(prev => prev.map((x, i) => i === si ? { ...x, status: err ? 'error' : 'done' } : x))
+      si++
+    }
+    const stepRun = () => setImportSteps(prev => prev.map((x, i) => i === si ? { ...x, status: 'running' } : x))
+
+    // Step 1: info básica
+    stepRun()
     const camposBasicos = {
       nombre: importData.nombre || form.nombre,
       descripcion: importData.descripcion || form.descripcion,
@@ -236,52 +258,65 @@ export default function MiNegocio() {
       facebook: importData.facebook || form.facebook,
     }
     setForm(prev => ({ ...prev, ...camposBasicos }))
-    await supabase.from('negocios').update(camposBasicos).eq('id', negocioId)
+    const { error: errNeg } = await supabase.from('negocios').update(camposBasicos).eq('id', negocioId)
+    stepDone(!!errNeg)
 
-    // 2. Guardar servicios
-    if (importData.servicios && importData.servicios.length > 0) {
-      const nuevosServicios = importData.servicios.map(s => ({
-        negocio_id: negocioId,
-        nombre: s.nombre,
-        precio: s.precio ?? 0,
-        duracion: s.duracion ?? 30,
-        iva: 21,
-        activo: true,
-      }))
-      await supabase.from('servicios').insert(nuevosServicios)
-    }
-
-    // 3. Guardar horarios
-    if (importData.horarios && importData.horarios.length > 0) {
-      for (const h of importData.horarios) {
-        await supabase.from('horarios').upsert({
+    if (!soloBasico) {
+      // Step 2: servicios
+      if (importData.servicios?.length) {
+        stepRun()
+        const nuevosServicios = importData.servicios.map(s => ({
           negocio_id: negocioId,
-          dia: h.dia,
-          abierto: h.abierto,
-          hora_apertura: h.hora_apertura || '09:00',
-          hora_cierre: h.hora_cierre || '18:00',
-          hora_apertura2: null,
-          hora_cierre2: null,
-        }, { onConflict: 'negocio_id,dia' })
+          nombre: s.nombre,
+          precio: s.precio ?? 0,
+          duracion: s.duracion ?? 30,
+          iva: 21,
+          activo: true,
+        }))
+        const { error: errSvc } = await supabase.from('servicios').insert(nuevosServicios)
+        stepDone(!!errSvc)
+      }
+
+      // Step 3: horarios
+      if (importData.horarios?.length) {
+        stepRun()
+        let errHor = false
+        for (const h of importData.horarios) {
+          const { error } = await supabase.from('horarios').upsert({
+            negocio_id: negocioId,
+            dia: h.dia,
+            abierto: h.abierto,
+            hora_apertura: h.hora_apertura || '09:00',
+            hora_cierre: h.hora_cierre || '18:00',
+            hora_apertura2: null,
+            hora_cierre2: null,
+          }, { onConflict: 'negocio_id,dia' })
+          if (error) errHor = true
+        }
+        stepDone(errHor)
+      }
+
+      // Step 4: trabajadores
+      if (importData.trabajadores?.length) {
+        stepRun()
+        const nuevosT = importData.trabajadores.map(t => ({
+          negocio_id: negocioId,
+          nombre: t.nombre,
+          especialidad: t.especialidad || '',
+          activo: true,
+        }))
+        const { error: errTrab } = await supabase.from('trabajadores').insert(nuevosT)
+        stepDone(!!errTrab)
       }
     }
 
-    // 4. Guardar trabajadores
-    if (importData.trabajadores && importData.trabajadores.length > 0) {
-      const nuevosT = importData.trabajadores.map(t => ({
-        negocio_id: negocioId,
-        nombre: t.nombre,
-        especialidad: t.especialidad || '',
-        activo: true,
-      }))
-      await supabase.from('trabajadores').insert(nuevosT)
-    }
-
+    await new Promise(r => setTimeout(r, 900))
     setImportando(false)
     setImportModal(false)
     setImportData(null)
     setImportUrl('')
     setImportModel('')
+    setImportSteps([])
     setGuardado(true)
     setTimeout(() => setGuardado(false), 3000)
   }
@@ -442,6 +477,31 @@ export default function MiNegocio() {
         .btn-import-apply:disabled { background: var(--muted); cursor: not-allowed; transform: none; }
         .btn-importar-abrir { display: flex; align-items: center; gap: 7px; padding: 9px 16px; background: none; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; margin-bottom: 16px; }
         .btn-importar-abrir:hover { background: var(--blue-soft); color: var(--blue-dark); border-color: var(--blue-dark); }
+        .import-field-input { width: 100%; padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px; color: var(--text); background: white; outline: none; transition: border-color 0.15s; }
+        .import-field-input:focus { border-color: var(--blue-dark); }
+        .import-svc-input { width: 60px; padding: 4px 8px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 12px; color: var(--text); background: white; outline: none; text-align: right; }
+        .import-svc-input:focus { border-color: var(--blue-dark); }
+        .import-svc-del { width: 24px; height: 24px; border-radius: 50%; background: none; border: 1px solid #FCA5A5; color: #EF4444; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; padding: 0; }
+        .import-svc-del:hover { background: #FEF2F2; }
+        .import-progress { padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; }
+        .import-progress-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+        .import-step { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
+        .import-step.running { background: #EFF6FF; border-color: #BFDBFE; }
+        .import-step.done { background: #F0FDF4; border-color: #BBF7D0; }
+        .import-step.error { background: #FEF2F2; border-color: #FECACA; }
+        .import-step-icon { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+        .import-step.pending .import-step-icon { background: var(--border); }
+        .import-step.running .import-step-icon { background: #DBEAFE; animation: spin 1s linear infinite; }
+        .import-step.done .import-step-icon { background: #DCFCE7; }
+        .import-step.error .import-step-icon { background: #FEE2E2; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .import-step-label { font-size: 13px; font-weight: 600; color: var(--text2); }
+        .import-step.running .import-step-label { color: #1D4ED8; }
+        .import-step.done .import-step-label { color: #16A34A; }
+        .import-step.error .import-step-label { color: #DC2626; }
+        .btn-import-basic { padding: 12px 18px; background: none; border: 1.5px solid var(--border); color: var(--text2); border-radius: 12px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .btn-import-basic:hover:not(:disabled) { background: var(--bg); border-color: var(--text); color: var(--text); }
+        .btn-import-basic:disabled { opacity: 0.5; cursor: not-allowed; }
 
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); }
@@ -876,54 +936,96 @@ export default function MiNegocio() {
               )}
 
               {/* Resultados */}
-              {importData && !importLoading && (
+              {importData && !importLoading && !importando && (
                 <>
-                  {/* Info básica */}
-                  {[
-                    { label: 'Nombre', val: importData.nombre },
-                    { label: 'Descripción', val: importData.descripcion },
-                    { label: 'Teléfono', val: importData.telefono },
-                    { label: 'Dirección', val: importData.direccion },
-                    { label: 'Ciudad', val: importData.ciudad },
-                    { label: 'Código postal', val: importData.codigo_postal },
-                    { label: 'Instagram', val: importData.instagram },
-                    { label: 'WhatsApp', val: importData.whatsapp },
-                  ].some(f => f.val) && (
+                  {/* Info básica — campos editables */}
+                  {([
+                    { label: 'Nombre', key: 'nombre' as const },
+                    { label: 'Descripción', key: 'descripcion' as const },
+                    { label: 'Teléfono', key: 'telefono' as const },
+                    { label: 'Dirección', key: 'direccion' as const },
+                    { label: 'Ciudad', key: 'ciudad' as const },
+                    { label: 'Código postal', key: 'codigo_postal' as const },
+                    { label: 'Instagram', key: 'instagram' as const },
+                    { label: 'WhatsApp', key: 'whatsapp' as const },
+                  ]).some(f => importData[f.key]) && (
                     <div className="import-section">
                       <div className="import-section-head">
-                        <div className="import-section-head-left">📋 Información básica</div>
+                        <div className="import-section-head-left">📋 Información básica <span style={{fontSize:'11px',color:'var(--muted)',fontWeight:400}}>— editable</span></div>
                       </div>
-                      {[
-                        { label: 'Nombre', val: importData.nombre },
-                        { label: 'Descripción', val: importData.descripcion },
-                        { label: 'Teléfono', val: importData.telefono },
-                        { label: 'Dirección', val: importData.direccion },
-                        { label: 'Ciudad', val: importData.ciudad },
-                        { label: 'Código postal', val: importData.codigo_postal },
-                        { label: 'Instagram', val: importData.instagram },
-                        { label: 'WhatsApp', val: importData.whatsapp },
-                      ].filter(f => f.val).map(f => (
-                        <div key={f.label} className="import-field-row">
+                      {([
+                        { label: 'Nombre', key: 'nombre' as const },
+                        { label: 'Descripción', key: 'descripcion' as const },
+                        { label: 'Teléfono', key: 'telefono' as const },
+                        { label: 'Dirección', key: 'direccion' as const },
+                        { label: 'Ciudad', key: 'ciudad' as const },
+                        { label: 'Código postal', key: 'codigo_postal' as const },
+                        { label: 'Instagram', key: 'instagram' as const },
+                        { label: 'WhatsApp', key: 'whatsapp' as const },
+                      ]).filter(f => importData[f.key]).map(f => (
+                        <div key={f.key} className="import-field-row">
                           <span className="import-field-label">{f.label}</span>
-                          <span className="import-field-val">{f.val}</span>
+                          <input
+                            className="import-field-input"
+                            value={importData[f.key] ?? ''}
+                            onChange={e => setImportData(prev => prev ? { ...prev, [f.key]: e.target.value } : prev)}
+                          />
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {/* Servicios */}
+                  {/* Servicios — editables */}
                   {importData.servicios && importData.servicios.length > 0 && (
                     <div className="import-section">
                       <div className="import-section-head">
-                        <div className="import-section-head-left">✂️ Servicios</div>
+                        <div className="import-section-head-left">✂️ Servicios <span style={{fontSize:'11px',color:'var(--muted)',fontWeight:400}}>— editable</span></div>
                         <span className="import-count-badge">{importData.servicios.length}</span>
                       </div>
                       {importData.servicios.map((s, i) => (
                         <div key={i} className="import-svc-row">
-                          <span className="import-svc-name">{s.nombre}</span>
+                          <input
+                            className="import-field-input"
+                            style={{flex:1,minWidth:0,marginRight:'8px'}}
+                            value={s.nombre}
+                            onChange={e => setImportData(prev => {
+                              if (!prev?.servicios) return prev
+                              const svcs = [...prev.servicios]
+                              svcs[i] = { ...svcs[i], nombre: e.target.value }
+                              return { ...prev, servicios: svcs }
+                            })}
+                          />
                           <div className="import-svc-meta">
-                            {s.precio != null && <span className="import-svc-price">{s.precio}€</span>}
-                            {s.duracion != null && <span className="import-svc-dur">{s.duracion} min</span>}
+                            <input
+                              className="import-svc-input"
+                              type="number"
+                              min={0}
+                              placeholder="€"
+                              value={s.precio ?? ''}
+                              onChange={e => setImportData(prev => {
+                                if (!prev?.servicios) return prev
+                                const svcs = [...prev.servicios]
+                                svcs[i] = { ...svcs[i], precio: e.target.value ? parseFloat(e.target.value) : null }
+                                return { ...prev, servicios: svcs }
+                              })}
+                            />
+                            <input
+                              className="import-svc-input"
+                              type="number"
+                              min={1}
+                              placeholder="min"
+                              value={s.duracion ?? ''}
+                              onChange={e => setImportData(prev => {
+                                if (!prev?.servicios) return prev
+                                const svcs = [...prev.servicios]
+                                svcs[i] = { ...svcs[i], duracion: e.target.value ? parseInt(e.target.value) : null }
+                                return { ...prev, servicios: svcs }
+                              })}
+                            />
+                            <button className="import-svc-del" onClick={() => setImportData(prev => {
+                              if (!prev?.servicios) return prev
+                              return { ...prev, servicios: prev.servicios.filter((_, j) => j !== i) }
+                            })}>✕</button>
                           </div>
                         </div>
                       ))}
@@ -981,16 +1083,39 @@ export default function MiNegocio() {
                   )}
 
                   {/* Actions */}
-                  <div className="import-actions">
-                    <span className="import-model-badge">✦ {importModel}</span>
-                    <div className="import-actions-right">
-                      <button className="btn-import-cancel" onClick={() => { setImportModal(false); setImportData(null); setImportUrl('') }}>Cancelar</button>
-                      <button className="btn-import-apply" onClick={aplicarImport} disabled={importando}>
-                        {importando ? '⏳ Importando...' : `✓ Importar todo`}
+                  <div style={{marginTop:'6px'}}>
+                    {importModel && <div className="import-model-badge" style={{marginBottom:'10px'}}>✦ Extraído con {importModel}</div>}
+                    <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                      <button className="btn-import-cancel" onClick={() => { setImportModal(false); setImportData(null); setImportUrl('') }} disabled={importando}>
+                        Cancelar
+                      </button>
+                      <button className="btn-import-basic" onClick={() => aplicarImport(true)} disabled={importando}>
+                        📋 Solo info básica
+                      </button>
+                      <button className="btn-import-apply" onClick={() => aplicarImport(false)} disabled={importando} style={{flex:1, minWidth:'140px'}}>
+                        ✓ Importar todo
                       </button>
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* Progreso de importación */}
+              {importando && importSteps.length > 0 && (
+                <div className="import-progress">
+                  <div className="import-progress-title">Importando datos...</div>
+                  {importSteps.map((step, i) => (
+                    <div key={i} className={`import-step ${step.status}`}>
+                      <div className="import-step-icon">
+                        {step.status === 'pending' && '○'}
+                        {step.status === 'running' && '⟳'}
+                        {step.status === 'done' && '✓'}
+                        {step.status === 'error' && '✕'}
+                      </div>
+                      <span className="import-step-label">{step.label}</span>
+                    </div>
+                  ))}
+                </div>
               )}
 
               {/* Sin datos aún */}
