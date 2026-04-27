@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { DashboardShell } from '../DashboardShell'
@@ -104,6 +104,22 @@ export default function Facturacion() {
     fecha: hoy.toISOString().split('T')[0],
   })
   const [guardandoFactura, setGuardandoFactura] = useState(false)
+
+  // Chat fiscal IA
+  const [chatFiscalAbierto, setChatFiscalAbierto] = useState(false)
+  const [chatFiscalMsgs, setChatFiscalMsgs] = useState<{rol:'yo'|'ia';texto:string}[]>([])
+  const [chatFiscalInput, setChatFiscalInput] = useState('')
+  const [chatFiscalCargando, setChatFiscalCargando] = useState(false)
+  const chatFiscalEndRef = useRef<HTMLDivElement>(null)
+
+  // Análisis sentimiento reseñas
+  const [resenasCount, setResenasCount] = useState(0)
+  const [analizandoResenas, setAnalizandoResenas] = useState(false)
+  const [analisisResenas, setAnalisisResenas] = useState<{
+    positivo:number; neutro:number; negativo:number; sentimiento:string;
+    puntosFuertes:string[]; mejorar:string[]; sugerencias:string[]
+  } | null>(null)
+  const [analisisError, setAnalisisError] = useState('')
 
   // ── Data loaders ─────────────────────────────────────────────────────────────
 
@@ -219,6 +235,8 @@ export default function Facturacion() {
       if (!neg) { window.location.href = '/onboarding'; return }
       setNegocioId(neg.id); setNegocioNombre(neg.nombre)
       setNegocioDatos({ direccion: neg.direccion, ciudad: neg.ciudad, codigo_postal: neg.codigo_postal, telefono: neg.telefono })
+      const { count: rc } = await db.from('resenas').select('*', { count:'exact', head:true }).eq('negocio_id', neg.id).not('texto', 'is', null)
+      setResenasCount(rc || 0)
       await Promise.all([
         cargarFacturasAuto(neg.id, anio, mes),
         cargarGastos(neg.id, anio, mes),
@@ -814,6 +832,85 @@ export default function Facturacion() {
     setGastos(prev => prev.filter(g => g.id !== gasto.id))
   }
 
+  // ── IA helpers ───────────────────────────────────────────────────────────────
+
+  async function llamarGeminiFiscal(contents: {role:string;parts:{text:string}[]}[], systemPrompt: string): Promise<string> {
+    const body: Record<string,unknown> = {
+      contents,
+      generationConfig: { maxOutputTokens: 1200, temperature: 0.65 },
+    }
+    if (systemPrompt) body.system_instruction = { parts: [{ text: systemPrompt }] }
+    const res = await fetch('/api/gemini', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ''
+  }
+
+  function getFiscalSystemPrompt(): string {
+    return `Eres un experto en fiscalidad española 2026. Ayudas a autónomos y pequeños negocios con:
+- IVA (modelos 303, 390): plazos, cálculo de cuotas, correcciones
+- IRPF (modelos 130, 190, 111): pagos fraccionados, retenciones a empleados
+- Seguridad Social autónomos: cuotas, tarifa plana, cese de actividad
+- Deducciones fiscales: gastos deducibles, amortizaciones, suministros del hogar
+- Obligaciones contables: libros registro, facturas, plazos de conservación
+Responde siempre en español, de forma clara, práctica y con ejemplos concretos.
+Datos del negocio: "${negocioNombre}", ciudad: ${negocioDatos.ciudad || 'no especificada'}.
+⚠️ Al final de cada respuesta añade siempre: "Consulta con tu asesor fiscal antes de tomar decisiones."`
+  }
+
+  function abrirChatFiscal() {
+    setChatFiscalAbierto(true)
+    if (chatFiscalMsgs.length === 0) {
+      setChatFiscalMsgs([{ rol: 'ia', texto: '¡Hola! 💼 Soy tu asistente fiscal para 2026. Puedo ayudarte con IVA, IRPF, Seguridad Social, deducciones y cualquier obligación tributaria de tu negocio. ¿Qué necesitas saber?' }])
+    }
+  }
+
+  async function enviarMensajeFiscal(textoOverride?: string) {
+    const texto = textoOverride ?? chatFiscalInput.trim()
+    if (!texto || chatFiscalCargando) return
+    const nuevos = [...chatFiscalMsgs, { rol: 'yo' as const, texto }]
+    setChatFiscalMsgs(nuevos)
+    setChatFiscalInput('')
+    setChatFiscalCargando(true)
+    setTimeout(() => chatFiscalEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    try {
+      const contents = nuevos.map(m => ({
+        role: m.rol === 'yo' ? 'user' : 'model',
+        parts: [{ text: m.texto }],
+      }))
+      const resp = await llamarGeminiFiscal(contents, getFiscalSystemPrompt())
+      setChatFiscalMsgs(prev => [...prev, { rol: 'ia', texto: resp || 'Lo siento, no pude procesar tu consulta.' }])
+    } catch {
+      setChatFiscalMsgs(prev => [...prev, { rol: 'ia', texto: 'Error de conexión. Inténtalo de nuevo.' }])
+    }
+    setChatFiscalCargando(false)
+    setTimeout(() => chatFiscalEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }
+
+  async function analizarSentimiento() {
+    if (!negocioId) return
+    setAnalizandoResenas(true); setAnalisisError(''); setAnalisisResenas(null)
+    const { data: resenas } = await supabase.from('resenas').select('valoracion, texto').eq('negocio_id', negocioId).not('texto', 'is', null).limit(50)
+    if (!resenas || resenas.length === 0) {
+      setAnalisisError('No hay reseñas con texto para analizar.')
+      setAnalizandoResenas(false); return
+    }
+    const texto = (resenas as {valoracion:number;texto:string}[]).map((r, i) => `${i+1}. [${r.valoracion}★] "${r.texto}"`).join('\n')
+    const prompt = `Analiza estas ${resenas.length} reseñas de "${negocioNombre}" y responde SOLO con JSON válido (sin markdown):
+{"positivo":<0-100>,"neutro":<0-100>,"negativo":<0-100>,"sentimiento":"<excelente|muy bueno|bueno|regular|necesita mejoras>","puntosFuertes":["...","...","..."],"mejorar":["...","..."],"sugerencias":["acción concreta 1","acción concreta 2","acción concreta 3"]}
+Los porcentajes deben sumar exactamente 100. Basa los puntos en el texto real de las reseñas.
+RESEÑAS:\n${texto}`
+    try {
+      const raw = await llamarGeminiFiscal([{ role:'user', parts:[{ text: prompt }] }], '')
+      const m = raw.match(/\{[\s\S]*\}/)
+      if (!m) throw new Error('No JSON')
+      setAnalisisResenas(JSON.parse(m[0]))
+    } catch { setAnalisisError('No se pudo analizar. Inténtalo de nuevo.') }
+    setAnalizandoResenas(false)
+  }
+
   // ── JSX ──────────────────────────────────────────────────────────────────────
 
   return (
@@ -931,7 +1028,60 @@ export default function Facturacion() {
         .kit-card { background: linear-gradient(135deg, rgba(184,216,248,0.2), rgba(184,237,212,0.2)); border: 1px solid rgba(184,216,248,0.4); border-radius: 18px; padding: 22px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
         .resultado-pagar { background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; font-size: 16px; font-weight: 800; color: #92400E; margin-top: 12px; }
         .resultado-devolver { background: #D1FAE5; border: 1px solid #6EE7B7; border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; font-size: 16px; font-weight: 800; color: #065F46; margin-top: 12px; }
+        /* ── CHAT FISCAL ── */
+        .chat-fab { position:fixed; bottom:28px; right:24px; width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#1D4ED8,#6B4FD8); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 4px 20px rgba(29,78,216,0.45); z-index:200; transition:transform 0.18s,box-shadow 0.18s; }
+        .chat-fab:hover { transform:scale(1.1); box-shadow:0 6px 28px rgba(29,78,216,0.55); }
+        .chat-panel { position:fixed; bottom:96px; right:24px; width:380px; max-height:540px; background:white; border-radius:20px; box-shadow:0 8px 40px rgba(0,0,0,0.18); z-index:200; display:flex; flex-direction:column; overflow:hidden; animation:chatSlideIn 0.22s ease; }
+        @keyframes chatSlideIn { from{opacity:0;transform:translateY(14px) scale(0.97)} to{opacity:1;transform:none} }
+        .chat-hdr { background:linear-gradient(135deg,#1D4ED8,#6B4FD8); padding:14px 18px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+        .chat-hdr-info { display:flex; align-items:center; gap:10px; }
+        .chat-hdr-avatar { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+        .chat-hdr-name { font-size:14px; font-weight:700; color:white; }
+        .chat-hdr-sub { font-size:11px; color:rgba(255,255,255,0.75); }
+        .chat-close-btn { background:rgba(255,255,255,0.15); border:none; border-radius:50%; width:28px; height:28px; cursor:pointer; color:white; font-size:16px; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+        .chat-close-btn:hover { background:rgba(255,255,255,0.28); }
+        .chat-quick { padding:10px 12px; display:flex; flex-wrap:wrap; gap:6px; border-bottom:1px solid rgba(0,0,0,0.06); flex-shrink:0; background:#FAFBFF; }
+        .chat-quick-btn { padding:5px 11px; background:white; border:1.5px solid rgba(29,78,216,0.2); border-radius:100px; font-family:inherit; font-size:11px; font-weight:600; color:#1D4ED8; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+        .chat-quick-btn:hover { background:#EFF6FF; border-color:#1D4ED8; }
+        .chat-msgs { flex:1; overflow-y:auto; padding:12px 12px 6px; display:flex; flex-direction:column; gap:9px; }
+        .chat-msg-row { display:flex; flex-direction:column; }
+        .chat-msg-row.yo { align-items:flex-end; }
+        .chat-msg-row.ia { align-items:flex-start; }
+        .chat-bubble { max-width:82%; padding:9px 13px; border-radius:14px; font-size:13px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+        .chat-bubble.yo { background:linear-gradient(135deg,#1D4ED8,#6B4FD8); color:white; border-bottom-right-radius:4px; }
+        .chat-bubble.ia { background:#F3F4F6; color:#111827; border-bottom-left-radius:4px; }
+        .chat-typing { display:flex; gap:5px; padding:9px 13px; background:#F3F4F6; border-radius:14px; border-bottom-left-radius:4px; align-self:flex-start; }
+        .chat-dot { width:6px; height:6px; border-radius:50%; background:#9CA3AF; animation:chatDot 1.4s infinite; }
+        .chat-dot:nth-child(2){animation-delay:0.2s} .chat-dot:nth-child(3){animation-delay:0.4s}
+        @keyframes chatDot{0%,80%,100%{transform:scale(0.7);opacity:0.5}40%{transform:scale(1);opacity:1}}
+        .chat-input-row { padding:10px 12px; border-top:1px solid rgba(0,0,0,0.06); display:flex; gap:8px; align-items:center; flex-shrink:0; }
+        .chat-input { flex:1; border:1.5px solid rgba(0,0,0,0.1); border-radius:100px; padding:8px 14px; font-family:inherit; font-size:13px; outline:none; transition:border-color 0.15s; }
+        .chat-input:focus { border-color:#1D4ED8; }
+        .chat-send-btn { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#1D4ED8,#6B4FD8); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform 0.15s; }
+        .chat-send-btn:hover { transform:scale(1.08); }
+        .chat-send-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+        /* ── SENTIMENT ── */
+        .sentiment-card { background:white; border:1px solid var(--border); border-radius:18px; padding:24px; margin-bottom:24px; }
+        .sentiment-bars { display:flex; flex-direction:column; gap:10px; margin:18px 0; }
+        .sentiment-bar-row { display:flex; align-items:center; gap:10px; }
+        .sentiment-bar-label { width:80px; font-size:13px; font-weight:600; color:var(--text2); flex-shrink:0; }
+        .sentiment-bar-track { flex:1; height:10px; border-radius:100px; background:var(--bg); overflow:hidden; }
+        .sentiment-bar-fill { height:100%; border-radius:100px; transition:width 0.6s ease; }
+        .sentiment-bar-pct { width:36px; font-size:12px; font-weight:700; text-align:right; flex-shrink:0; }
+        .sentiment-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:100px; font-size:13px; font-weight:700; margin-bottom:10px; }
+        .sentiment-list { list-style:none; display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+        .sentiment-list li { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--text2); line-height:1.5; }
+        .sentiment-list li::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:6px; }
+        .sentiment-list.fuerte li::before { background:#10B981; }
+        .sentiment-list.mejorar li::before { background:#F59E0B; }
+        .sentiment-list.suger li::before { background:#1D4ED8; }
+        .sentiment-section-title { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; margin-top:16px; }
+        .btn-analizar { display:flex; align-items:center; gap:8px; padding:11px 20px; background:linear-gradient(135deg,#1D4ED8,#6B4FD8); color:white; border:none; border-radius:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
+        .btn-analizar:hover:not(:disabled) { opacity:0.88; }
+        .btn-analizar:disabled { background:var(--muted); cursor:not-allowed; }
         @media (max-width: 768px) {
+          .chat-panel { width:calc(100vw - 32px); right:16px; bottom:88px; }
+          .chat-fab { bottom:20px; right:16px; }
           .content { padding: 16px; }
           .modelos-grid { grid-template-columns: 1fr; }
           .datos-trim-grid { grid-template-columns: 1fr 1fr; }
@@ -1496,6 +1646,163 @@ export default function Facturacion() {
           </div>
         </div>
       )}
+
+      {/* ── ANÁLISIS SENTIMIENTO RESEÑAS ── */}
+      <div className="section-block">
+        <div className="section-header">
+          <div>
+            <div className="section-title">Análisis de reseñas con IA</div>
+            <div className="section-sub">Gemini analiza el tono y sentimiento de tus {resenasCount} reseña{resenasCount !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        {!analisisResenas && !analizandoResenas && (
+          <div className="sentiment-card" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap'}}>
+            <div>
+              <div style={{fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:4}}>¿Qué dicen tus clientes?</div>
+              <div style={{fontSize:13, color:'var(--muted)'}}>Detecta puntos fuertes, áreas de mejora y acciones concretas a partir de tus reseñas.</div>
+            </div>
+            <button
+              className="btn-analizar"
+              onClick={analizarSentimiento}
+              disabled={analizandoResenas || resenasCount === 0}
+            >
+              {resenasCount === 0 ? '0 reseñas' : '✨ Analizar reseñas'}
+            </button>
+          </div>
+        )}
+        {analizandoResenas && (
+          <div className="sentiment-card" style={{display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:36}}>
+            <div className="spinner" />
+            <div style={{fontSize:14, fontWeight:700}}>Analizando {resenasCount} reseñas con Gemini...</div>
+          </div>
+        )}
+        {analisisError && (
+          <div style={{padding:'12px 16px', background:'rgba(254,226,226,0.5)', border:'1px solid #FCA5A5', borderRadius:12, fontSize:13, color:'#DC2626', marginBottom:12}}>
+            {analisisError}
+          </div>
+        )}
+        {analisisResenas && (
+          <div className="sentiment-card">
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
+              <span className="sentiment-badge" style={{
+                background: analisisResenas.sentimiento === 'excelente' || analisisResenas.sentimiento === 'muy bueno' ? '#D1FAE5' : analisisResenas.sentimiento === 'bueno' ? '#DBEAFE' : '#FEF3C7',
+                color: analisisResenas.sentimiento === 'excelente' || analisisResenas.sentimiento === 'muy bueno' ? '#065F46' : analisisResenas.sentimiento === 'bueno' ? '#1D4ED8' : '#92400E',
+              }}>
+                {analisisResenas.sentimiento === 'excelente' ? '🏆' : analisisResenas.sentimiento === 'muy bueno' ? '⭐' : analisisResenas.sentimiento === 'bueno' ? '👍' : '💡'} Sentimiento general: {analisisResenas.sentimiento}
+              </span>
+              <button onClick={() => { setAnalisisResenas(null); setAnalisisError('') }} style={{background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, fontWeight:600}}>Nuevo análisis</button>
+            </div>
+            <div className="sentiment-bars">
+              {[
+                { label:'Positivo', pct: analisisResenas.positivo, color:'#10B981' },
+                { label:'Neutro',   pct: analisisResenas.neutro,   color:'#F59E0B' },
+                { label:'Negativo', pct: analisisResenas.negativo,  color:'#EF4444' },
+              ].map(b => (
+                <div key={b.label} className="sentiment-bar-row">
+                  <span className="sentiment-bar-label">{b.label}</span>
+                  <div className="sentiment-bar-track">
+                    <div className="sentiment-bar-fill" style={{width:`${b.pct}%`, background:b.color}} />
+                  </div>
+                  <span className="sentiment-bar-pct" style={{color:b.color}}>{b.pct}%</span>
+                </div>
+              ))}
+            </div>
+            {analisisResenas.puntosFuertes?.length > 0 && (
+              <>
+                <div className="sentiment-section-title">Puntos fuertes</div>
+                <ul className="sentiment-list fuerte">
+                  {analisisResenas.puntosFuertes.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+              </>
+            )}
+            {analisisResenas.mejorar?.length > 0 && (
+              <>
+                <div className="sentiment-section-title">Áreas de mejora</div>
+                <ul className="sentiment-list mejorar">
+                  {analisisResenas.mejorar.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+              </>
+            )}
+            {analisisResenas.sugerencias?.length > 0 && (
+              <>
+                <div className="sentiment-section-title">Acciones sugeridas</div>
+                <ul className="sentiment-list suger">
+                  {analisisResenas.sugerencias.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── CHAT FAB ── */}
+      <button className="chat-fab" onClick={abrirChatFiscal} title="Asistente fiscal IA">💼</button>
+
+      {/* ── CHAT PANEL ── */}
+      {chatFiscalAbierto && (
+        <div className="chat-panel">
+          <div className="chat-hdr">
+            <div className="chat-hdr-info">
+              <div className="chat-hdr-avatar">⚖️</div>
+              <div>
+                <div className="chat-hdr-name">Asistente Fiscal</div>
+                <div className="chat-hdr-sub">Fiscalidad española 2026 · Gemini</div>
+              </div>
+            </div>
+            <button className="chat-close-btn" onClick={() => setChatFiscalAbierto(false)}>✕</button>
+          </div>
+
+          {/* Preguntas rápidas */}
+          <div className="chat-quick">
+            {[
+              '¿Cuándo presentar el modelo 303?',
+              '¿Qué gastos puedo deducir?',
+              '¿Cuánto IRPF retengo a empleados?',
+              '¿Cuándo darme de alta como autónomo?',
+              '¿Qué es la pluriactividad?',
+            ].map(q => (
+              <button key={q} className="chat-quick-btn" onClick={() => enviarMensajeFiscal(q)}>{q}</button>
+            ))}
+          </div>
+
+          {/* Mensajes */}
+          <div className="chat-msgs">
+            {chatFiscalMsgs.map((m, i) => (
+              <div key={i} className={`chat-msg-row ${m.rol}`}>
+                <div className={`chat-bubble ${m.rol}`}>{m.texto}</div>
+              </div>
+            ))}
+            {chatFiscalCargando && (
+              <div className="chat-typing">
+                <div className="chat-dot" /><div className="chat-dot" /><div className="chat-dot" />
+              </div>
+            )}
+            <div ref={chatFiscalEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="chat-input-row">
+            <input
+              className="chat-input"
+              placeholder="Pregunta sobre fiscalidad..."
+              value={chatFiscalInput}
+              onChange={e => setChatFiscalInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && enviarMensajeFiscal()}
+              disabled={chatFiscalCargando}
+            />
+            <button
+              className="chat-send-btn"
+              onClick={() => enviarMensajeFiscal()}
+              disabled={!chatFiscalInput.trim() || chatFiscalCargando}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
     </DashboardShell>
   )
 }
