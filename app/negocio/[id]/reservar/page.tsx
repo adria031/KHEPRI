@@ -7,6 +7,15 @@ import { supabase } from '../../../lib/supabase'
 import { sanitizeField } from '../../../lib/sanitize'
 
 const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
+
+async function verifyCaptcha(token: string): Promise<boolean> {
+  const res = await fetch('/api/verify-captcha', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  return res.ok
+}
 import {
   verificarDisponibilidad,
   crearReserva,
@@ -361,6 +370,8 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     if (!id) { setError('Error: negocio no identificado'); return }
     if (!captchaToken) { setError('Por favor completa la verificación de seguridad'); return }
     setError(''); setEnviando(true)
+    const captchaOk = await verifyCaptcha(captchaToken)
+    if (!captchaOk) { setError('Verificación de seguridad fallida. Inténtalo de nuevo.'); setEnviando(false); captchaRef.current?.resetCaptcha(); setCaptchaToken(''); return }
 
     const nombreSanitized  = sanitizeField(nombre, 100)
     const telefonoSanitized = sanitizeField(telefono, 20)

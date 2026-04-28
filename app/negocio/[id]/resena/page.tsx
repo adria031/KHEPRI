@@ -7,6 +7,15 @@ import { sanitizeField } from '../../../lib/sanitize'
 
 const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
 
+async function verifyCaptcha(token: string): Promise<boolean> {
+  const res = await fetch('/api/verify-captcha', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  return res.ok
+}
+
 // ─── Inner component (needs useSearchParams inside Suspense) ──────────────────
 
 function ResenaForm() {
@@ -76,6 +85,8 @@ function ResenaForm() {
     if (!comentario.trim()){ setError('Escribe un comentario'); return }
     if (!captchaToken)     { setError('Por favor completa la verificación de seguridad'); return }
     setError(''); setEstado('enviando')
+    const captchaOk = await verifyCaptcha(captchaToken)
+    if (!captchaOk) { setError('Verificación de seguridad fallida. Inténtalo de nuevo.'); setEstado('formulario'); captchaRef.current?.resetCaptcha(); setCaptchaToken(''); return }
 
     const { error: insertErr } = await supabase.from('resenas').insert({
       negocio_id:     negocioId,

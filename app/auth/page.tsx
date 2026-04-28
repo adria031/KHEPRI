@@ -8,6 +8,15 @@ import { sanitizeField } from '../lib/sanitize'
 
 const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
 
+async function verifyCaptcha(token: string): Promise<boolean> {
+  const res = await fetch('/api/verify-captcha', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+  return res.ok
+}
+
 function KhepriLogo() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -49,6 +58,8 @@ function AuthForm() {
     if (!email || !password) { setMensaje('Por favor rellena todos los campos.'); setEsError(true); return }
     if (!captchaToken) { setMensaje('Por favor completa la verificación de seguridad.'); setEsError(true); return }
     setCargando(true); setMensaje(''); setEsError(false)
+    const captchaOk = await verifyCaptcha(captchaToken)
+    if (!captchaOk) { setMensaje('Verificación de seguridad fallida. Inténtalo de nuevo.'); setEsError(true); setCargando(false); captchaRef.current?.resetCaptcha(); setCaptchaToken(''); return }
     await ensureSignedOut()
 
     const emailSanitized = sanitizeField(email, 254)
