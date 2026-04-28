@@ -1087,6 +1087,12 @@ RESEÑAS:\n${texto}`
           .datos-trim-grid { grid-template-columns: 1fr 1fr; }
           .det-grid { grid-template-columns: 1fr; }
           .grid2 { grid-template-columns: 1fr; }
+          .modal { width: 95vw; max-width:95vw; }
+          .modal-body, .modal-header, .modal-footer { padding-left:16px; padding-right:16px; }
+          input, select, textarea { font-size:16px !important; }
+          button { min-height:40px; }
+          .mes-nav-btn { min-height:44px; min-width:44px; }
+          .trim-select { font-size:16px; }
         }
       `}</style>
 

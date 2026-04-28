@@ -471,9 +471,9 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
         .resumen-label { color: #6B7280; font-weight: 500; }
         .resumen-val { color: #111827; font-weight: 700; }
         /* Botones nav */
-        .btn-primary { width: 100%; padding: 15px; background: #111827; color: white; border: none; border-radius: 12px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 20px; }
+        .btn-primary { width: 100%; padding: 15px; background: #111827; color: white; border: none; border-radius: 12px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 20px; min-height: 44px; }
         .btn-primary:disabled { background: #9CA3AF; cursor: not-allowed; }
-        .btn-back { background: none; border: none; font-family: inherit; font-size: 14px; font-weight: 600; color: #6B7280; cursor: pointer; padding: 4px 0; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+        .btn-back { background: none; border: none; font-family: inherit; font-size: 14px; font-weight: 600; color: #6B7280; cursor: pointer; padding: 8px 0; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; min-height: 44px; }
         .error-msg { background: rgba(251,207,232,0.3); color: #B5467A; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-top: 12px; }
         /* Worker avatar circle */
         .worker-circle { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; flex-shrink: 0; letter-spacing: -0.5px; }
@@ -539,6 +539,10 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
         .chat-typing span:nth-child(3) { animation-delay: 0.4s; }
         @keyframes tb { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-4px)} }
         @media (max-width: 400px) { .chat-panel { width: calc(100vw - 32px); right: 16px; } }
+        @media (max-width: 768px) {
+          input, select, textarea { font-size: 16px !important; }
+          .page { padding: 16px 16px 48px; }
+        }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
@@ -762,8 +766,9 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                             />
                             <button
                               onClick={inscribirEspera}
+                              onTouchEnd={(e) => { e.preventDefault(); inscribirEspera() }}
                               disabled={enviandoEspera || !nombre.trim() || !email.trim()}
-                              style={{padding:'13px', background:'#92400E', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor:'pointer', opacity: enviandoEspera ? 0.6 : 1}}
+                              style={{padding:'13px', background:'#92400E', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor:'pointer', opacity: enviandoEspera ? 0.6 : 1, minHeight:'44px'}}
                             >
                               {enviandoEspera ? 'Apuntando...' : '⏳ Apuntarme a la lista de espera'}
                             </button>
@@ -771,7 +776,8 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                         ) : (
                           <button
                             onClick={() => setListaEsperaMode(true)}
-                            style={{width:'100%', padding:'13px', background:'#92400E', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor:'pointer'}}
+                            onTouchEnd={(e) => { e.preventDefault(); setListaEsperaMode(true) }}
+                            style={{width:'100%', padding:'13px', background:'#92400E', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor:'pointer', minHeight:'44px'}}
                           >
                             ⏳ Apuntarme a la lista de espera
                           </button>
@@ -877,6 +883,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 <button
                   className="chat-send"
                   onClick={enviarChatMsg}
+                  onTouchEnd={(e) => { e.preventDefault(); enviarChatMsg() }}
                   disabled={chatEnviando || !chatInput.trim()}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -886,7 +893,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
               </div>
             </div>
           )}
-          <button className="chat-fab" onClick={abrirChat} title="Reservar con asistente IA">
+          <button className="chat-fab" onClick={abrirChat} onTouchEnd={(e) => { e.preventDefault(); abrirChat() }} title="Reservar con asistente IA">
             {chatOpen ? '×' : '🤖'}
           </button>
         </>

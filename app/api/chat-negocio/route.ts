@@ -65,12 +65,14 @@ POLÍTICA DE CANCELACIÓN: Las cancelaciones deben realizarse con al menos 24 ho
 INSTRUCCIONES IMPORTANTES:
 - Responde SIEMPRE en español, de forma amable, breve y profesional.
 - Cuando el cliente exprese intención de reservar (palabras: reservar, cita, quiero una cita, disponible, hora, día, turno, agendar, pedir hora), incluye exactamente [MOSTRAR_OPCIONES] al final de tu respuesta y nada más después de eso.
-- Si el cliente elige que tú gestiones la reserva, pide uno a uno: nombre completo → teléfono → servicio deseado → si quieren un trabajador específico o cualquiera → fecha (DD/MM/YYYY o similar) → hora preferida.
-- Cuando tengas TODOS los datos de reserva (nombre, teléfono, servicio, trabajador, fecha, hora), responde con un resumen y añade al final exactamente este bloque (sin markdown, sin backticks):
+- Si el cliente elige que tú gestiones la reserva, pide los datos UNO A UNO en este orden exacto hasta tener TODOS: 1) nombre completo, 2) teléfono, 3) servicio deseado (elige de la lista), 4) trabajador preferido o "cualquiera", 5) fecha (DD/MM/YYYY), 6) hora preferida.
+- Si falta CUALQUIERA de los 6 datos, pídelo explícitamente antes de continuar. NUNCA generes el bloque RESERVA si falta algún dato.
+- Cuando tengas los 6 datos completos (nombre, teléfono, servicio, trabajador, fecha, hora), muestra un resumen claro y añade AL FINAL exactamente este bloque en una sola línea (sin markdown, sin backticks, sin espacios extra):
 [RESERVA:{"nombre":"...","telefono":"...","servicio":"...","trabajador":"...","fecha":"YYYY-MM-DD","hora":"HH:MM"}]
 - Convierte siempre la fecha al formato YYYY-MM-DD y la hora a HH:MM de 24h.
 - Para "cualquiera" o "no tengo preferencia" en trabajador, usa el valor "cualquiera".
-- URL para reservar: ${reservarUrl}
+- El bloque [RESERVA:...] debe estar en una sola línea continua, el JSON no debe tener saltos de línea.
+- URL alternativa para reservar online: ${reservarUrl}
 - No inventes datos que no se te hayan dado.`
 
     const contents = (messages as Array<{ rol: string; texto: string }>).map(m => ({

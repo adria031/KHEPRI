@@ -390,18 +390,20 @@ export default function FichaNegocio() {
         .mobile-cta a { display:flex; align-items:center; justify-content:center; gap:8px; flex:1; padding:15px; background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border-radius:14px; font-family:inherit; font-size:16px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(99,102,241,0.35); }
 
         @media (max-width: 768px) {
-          .nav { padding:12px 20px; }
+          .nav { padding:12px 16px; }
           .btn-cita-nav { display:none; }
-          .btn-fav { display:none; }
-          .hero { height:260px; }
+          .btn-fav { display:flex; }
+          .hero { height:240px; }
           .wrap { padding:0 16px; }
-          .profile-name { font-size:24px; }
-          .logo-bubble { width:64px; height:64px; margin-top:-36px; }
+          .profile-name { font-size:22px; }
+          .logo-bubble { width:60px; height:60px; margin-top:-34px; }
           .page-grid { grid-template-columns:1fr; }
           .sticky-col { position:static; display:none; }
           .mobile-cta { display:block; }
           body { padding-bottom:88px; }
-          .card { padding:20px; }
+          .card { padding:16px; }
+          input, select, textarea { font-size:16px !important; }
+          .btn-fav, .btn-cita-nav { min-height:44px; min-width:44px; }
         }
         /* ── DARK MODE ── */
         html.dark, html.dark body { background:#0d0d0d !important; color:#f9fafb !important; }
@@ -809,10 +811,18 @@ export default function FichaNegocio() {
           <div className="chat-msgs">
             {mensajes.map((m, i) => {
               const tieneOpciones = m.rol === 'bot' && m.texto.includes('[MOSTRAR_OPCIONES]')
-              const reservaMatch = m.rol === 'bot' ? m.texto.match(/\[RESERVA:(\{[^}]+(?:\{[^}]*\}[^}]*)*\})\]/) : null
+              const reservaMatch = m.rol === 'bot' ? (() => {
+                const idx = m.texto.indexOf('[RESERVA:')
+                if (idx === -1) return null
+                const jsonStart = idx + '[RESERVA:'.length
+                const jsonEnd = m.texto.indexOf(']', jsonStart)
+                if (jsonEnd === -1) return null
+                const jsonStr = m.texto.slice(jsonStart, jsonEnd)
+                try { return [null, jsonStr] as [null, string] } catch { return null }
+              })() : null
               const textoLimpio = m.texto
                 .replace('[MOSTRAR_OPCIONES]', '')
-                .replace(/\[RESERVA:\{[^}]+(?:\{[^}]*\}[^}]*)*\}\]/g, '')
+                .replace(/\[RESERVA:\{[^[\]]*\}\]/g, '')
                 .trim()
 
               return (

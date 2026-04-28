@@ -30,7 +30,7 @@ export default function NuevoNegocio() {
   async function crear() {
     if (!nombre.trim()) { setError('El nombre del negocio es obligatorio.'); return }
     if (!tipo) { setError('Selecciona el tipo de negocio.'); return }
-    if (!userId) return
+    if (!userId) { setError('Error de sesión. Recarga la página e inténtalo de nuevo.'); return }
     setGuardando(true); setError('')
 
     const { data, error: err } = await supabase

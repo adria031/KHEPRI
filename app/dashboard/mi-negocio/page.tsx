@@ -503,6 +503,9 @@ export default function MiNegocio() {
         .btn-import-basic:hover:not(:disabled) { background: var(--bg); border-color: var(--text); color: var(--text); }
         .btn-import-basic:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        /* STICKY SAVE MOBILE */
+        .save-bar-mobile { display: none; }
+        .save-bar-desktop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); }
           .sidebar.open { transform: translateX(0); }
@@ -510,16 +513,37 @@ export default function MiNegocio() {
           .hamburger { display: flex; }
           .main { margin-left: 0; }
           .topbar { padding: 12px 16px; }
-          .content { padding: 16px; }
+          .content { padding: 16px; padding-bottom: 88px; }
           .grid2, .grid3 { grid-template-columns: 1fr; }
           .fotos-grid { grid-template-columns: repeat(3, 1fr); }
           .import-url-row { flex-direction: column; }
           .import-field-row { grid-template-columns: 90px 1fr; }
+          .field input, .field textarea, .import-url-input, .import-field-input { font-size: 16px !important; }
+          .save-bar-mobile { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid rgba(0,0,0,0.1); padding: 12px 16px; z-index: 50; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
+          .save-bar-desktop { display: none; }
+          .btn-guardar { min-height: 44px; }
+          .import-modal { width: 95vw !important; max-width: 95vw !important; }
+          button { min-height: 40px; }
+          .btn-importar-abrir { width: 100%; }
         }
       `}</style>
 
-            <div className="page-title">Mi negocio</div>
-            <div className="page-sub">Así te verán los clientes en la app</div>
+            <div className="save-bar-desktop">
+              <div>
+                <div className="page-title">Mi negocio</div>
+                <div className="page-sub" style={{marginBottom:0}}>Así te verán los clientes en la app</div>
+              </div>
+              {!cargando && (
+                <button
+                  className={`btn-guardar${guardado ? ' btn-guardado' : ''}`}
+                  onClick={guardar}
+                  disabled={guardando}
+                >
+                  {guardando ? 'Guardando...' : guardado ? '✓ Guardado' : '💾 Guardar cambios'}
+                </button>
+              )}
+            </div>
+            {apiError && <div style={{padding:'10px 14px', background:'rgba(254,226,226,0.6)', border:'1px solid #FCA5A5', borderRadius:10, fontSize:13, color:'#DC2626', marginBottom:12}}>{apiError}</div>}
 
             {negocioId && (
               <Link href={`/negocio/${negocioId}`} className="preview-link" target="_blank">
@@ -1127,6 +1151,21 @@ export default function MiNegocio() {
 
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Sticky save bar (mobile only) */}
+      {!cargando && (
+        <div className="save-bar-mobile">
+          {apiError && <span style={{fontSize:13, color:'#DC2626', flex:1, marginRight:10}}>{apiError}</span>}
+          <button
+            className={`btn-guardar${guardado ? ' btn-guardado' : ''}`}
+            onClick={guardar}
+            disabled={guardando}
+            style={{flex:1, minHeight:44}}
+          >
+            {guardando ? 'Guardando...' : guardado ? '✓ Guardado' : '💾 Guardar cambios'}
+          </button>
         </div>
       )}
     </DashboardShell>
