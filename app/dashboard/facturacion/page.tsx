@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
+import { descontarCreditos } from '../../lib/creditos'
 import { DashboardShell } from '../DashboardShell'
 
 /*
@@ -882,6 +883,8 @@ Datos del negocio: "${negocioNombre}", ciudad: ${negocioDatos.ciudad || 'no espe
       }))
       const resp = await llamarGeminiFiscal(contents, getFiscalSystemPrompt())
       setChatFiscalMsgs(prev => [...prev, { rol: 'ia', texto: resp || 'Lo siento, no pude procesar tu consulta.' }])
+      // Descontar 5 créditos por consulta fiscal
+      if (negocioId) descontarCreditos(negocioId, 5, 'consulta_fiscal').catch(() => {})
     } catch {
       setChatFiscalMsgs(prev => [...prev, { rol: 'ia', texto: 'Error de conexión. Inténtalo de nuevo.' }])
     }
@@ -907,6 +910,8 @@ RESEÑAS:\n${texto}`
       const m = raw.match(/\{[\s\S]*\}/)
       if (!m) throw new Error('No JSON')
       setAnalisisResenas(JSON.parse(m[0]))
+      // Descontar 3 créditos por análisis de sentimiento
+      descontarCreditos(negocioId, 3, 'analisis_resena').catch(() => {})
     } catch { setAnalisisError('No se pudo analizar. Inténtalo de nuevo.') }
     setAnalizandoResenas(false)
   }

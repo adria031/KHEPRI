@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { descontarCreditos } from '../../lib/creditos'
 import { LanguageSelector } from '../../components/LanguageSelector'
 
 function KhepriLogo() {
@@ -245,6 +246,8 @@ export default function FichaNegocio() {
         rol: 'bot',
         texto: `✅ ¡Reserva confirmada!\n\n👤 ${datos.nombre}\n📞 ${datos.telefono}\n✂️ ${datos.servicio}\n📅 ${datos.fecha} a las ${datos.hora}\n\nTe esperamos. ¡Hasta pronto!`
       }])
+      // Descontar 3 créditos por reserva gestionada por chatbot
+      descontarCreditos(id, 3, 'chatbot_reserva').catch(() => {})
     }
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }

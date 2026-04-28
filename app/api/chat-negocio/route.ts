@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { geminiGenerate } from '../../lib/gemini'
+import { descontarCreditos } from '../../lib/creditos'
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -112,6 +113,9 @@ ${LANG_INSTRUCTIONS[lang]}
 
     const d = result.data as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
     const respuesta = d?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Lo siento, no pude procesar tu mensaje.'
+
+    // Descontar 1 crédito por respuesta del chatbot (fire-and-forget)
+    descontarCreditos(negocioId, 1, 'chatbot_respuesta', sb).catch(() => {})
 
     return NextResponse.json({ respuesta })
   } catch (e) {

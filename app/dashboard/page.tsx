@@ -9,6 +9,7 @@ import {
 import { getSessionClient, supabase } from '../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
 import { DashboardShell } from './DashboardShell'
+import { obtenerCreditos } from '../lib/creditos'
 
 function isoLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -110,6 +111,9 @@ export default function Dashboard() {
   const [servicioTop, setServicioTop]   = useState('')
   const [trabajadorTop, setTrabajadorTop] = useState('')
 
+  // Créditos IA
+  const [creditos, setCreditos] = useState<{ totales: number; usados: number; disponibles: number; pct: number } | null>(null)
+
   // Notificaciones realtime
   const [notifs, setNotifs] = useState<Notif[]>([])
 
@@ -134,6 +138,9 @@ export default function Dashboard() {
       const modoTodos = (!savedId || savedId === 'todos') && todosNegs.length > 1
       setNegocio(modoTodos ? null : neg)
       const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
+
+      // Cargar créditos del negocio activo
+      obtenerCreditos(neg.id).then(c => { if (c) setCreditos(c) }).catch(() => {})
 
       const now = new Date()
       const hoyISO          = isoLocal(now)
@@ -428,6 +435,18 @@ export default function Dashboard() {
           .kpi-val { font-size: 22px; }
           .db-greet-title { font-size: 20px; }
         }
+
+        /* ── Créditos IA ── */
+        .cr-bar-wrap { background: white; border: 1px solid #E8ECF0; border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .cr-bar-icon { font-size: 22px; flex-shrink: 0; }
+        .cr-bar-body { flex: 1; min-width: 0; }
+        .cr-bar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .cr-bar-label { font-size: 13px; font-weight: 700; color: #111827; }
+        .cr-bar-nums { font-size: 12px; color: #6B7280; font-weight: 600; }
+        .cr-bar-track { height: 8px; border-radius: 100px; background: #F3F4F6; overflow: hidden; }
+        .cr-bar-fill { height: 100%; border-radius: 100px; transition: width 0.6s ease; }
+        .cr-bar-warn { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 10px; background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 100px; font-size: 11px; font-weight: 700; color: #92400E; }
+        .cr-bar-ok { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 10px; background: #ECFDF5; border: 1px solid #6EE7B7; border-radius: 100px; font-size: 11px; font-weight: 700; color: #065F46; }
       `}</style>
 
       <div className="db-wrap">
@@ -453,6 +472,37 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {/* ── Créditos IA ── */}
+        {creditos && (
+          <div className="cr-bar-wrap">
+            <div className="cr-bar-icon">⚡</div>
+            <div className="cr-bar-body">
+              <div className="cr-bar-header">
+                <span className="cr-bar-label">Créditos IA disponibles</span>
+                <span className="cr-bar-nums">{creditos.disponibles} / {creditos.totales}</span>
+              </div>
+              <div className="cr-bar-track">
+                <div
+                  className="cr-bar-fill"
+                  style={{
+                    width: `${creditos.pct}%`,
+                    background: creditos.pct > 50
+                      ? 'linear-gradient(90deg,#34D399,#10B981)'
+                      : creditos.pct > 20
+                        ? 'linear-gradient(90deg,#FBBF24,#F59E0B)'
+                        : 'linear-gradient(90deg,#F87171,#EF4444)',
+                  }}
+                />
+              </div>
+              {creditos.pct <= 20 ? (
+                <span className="cr-bar-warn">⚠️ Quedan pocos créditos — renueva tu plan</span>
+              ) : (
+                <span className="cr-bar-ok">✓ {creditos.pct}% disponible</span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── KPIs ── */}
         <div className="db-kpis">

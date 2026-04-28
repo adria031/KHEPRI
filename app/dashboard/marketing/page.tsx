@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase, getSessionClient } from '../../lib/supabase'
+import { descontarCreditos } from '../../lib/creditos'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { DashboardShell } from '../DashboardShell'
 
@@ -261,6 +262,8 @@ IMAGEN:
         if (current) sec[current] += (sec[current] ? '\n' : '') + line
       }
       setPostPartes({ texto: sec.texto.trim(), hashtags: sec.hashtags.trim(), imagen: sec.imagen.trim() })
+      // Descontar 5 créditos por post de marketing
+      if (negocioId) descontarCreditos(negocioId, 5, 'post_marketing').catch(() => {})
     } catch (e: any) { setIaError(e.message) }
     finally { setGenerando(false) }
   }
@@ -295,6 +298,8 @@ OPCIÓN 2:
       const res = await llamarGemini(prompt)
       setReseñaResultado(res)
       setReseñaEditable(res)
+      // Descontar 3 créditos por análisis/respuesta de reseña
+      if (negocioId) descontarCreditos(negocioId, 3, 'analisis_resena').catch(() => {})
     } catch (e: any) { setIaError(e.message) }
     finally { setGenerando(false) }
   }
