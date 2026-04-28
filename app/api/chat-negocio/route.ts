@@ -14,8 +14,9 @@ const diasLabels: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, negocioId } = await req.json()
+    const { messages, negocioId, idioma = 'es' } = await req.json()
     if (!negocioId) return NextResponse.json({ error: 'negocioId requerido' }, { status: 400 })
+    const lang: 'es' | 'ca' | 'en' = idioma === 'ca' ? 'ca' : idioma === 'en' ? 'en' : 'es'
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khepria.vercel.app'
 
@@ -41,39 +42,55 @@ export async function POST(req: NextRequest) {
       ? trabajadores.map(t => `- ${t.nombre}${t.especialidad ? ` (${t.especialidad})` : ''}`).join('\n')
       : 'No especificado'
 
-    const systemPrompt = `Eres el asistente virtual de ${neg?.nombre ?? 'este negocio'}, un negocio de ${neg?.tipo ?? 'servicios'} en Khepria.
+    const LANG_INSTRUCTIONS: Record<string, string> = {
+      es: `- Responde SIEMPRE en español, de forma amable, breve y profesional.
+- Cuando el cliente exprese intención de reservar (palabras: reservar, cita, quiero una cita, disponible, hora, día, turno, agendar, pedir hora), incluye exactamente [MOSTRAR_OPCIONES] al final de tu respuesta.
+- Si el cliente elige gestión por bot, pide UNO A UNO: 1) nombre completo, 2) teléfono, 3) servicio, 4) trabajador o "cualquiera", 5) fecha (DD/MM/YYYY), 6) hora.`,
+      ca: `- Respon SEMPRE en català, de forma amable, breu i professional.
+- Quan el client expressi intenció de reservar (paraules: reservar, cita, hora, torn, agenda), inclou exactament [MOSTRAR_OPCIONES] al final de la teva resposta.
+- Si el client tria gestió pel bot, demana UN A UN: 1) nom complet, 2) telèfon, 3) servei, 4) treballador o "qualsevol", 5) data (DD/MM/YYYY), 6) hora.`,
+      en: `- ALWAYS respond in English, in a friendly, brief and professional manner.
+- When the client expresses intent to book (words: book, appointment, available, slot, schedule, reserve), include exactly [MOSTRAR_OPCIONES] at the end of your response.
+- If the client chooses bot-managed booking, ask ONE BY ONE: 1) full name, 2) phone number, 3) desired service, 4) preferred worker or "any", 5) date (DD/MM/YYYY), 6) preferred time.`,
+    }
 
-INFORMACIÓN DEL NEGOCIO:
-- Nombre: ${neg?.nombre ?? ''}
-- Tipo: ${neg?.tipo ?? ''}
-- Descripción: ${neg?.descripcion ?? 'No disponible'}
-- Dirección: ${[neg?.direccion, neg?.ciudad].filter(Boolean).join(', ') || 'No disponible'}
-- Teléfono: ${neg?.telefono ?? 'No disponible'}
-- WhatsApp: ${neg?.whatsapp ?? 'No disponible'}
+    const CANCEL_POLICY: Record<string, string> = {
+      es: 'Las cancelaciones deben realizarse con al menos 24 horas de antelación.',
+      ca: 'Les cancel·lacions s\'han de fer amb almenys 24 hores d\'antelació.',
+      en: 'Cancellations must be made at least 24 hours in advance.',
+    }
 
-SERVICIOS Y PRECIOS:
+    const systemPrompt = `You are the virtual assistant of ${neg?.nombre ?? 'this business'}, a ${neg?.tipo ?? 'services'} business on Khepria.
+
+BUSINESS INFORMATION:
+- Name: ${neg?.nombre ?? ''}
+- Type: ${neg?.tipo ?? ''}
+- Description: ${neg?.descripcion ?? 'N/A'}
+- Address: ${[neg?.direccion, neg?.ciudad].filter(Boolean).join(', ') || 'N/A'}
+- Phone: ${neg?.telefono ?? 'N/A'}
+- WhatsApp: ${neg?.whatsapp ?? 'N/A'}
+
+SERVICES & PRICES:
 ${serviciosTexto}
 
-HORARIO DE APERTURA:
+OPENING HOURS:
 ${horariosTexto}
 
-EQUIPO:
+TEAM:
 ${equipoTexto}
 
-POLÍTICA DE CANCELACIÓN: Las cancelaciones deben realizarse con al menos 24 horas de antelación.
+CANCELLATION POLICY: ${CANCEL_POLICY[lang]}
 
-INSTRUCCIONES IMPORTANTES:
-- Responde SIEMPRE en español, de forma amable, breve y profesional.
-- Cuando el cliente exprese intención de reservar (palabras: reservar, cita, quiero una cita, disponible, hora, día, turno, agendar, pedir hora), incluye exactamente [MOSTRAR_OPCIONES] al final de tu respuesta y nada más después de eso.
-- Si el cliente elige que tú gestiones la reserva, pide los datos UNO A UNO en este orden exacto hasta tener TODOS: 1) nombre completo, 2) teléfono, 3) servicio deseado (elige de la lista), 4) trabajador preferido o "cualquiera", 5) fecha (DD/MM/YYYY), 6) hora preferida.
-- Si falta CUALQUIERA de los 6 datos, pídelo explícitamente antes de continuar. NUNCA generes el bloque RESERVA si falta algún dato.
-- Cuando tengas los 6 datos completos (nombre, teléfono, servicio, trabajador, fecha, hora), muestra un resumen claro y añade AL FINAL exactamente este bloque en una sola línea (sin markdown, sin backticks, sin espacios extra):
+IMPORTANT INSTRUCTIONS:
+${LANG_INSTRUCTIONS[lang]}
+- If ANY of the 6 data points are missing, ask for them explicitly before continuing. NEVER generate the RESERVA block if any data is missing.
+- When you have ALL 6 data points (name, phone, service, worker, date, time), show a clear summary and add AT THE END exactly this block in a single line (no markdown, no backticks):
 [RESERVA:{"nombre":"...","telefono":"...","servicio":"...","trabajador":"...","fecha":"YYYY-MM-DD","hora":"HH:MM"}]
-- Convierte siempre la fecha al formato YYYY-MM-DD y la hora a HH:MM de 24h.
-- Para "cualquiera" o "no tengo preferencia" en trabajador, usa el valor "cualquiera".
-- El bloque [RESERVA:...] debe estar en una sola línea continua, el JSON no debe tener saltos de línea.
-- URL alternativa para reservar online: ${reservarUrl}
-- No inventes datos que no se te hayan dado.`
+- Always convert date to YYYY-MM-DD and time to HH:MM (24h).
+- For "any"/"cualquiera"/"qualsevol" worker preference, use the value "cualquiera".
+- The [RESERVA:...] block must be a single continuous line, the JSON must not have line breaks.
+- Alternative booking URL: ${reservarUrl}
+- Do not invent data that has not been provided.`
 
     const contents = (messages as Array<{ rol: string; texto: string }>).map(m => ({
       role: m.rol === 'usuario' ? 'user' : 'model',

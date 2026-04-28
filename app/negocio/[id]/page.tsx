@@ -113,6 +113,7 @@ export default function FichaNegocio() {
   const [chatCargando, setChatCargando] = useState(false)
   const [reservaConfirmada, setReservaConfirmada] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const [chatIdioma, setChatIdioma] = useState('es')
 
   const hoyDia = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date().getDay()]
 
@@ -171,10 +172,26 @@ export default function FichaNegocio() {
     setFavCargando(false)
   }
 
+  function detectarIdioma(): string {
+    if (typeof navigator === 'undefined') return 'es'
+    const lang = (navigator.language ?? 'es').toLowerCase().split('-')[0]
+    if (lang === 'ca') return 'ca'
+    if (lang === 'en') return 'en'
+    return 'es'
+  }
+
+  const BIENVENIDAS: Record<string, string> = {
+    es: `¡Hola! 👋 Soy el asistente de ${negocio?.nombre ?? 'este negocio'}. ¿En qué puedo ayudarte? Puedo informarte sobre servicios, horarios o ayudarte a gestionar una reserva.`,
+    ca: `Hola! 👋 Soc l'assistent de ${negocio?.nombre ?? 'aquest negoci'}. En què et puc ajudar? Et puc informar sobre serveis, horaris o ajudar-te a gestionar una reserva.`,
+    en: `Hi! 👋 I'm the assistant for ${negocio?.nombre ?? 'this business'}. How can I help you? I can tell you about services, opening hours, or help you book an appointment.`,
+  }
+
   function abrirChat() {
+    const idioma = detectarIdioma()
+    setChatIdioma(idioma)
     setChatAbierto(true)
     if (mensajes.length === 0) {
-      setMensajes([{ rol: 'bot', texto: `¡Hola! 👋 Soy el asistente de ${negocio?.nombre ?? 'este negocio'}. ¿En qué puedo ayudarte? Puedo informarte sobre servicios, horarios o ayudarte a gestionar una reserva.` }])
+      setMensajes([{ rol: 'bot', texto: BIENVENIDAS[idioma] ?? BIENVENIDAS.es }])
     }
   }
 
@@ -191,7 +208,7 @@ export default function FichaNegocio() {
       const res = await fetch('/api/chat-negocio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nuevos, negocioId: id }),
+        body: JSON.stringify({ messages: nuevos, negocioId: id, idioma: chatIdioma }),
       })
       const data = await res.json()
       const respuesta: string = data.respuesta ?? 'Lo siento, hubo un error.'

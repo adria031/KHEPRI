@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
-const RESEND_KEY = 're_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1'
+const resend = new Resend('re_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1')
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, nombreTrabajador, especialidad, nombreNegocio, negocioId } = await req.json()
+    const body = await req.json()
+    // Accept both field name conventions
+    const email: string = body.email
+    const nombreTrabajador: string = body.nombreTrabajador ?? body.nombre
+    const especialidad: string | undefined = body.especialidad
+    const nombreNegocio: string = body.nombreNegocio ?? body.negocio_nombre
+    const negocioId: string = body.negocioId ?? body.negocio_id
+
     if (!email || !nombreTrabajador || !nombreNegocio || !negocioId) {
       return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
     }
@@ -79,25 +87,16 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Khepria <reservas@khepria.app>',
-        to: [email],
-        subject: `✂️ ${nombreNegocio} te ha añadido a su equipo en Khepria`,
-        html,
-      }),
+    const { error: resendError } = await resend.emails.send({
+      from: 'Khepria <reservas@khepria.app>',
+      to: [email],
+      subject: `✂️ ${nombreNegocio} te ha añadido a su equipo en Khepria`,
+      html,
     })
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      console.error('[invitar-trabajador] Resend error:', body)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return NextResponse.json({ error: (body as any)?.message ?? `Resend error ${res.status}` }, { status: 502 })
+    if (resendError) {
+      console.error('[invitar-trabajador] Resend error:', resendError)
+      return NextResponse.json({ error: resendError.message }, { status: 502 })
     }
 
     return NextResponse.json({ ok: true })
