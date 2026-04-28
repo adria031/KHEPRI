@@ -1,13 +1,14 @@
 'use client'
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { NegocioSelector } from './NegocioSelector'
 import type { NegMin } from '../lib/negocioActivo'
 import { useTheme } from '../components/ThemeProvider'
 import { useTranslations } from 'next-intl'
 import { LanguageSelector } from '../components/LanguageSelector'
+import { tieneAcceso, HREF_KEY, PLANES } from '../lib/planes'
 
 const NAV_GROUPS = [
   {
@@ -135,8 +136,23 @@ export function DashboardShell({
     '/dashboard/analytics':   t('titles.analytics'),
   }
 
+  const router = useRouter()
   const esTodos = negocio === null && todosNegocios.length > 1
-  const planCfg = PLAN_CFG[negocio?.plan ?? ''] ?? PLAN_CFG.basico
+  const planActual = negocio?.plan ?? 'starter'
+  const planCfg = PLAN_CFG[planActual] ?? PLAN_CFG.basico
+
+  function navClick(e: React.MouseEvent, href: string) {
+    const key = HREF_KEY[href]
+    if (key && !tieneAcceso(planActual, key)) {
+      e.preventDefault()
+      setSidebarOpen(false)
+      router.push('/upgrade')
+    }
+  }
+
+  // Is the current route blocked for this plan?
+  const currentKey = HREF_KEY[pathname]
+  const rutaBloqueada = currentKey ? !tieneAcceso(planActual, currentKey) : false
   const pageTitle = PAGE_TITLES_I18N[pathname] ?? PAGE_TITLES[pathname] ?? 'Dashboard'
   const initials = esTodos
     ? '🏢'
@@ -219,6 +235,8 @@ export function DashboardShell({
         .ds-nav-item.ds-active { background: var(--ds-active-bg); color: var(--ds-active); font-weight: 600; }
         .ds-nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; opacity: 0.85; }
         .ds-nav-item.ds-active .ds-nav-icon { opacity: 1; }
+        .ds-nav-locked { opacity: 0.7; }
+        .ds-nav-locked:hover { background: rgba(212,197,249,0.15); color: #6B4FD8; }
         .ds-footer { padding: 12px 10px; border-top: 1px solid var(--ds-border); }
         .ds-logout {
           width: 100%; padding: 9px 12px; background: transparent;
@@ -335,15 +353,29 @@ export function DashboardShell({
                 <div className="ds-nav-section">{GROUP_LABELS[group.label] ?? group.label}</div>
                 {group.items.map((item) => {
                   const isActive = pathname === item.href
+                  const key = HREF_KEY[item.href]
+                  const bloqueado = key ? !tieneAcceso(planActual, key) : false
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
-                      className={`ds-nav-item${isActive ? ' ds-active' : ''}`}
-                      onClick={() => setSidebarOpen(false)}
+                      href={bloqueado ? '/upgrade' : item.href}
+                      className={`ds-nav-item${isActive ? ' ds-active' : ''}${bloqueado ? ' ds-nav-locked' : ''}`}
+                      onClick={(e) => navClick(e, item.href)}
+                      title={bloqueado ? `Disponible desde plan ${
+                        Object.entries(PLANES).find(([, v]) => v.sidebar.includes('todo') || v.sidebar.includes(key ?? ''))?.
+                        [1].nombre ?? ''
+                      }` : undefined}
                     >
-                      <span className="ds-nav-icon">{item.icon}</span>
-                      {NAV_LABELS[item.href] ?? item.label}
+                      <span className="ds-nav-icon">{bloqueado ? '🔒' : item.icon}</span>
+                      <span style={bloqueado ? { opacity: 0.5 } : {}}>{NAV_LABELS[item.href] ?? item.label}</span>
+                      {bloqueado && (
+                        <span style={{
+                          marginLeft: 'auto', fontSize: '9px', fontWeight: 700,
+                          background: 'linear-gradient(135deg,#D4C5F9,#B8D8F8)',
+                          color: '#4F46E5', padding: '2px 6px', borderRadius: '100px',
+                          whiteSpace: 'nowrap',
+                        }}>Upgrade</span>
+                      )}
                     </Link>
                   )
                 })}
@@ -417,7 +449,36 @@ export function DashboardShell({
 
           {/* Content */}
           <main className="ds-content">
-            {children}
+            {rutaBloqueada ? (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                minHeight: '60vh', gap: '20px', textAlign: 'center',
+              }}>
+                <div style={{
+                  width: '80px', height: '80px', borderRadius: '20px',
+                  background: 'linear-gradient(135deg,#D4C5F9,#B8D8F8)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '36px',
+                }}>🔒</div>
+                <div>
+                  <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ds-text)', marginBottom: '8px' }}>
+                    Función no disponible en tu plan
+                  </h2>
+                  <p style={{ color: 'var(--ds-text2)', fontSize: '14px', maxWidth: '340px' }}>
+                    Tu plan actual <strong>{PLANES[planActual]?.nombre ?? planActual}</strong> no incluye esta sección. Mejora tu plan para desbloquearla.
+                  </p>
+                </div>
+                <Link href="/upgrade" style={{
+                  background: 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
+                  color: 'white', textDecoration: 'none',
+                  padding: '12px 28px', borderRadius: '100px',
+                  fontWeight: 700, fontSize: '14px',
+                  boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+                }}>
+                  Ver planes y precios →
+                </Link>
+              </div>
+            ) : children}
           </main>
         </div>
       </div>
