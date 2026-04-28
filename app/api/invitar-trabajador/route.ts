@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { rateLimit, getIP } from '../../lib/rateLimit'
 
 const resend = new Resend('re_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1')
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(getIP(req), 10)
+  if (!rl.ok) return NextResponse.json({ error: 'Demasiadas peticiones' }, { status: 429 })
+
   try {
     const body = await req.json()
     // Accept both field name conventions

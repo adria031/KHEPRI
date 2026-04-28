@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, getIP } from '../../lib/rateLimit'
 
 // Vercel Cron — ejecuta auto-completado cada 15 minutos
 // vercel.json: { "path": "/api/completar-reservas", "schedule": "*/15 * * * *" }
@@ -23,6 +24,9 @@ function toMins(hhmm: string): number {
 }
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimit(getIP(req), 10)
+  if (!rl.ok) return NextResponse.json({ error: 'Demasiadas peticiones' }, { status: 429 })
+
   const authHeader = req.headers.get('authorization')
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

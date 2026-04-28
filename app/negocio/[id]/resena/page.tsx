@@ -1,7 +1,11 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../../../lib/supabase'
+import { sanitizeField } from '../../../lib/sanitize'
+
+const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
 
 // ─── Inner component (needs useSearchParams inside Suspense) ──────────────────
 
@@ -21,6 +25,8 @@ function ResenaForm() {
   const [hover,       setHover]       = useState(0)
   const [comentario,  setComentario]  = useState('')
   const [error,       setError]       = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
+  const captchaRef = useRef<HCaptcha>(null)
 
   useEffect(() => {
     if (!negocioId) return
@@ -68,15 +74,19 @@ function ResenaForm() {
     if (!nombre.trim())    { setError('Escribe tu nombre'); return }
     if (estrellas === 0)   { setError('Selecciona una puntuación'); return }
     if (!comentario.trim()){ setError('Escribe un comentario'); return }
+    if (!captchaToken)     { setError('Por favor completa la verificación de seguridad'); return }
     setError(''); setEstado('enviando')
 
     const { error: insertErr } = await supabase.from('resenas').insert({
       negocio_id:     negocioId,
       reserva_id:     reservaId || null,
-      cliente_nombre: nombre.trim(),
+      cliente_nombre: sanitizeField(nombre, 100),
       valoracion:     estrellas,
-      comentario:     comentario.trim(),
+      comentario:     sanitizeField(comentario, 2000),
     })
+
+    captchaRef.current?.resetCaptcha()
+    setCaptchaToken('')
 
     if (insertErr) {
       setError('Error al enviar. Inténtalo de nuevo.')
@@ -201,6 +211,17 @@ function ResenaForm() {
               style={{ width: '100%', padding: '11px 14px', border: '1.5px solid #E5E7EB', borderRadius: '12px', fontSize: '14px', color: '#111827', fontFamily: 'inherit', outline: 'none', resize: 'vertical', lineHeight: 1.55, boxSizing: 'border-box' }}
               onFocus={e => (e.currentTarget.style.borderColor = '#111827')}
               onBlur={e  => (e.currentTarget.style.borderColor = '#E5E7EB')}
+            />
+          </div>
+
+          {/* hCaptcha */}
+          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+            <HCaptcha
+              ref={captchaRef}
+              sitekey={HCAPTCHA_SITEKEY}
+              onVerify={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken('')}
+              onError={() => setCaptchaToken('')}
             />
           </div>
 

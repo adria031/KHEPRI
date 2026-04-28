@@ -2,7 +2,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../../../lib/supabase'
+import { sanitizeField } from '../../../lib/sanitize'
+
+const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
 import {
   verificarDisponibilidad,
   crearReserva,
@@ -96,6 +100,10 @@ export default function Reservar() {
   const [listaEsperaMode, setListaEsperaMode] = useState(false)
   const [listaEsperaEnviada, setListaEsperaEnviada] = useState(false)
   const [enviandoEspera, setEnviandoEspera] = useState(false)
+
+  // Captcha
+  const [captchaToken, setCaptchaToken] = useState('')
+  const captchaRef = useRef<HCaptcha>(null)
 
   // Chat widget
   const [chatOpen, setChatOpen] = useState(false)
@@ -351,18 +359,26 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     if (!telefono.trim()) { setError('Introduce tu teléfono'); return }
     if (!servicio) { setError('Selecciona un servicio'); return }
     if (!id) { setError('Error: negocio no identificado'); return }
+    if (!captchaToken) { setError('Por favor completa la verificación de seguridad'); return }
     setError(''); setEnviando(true)
+
+    const nombreSanitized  = sanitizeField(nombre, 100)
+    const telefonoSanitized = sanitizeField(telefono, 20)
+    const emailSanitized   = sanitizeField(email, 254)
 
     const { error: err } = await supabase.rpc('crear_reserva', {
       p_negocio_id: id,
       p_servicio_id: servicio.id,
       p_trabajador_id: trabajador?.id || null,
-      p_cliente_nombre: nombre.trim(),
-      p_cliente_telefono: telefono.trim(),
-      p_cliente_email: email.trim() || null,
+      p_cliente_nombre: nombreSanitized,
+      p_cliente_telefono: telefonoSanitized,
+      p_cliente_email: emailSanitized || null,
       p_fecha: fecha,
       p_hora: hora,
     })
+
+    captchaRef.current?.resetCaptcha()
+    setCaptchaToken('')
 
     if (err) {
       setError(`Error al guardar: ${err.message}${err.details ? ' — ' + err.details : ''}`)
@@ -828,6 +844,16 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 <div className="field">
                   <label>Email <span style={{fontSize:'11px', color:'#6366F1', fontWeight:600}}>(para confirmación y ver tu historial)</span></label>
                   <input type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" />
+                </div>
+
+                <div style={{ margin: '16px 0 4px', display: 'flex', justifyContent: 'center' }}>
+                  <HCaptcha
+                    ref={captchaRef}
+                    sitekey={HCAPTCHA_SITEKEY}
+                    onVerify={(token) => setCaptchaToken(token)}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => setCaptchaToken('')}
+                  />
                 </div>
 
                 {error && <div className="error-msg">{error}</div>}

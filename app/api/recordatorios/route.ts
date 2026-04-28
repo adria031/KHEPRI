@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, getIP } from '../../lib/rateLimit'
 
 const RESEND_KEY = 're_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1'
 
@@ -95,6 +96,9 @@ function buildHtml(r: any, cancelUrl: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(getIP(req), 10)
+  if (!rl.ok) return NextResponse.json({ error: 'Demasiadas peticiones' }, { status: 429 })
+
   // Verificar clave de autorización para evitar llamadas no autorizadas
   const auth = req.headers.get('x-cron-secret')
   if (auth !== process.env.CRON_SECRET && process.env.CRON_SECRET) {

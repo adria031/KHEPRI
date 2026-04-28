@@ -1,8 +1,12 @@
 'use client'
-import { useState, Suspense } from 'react'
+import { useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../lib/supabase'
+import { sanitizeField } from '../lib/sanitize'
+
+const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
 
 function KhepriLogo() {
   return (
@@ -32,6 +36,8 @@ function AuthForm() {
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [esError, setEsError] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+  const captchaRef = useRef<HCaptcha>(null)
 
   // Sign out any existing session so a second user can register/login cleanly
   // without inheriting the previous user's cached auth state
@@ -41,11 +47,15 @@ function AuthForm() {
 
   async function handleSubmit() {
     if (!email || !password) { setMensaje('Por favor rellena todos los campos.'); setEsError(true); return }
+    if (!captchaToken) { setMensaje('Por favor completa la verificación de seguridad.'); setEsError(true); return }
     setCargando(true); setMensaje(''); setEsError(false)
     await ensureSignedOut()
 
+    const emailSanitized = sanitizeField(email, 254)
+    const nombreSanitized = sanitizeField(nombre, 100)
+
     if (modo === 'registro') {
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nombre } } })
+      const { data, error } = await supabase.auth.signUp({ email: emailSanitized, password, options: { data: { nombre: nombreSanitized } } })
       if (error) {
         if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already exists') || error.message.toLowerCase().includes('user already')) {
           setMensaje('Este email ya está registrado. Redirigiendo...'); setEsError(true)
@@ -60,7 +70,7 @@ function AuthForm() {
         window.location.href = window.location.origin + '/onboarding'
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { error } = await supabase.auth.signInWithPassword({ email: emailSanitized, password })
       if (error) { setMensaje('Email o contraseña incorrectos.'); setEsError(true) }
       else {
         const { data: { session } } = await supabase.auth.getSession()
@@ -73,6 +83,8 @@ function AuthForm() {
         }
       }
     }
+    captchaRef.current?.resetCaptcha()
+    setCaptchaToken('')
     setCargando(false)
   }
 
@@ -186,6 +198,18 @@ function AuthForm() {
             <p className="forgot-link">
               <a href="#" onClick={e => { e.preventDefault(); setModo('recuperar'); setMensaje('') }}>¿Olvidaste tu contraseña?</a>
             </p>
+          )}
+
+          {modo !== 'recuperar' && (
+            <div style={{ margin: '12px 0 4px', display: 'flex', justifyContent: 'center' }}>
+              <HCaptcha
+                ref={captchaRef}
+                sitekey={HCAPTCHA_SITEKEY}
+                onVerify={(token) => setCaptchaToken(token)}
+                onExpire={() => setCaptchaToken('')}
+                onError={() => setCaptchaToken('')}
+              />
+            </div>
           )}
 
           <button className="btn" onClick={modo === 'recuperar' ? handleRecuperar : handleSubmit} disabled={cargando}>
