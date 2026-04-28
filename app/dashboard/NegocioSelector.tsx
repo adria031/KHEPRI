@@ -116,6 +116,16 @@ export function NegocioSelector({
 
     const newId = neg.id
 
+    // Añadir propietario como trabajador automáticamente
+    await supabase.from('trabajadores').insert({
+      negocio_id: newId,
+      user_id: session.user.id,
+      nombre: session.user.user_metadata?.full_name ?? session.user.email?.split('@')[0] ?? 'Propietario',
+      email: session.user.email,
+      rol: 'propietario',
+      activo: true,
+    })
+
     // Copiar información si el usuario eligió una fuente
     if (fuenteId) {
       await copiarNegocio(fuenteId, newId)

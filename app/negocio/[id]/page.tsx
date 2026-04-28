@@ -156,10 +156,12 @@ export default function FichaNegocio() {
     if (!userId) { window.location.href = '/auth'; return }
     setFavCargando(true)
     if (esFav) {
-      await supabase.from('favoritos').delete().eq('user_id', userId).eq('negocio_id', id)
+      const { error } = await supabase.from('favoritos').delete().eq('user_id', userId).eq('negocio_id', id)
+      if (error) { alert('Error al quitar favorito: ' + error.message); setFavCargando(false); return }
       setEsFav(false)
     } else {
-      await supabase.from('favoritos').insert({ user_id: userId, negocio_id: id })
+      const { error } = await supabase.from('favoritos').insert({ user_id: userId, negocio_id: id })
+      if (error) { alert('Error al guardar favorito: ' + error.message); setFavCargando(false); return }
       setEsFav(true)
     }
     setFavCargando(false)
@@ -201,7 +203,23 @@ export default function FichaNegocio() {
         body: JSON.stringify({ messages: nuevos, negocioId: id, idioma: chatIdioma }),
       })
       const data = await res.json()
-      setMensajes(prev => [...prev, { rol: 'bot', texto: data.respuesta ?? 'Lo siento, hubo un error.' }])
+      const respuesta: string = data.respuesta ?? 'Lo siento, hubo un error.'
+      setMensajes(prev => [...prev, { rol: 'bot', texto: respuesta }])
+
+      // Auto-ejecutar reserva cuando el bot genera un bloque [RESERVA:{...}]
+      const reservaIdx = respuesta.indexOf('[RESERVA:')
+      if (reservaIdx !== -1 && !reservaConfirmada) {
+        const jsonStart = reservaIdx + '[RESERVA:'.length
+        const jsonEnd = respuesta.indexOf(']', jsonStart)
+        if (jsonEnd !== -1) {
+          try {
+            const datos = JSON.parse(respuesta.slice(jsonStart, jsonEnd))
+            if (datos.nombre && datos.telefono && datos.servicio && datos.fecha && datos.hora) {
+              await crearReservaChatbot(datos)
+            }
+          } catch { /* JSON inválido, el confirm button manual servirá de fallback */ }
+        }
+      }
     } catch {
       setMensajes(prev => [...prev, { rol: 'bot', texto: 'Error de conexión.' }])
     }
@@ -908,7 +926,7 @@ export default function FichaNegocio() {
                   {reservaMatch && !reservaConfirmada && (() => {
                     try {
                       const datos = JSON.parse(reservaMatch)
-                      return <button className="chat-confirm-btn" onClick={() => crearReservaChatbot(datos)}>✅ Confirmar reserva</button>
+                      return <button className="chat-confirm-btn" onClick={() => crearReservaChatbot(datos)} onTouchEnd={(e) => { e.preventDefault(); crearReservaChatbot(datos) }}>✅ Confirmar reserva</button>
                     } catch { return null }
                   })()}
                 </div>

@@ -45,7 +45,8 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
 
-        {/* Viewport & misc */}
+        {/* Viewport */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="format-detection" content="telephone=no" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
