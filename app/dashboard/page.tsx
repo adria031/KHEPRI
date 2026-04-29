@@ -139,8 +139,21 @@ export default function Dashboard() {
       setNegocio(modoTodos ? null : neg)
       const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
 
-      // Cargar créditos del negocio activo
-      obtenerCreditos(neg.id).then(c => { if (c) setCreditos(c) }).catch(() => {})
+      // Cargar créditos del negocio activo (con fallback basado en plan si las columnas no existen)
+      obtenerCreditos(neg.id).then(c => {
+        if (c) {
+          setCreditos(c)
+        } else {
+          // Fallback: usar defaults del plan si creditos_totales no está en BD
+          const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
+          const totales = planDefaults[neg.plan ?? 'starter'] ?? 100
+          setCreditos({ totales, usados: 0, disponibles: totales, pct: 100 })
+        }
+      }).catch(() => {
+        const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
+        const totales = planDefaults[neg.plan ?? 'starter'] ?? 100
+        setCreditos({ totales, usados: 0, disponibles: totales, pct: 100 })
+      })
 
       const now = new Date()
       const hoyISO          = isoLocal(now)

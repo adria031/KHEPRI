@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY!
-const FROM = 'onboarding@khepria.app'
+const FROM = 'Khepria <onboarding@resend.dev>'
 
 function htmlNegocio(nombre: string) {
   return `<!DOCTYPE html>

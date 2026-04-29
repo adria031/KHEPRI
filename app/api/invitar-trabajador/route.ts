@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
 </html>`
 
     const { error: resendError } = await resend.emails.send({
-      from: 'Khepria <reservas@khepria.app>',
+      from: 'Khepria <onboarding@resend.dev>',
       to: [email],
       subject: `✂️ ${nombreNegocio} te ha añadido a su equipo en Khepria`,
       html,

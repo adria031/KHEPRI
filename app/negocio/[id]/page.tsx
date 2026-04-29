@@ -249,9 +249,20 @@ export default function FichaNegocio() {
 
   function abrirGPS() {
     if (!negocio) return
-    const addr = encodeURIComponent(`${negocio.direccion ?? ''} ${negocio.ciudad ?? ''}`.trim())
-    const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
-    window.open(isIOS ? `maps://maps.apple.com/?q=${addr}` : `https://maps.google.com/?q=${addr}`, '_blank')
+    let url: string
+    if (coordenadas) {
+      // coordenadas es [lng, lat] (formato Mapbox)
+      const lat = coordenadas[1]
+      const lng = coordenadas[0]
+      const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
+      url = isIOS
+        ? `maps://maps.apple.com/?daddr=${lat},${lng}`
+        : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+    } else {
+      const addr = encodeURIComponent(`${negocio.direccion ?? ''} ${negocio.ciudad ?? ''}`.trim())
+      url = `https://www.google.com/maps/search/${addr}`
+    }
+    window.open(url, '_blank')
   }
 
   // ─── Derived ───────────────────────────────────────────────────────────────

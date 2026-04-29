@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Khepria <reservas@khepria.app>',
+        from: 'Khepria <onboarding@resend.dev>',
         to: [r.cliente_email as string],
         subject: `⭐ ¿Qué tal tu experiencia en ${negNombre}?`,
         html,

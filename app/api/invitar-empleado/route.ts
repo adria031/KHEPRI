@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Khepria <reservas@khepria.app>',
+        from: 'Khepria <onboarding@resend.dev>',
         to: [email],
         subject: `👋 ${nombreNegocio} te ha invitado a unirte al equipo`,
         html,

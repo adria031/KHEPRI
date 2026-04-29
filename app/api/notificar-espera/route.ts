@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Khepria <reservas@khepria.app>',
+      from: 'Khepria <onboarding@resend.dev>',
       to: [espera.cliente_email as string],
       subject: `🎉 ¡Se ha liberado una plaza en ${negNombre}!`,
       html,
