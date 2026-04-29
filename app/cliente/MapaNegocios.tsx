@@ -19,21 +19,21 @@ export type NegocioMapa = {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
-const STYLE = process.env.NEXT_PUBLIC_MAPBOX_STYLE || 'mapbox://styles/mapbox/light-v11'
+const STYLE  = process.env.NEXT_PUBLIC_MAPBOX_STYLE || 'mapbox://styles/mapbox/light-v11'
 
-const tipoConfig: Record<string, { emoji: string; color: string; bg: string }> = {
-  peluqueria:  { emoji: '💈', color: '#1D4ED8', bg: '#DBEAFE' },
-  barberia:    { emoji: '✂️', color: '#1D4ED8', bg: '#DBEAFE' },
-  estetica:    { emoji: '💅', color: '#BE185D', bg: '#FCE7F3' },
-  spa:         { emoji: '🧖', color: '#7C3AED', bg: '#EDE9FE' },
-  clinica:     { emoji: '🏥', color: '#065F46', bg: '#D1FAE5' },
-  yoga:        { emoji: '🧘', color: '#065F46', bg: '#D1FAE5' },
-  gimnasio:    { emoji: '🏋️', color: '#92400E', bg: '#FEF3C7' },
-  dentista:    { emoji: '🦷', color: '#92400E', bg: '#FEF3C7' },
-  veterinaria: { emoji: '🐾', color: '#065F46', bg: '#D1FAE5' },
-  restaurante: { emoji: '🍕', color: '#BE185D', bg: '#FCE7F3' },
+const tipoConfig: Record<string, { emoji: string; color: string; bg: string; border: string }> = {
+  peluqueria:  { emoji: '💈', color: '#1D4ED8', bg: '#DBEAFE', border: '#B8D8F8' },
+  barberia:    { emoji: '✂️', color: '#1D4ED8', bg: '#DBEAFE', border: '#B8D8F8' },
+  estetica:    { emoji: '💅', color: '#7C3AED', bg: '#EDE9FE', border: '#D4C5F9' },
+  spa:         { emoji: '🧖', color: '#059669', bg: '#D1FAE5', border: '#B8EDD4' },
+  clinica:     { emoji: '🏥', color: '#D97706', bg: '#FEF3C7', border: '#FDE9A2' },
+  yoga:        { emoji: '🧘', color: '#059669', bg: '#D1FAE5', border: '#B8EDD4' },
+  gimnasio:    { emoji: '🏋️', color: '#D97706', bg: '#FEF3C7', border: '#FDE9A2' },
+  dentista:    { emoji: '🦷', color: '#D97706', bg: '#FEF3C7', border: '#FDE9A2' },
+  veterinaria: { emoji: '🐾', color: '#059669', bg: '#D1FAE5', border: '#B8EDD4' },
+  restaurante: { emoji: '🍕', color: '#EA580C', bg: '#FFF7ED', border: '#FED7AA' },
 }
-const tipoDefault = { emoji: '🏪', color: '#374151', bg: '#F3F4F6' }
+const tipoDefault = { emoji: '🏪', color: '#475569', bg: '#F3F4F6', border: '#E2E8F0' }
 
 const categorias = [
   { id: 'todos',       label: 'Todos',       emoji: '✨' },
@@ -70,26 +70,29 @@ function normTipo(tipo: string): string {
 function buildGeoJSON(
   negocios: NegocioMapa[],
   valPorNeg: Record<string, number>,
+  abiertoMap: Record<string, boolean>,
 ): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = negocios
     .filter(n => n.lat != null && n.lng != null)
     .map(n => {
       const tipo = normTipo(n.tipo || '')
-      const cfg = tipoConfig[tipo] || tipoDefault
+      const cfg  = tipoConfig[tipo] || tipoDefault
       return {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [n.lng!, n.lat!] },
         properties: {
-          id:     n.id,
-          nombre: n.nombre,
-          tipo:   n.tipo || 'Negocio',
+          id:        n.id,
+          nombre:    n.nombre,
+          tipo:      n.tipo || 'Negocio',
           tipo_norm: tipo,
-          ciudad: n.ciudad || '',
-          logo_url: n.logo_url || '',
-          rating: valPorNeg[n.id] ?? null,
-          color:  cfg.color,
-          bg:     cfg.bg,
-          emoji:  cfg.emoji,
+          ciudad:    n.ciudad || '',
+          logo_url:  n.logo_url || '',
+          rating:    valPorNeg[n.id] ?? null,
+          abierto:   abiertoMap[n.id] ?? false,
+          color:     cfg.color,
+          bg:        cfg.bg,
+          border:    cfg.border,
+          emoji:     cfg.emoji,
         },
       }
     })
@@ -99,23 +102,37 @@ function buildGeoJSON(
 // ─── Popup HTML ───────────────────────────────────────────────────────────────
 
 function buildPopupHtml(props: Record<string, unknown>): string {
-  const tipo = props.tipo_norm as string
-  const cfg  = tipoConfig[tipo] || tipoDefault
-  const nombre = props.nombre as string
-  const ciudad = props.ciudad as string
-  const rating = props.rating as number | null
+  const tipo    = props.tipo_norm as string
+  const cfg     = tipoConfig[tipo] || tipoDefault
+  const nombre  = props.nombre  as string
+  const ciudad  = props.ciudad  as string
+  const rating  = props.rating  as number | null
   const logoUrl = props.logo_url as string
-  const id     = props.id as string
+  const id      = props.id      as string
+  const abierto = props.abierto as boolean
 
   const logoHtml = logoUrl
     ? `<img src="${logoUrl}" alt="${nombre}" style="width:44px;height:44px;border-radius:12px;object-fit:cover;flex-shrink:0;" />`
     : `<div style="width:44px;height:44px;border-radius:12px;background:${cfg.bg};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${cfg.emoji}</div>`
 
   const starsHtml = rating != null
-    ? `<div style="display:flex;align-items:center;gap:4px;margin-bottom:10px;">
-        <span style="color:#FBBF24;font-size:13px;">★</span>
-        <span style="font-size:13px;font-weight:800;color:#92400E;">${rating}</span>
-        <span style="font-size:11px;color:#9CA3AF;">/ 5</span>
+    ? `<div style="display:flex;align-items:center;gap:2px;margin-bottom:8px;">
+        ${Array.from({ length: 5 }).map((_, i) =>
+          `<span style="color:${i < Math.round(rating) ? '#FBBF24' : '#E5E7EB'};font-size:15px;">★</span>`
+        ).join('')}
+        <span style="font-size:12px;font-weight:700;color:#92400E;margin-left:4px;">${rating}</span>
+      </div>`
+    : ''
+
+  const abiertoHtml = abierto
+    ? `<div style="margin-bottom:10px;">
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+                     border-radius:100px;background:#D1FAE5;color:#065F46;
+                     font-size:11px;font-weight:700;">
+          <span style="width:6px;height:6px;border-radius:50%;background:#34D399;display:inline-block;
+                       box-shadow:0 0 0 3px rgba(52,211,153,0.3);"></span>
+          Abierto ahora
+        </span>
       </div>`
     : ''
 
@@ -124,18 +141,18 @@ function buildPopupHtml(props: Record<string, unknown>): string {
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
         ${logoHtml}
         <div style="min-width:0;flex:1;">
-          <div style="font-weight:800;font-size:14px;color:#0F172A;line-height:1.3;margin-bottom:3px;
+          <div style="font-weight:800;font-size:14px;color:#0F172A;line-height:1.3;margin-bottom:4px;
                       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nombre}</div>
           <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:100px;
                        background:${cfg.bg};color:${cfg.color};">${props.tipo}</span>
         </div>
       </div>
+      ${abiertoHtml}
       ${starsHtml}
       ${ciudad ? `<div style="font-size:12px;color:#64748B;margin-bottom:10px;">📍 ${ciudad}</div>` : ''}
       <a href="/negocio/${id}"
          style="display:block;text-align:center;padding:10px;background:#0F172A;color:white;
-                border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;
-                transition:background 0.15s;">
+                border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;">
         Ver perfil →
       </a>
     </div>`
@@ -145,26 +162,28 @@ function buildPopupHtml(props: Record<string, unknown>): string {
 
 export default function MapaNegocios({
   negocios,
-  valPorNeg = {},
-  userPos   = null,
+  valPorNeg  = {},
+  userPos    = null,
+  abiertoMap = {},
 }: {
-  negocios:   NegocioMapa[]
-  valPorNeg?: Record<string, number>
-  userPos?:   { lat: number; lng: number } | null
+  negocios:    NegocioMapa[]
+  valPorNeg?:  Record<string, number>
+  userPos?:    { lat: number; lng: number } | null
+  abiertoMap?: Record<string, boolean>
 }) {
-  const containerRef    = useRef<HTMLDivElement>(null)
-  const mapRef          = useRef<mapboxgl.Map | null>(null)
-  const mapLoadedRef    = useRef(false)
-  const userMarkerRef   = useRef<mapboxgl.Marker | null>(null)
-  const popupRef        = useRef<mapboxgl.Popup | null>(null)
-  const latestDataRef   = useRef<GeoJSON.FeatureCollection | null>(null)
-  const markersRef      = useRef<mapboxgl.Marker[]>([])
+  const containerRef  = useRef<HTMLDivElement>(null)
+  const mapRef        = useRef<mapboxgl.Map | null>(null)
+  const mapLoadedRef  = useRef(false)
+  const userMarkerRef = useRef<mapboxgl.Marker | null>(null)
+  const popupRef      = useRef<mapboxgl.Popup | null>(null)
+  const latestDataRef = useRef<GeoJSON.FeatureCollection | null>(null)
+  const markersRef    = useRef<mapboxgl.Marker[]>([])
+  const geolocateRef  = useRef<mapboxgl.GeolocateControl | null>(null)
 
   const [filtroTipo,  setFiltroTipo]  = useState('todos')
   const [busqueda,    setBusqueda]    = useState('')
   const [localizando, setLocalizando] = useState(false)
   const [mapReady,    setMapReady]    = useState(false)
-  const [userMarked,  setUserMarked]  = useState(false)
   const [tokenError,  setTokenError]  = useState(false)
 
   // ── Filtered list ──────────────────────────────────────────────────────────
@@ -177,8 +196,8 @@ export default function MapaNegocios({
 
   // ── GeoJSON ────────────────────────────────────────────────────────────────
   const geojson = useMemo(
-    () => buildGeoJSON(negociosFiltrados, valPorNeg),
-    [negociosFiltrados, valPorNeg],
+    () => buildGeoJSON(negociosFiltrados, valPorNeg, abiertoMap),
+    [negociosFiltrados, valPorNeg, abiertoMap],
   )
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -199,7 +218,6 @@ export default function MapaNegocios({
     if (!containerRef.current || mapRef.current) return
 
     if (!TOKEN) {
-      console.error('[MapaNegocios] NEXT_PUBLIC_MAPBOX_TOKEN no está configurado')
       setTokenError(true)
       return
     }
@@ -208,137 +226,119 @@ export default function MapaNegocios({
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style:  STYLE,
-      center: [-3.7038, 40.4168],
-      zoom:   6,
+      style:     STYLE,
+      center:    [-3.7038, 40.4168],
+      zoom:      6,
       attributionControl: false,
     })
-
     mapRef.current = map
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left')
 
+    // ── GeolocateControl ──
+    const geolocate = new mapboxgl.GeolocateControl({
+      positionOptions:   { enableHighAccuracy: true, timeout: 8000 },
+      trackUserLocation: false,
+      showAccuracyCircle: false,
+      fitBoundsOptions:  { zoom: 13, duration: 1200 },
+    })
+    map.addControl(geolocate, 'bottom-right')
+    geolocateRef.current = geolocate
+    ;(geolocate as mapboxgl.GeolocateControl & { on: (e: string, cb: () => void) => void })
+      .on('geolocate', () => setLocalizando(false))
+    ;(geolocate as mapboxgl.GeolocateControl & { on: (e: string, cb: () => void) => void })
+      .on('error', () => setLocalizando(false))
+
     map.on('load', () => {
       mapLoadedRef.current = true
-
       const initialData = latestDataRef.current || { type: 'FeatureCollection', features: [] }
 
       // ── Source ──
       map.addSource('businesses', {
-        type: 'geojson',
-        data: initialData as GeoJSON.FeatureCollection,
+        type:           'geojson',
+        data:           initialData as GeoJSON.FeatureCollection,
         cluster:        true,
         clusterMaxZoom: 14,
         clusterRadius:  50,
       })
 
-      // ── Cluster: shadow ──
+      // ── Cluster shadow ──
       map.addLayer({
         id:     'clusters-shadow',
         type:   'circle',
         source: 'businesses',
         filter: ['has', 'point_count'],
-        paint:  {
-          'circle-color':   'rgba(29,78,216,0.15)',
-          'circle-radius':  ['step', ['get', 'point_count'], 30, 10, 36, 50, 44],
-          'circle-blur':    0.5,
+        paint: {
+          'circle-color':  'rgba(99,102,241,0.12)',
+          'circle-radius': ['step', ['get', 'point_count'], 32, 10, 38, 50, 46],
+          'circle-blur':   0.6,
         },
       })
 
-      // ── Cluster: circle ──
+      // ── Cluster circle — pastel by count ──
       map.addLayer({
         id:     'clusters',
         type:   'circle',
         source: 'businesses',
         filter: ['has', 'point_count'],
-        paint:  {
-          'circle-color':         '#1D4ED8',
-          'circle-radius':        ['step', ['get', 'point_count'], 22, 10, 28, 50, 36],
-          'circle-stroke-width':  3,
-          'circle-stroke-color':  '#fff',
+        paint: {
+          'circle-color': [
+            'step', ['get', 'point_count'],
+            '#93C5FD',   // blue-300  1-9
+            10, '#A78BFA', // purple-400  10-49
+            50, '#6EE7B7', // green-300   50+
+          ],
+          'circle-radius':       ['step', ['get', 'point_count'], 22, 10, 28, 50, 36],
+          'circle-stroke-width': 3,
+          'circle-stroke-color': 'white',
         },
       })
 
-      // ── Cluster: count label ──
+      // ── Cluster count ──
       map.addLayer({
         id:     'cluster-count',
         type:   'symbol',
         source: 'businesses',
         filter: ['has', 'point_count'],
         layout: {
-          'text-field':             ['get', 'point_count_abbreviated'],
-          'text-font':              ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
-          'text-size':              13,
-          'text-allow-overlap':     true,
+          'text-field':         ['get', 'point_count_abbreviated'],
+          'text-font':          ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size':          13,
+          'text-allow-overlap': true,
         },
-        paint: { 'text-color': '#fff' },
+        paint: { 'text-color': 'white' },
       })
 
       setMapReady(true)
 
       // ── HTML markers for individual points ──
       function createMarkerEl(props: Record<string, unknown>): HTMLDivElement {
-        const color   = props.color as string
-        const bg      = props.bg as string
-        const nombre  = props.nombre as string
-        const logoUrl = props.logo_url as string
-        const initial = (nombre?.[0] ?? '?').toUpperCase()
+        const border = (props.border as string) || '#E2E8F0'
+        const emoji  = (props.emoji  as string) || '🏪'
 
-        // Wrapper: fixed size, holds position stable — Mapbox only touches this element
         const wrapper = document.createElement('div')
-        wrapper.style.cssText = 'width:48px;height:48px;cursor:pointer;position:relative;'
+        wrapper.style.cssText = 'width:44px;height:44px;cursor:pointer;'
 
-        // Pulse ring (always visible, low opacity)
-        const ring = document.createElement('div')
-        ring.style.cssText = `
-          position:absolute;inset:-6px;border-radius:50%;
-          border:2px solid ${color};opacity:0;
-          transition:opacity 0.2s,transform 0.3s;
-          pointer-events:none;
-        `
-        wrapper.appendChild(ring)
-
-        // Inner circle — this is the only element that scales on hover
         const inner = document.createElement('div')
         inner.style.cssText = `
-          width:48px;height:48px;border-radius:50%;
-          border:2.5px solid ${color};background:${bg};
-          overflow:hidden;
-          box-shadow:0 2px 14px rgba(0,0,0,0.14);
+          width:44px;height:44px;border-radius:50%;
+          background:white;border:3px solid ${border};
           display:flex;align-items:center;justify-content:center;
-          font-size:18px;font-weight:800;color:${color};
-          font-family:'Plus Jakarta Sans',system-ui,sans-serif;
-          transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1),
-                     box-shadow 0.2s,border-color 0.2s;
-          transform-origin:center center;
-          user-select:none;position:relative;z-index:1;
+          font-size:20px;
+          box-shadow:0 4px 12px rgba(0,0,0,0.15);
+          cursor:pointer;
+          transition:transform 0.2s ease,box-shadow 0.2s ease;
         `
-
-        if (logoUrl) {
-          const img = document.createElement('img')
-          img.src = logoUrl
-          img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;'
-          img.onerror = () => { img.remove(); inner.textContent = initial }
-          inner.appendChild(img)
-        } else {
-          inner.textContent = initial
-        }
-
+        inner.textContent = emoji
         wrapper.appendChild(inner)
 
         wrapper.onmouseenter = () => {
-          inner.style.transform = 'scale(1.22)'
-          inner.style.boxShadow = `0 0 0 3px ${bg}, 0 8px 28px rgba(0,0,0,0.22)`
-          inner.style.borderColor = color
-          ring.style.opacity = '0.5'
-          ring.style.transform = 'scale(1.1)'
+          inner.style.transform  = 'scale(1.1)'
+          inner.style.boxShadow  = '0 6px 20px rgba(0,0,0,0.22)'
         }
         wrapper.onmouseleave = () => {
-          inner.style.transform = 'scale(1)'
-          inner.style.boxShadow = '0 2px 14px rgba(0,0,0,0.14)'
-          inner.style.borderColor = color
-          ring.style.opacity = '0'
-          ring.style.transform = 'scale(1)'
+          inner.style.transform  = 'scale(1)'
+          inner.style.boxShadow  = '0 4px 12px rgba(0,0,0,0.15)'
         }
 
         return wrapper
@@ -353,32 +353,34 @@ export default function MapaNegocios({
         const seen = new Set<string>()
         features.forEach(feat => {
           const props = feat.properties as Record<string, unknown>
-          const id = props?.id as string
+          const id    = props?.id as string
           if (!id || seen.has(id)) return
           seen.add(id)
           const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number]
-          const wrapper = createMarkerEl(props)
-          wrapper.addEventListener('click', () => {
+          const el = createMarkerEl(props)
+          el.addEventListener('click', () => {
             popupRef.current?.remove()
             popupRef.current = new mapboxgl.Popup({
-              closeButton: true, closeOnClick: false,
-              maxWidth: '260px', className: 'khepria-mapbox-popup', offset: [0, -28],
+              closeButton:  true,
+              closeOnClick: false,
+              maxWidth:    '260px',
+              className:   'khepria-mapbox-popup',
+              offset:      [0, -28],
             })
               .setLngLat(coords)
               .setHTML(buildPopupHtml(props))
               .addTo(map)
           })
-          const marker = new mapboxgl.Marker({ element: wrapper, anchor: 'center' })
+          const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
             .setLngLat(coords)
             .addTo(map)
           markersRef.current.push(marker)
         })
       }
 
-      // Re-render markers after each map movement/zoom/data update
       map.on('idle', renderMarkers)
 
-      // ── Click: cluster → zoom ──
+      // ── Cluster click → zoom ──
       map.on('click', 'clusters', e => {
         const feats = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
         if (!feats.length) return
@@ -387,16 +389,20 @@ export default function MapaNegocios({
           .getClusterExpansionZoom(clusterId, (err, zoom) => {
             if (err) return
             map.easeTo({
-              center: (feats[0].geometry as GeoJSON.Point).coordinates as [number, number],
-              zoom: zoom ?? 10,
+              center:   (feats[0].geometry as GeoJSON.Point).coordinates as [number, number],
+              zoom:     zoom ?? 10,
               duration: 600,
             })
           })
       })
-
-      // ── Cursor on clusters ──
       map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
       map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = '' })
+
+      // ── Auto-trigger geolocation ──
+      setTimeout(() => {
+        setLocalizando(true)
+        geolocate.trigger()
+      }, 1000)
     })
 
     return () => {
@@ -404,16 +410,16 @@ export default function MapaNegocios({
       markersRef.current.forEach(m => m.remove())
       markersRef.current = []
       map.remove()
-      mapRef.current    = null
+      mapRef.current      = null
       mapLoadedRef.current = false
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Update data when filter/search changes ─────────────────────────────────
+  // ── Update data when filter/search/abierto changes ─────────────────────────
   useEffect(() => { updateSource(geojson) }, [geojson, updateSource])
 
-  // ── User position marker ───────────────────────────────────────────────────
+  // ── User position marker (from parent prop) ────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
     if (!map || !userPos) return
@@ -421,52 +427,46 @@ export default function MapaNegocios({
     userMarkerRef.current?.remove()
 
     const el = document.createElement('div')
-    el.style.cssText = `
-      width:22px;height:22px;border-radius:50%;
-      background:#1D4ED8;border:3px solid white;
-      box-shadow:0 0 0 7px rgba(29,78,216,0.18),0 2px 8px rgba(0,0,0,0.2);
+    el.style.cssText = 'position:relative;width:24px;height:24px;'
+
+    const pulse = document.createElement('div')
+    pulse.className = 'khepria-user-pulse'
+    el.appendChild(pulse)
+
+    const dot = document.createElement('div')
+    dot.style.cssText = `
+      position:absolute;inset:5px;border-radius:50%;
+      background:#1D4ED8;border:2.5px solid white;
+      box-shadow:0 2px 8px rgba(29,78,216,0.4);
     `
-    userMarkerRef.current = new mapboxgl.Marker({ element: el })
+    el.appendChild(dot)
+
+    userMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
       .setLngLat([userPos.lng, userPos.lat])
-      .setPopup(new mapboxgl.Popup({ offset: 14 }).setHTML('<b style="font-family:sans-serif;font-size:13px;">📍 Estás aquí</b>'))
+      .setPopup(new mapboxgl.Popup({ offset: 14 }).setHTML(
+        '<b style="font-family:sans-serif;font-size:13px;">📍 Estás aquí</b>'
+      ))
       .addTo(map)
 
-    setUserMarked(true)
+    map.flyTo({ center: [userPos.lng, userPos.lat], zoom: 13, duration: 1200 })
 
     return () => { userMarkerRef.current?.remove() }
   }, [userPos])
 
-  // Fly to user once marker is placed
-  useEffect(() => {
-    if (userMarked && userPos && mapRef.current) {
-      mapRef.current.flyTo({ center: [userPos.lng, userPos.lat], zoom: 13, duration: 1200 })
-      setUserMarked(false)
-    }
-  }, [userMarked, userPos])
-
-  // ── Geolocation ────────────────────────────────────────────────────────────
+  // ── Centrar en mi posición ─────────────────────────────────────────────────
   function centrarEnMi() {
     if (userPos && mapRef.current) {
       flyTo(userPos.lng, userPos.lat, 13)
       return
     }
     setLocalizando(true)
-    navigator.geolocation?.getCurrentPosition(
-      p => {
-        setLocalizando(false)
-        flyTo(p.coords.longitude, p.coords.latitude, 13)
-      },
-      () => setLocalizando(false),
-      { timeout: 8000 },
-    )
+    geolocateRef.current?.trigger()
   }
 
   // ── Search result click ────────────────────────────────────────────────────
   function focusNegocio(n: NegocioMapa) {
     setBusqueda('')
-    if (n.lat != null && n.lng != null) {
-      flyTo(n.lng, n.lat, 16)
-    }
+    if (n.lat != null && n.lng != null) flyTo(n.lng, n.lat, 16)
   }
 
   const searchResults = useMemo(() =>
@@ -492,8 +492,20 @@ export default function MapaNegocios({
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
-      {/* Popup styles */}
+      {/* ── Global styles ── */}
       <style>{`
+        @keyframes khepria-user-pulse {
+          0%   { transform: scale(1);   opacity: 0.75; }
+          70%  { transform: scale(3);   opacity: 0; }
+          100% { transform: scale(3);   opacity: 0; }
+        }
+        .khepria-user-pulse {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: rgba(29,78,216,0.4);
+          animation: khepria-user-pulse 2s ease-out infinite;
+        }
         .khepria-mapbox-popup .mapboxgl-popup-content {
           border-radius: 18px !important;
           padding: 16px !important;
@@ -508,8 +520,9 @@ export default function MapaNegocios({
           line-height: 1 !important;
         }
         .khepria-mapbox-popup .mapboxgl-popup-close-button:hover { color: #374151 !important; }
-        .mapboxgl-ctrl-bottom-left { bottom: 6px !important; left: 6px !important; }
-        .mapboxgl-ctrl-attrib { border-radius: 8px !important; font-size: 10px !important; }
+        .mapboxgl-ctrl-bottom-left  { bottom: 6px !important; left: 6px !important; }
+        .mapboxgl-ctrl-attrib       { border-radius: 8px !important; font-size: 10px !important; }
+        .mapboxgl-ctrl-geolocate    { display: none !important; }
       `}</style>
 
       {/* ── Toolbar ── */}
@@ -545,8 +558,9 @@ export default function MapaNegocios({
             style={{
               width: '44px', height: '44px', flexShrink: 0,
               background: localizando ? '#EFF6FF' : 'white',
-              border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: '12px',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: `1.5px solid ${localizando ? '#93C5FD' : 'rgba(0,0,0,0.08)'}`,
+              borderRadius: '12px', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '18px', transition: 'all 0.2s',
               boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
             }}
@@ -586,7 +600,7 @@ export default function MapaNegocios({
             {negociosFiltrados.filter(n => n.lat != null && n.lng != null).length} negocio
             {negociosFiltrados.filter(n => n.lat != null && n.lng != null).length !== 1 ? 's' : ''} en el mapa
             {filtroTipo !== 'todos' && ` · ${categorias.find(c => c.id === filtroTipo)?.label}`}
-            {!mapReady && <span style={{ marginLeft: 8, color: '#B8D8F8' }}>● Cargando mapa…</span>}
+            {!mapReady && <span style={{ marginLeft: 8, color: '#B8D8F8' }}>● Cargando…</span>}
           </span>
         </div>
       </div>

@@ -768,6 +768,7 @@ function ClienteContent(){
             negocios={negocios.map(n=>({id:n.id,nombre:n.nombre,tipo:n.tipo,ciudad:n.ciudad,direccion:n.direccion,logo_url:n.logo_url,lat:n.lat??null,lng:n.lng??null}))}
             valPorNeg={vals}
             userPos={pos}
+            abiertoMap={Object.fromEntries(negocios.map(n=>[n.id,estaAbierto(hors[n.id]||[])]))}
           />
         </div>
       )}
