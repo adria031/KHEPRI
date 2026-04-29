@@ -42,6 +42,7 @@ function AuthForm() {
   const [email, setEmail] = useState(emailParam)
   const [password, setPassword] = useState('')
   const [nombre, setNombre] = useState('')
+  const [telefono, setTelefono] = useState('')
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [esError, setEsError] = useState(false)
@@ -66,6 +67,7 @@ function AuthForm() {
     const nombreSanitized = sanitizeField(nombre, 100)
 
     if (modo === 'registro') {
+      const telefonoSanitized = sanitizeField(telefono, 20)
       const { data, error } = await supabase.auth.signUp({ email: emailSanitized, password, options: { data: { nombre: nombreSanitized } } })
       if (error) {
         if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already exists') || error.message.toLowerCase().includes('user already')) {
@@ -74,7 +76,7 @@ function AuthForm() {
         } else { setMensaje(error.message); setEsError(true) }
       } else if (rolParam === 'empleado' && negocioParam && data.user) {
         // Crear perfil empleado y ficha trabajador
-        await supabase.from('profiles').upsert({ id: data.user.id, tipo: 'empleado', nombre, email })
+        await supabase.from('profiles').upsert({ id: data.user.id, tipo: 'empleado', nombre, email, telefono: telefonoSanitized || null })
         await supabase.from('trabajadores').update({ email }).eq('negocio_id', negocioParam).eq('email', email)
         window.location.href = window.location.origin + '/empleado'
       } else {
@@ -193,6 +195,12 @@ function AuthForm() {
             <div className="field">
               <label>Tu nombre</label>
               <input type="text" placeholder="María García" value={nombre} onChange={e => setNombre(e.target.value)} autoComplete="name" />
+            </div>
+          )}
+          {modo === 'registro' && (
+            <div className="field">
+              <label>Teléfono</label>
+              <input type="tel" placeholder="612 345 678" value={telefono} onChange={e => setTelefono(e.target.value)} autoComplete="tel" inputMode="tel" />
             </div>
           )}
           <div className="field">

@@ -46,13 +46,13 @@ export async function POST(req: NextRequest) {
     const LANG_INSTRUCTIONS: Record<string, string> = {
       es: `- Responde SIEMPRE en español, de forma amable, breve y profesional.
 - Cuando el cliente exprese intención de reservar (palabras: reservar, cita, quiero una cita, disponible, hora, día, turno, agendar, pedir hora), incluye exactamente [MOSTRAR_OPCIONES] al final de tu respuesta.
-- Si el cliente elige gestión por bot, pide UNO A UNO: 1) nombre completo, 2) teléfono, 3) servicio, 4) trabajador o "cualquiera", 5) fecha (DD/MM/YYYY), 6) hora.`,
+- Si el cliente elige gestión por bot, pide UNO A UNO: 1) nombre completo, 2) teléfono (para identificarte en el sistema), 3) servicio, 4) trabajador o "cualquiera", 5) fecha (DD/MM/YYYY), 6) hora. El teléfono es obligatorio para vincular la reserva a su perfil.`,
       ca: `- Respon SEMPRE en català, de forma amable, breu i professional.
 - Quan el client expressi intenció de reservar (paraules: reservar, cita, hora, torn, agenda), inclou exactament [MOSTRAR_OPCIONES] al final de la teva resposta.
-- Si el client tria gestió pel bot, demana UN A UN: 1) nom complet, 2) telèfon, 3) servei, 4) treballador o "qualsevol", 5) data (DD/MM/YYYY), 6) hora.`,
+- Si el client tria gestió pel bot, demana UN A UN: 1) nom complet, 2) telèfon (per identificar-se al sistema), 3) servei, 4) treballador o "qualsevol", 5) data (DD/MM/YYYY), 6) hora.`,
       en: `- ALWAYS respond in English, in a friendly, brief and professional manner.
 - When the client expresses intent to book (words: book, appointment, available, slot, schedule, reserve), include exactly [MOSTRAR_OPCIONES] at the end of your response.
-- If the client chooses bot-managed booking, ask ONE BY ONE: 1) full name, 2) phone number, 3) desired service, 4) preferred worker or "any", 5) date (DD/MM/YYYY), 6) preferred time.`,
+- If the client chooses bot-managed booking, ask ONE BY ONE: 1) full name, 2) phone number (required to link booking to their profile), 3) desired service, 4) preferred worker or "any", 5) date (DD/MM/YYYY), 6) preferred time.`,
     }
 
     const CANCEL_POLICY: Record<string, string> = {

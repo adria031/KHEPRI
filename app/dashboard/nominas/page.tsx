@@ -17,11 +17,35 @@ const CONTRATOS = [
 ]
 
 // ── Tasas oficiales España 2026 ──────────────────────────────────────────────
-const SS_EMP_DEFAULT  = 31.3  // contingencias 23.6% + desempleo 5.5% + FOGASA 0.2% + FP 0.6% + MEI 0.58% + otros
+const SS_EMP_DEFAULT  = 31.4  // 23.60 + 5.50 + 0.20 + 0.60 + 1.50 = 31.40%
 const SS_TRAB_DEFAULT = 6.35  // contingencias 4.70% + desempleo 1.55% + FP 0.10%
 const SMI_2026        = 1184  // €/mes en 14 pagas (16.576 €/año)
 const AUTONOMO_TARIFA_PLANA = 80   // €/mes primer año tarifa plana 2026
 const AUTONOMO_BASE_MINIMA  = 230  // €/mes base mínima aprox. (cuota mínima cotización)
+
+// ── Bases de cotización SS 2026 ───────────────────────────────────────────────
+const BASE_SS_MIN = 1381.20   // base mínima mensual 2026
+const BASE_SS_MAX = 4909.50   // base máxima mensual 2026
+
+function baseCotizacion(brutoMensual: number): number {
+  return Math.max(BASE_SS_MIN, Math.min(brutoMensual, BASE_SS_MAX))
+}
+
+// ── Desglose SS trabajador 2026 ───────────────────────────────────────────────
+const SS_TRAB_DESGLOSE = [
+  { label: 'Contingencias comunes', pct: 4.70 },
+  { label: 'Desempleo',             pct: 1.55 },
+  { label: 'Formación profesional', pct: 0.10 },
+]
+
+// ── Desglose SS empresa 2026 ──────────────────────────────────────────────────
+const SS_EMP_DESGLOSE = [
+  { label: 'Contingencias comunes', pct: 23.60 },
+  { label: 'Desempleo',             pct: 5.50  },
+  { label: 'FOGASA',                pct: 0.20  },
+  { label: 'Formación profesional', pct: 0.60  },
+  { label: 'Accidentes de trabajo', pct: 1.50  },
+]
 
 // IRPF 2026 — retención estimada sobre bruto anual (tramos estatales vigentes)
 // Mínimo personal y familiar básico: 5.550 €
@@ -129,16 +153,20 @@ export default function Nominas() {
 
   useEffect(() => { cargarNominas() }, [cargarNominas])
 
-  // Cálculos automáticos
+  // Cálculos automáticos (SS aplica sobre base cotización, no salario bruto)
   const bruto       = parseFloat(form.salario_bruto) || 0
   const irpfPct     = parseFloat(form.irpf) || 0
   const ssTrabPct   = parseFloat(form.ss_trabajador) || 0
   const ssEmpPct    = parseFloat(form.ss_empresa) || 0
+  const baseSS      = bruto > 0 ? baseCotizacion(bruto) : 0   // base clamped
   const dedIRPF     = +(bruto * irpfPct / 100).toFixed(2)
-  const dedSSTrab   = +(bruto * ssTrabPct / 100).toFixed(2)
+  const dedSSTrab   = +(baseSS * ssTrabPct / 100).toFixed(2)
   const neto        = +(bruto - dedIRPF - dedSSTrab).toFixed(2)
-  const cuotaEmp    = +(bruto * ssEmpPct / 100).toFixed(2)
+  const cuotaEmp    = +(baseSS * ssEmpPct / 100).toFixed(2)
   const costeTotal  = +(bruto + cuotaEmp).toFixed(2)
+  // Desglose SS trabajador y empresa (en euros)
+  const ssTrabDesglose = SS_TRAB_DESGLOSE.map(d => ({ ...d, euros: +(baseSS * d.pct / 100).toFixed(2) }))
+  const ssEmpDesglose  = SS_EMP_DESGLOSE.map(d => ({ ...d, euros: +(baseSS * d.pct / 100).toFixed(2) }))
 
   function abrirModal(n?: Nomina) {
     if (n) {
@@ -611,7 +639,8 @@ Pregunta: ${texto}`
                   <div className="nominas-grid">
                     {nominas.map(n => {
                       const trab = trabajadores.find(t => t.id === n.trabajador_id)
-                      const coste = +(n.salario_bruto * (1 + n.ss_empresa / 100)).toFixed(2)
+                      const baseSSCard = baseCotizacion(n.salario_bruto)
+                      const coste = +(n.salario_bruto + baseSSCard * n.ss_empresa / 100).toFixed(2)
                       const isIaOpen = iaTarget === n.id
                       return (
                         <div key={n.id} className="nomina-card">
@@ -649,32 +678,44 @@ Pregunta: ${texto}`
                                 <span className="desglose-val" style={{color:'var(--red-dark)'}}>−{fmt(+(n.salario_bruto * n.irpf / 100).toFixed(2))}</span>
                               </div>
                               <div className="desglose-row">
-                                <span className="desglose-label">SS ({n.ss_trabajador}%)</span>
-                                <span className="desglose-val" style={{color:'var(--red-dark)'}}>−{fmt(+(n.salario_bruto * n.ss_trabajador / 100).toFixed(2))}</span>
+                                <span className="desglose-label" style={{fontSize:11, color:'var(--muted)'}}>Cont. comunes 4.70%</span>
+                                <span className="desglose-val" style={{color:'var(--red-dark)', fontSize:11}}>−{fmt(+(baseSSCard*4.70/100).toFixed(2))}</span>
+                              </div>
+                              <div className="desglose-row">
+                                <span className="desglose-label" style={{fontSize:11, color:'var(--muted)'}}>Desempleo 1.55% + FP 0.10%</span>
+                                <span className="desglose-val" style={{color:'var(--red-dark)', fontSize:11}}>−{fmt(+(baseSSCard*1.65/100).toFixed(2))}</span>
+                              </div>
+                              <div className="desglose-row">
+                                <span className="desglose-label" style={{fontWeight:600}}>SS trabajador ({n.ss_trabajador}%)</span>
+                                <span className="desglose-val" style={{color:'var(--red-dark)', fontWeight:700}}>−{fmt(+(baseSSCard * n.ss_trabajador / 100).toFixed(2))}</span>
                               </div>
                               <div className="desglose-total">
-                                <span>Neto</span>
+                                <span>💰 Neto</span>
                                 <span className="neto-val">{fmt(n.salario_neto)}</span>
                               </div>
                             </div>
 
                             {/* Columna empresa */}
                             <div className="desglose-col">
-                              <div className="desglose-title">Empresa</div>
+                              <div className="desglose-title">Empresa (base {fmt(baseSSCard)})</div>
                               <div className="desglose-row">
-                                <span className="desglose-label">Salario bruto</span>
-                                <span className="desglose-val">{fmt(n.salario_bruto)}</span>
+                                <span className="desglose-label" style={{fontSize:11, color:'var(--muted)'}}>Cont. comunes 23.60%</span>
+                                <span className="desglose-val" style={{color:'var(--red-dark)', fontSize:11}}>+{fmt(+(baseSSCard*23.60/100).toFixed(2))}</span>
                               </div>
                               <div className="desglose-row">
-                                <span className="desglose-label">SS empresa ({n.ss_empresa}%)</span>
-                                <span className="desglose-val" style={{color:'var(--red-dark)'}}>+{fmt(+(n.salario_bruto * n.ss_empresa / 100).toFixed(2))}</span>
+                                <span className="desglose-label" style={{fontSize:11, color:'var(--muted)'}}>Desempleo 5.50%</span>
+                                <span className="desglose-val" style={{color:'var(--red-dark)', fontSize:11}}>+{fmt(+(baseSSCard*5.50/100).toFixed(2))}</span>
                               </div>
                               <div className="desglose-row">
-                                <span className="desglose-label">Horas/semana</span>
-                                <span className="desglose-val">{(n as any).horas_semana || 40}h</span>
+                                <span className="desglose-label" style={{fontSize:11, color:'var(--muted)'}}>FOGASA 0.20% + FP 0.60% + AT 1.50%</span>
+                                <span className="desglose-val" style={{color:'var(--red-dark)', fontSize:11}}>+{fmt(+(baseSSCard*2.30/100).toFixed(2))}</span>
+                              </div>
+                              <div className="desglose-row">
+                                <span className="desglose-label" style={{fontWeight:600}}>SS empresa ({n.ss_empresa}%)</span>
+                                <span className="desglose-val" style={{color:'var(--red-dark)', fontWeight:700}}>+{fmt(+(baseSSCard * n.ss_empresa / 100).toFixed(2))}</span>
                               </div>
                               <div className="desglose-total">
-                                <span>Coste total</span>
+                                <span>🏢 Coste total</span>
                                 <span className="coste-val">{fmt(coste)}</span>
                               </div>
                             </div>
@@ -813,21 +854,46 @@ Pregunta: ${texto}`
               </div>
             </div>
 
-            {/* Preview cálculo */}
+            {/* Preview cálculo con desglose SS completo */}
             {bruto > 0 && (
               <div className="calc-box">
-                <div className="calc-title">Vista previa del cálculo</div>
+                <div className="calc-title">Nómina completa — base cotización {fmt(baseSS)}{baseSS !== bruto ? ` (ajustada de ${fmt(bruto)})` : ''}</div>
                 <div className="calc-row"><span className="calc-label">Salario bruto</span><span className="calc-val">{fmt(bruto)}</span></div>
-                <div className="calc-row"><span className="calc-label">− IRPF ({irpfPct}%)</span><span className="calc-val" style={{color:'var(--red-dark)'}}>−{fmt(dedIRPF)}</span></div>
-                <div className="calc-row"><span className="calc-label">− SS trabajador ({ssTrabPct}%)</span><span className="calc-val" style={{color:'var(--red-dark)'}}>−{fmt(dedSSTrab)}</span></div>
+                <div className="calc-row"><span className="calc-label" style={{color:'var(--muted)', fontSize:12}}>Base cotización SS (min {fmt(BASE_SS_MIN)} / max {fmt(BASE_SS_MAX)})</span><span className="calc-val" style={{fontSize:12}}>{fmt(baseSS)}</span></div>
                 <hr className="calc-sep" />
-                <div className="calc-total"><span style={{color:'var(--green-dark)'}}>Neto trabajador</span><span style={{color:'var(--green-dark)'}}>{fmt(neto)}</span></div>
-                <div style={{marginTop:'10px', paddingTop:'10px', borderTop:'1px solid var(--border)'}}>
-                  <div className="calc-row"><span className="calc-label">+ SS empresa ({ssEmpPct}%)</span><span className="calc-val" style={{color:'var(--red-dark)'}}>+{fmt(cuotaEmp)}</span></div>
-                  <div className="calc-total" style={{marginTop:'6px'}}><span style={{color:'var(--red-dark)'}}>Coste total empresa</span><span style={{color:'var(--red-dark)'}}>{fmt(costeTotal)}</span></div>
+                {/* SS Trabajador desglosada */}
+                <div style={{fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', margin:'6px 0 4px'}}>SS Trabajador (sobre {fmt(baseSS)})</div>
+                {ssTrabDesglose.map(d => (
+                  <div key={d.label} className="calc-row" style={{fontSize:12}}>
+                    <span className="calc-label">{d.label} ({d.pct}%)</span>
+                    <span className="calc-val" style={{color:'var(--red-dark)'}}>−{fmt(d.euros)}</span>
+                  </div>
+                ))}
+                <div className="calc-row">
+                  <span className="calc-label" style={{fontWeight:700}}>Total SS trabajador ({ssTrabPct}%)</span>
+                  <span className="calc-val" style={{color:'var(--red-dark)', fontWeight:700}}>−{fmt(dedSSTrab)}</span>
+                </div>
+                <hr className="calc-sep" />
+                <div className="calc-row"><span className="calc-label">− IRPF retención ({irpfPct}%)</span><span className="calc-val" style={{color:'var(--red-dark)'}}>−{fmt(dedIRPF)}</span></div>
+                <hr className="calc-sep" />
+                <div className="calc-total"><span style={{color:'var(--green-dark)'}}>💰 Salario neto</span><span style={{color:'var(--green-dark)'}}>{fmt(neto)}</span></div>
+                <div style={{marginTop:'12px', paddingTop:'10px', borderTop:'1px solid var(--border)'}}>
+                  <div style={{fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', margin:'0 0 4px'}}>SS Empresa (sobre {fmt(baseSS)})</div>
+                  {ssEmpDesglose.map(d => (
+                    <div key={d.label} className="calc-row" style={{fontSize:12}}>
+                      <span className="calc-label">{d.label} ({d.pct}%)</span>
+                      <span className="calc-val" style={{color:'var(--red-dark)'}}>+{fmt(d.euros)}</span>
+                    </div>
+                  ))}
+                  <div className="calc-row">
+                    <span className="calc-label" style={{fontWeight:700}}>Total SS empresa ({ssEmpPct}%)</span>
+                    <span className="calc-val" style={{color:'var(--red-dark)', fontWeight:700}}>+{fmt(cuotaEmp)}</span>
+                  </div>
+                  <hr className="calc-sep" />
+                  <div className="calc-total" style={{marginTop:'4px'}}><span style={{color:'var(--red-dark)'}}>🏢 Coste total empresa</span><span style={{color:'var(--red-dark)'}}>{fmt(costeTotal)}</span></div>
                 </div>
                 <div style={{marginTop:'10px', background:'rgba(184,216,248,0.2)', borderRadius:'8px', padding:'8px 10px', fontSize:'12px', color:'var(--blue-dark)', fontWeight:600}}>
-                  💡 Por cada €{fmt(neto)} que recibe el trabajador, la empresa paga {fmt(costeTotal)} ({((costeTotal / neto - 1) * 100).toFixed(1)}% más)
+                  💡 Por cada {fmt(neto)} que recibe el trabajador, la empresa paga {fmt(costeTotal)} ({((costeTotal / neto - 1) * 100).toFixed(1)}% más)
                 </div>
               </div>
             )}

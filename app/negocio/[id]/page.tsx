@@ -232,16 +232,29 @@ export default function FichaNegocio() {
     const trabMatch = datos.trabajador && datos.trabajador !== 'cualquiera'
       ? trabajadores.find(t => t.nombre.toLowerCase().includes(datos.trabajador.toLowerCase()))
       : null
+
+    // Intentar vincular la reserva al perfil del cliente por teléfono
+    let clienteEmail: string | null = null
+    if (datos.telefono) {
+      const { data: perfil } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('telefono', datos.telefono)
+        .maybeSingle()
+      if (perfil?.email) clienteEmail = perfil.email
+    }
+
     const { error } = await supabase.rpc('crear_reserva', {
       p_negocio_id: id, p_servicio_id: servMatch?.id ?? null, p_trabajador_id: trabMatch?.id ?? null,
-      p_cliente_nombre: datos.nombre, p_cliente_telefono: datos.telefono, p_cliente_email: null,
+      p_cliente_nombre: datos.nombre, p_cliente_telefono: datos.telefono, p_cliente_email: clienteEmail,
       p_fecha: datos.fecha, p_hora: datos.hora,
     })
     if (error) {
       setMensajes(prev => [...prev, { rol: 'bot', texto: `No pude crear la reserva: ${error.message}. Intenta reservar directamente.` }])
     } else {
       setReservaConfirmada(true)
-      setMensajes(prev => [...prev, { rol: 'bot', texto: `✅ ¡Reserva confirmada!\n\n👤 ${datos.nombre}\n📞 ${datos.telefono}\n✂️ ${datos.servicio}\n📅 ${datos.fecha} a las ${datos.hora}\n\n¡Hasta pronto!` }])
+      const vinculo = clienteEmail ? ' Tu reserva ha quedado vinculada a tu perfil.' : ''
+      setMensajes(prev => [...prev, { rol: 'bot', texto: `Tu cita está confirmada para el ${datos.fecha} a las ${datos.hora}. ¡Te esperamos!${vinculo}\n\n👤 ${datos.nombre} · 📞 ${datos.telefono} · ✂️ ${datos.servicio}` }])
       descontarCreditos(id, 3, 'chatbot_reserva').catch(() => {})
     }
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)

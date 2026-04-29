@@ -64,6 +64,7 @@ export default function Onboarding() {
   // Cliente
   const [nombreCliente, setNombreCliente] = useState('')
   const [ciudadCliente, setCiudadCliente] = useState('')
+  const [telefonoCliente, setTelefonoCliente] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -143,7 +144,7 @@ export default function Onboarding() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) throw new Error('No hay sesión activa. Vuelve a registrarte.')
       const user = session.user
-      const { error: profErr } = await supabase.from('profiles').upsert({ id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email })
+      const { error: profErr } = await supabase.from('profiles').upsert({ id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email, telefono: telefonoCliente || null })
       if (profErr) throw profErr
 
       fetch('/api/bienvenida', {
@@ -502,9 +503,20 @@ export default function Onboarding() {
                   onChange={e => setCiudadCliente(e.target.value)}
                 />
               </div>
+              <div className="field">
+                <label>Teléfono *</label>
+                <input
+                  type="tel"
+                  placeholder="612 345 678"
+                  value={telefonoCliente}
+                  onChange={e => setTelefonoCliente(e.target.value)}
+                  inputMode="tel"
+                  autoComplete="tel"
+                />
+              </div>
               <div className="btns">
                 <button className="btn-secondary" onClick={() => setPaso(0)}>← Atrás</button>
-                <button className="btn-primary" onClick={() => setPaso(2)} disabled={!nombreCliente || !ciudadCliente}>
+                <button className="btn-primary" onClick={() => setPaso(2)} disabled={!nombreCliente || !ciudadCliente || !telefonoCliente}>
                   Continuar →
                 </button>
               </div>
