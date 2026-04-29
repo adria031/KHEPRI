@@ -463,8 +463,13 @@ export default function Equipo() {
           .content { padding: 16px; }
           .equipo-grid { grid-template-columns: repeat(2, 1fr); }
           .grid2 { grid-template-columns: 1fr; }
+          .page-header { flex-wrap: wrap; gap: 10px; }
         }
-        @media (max-width: 480px) { .equipo-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 480px) {
+          .equipo-grid { grid-template-columns: 1fr; }
+          .modal { max-width: calc(100vw - 24px) !important; }
+          .btn-nuevo { width: 100%; }
+        }
       `}</style>
 
       <div className="page-header">

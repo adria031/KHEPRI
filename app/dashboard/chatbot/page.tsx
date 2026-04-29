@@ -416,6 +416,11 @@ export default function ChatbotPage() {
           .stats-grid { grid-template-columns: 1fr 1fr; }
           .tono-btns { flex-wrap: wrap; }
         }
+        @media (max-width: 480px) {
+          .card-header { flex-wrap: wrap; gap: 8px; }
+          .card-body { padding: 14px; }
+          .chat-card { height: 400px; }
+        }
       `}</style>
 
               <div className="two-col">

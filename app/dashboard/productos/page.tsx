@@ -368,6 +368,8 @@ export default function Productos() {
         }
         @media (max-width: 480px) {
           .productos-grid { grid-template-columns: 1fr; }
+          .page-header { flex-wrap: wrap !important; gap: 10px !important; }
+          .modal { max-width: calc(100vw - 24px) !important; }
         }
       `}</style>
       <input ref={fotoRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFotoChange} />

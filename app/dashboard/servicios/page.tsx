@@ -191,6 +191,12 @@ export default function Servicios() {
           .topbar { padding: 12px 16px; }
           .content { padding: 16px; }
           .servicios-grid { grid-template-columns: 1fr; }
+          .page-header { flex-wrap: wrap; gap: 10px; }
+        }
+        @media (max-width: 480px) {
+          .modal { max-width: calc(100vw - 24px) !important; }
+          .grid2 { grid-template-columns: 1fr !important; }
+          .btn-nuevo { width: 100%; }
         }
       `}</style>
 

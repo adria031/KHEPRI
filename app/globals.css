@@ -52,3 +52,39 @@ button {
     font-size: 16px !important;
   }
 }
+
+/* ── 480px (small phones) global fixes ── */
+@media (max-width: 480px) {
+  /* Page headers: wrap title + action button */
+  .page-header, .page-head {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+  /* Modals: always fit viewport */
+  .modal {
+    max-width: calc(100vw - 24px) !important;
+    width: 100% !important;
+    padding: 20px !important;
+  }
+  .modal-overlay {
+    padding: 12px !important;
+    align-items: flex-end !important;
+  }
+  /* Grids → 1 column */
+  .grid2, .grid3 {
+    grid-template-columns: 1fr !important;
+  }
+  /* Buttons full-width in modal footers */
+  .modal-btns {
+    flex-direction: column !important;
+  }
+  .modal-btns button, .modal-btns a {
+    width: 100% !important;
+  }
+  /* Tables: horizontal scroll */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

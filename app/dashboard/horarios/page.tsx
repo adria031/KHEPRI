@@ -346,6 +346,17 @@ export default function Horarios() {
           .cal-cell { font-size: 12px; }
           .cal-cell-nota { display: none; }
         }
+        @media (max-width: 480px) {
+          .horario-times { padding-left: 0 !important; }
+          .time-input { width: 80px; font-size: 13px; }
+          .time-label { width: 44px; font-size: 10px; }
+          .horario-row { padding: 12px 14px; }
+          .dia-nombre { width: 60px; font-size: 13px; }
+          .tipo-btn { padding: 7px 8px; font-size: 11px; }
+          .horarios-card { border-radius: 12px; }
+          .modal { max-width: calc(100vw - 24px) !important; }
+          .modal-body { padding: 16px; }
+        }
       `}</style>
 
             {/* ── SECCIÓN 1: HORARIO SEMANAL ── */}

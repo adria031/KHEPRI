@@ -572,6 +572,14 @@ Pregunta: ${texto}`
           .desglose { grid-template-columns: 1fr; }
           .grid2 { grid-template-columns: 1fr; }
           .grid3 { grid-template-columns: 1fr 1fr; }
+          .page-header { flex-wrap: wrap; gap: 10px; }
+        }
+        @media (max-width: 480px) {
+          .grid3 { grid-template-columns: 1fr !important; }
+          .modal { max-width: calc(100vw - 24px) !important; padding: 18px !important; }
+          .modal-btns { flex-direction: column; }
+          .modal-btns button { width: 100%; }
+          .nomina-card { padding: 14px; }
         }
       `}</style>
 

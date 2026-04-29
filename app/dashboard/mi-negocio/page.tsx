@@ -526,6 +526,12 @@ export default function MiNegocio() {
           button { min-height: 40px; }
           .btn-importar-abrir { width: 100%; }
         }
+        @media (max-width: 480px) {
+          .import-hours-grid { grid-template-columns: repeat(4, 1fr) !important; }
+          .fotos-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .import-field-row { grid-template-columns: 1fr !important; }
+          .page-title { font-size: 18px; }
+        }
       `}</style>
 
             <div className="save-bar-desktop">

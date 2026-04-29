@@ -506,6 +506,13 @@ export default function Reservas() {
           .reserva-card { flex-wrap: wrap; }
           .reserva-actions { width: 100%; }
           .stats-row { gap: 8px; }
+          .page-header { flex-wrap: wrap; gap: 10px; }
+        }
+        @media (max-width: 480px) {
+          .reserva-hora { font-size: 15px; min-width: 44px; }
+          .slot-hora-label { font-size: 13px; min-width: 40px; }
+          .reserva-card { padding: 12px; gap: 8px; }
+          .cal-cell { font-size: 11px; min-height: 36px; }
         }
       `}</style>
 

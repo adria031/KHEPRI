@@ -338,6 +338,11 @@ export default function Analytics() {
           .an-grid3 { grid-template-columns:1fr; }
           .an-grid2 { grid-template-columns:1fr; }
         }
+        @media (max-width:480px) {
+          .an-grid4 { grid-template-columns:1fr 1fr; }
+          .an-grid3 { grid-template-columns:1fr; }
+          .an-grid2 { grid-template-columns:1fr; }
+        }
       `}</style>
 
       {/* ── Header ── */}

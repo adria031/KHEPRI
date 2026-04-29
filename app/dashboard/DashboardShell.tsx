@@ -308,9 +308,14 @@ export function DashboardShell({
           .ds-sidebar.open { transform: translateX(0); }
           .ds-hamburger { display: flex; }
           .ds-main { margin-left: 0; }
-          .ds-topbar { padding: 0 16px; }
+          .ds-topbar { padding: 0 12px; }
           .ds-content { padding: 16px; }
           .content { padding: 16px; }
+          /* Topbar: hide non-essential items to avoid overflow at 375px */
+          .ds-negsel-wrap { display: none; }
+          .ds-notif-btn { display: none; }
+          .ds-user-av { display: none; }
+          .ds-page-title { font-size: 14px; }
         }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -416,7 +421,9 @@ export function DashboardShell({
               <span className="ds-page-title">{pageTitle}</span>
             </div>
             <div className="ds-topbar-right">
-              <NegocioSelector negocios={todosNegocios} activoId={negocio?.id ?? ''} />
+              <div className="ds-negsel-wrap">
+                <NegocioSelector negocios={todosNegocios} activoId={negocio?.id ?? ''} />
+              </div>
               <button
                 onClick={toggleTheme}
                 className="ds-bell"
@@ -437,7 +444,7 @@ export function DashboardShell({
                   </svg>
                 )}
               </button>
-              <button className="ds-bell" aria-label="Notificaciones">
+              <button className="ds-bell ds-notif-btn" aria-label="Notificaciones">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                 </svg>
