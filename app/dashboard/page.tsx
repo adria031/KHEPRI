@@ -9,7 +9,6 @@ import {
 import { getSessionClient, supabase } from '../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
 import { DashboardShell } from './DashboardShell'
-import { obtenerCreditos } from '../lib/creditos'
 
 function isoLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -139,21 +138,29 @@ export default function Dashboard() {
       setNegocio(modoTodos ? null : neg)
       const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
 
-      // Cargar créditos del negocio activo (con fallback basado en plan si las columnas no existen)
-      obtenerCreditos(neg.id).then(c => {
-        if (c) {
-          setCreditos(c)
+      // Cargar créditos directamente desde la tabla negocios
+      try {
+        const { data: negociosCredits } = await db
+          .from('negocios')
+          .select('id,creditos_totales,creditos_usados,plan')
+          .eq('user_id', user.id)
+        if (negociosCredits && negociosCredits.length > 0) {
+          const relevant = modoTodos ? negociosCredits : negociosCredits.filter(n => n.id === neg.id)
+          const totales = relevant.reduce((s, n) => s + (n.creditos_totales ?? 100), 0)
+          const usados  = relevant.reduce((s, n) => s + (n.creditos_usados  ?? 0),   0)
+          const disponibles = Math.max(0, totales - usados)
+          const pct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
+          setCreditos({ totales, usados, disponibles, pct })
         } else {
-          // Fallback: usar defaults del plan si creditos_totales no está en BD
           const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
           const totales = planDefaults[neg.plan ?? 'starter'] ?? 100
           setCreditos({ totales, usados: 0, disponibles: totales, pct: 100 })
         }
-      }).catch(() => {
+      } catch {
         const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
         const totales = planDefaults[neg.plan ?? 'starter'] ?? 100
         setCreditos({ totales, usados: 0, disponibles: totales, pct: 100 })
-      })
+      }
 
       const now = new Date()
       const hoyISO          = isoLocal(now)
