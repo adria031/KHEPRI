@@ -4,6 +4,7 @@ const CACHE_NAME = 'khepria-v1'
 const PRECACHE_URLS = [
   '/',
   '/offline',
+  '/auth',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
