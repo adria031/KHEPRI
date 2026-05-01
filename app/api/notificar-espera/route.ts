@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const RESEND_KEY = 're_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1'
+const RESEND_KEY = process.env.RESEND_API_KEY ?? ''
 
 export async function POST(req: NextRequest) {
   const { reserva_id } = await req.json()
@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
 </table>
 </body></html>`
 
+  console.log('[notificar-espera] Enviando email a:', espera.cliente_email)
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -104,13 +105,13 @@ export async function POST(req: NextRequest) {
       html,
     }),
   })
+  const resBody = await res.json().catch(() => ({}))
+  console.log('[notificar-espera] Respuesta Resend:', JSON.stringify({ status: res.status, body: resBody }))
 
   if (res.ok) {
-    // Remove the notified entry from wait list
     await supabase.from('lista_espera').delete().eq('id', espera.id)
   } else {
-    const body = await res.json().catch(() => ({}))
-    console.error('[notificar-espera] error Resend:', body)
+    console.error('[notificar-espera] error Resend:', resBody)
   }
 
   return NextResponse.json({ ok: true, notificado: res.ok })

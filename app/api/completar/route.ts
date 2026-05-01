@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const RESEND_KEY = 're_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1'
+const RESEND_KEY = process.env.RESEND_API_KEY ?? ''
 
 function hoyISO(): string {
   return new Date().toISOString().split('T')[0]
@@ -223,6 +223,7 @@ export async function POST(req: NextRequest) {
     const negRaw = Array.isArray(r.negocios) ? r.negocios[0] : r.negocios
     const negNombre = (negRaw as { nombre?: string } | null)?.nombre ?? 'tu negocio'
 
+    console.log('[completar] Enviando email reseña a:', r.cliente_email, 'reserva:', r.id)
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -236,6 +237,8 @@ export async function POST(req: NextRequest) {
         html,
       }),
     })
+    const resBody = await res.json().catch(() => ({}))
+    console.log('[completar] Respuesta Resend:', JSON.stringify({ status: res.status, body: resBody }))
 
     if (res.ok) {
       await supabase
@@ -244,8 +247,7 @@ export async function POST(req: NextRequest) {
         .eq('id', r.id)
       resenas++
     } else {
-      const body = await res.json().catch(() => ({}))
-      console.error('[completar] error Resend para reserva', r.id, body)
+      console.error('[completar] error Resend para reserva', r.id, resBody)
       erroresResena++
     }
   }

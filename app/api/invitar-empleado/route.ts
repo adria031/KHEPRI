@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const RESEND_KEY = 're_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1'
+const RESEND_KEY = process.env.RESEND_API_KEY ?? ''
 
 export async function POST(req: NextRequest) {
   try {
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`
 
+    console.log('[invitar-empleado] Enviando email a:', email)
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -80,11 +81,12 @@ export async function POST(req: NextRequest) {
         html,
       }),
     })
+    const resBody = await res.json().catch(() => ({}))
+    console.log('[invitar-empleado] Respuesta Resend:', JSON.stringify({ status: res.status, body: resBody }))
 
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      console.error('[invitar-empleado] Resend error:', body)
-      return NextResponse.json({ error: (body as any)?.message ?? `Resend error ${res.status}` }, { status: 502 })
+      console.error('[invitar-empleado] Resend error:', resBody)
+      return NextResponse.json({ error: (resBody as any)?.message ?? `Resend error ${res.status}` }, { status: 502 })
     }
 
     return NextResponse.json({ ok: true })

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { rateLimit, getIP } from '../../lib/rateLimit'
 
-const RESEND_KEY = 're_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1'
+const RESEND_KEY = process.env.RESEND_API_KEY ?? ''
 
 function manana(): string {
   const d = new Date()
@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
     const cancelUrl = `${appUrl}/reserva/${reserva.id}/cancelar`
     const html = buildHtml(reserva, cancelUrl)
 
+    console.log('[recordatorios] Enviando email a:', reserva.cliente_email, 'para reserva:', reserva.id)
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -151,6 +152,8 @@ export async function POST(req: NextRequest) {
         html,
       }),
     })
+    const resBody = await res.json().catch(() => ({}))
+    console.log('[recordatorios] Respuesta Resend:', JSON.stringify({ status: res.status, body: resBody }))
 
     if (res.ok) {
       await supabase
@@ -159,8 +162,7 @@ export async function POST(req: NextRequest) {
         .eq('id', reserva.id)
       enviados++
     } else {
-      const body = await res.json().catch(() => ({}))
-      console.error('[recordatorios] error Resend para reserva', reserva.id, body)
+      console.error('[recordatorios] error Resend para reserva', reserva.id, resBody)
       errores++
     }
   }

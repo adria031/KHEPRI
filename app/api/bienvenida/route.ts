@@ -165,6 +165,7 @@ export async function POST(req: NextRequest) {
       : 'Bienvenido a Khepria — descubre negocios cerca de ti'
     const html = esNegocio ? htmlNegocio(nombre) : htmlCliente(nombre)
 
+    console.log('[bienvenida] Enviando email a:', email, '| key set:', !!RESEND_API_KEY)
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -173,11 +174,12 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({ from: FROM, to: email, subject, html }),
     })
+    const resBody = await res.json().catch(() => ({}))
+    console.log('[bienvenida] Respuesta Resend:', JSON.stringify({ status: res.status, body: resBody }))
 
     if (!res.ok) {
-      const err = await res.json()
-      console.error('[bienvenida] Resend error:', err)
-      return NextResponse.json({ error: err }, { status: res.status })
+      console.error('[bienvenida] Resend error:', resBody)
+      return NextResponse.json({ error: resBody }, { status: res.status })
     }
 
     return NextResponse.json({ ok: true })

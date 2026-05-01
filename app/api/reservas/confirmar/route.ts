@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
     const appUrl  = process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`
     const cancelUrl = `${appUrl}/reserva/${reserva_id}/cancelar`
 
+    console.log('[reservas/confirmar] Enviando email a:', reserva.cliente_email)
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -141,11 +142,12 @@ export async function POST(req: NextRequest) {
         html: buildHtml(reserva, cancelUrl),
       }),
     })
+    const emailBody = await emailRes.json().catch(() => ({}))
+    console.log('[reservas/confirmar] Respuesta Resend:', JSON.stringify({ status: emailRes.status, body: emailBody }))
 
     if (!emailRes.ok) {
-      const body = await emailRes.json().catch(() => ({}))
       return NextResponse.json(
-        { error: (body as any)?.message ?? `Resend error ${emailRes.status}` },
+        { error: (emailBody as any)?.message ?? `Resend error ${emailRes.status}` },
         { status: 502 },
       )
     }

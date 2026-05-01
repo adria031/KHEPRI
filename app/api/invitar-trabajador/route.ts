@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { rateLimit, getIP } from '../../lib/rateLimit'
 
-const resend = new Resend('re_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1')
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest) {
   const rl = rateLimit(getIP(req), 10)
@@ -91,12 +91,14 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`
 
-    const { error: resendError } = await resend.emails.send({
+    console.log('[invitar-trabajador] Enviando email a:', email)
+    const { data, error: resendError } = await resend.emails.send({
       from: 'Khepria <onboarding@resend.dev>',
       to: [email],
       subject: `✂️ ${nombreNegocio} te ha añadido a su equipo en Khepria`,
       html,
     })
+    console.log('[invitar-trabajador] Respuesta Resend:', JSON.stringify({ data, error: resendError }))
 
     if (resendError) {
       console.error('[invitar-trabajador] Resend error:', resendError)
