@@ -873,6 +873,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                   onClick={confirmar}
                   onTouchEnd={(e) => { e.preventDefault(); if (!enviando) confirmar() }}
                   disabled={enviando}
+                  style={{ minHeight: '48px', width: '100%' }}
                 >
                   {enviando ? 'Confirmando...' : '✓ Confirmar reserva'}
                 </button>
