@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 
-const TEST_TO = 'adria.gaitan.sola@gmail.com'
+// onboarding@resend.dev solo puede enviar al email del dueño de la cuenta Resend
+// Para enviar a cualquier destinatario hay que verificar un dominio propio en resend.com/domains
+const TEST_TO = 'khepriacontact@gmail.com'
 
 export async function GET() {
   const key = process.env.RESEND_API_KEY
