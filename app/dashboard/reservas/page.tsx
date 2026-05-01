@@ -363,6 +363,7 @@ export default function Reservas() {
 
   const confirmadas = reservas.filter(r => r.estado === 'confirmada').length
   const completadas = reservas.filter(r => r.estado === 'completada').length
+  const canceladas  = reservas.filter(r => r.estado === 'cancelada').length
   const slots = vista === 'dia' ? getSlotsDelDia() : []
   const slotsLibres = slots.filter(s => !s.reserva).length
 
@@ -437,19 +438,22 @@ export default function Reservas() {
         .page-header p { font-size: 14px; color: var(--text2); }
         .nav-fecha { background: none; border: 1.5px solid var(--border); border-radius: 10px; width: 36px; height: 36px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); transition: all 0.15s; }
         .nav-fecha:hover { background: var(--bg); }
-        .stats-row { display: flex; gap: 12px; margin-bottom: 20px; }
-        .stat-mini { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; flex: 1; }
-        .stat-mini-val { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+        .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-mini { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+        .stat-mini-icon { font-size: 20px; flex-shrink: 0; }
+        .stat-mini-val { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; line-height: 1; }
         .stat-mini-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
         .reservas-lista { display: flex; flex-direction: column; gap: 10px; }
-        .reserva-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; display: flex; align-items: center; gap: 16px; transition: box-shadow 0.2s; }
+        .reserva-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; transition: box-shadow 0.2s; }
         .reserva-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
-        .reserva-hora { font-size: 18px; font-weight: 800; color: var(--text); min-width: 56px; letter-spacing: -0.5px; }
-        .reserva-info { flex: 1; }
-        .reserva-cliente { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
-        .reserva-detalle { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        /* Shared inner card layout */
+        .rc-card-inner { padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
+        .rc-top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+        .rc-nombre { font-size: 15px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .rc-linea { font-size: 13px; color: var(--text2); line-height: 1.5; }
+        .reserva-hora { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
         .reserva-estado { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
-        .reserva-actions { display: flex; gap: 8px; }
+        .reserva-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .btn-completar { padding: 8px 14px; background: var(--green-soft); color: var(--green-dark); border: 1.5px solid rgba(184,237,212,0.6); border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
         .btn-completar:hover { background: rgba(184,237,212,0.5); }
         .btn-cancelar { padding: 8px 14px; background: rgba(251,207,232,0.2); color: #B5467A; border: 1.5px solid rgba(251,207,232,0.5); border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
@@ -476,9 +480,10 @@ export default function Reservas() {
         /* Worker color bar */
         .worker-bar { width: 4px; border-radius: 2px; align-self: stretch; flex-shrink: 0; min-height: 36px; }
         /* Slots */
-        .slot-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--white); margin-bottom: 6px; }
-        .slot-row.ocupado { background: rgba(184,216,248,0.08); border-color: rgba(184,216,248,0.4); }
-        .slot-hora-label { font-size: 15px; font-weight: 800; color: var(--text); min-width: 50px; letter-spacing: -0.5px; }
+        .slot-row { border-radius: 12px; border: 1px solid var(--border); background: var(--white); margin-bottom: 6px; overflow: hidden; }
+        .slot-row.libre { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+        .slot-row.ocupado { background: rgba(184,216,248,0.04); border-color: rgba(184,216,248,0.4); }
+        .slot-hora-label { font-size: 13px; font-weight: 700; color: var(--muted); }
         .slot-libre-label { font-size: 13px; color: var(--muted); font-weight: 500; font-style: italic; }
         .tab-btn { padding: 8px 18px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--white); font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
         .tab-btn.active { background: var(--blue-dark); color: white; border-color: var(--blue-dark); }
@@ -503,39 +508,24 @@ export default function Reservas() {
           .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); }
           .sidebar-overlay.open { display: block; } .hamburger { display: flex; }
           .main { margin-left: 0; } .topbar { padding: 12px 16px; } .content { padding: 16px; }
-          .reserva-card { flex-wrap: wrap; }
-          .reserva-actions { width: 100%; }
-          .stats-row { gap: 8px; flex-wrap: wrap; }
+          .stats-row { grid-template-columns: repeat(2,1fr); gap: 8px; }
           .page-header { flex-wrap: wrap; gap: 10px; }
         }
         @media (max-width: 480px) {
-          /* KPIs en columna: cada uno ocupa 100% */
-          .stats-row { flex-direction: column; gap: 6px; }
-          .stat-mini { width: 100%; flex: none; display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
-          .stat-mini-val { font-size: 20px; flex-shrink: 0; }
-          .stat-mini-label { font-size: 13px; margin-top: 0; }
-          .ocu-bar-wrap { display: none; }
-          /* Tarjetas de reserva verticales */
-          .reserva-card { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; }
-          .reserva-hora { font-size: 12px; font-weight: 600; color: var(--muted); min-width: auto; letter-spacing: 0; }
-          .reserva-cliente { font-size: 15px; font-weight: 800; }
-          .reserva-detalle { flex-direction: column; gap: 4px; align-items: flex-start; font-size: 13px; }
-          .reserva-estado { align-self: flex-start; }
-          .reserva-actions { flex-wrap: wrap; gap: 6px; width: 100%; }
-          .btn-completar, .btn-cancelar, .btn-restaurar { flex: 1; min-width: 0; text-align: center; justify-content: center; }
-          /* Slots verticales */
-          .slot-row { flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
-          .slot-hora-label { font-size: 13px; min-width: 40px; }
-          .slot-row .reserva-info { width: 100%; order: 2; }
-          .slot-row .reserva-estado { order: 3; }
-          .slot-row .reserva-actions { width: 100%; order: 4; flex-wrap: wrap; gap: 6px; }
+          /* KPIs: 1 por fila, diseño horizontal compacto */
+          .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+          .stat-mini { padding: 12px 14px; gap: 10px; }
+          .stat-mini-icon { font-size: 18px; }
+          .stat-mini-val { font-size: 20px; }
           /* Header de página */
           .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
           .tab-btn { font-size: 12px; padding: 7px 10px; }
           .content { padding: 12px; }
           .topbar { padding: 10px 12px; }
+          /* Acción botones */
+          .btn-completar, .btn-cancelar, .btn-restaurar { flex: 1; min-width: 0; text-align: center; font-size: 12px; padding: 8px 8px; }
+          .reserva-actions { width: 100%; flex-wrap: wrap; }
           /* Calendario */
-          .cal-cell { font-size: 11px; min-height: 36px; }
           .cal-card { padding: 14px; }
           .cal-badge { font-size: 9px; padding: 1px 4px; }
         }
@@ -628,33 +618,35 @@ export default function Reservas() {
                   )}
                 </div>
 
-                {/* Estadísticas del día */}
+                {/* KPIs del día */}
                 <div className="stats-row" style={{marginBottom:'12px'}}>
                   <div className="stat-mini">
-                    <div className="stat-mini-val">{reservas.length}</div>
-                    <div className="stat-mini-label">Total reservas</div>
-                  </div>
-                  <div className="stat-mini">
-                    <div className="stat-mini-val" style={{color:'#1D4ED8'}}>{confirmadas}</div>
-                    <div className="stat-mini-label">Confirmadas</div>
-                  </div>
-                  <div className="stat-mini">
-                    <div className="stat-mini-val" style={{color:'#2E8A5E'}}>{completadas}</div>
-                    <div className="stat-mini-label">Completadas</div>
-                  </div>
-                  <div className="stat-mini">
-                    <div className="stat-mini-val" style={{color: ocupacionPct >= 80 ? '#2E8A5E' : ocupacionPct >= 50 ? '#D97706' : '#9CA3AF'}}>
-                      {slots.length > 0 ? `${ocupacionPct}%` : '—'}
+                    <div className="stat-mini-icon">📅</div>
+                    <div>
+                      <div className="stat-mini-val">{reservas.length}</div>
+                      <div className="stat-mini-label">Hoy</div>
                     </div>
-                    <div className="stat-mini-label">Ocupación</div>
-                    {slots.length > 0 && (
-                      <div className="ocu-bar-wrap">
-                        <div className="ocu-bar" style={{
-                          width: `${ocupacionPct}%`,
-                          background: ocupacionPct >= 80 ? '#2E8A5E' : ocupacionPct >= 50 ? '#F59E0B' : '#CBD5E1'
-                        }} />
-                      </div>
-                    )}
+                  </div>
+                  <div className="stat-mini">
+                    <div className="stat-mini-icon">⏳</div>
+                    <div>
+                      <div className="stat-mini-val" style={{color:'#1D4ED8'}}>{confirmadas}</div>
+                      <div className="stat-mini-label">Pendiente</div>
+                    </div>
+                  </div>
+                  <div className="stat-mini">
+                    <div className="stat-mini-icon">✅</div>
+                    <div>
+                      <div className="stat-mini-val" style={{color:'#2E8A5E'}}>{completadas}</div>
+                      <div className="stat-mini-label">Completada</div>
+                    </div>
+                  </div>
+                  <div className="stat-mini">
+                    <div className="stat-mini-icon">❌</div>
+                    <div>
+                      <div className="stat-mini-val" style={{color:'#B5467A'}}>{canceladas}</div>
+                      <div className="stat-mini-label">Cancelada</div>
+                    </div>
                   </div>
                 </div>
 
@@ -695,40 +687,40 @@ export default function Reservas() {
                     {slots.map(({ hora, reserva: r }) => {
                       if (!r) {
                         return (
-                          <div key={hora} className="slot-row">
+                          <div key={hora} className="slot-row libre">
                             <span className="slot-hora-label">{hora}</span>
                             <span className="slot-libre-label">Libre</span>
                           </div>
                         )
                       }
                       const cfg = estadoConfig[r.estado] || estadoConfig.confirmada
+                      const workerColor = r.trabajador_id ? (colorMap[r.trabajador_id] || '#CBD5E1') : null
                       return (
-                        <div key={hora} className="slot-row ocupado">
-                          {r.trabajador_id && <div className="worker-bar" style={{background: colorMap[r.trabajador_id] || '#CBD5E1'}} />}
-                          <span className="slot-hora-label">{hora}</span>
-                          <div className="reserva-info">
-                            <div className="reserva-cliente" style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                        <div key={hora} className="slot-row ocupado" style={workerColor ? {borderLeft:`4px solid ${workerColor}`} : {}}>
+                          <div className="rc-card-inner">
+                            <div className="rc-top-row">
+                              <span className="slot-hora-label">{hora}</span>
+                              <span className="reserva-estado" style={{background:cfg.bg,color:cfg.color}}>{cfg.label}</span>
+                            </div>
+                            <div className="rc-nombre">
                               {r.cliente_nombre}
                               {badgeRiesgo(r.cliente_telefono)}
                             </div>
-                            <div className="reserva-detalle">
-                              {r.servicios?.nombre && <span>🔧 {r.servicios.nombre}</span>}
-                              {r.trabajadores?.nombre && <span>👤 {r.trabajadores.nombre}</span>}
-                              {r.cliente_telefono && <span>📞 {r.cliente_telefono}</span>}
-                              {r.estado === 'completada' && r.puntos_ganados ? <span style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</span> : null}
+                            {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}</div>}
+                            {r.trabajadores?.nombre && <div className="rc-linea">👤 {r.trabajadores.nombre}</div>}
+                            {r.cliente_telefono && <div className="rc-linea">📞 {r.cliente_telefono}</div>}
+                            {r.estado === 'completada' && r.puntos_ganados ? <div className="rc-linea" style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</div> : null}
+                            <div className="reserva-actions" style={{marginTop:'8px'}}>
+                              {r.estado === 'confirmada' && (
+                                <>
+                                  <button className="btn-completar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'completada')}>✓ Completada</button>
+                                  <button className="btn-cancelar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'cancelada')}>Cancelar</button>
+                                </>
+                              )}
+                              {(r.estado === 'cancelada' || r.estado === 'completada') && (
+                                <button className="btn-restaurar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'confirmada')}>Restaurar</button>
+                              )}
                             </div>
-                          </div>
-                          <span className="reserva-estado" style={{background:cfg.bg,color:cfg.color}}>{cfg.label}</span>
-                          <div className="reserva-actions">
-                            {r.estado === 'confirmada' && (
-                              <>
-                                <button className="btn-completar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'completada')}>✓ Completada</button>
-                                <button className="btn-cancelar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'cancelada')}>Cancelar</button>
-                              </>
-                            )}
-                            {(r.estado === 'cancelada' || r.estado === 'completada') && (
-                              <button className="btn-restaurar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'confirmada')}>Restaurar</button>
-                            )}
                           </div>
                         </div>
                       )
@@ -745,32 +737,33 @@ export default function Reservas() {
                     <div className="reservas-lista">
                       {reservas.map(r => {
                         const cfg = estadoConfig[r.estado] || estadoConfig.confirmada
+                        const workerColor = r.trabajador_id ? (colorMap[r.trabajador_id] || '#CBD5E1') : null
                         return (
-                          <div key={r.id} className="reserva-card" style={r.trabajador_id ? {borderLeft: `4px solid ${colorMap[r.trabajador_id] || '#CBD5E1'}`} : {}}>
-                            <div className="reserva-hora">{r.hora?.slice(0,5)}</div>
-                            <div className="reserva-info">
-                              <div className="reserva-cliente" style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                          <div key={r.id} className="reserva-card" style={workerColor ? {borderLeft:`4px solid ${workerColor}`} : {}}>
+                            <div className="rc-card-inner">
+                              <div className="rc-top-row">
+                                <span className="reserva-hora">{r.hora?.slice(0,5)}</span>
+                                <span className="reserva-estado" style={{background:cfg.bg,color:cfg.color}}>{cfg.label}</span>
+                              </div>
+                              <div className="rc-nombre">
                                 {r.cliente_nombre}
                                 {badgeRiesgo(r.cliente_telefono)}
                               </div>
-                              <div className="reserva-detalle">
-                                {r.servicios?.nombre && <span>🔧 {r.servicios.nombre}</span>}
-                                {r.trabajadores?.nombre && <span>👤 {r.trabajadores.nombre}</span>}
-                                {r.cliente_telefono && <span>📞 {r.cliente_telefono}</span>}
-                                {r.estado === 'completada' && r.puntos_ganados ? <span style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</span> : null}
+                              {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}</div>}
+                              {r.trabajadores?.nombre && <div className="rc-linea">👤 {r.trabajadores.nombre}</div>}
+                              {r.cliente_telefono && <div className="rc-linea">📞 {r.cliente_telefono}</div>}
+                              {r.estado === 'completada' && r.puntos_ganados ? <div className="rc-linea" style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</div> : null}
+                              <div className="reserva-actions" style={{marginTop:'8px'}}>
+                                {r.estado === 'confirmada' && (
+                                  <>
+                                    <button className="btn-completar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'completada')}>✓ Completada</button>
+                                    <button className="btn-cancelar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'cancelada')}>Cancelar</button>
+                                  </>
+                                )}
+                                {(r.estado === 'cancelada' || r.estado === 'completada') && (
+                                  <button className="btn-restaurar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'confirmada')}>Restaurar</button>
+                                )}
                               </div>
-                            </div>
-                            <span className="reserva-estado" style={{background:cfg.bg,color:cfg.color}}>{cfg.label}</span>
-                            <div className="reserva-actions">
-                              {r.estado === 'confirmada' && (
-                                <>
-                                  <button className="btn-completar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'completada')}>✓ Completada</button>
-                                  <button className="btn-cancelar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'cancelada')}>Cancelar</button>
-                                </>
-                              )}
-                              {(r.estado === 'cancelada' || r.estado === 'completada') && (
-                                <button className="btn-restaurar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'confirmada')}>Restaurar</button>
-                              )}
                             </div>
                           </div>
                         )
