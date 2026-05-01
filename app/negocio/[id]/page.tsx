@@ -233,21 +233,23 @@ export default function FichaNegocio() {
       ? trabajadores.find(t => t.nombre.toLowerCase().includes(datos.trabajador.toLowerCase()))
       : null
 
-    // Intentar vincular la reserva al perfil del cliente por teléfono
+    // Vincular la reserva al perfil del cliente por teléfono
     let clienteEmail: string | null = null
+    let clienteUserId: string | null = null
     if (datos.telefono) {
       const { data: perfil } = await supabase
         .from('profiles')
-        .select('email')
+        .select('id, email')
         .eq('telefono', datos.telefono)
         .maybeSingle()
       if (perfil?.email) clienteEmail = perfil.email
+      if (perfil?.id) clienteUserId = perfil.id
     }
 
     const { error } = await supabase.rpc('crear_reserva', {
       p_negocio_id: id, p_servicio_id: servMatch?.id ?? null, p_trabajador_id: trabMatch?.id ?? null,
       p_cliente_nombre: datos.nombre, p_cliente_telefono: datos.telefono, p_cliente_email: clienteEmail,
-      p_fecha: datos.fecha, p_hora: datos.hora,
+      p_fecha: datos.fecha, p_hora: datos.hora, p_user_id: clienteUserId,
     })
     if (error) {
       setMensajes(prev => [...prev, { rol: 'bot', texto: `No pude crear la reserva: ${error.message}. Intenta reservar directamente.` }])
