@@ -17,6 +17,15 @@ type Resena = {
   created_at: string
 }
 
+type Analisis = {
+  positivo: number
+  negativo: number
+  neutro: number
+  puntos_fuertes: string[]
+  puntos_mejora: string[]
+  resumen: string
+}
+
 function Estrellas({ n, size = 14 }: { n: number; size?: number }) {
   return (
     <span style={{ display: 'inline-flex', gap: '1px' }}>
@@ -43,6 +52,54 @@ export default function Resenas() {
   const [textoRespuesta, setTextoRespuesta] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [filtro, setFiltro] = useState<number | 'todas'>('todas')
+  const [analisis, setAnalisis] = useState<Analisis | null>(null)
+  const [analizando, setAnalizando] = useState(false)
+
+  async function analizarSentimiento(lista: Resena[]) {
+    const conComentario = lista.filter(r => r.comentario?.trim())
+    if (conComentario.length === 0) return
+    setAnalizando(true)
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+      if (!apiKey) return
+      const prompt = `Analiza estas reseñas de un negocio y devuelve SOLO un JSON válido sin markdown ni explicaciones:
+{
+  "positivo": número del 0 al 100,
+  "negativo": número del 0 al 100,
+  "neutro": número del 0 al 100,
+  "puntos_fuertes": ["punto1", "punto2"],
+  "puntos_mejora": ["punto1", "punto2"],
+  "resumen": "texto breve de 1-2 frases"
+}
+Reseñas: ${JSON.stringify(conComentario.map(r => ({ valoracion: r.valoracion, comentario: r.comentario })))}`
+
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+      for (const model of models) {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: { maxOutputTokens: 600, temperature: 0.3 },
+            }),
+          }
+        )
+        if (!res.ok) continue
+        const d = await res.json()
+        const texto = d?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+        const jsonStr = texto.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        try {
+          const parsed = JSON.parse(jsonStr) as Analisis
+          setAnalisis(parsed)
+          break
+        } catch { continue }
+      }
+    } catch { /* silencioso */ } finally {
+      setAnalizando(false)
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -59,8 +116,10 @@ export default function Resenas() {
         .select('*')
         .eq('negocio_id', neg.id)
         .order('created_at', { ascending: false })
-      setResenas(data || [])
+      const lista = data || []
+      setResenas(lista)
       setCargando(false)
+      analizarSentimiento(lista as Resena[])
     })()
   }, [])
 
@@ -176,6 +235,22 @@ export default function Resenas() {
         .empty-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
         .empty-sub { font-size: 14px; color: var(--muted); }
 
+        /* Análisis sentimiento */
+        .analisis-panel { background: var(--white); border: 1px solid var(--border); border-radius: 18px; padding: 22px 24px; margin-bottom: 20px; }
+        .analisis-titulo { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; display: flex; align-items: center; gap: 6px; }
+        .analisis-barras { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+        .analisis-barra-row { display: flex; align-items: center; gap: 10px; }
+        .analisis-barra-label { font-size: 13px; font-weight: 600; min-width: 72px; }
+        .analisis-barra-wrap { flex: 1; height: 10px; background: rgba(0,0,0,0.06); border-radius: 5px; overflow: hidden; }
+        .analisis-barra-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+        .analisis-barra-pct { font-size: 13px; font-weight: 700; min-width: 38px; text-align: right; }
+        .analisis-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+        .analisis-col-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+        .analisis-point { font-size: 13px; color: var(--text2); line-height: 1.5; padding: 5px 10px; border-radius: 8px; margin-bottom: 4px; }
+        .analisis-resumen { font-size: 13px; color: var(--text2); line-height: 1.6; font-style: italic; padding: 12px 14px; background: var(--bg); border-radius: 10px; border-left: 3px solid #B8D8F8; }
+        .analisis-skeleton { height: 120px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 12px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); }
           .sidebar-overlay.open { display: block; } .hamburger { display: flex; }
@@ -184,6 +259,7 @@ export default function Resenas() {
           .media-big { border-right: none; border-bottom: 1px solid var(--border); padding: 0 0 18px; flex-direction: row; justify-content: flex-start; gap: 14px; min-width: unset; }
           .media-num { font-size: 40px; margin-bottom: 0; }
           .resena-header { flex-wrap: wrap; }
+          .analisis-cols { grid-template-columns: 1fr; }
         }
       `}</style>
 
@@ -210,6 +286,70 @@ export default function Resenas() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ANÁLISIS SENTIMIENTO IA */}
+            {!cargando && total > 0 && (
+              <div className="analisis-panel">
+                <div className="analisis-titulo">
+                  🤖 Análisis IA de sentimiento
+                  {analizando && <span style={{fontSize:11, color:'var(--muted)', fontWeight:400}}>Analizando...</span>}
+                </div>
+                {analizando && !analisis ? (
+                  <div className="analisis-skeleton" />
+                ) : analisis ? (
+                  <>
+                    <div className="analisis-barras">
+                      <div className="analisis-barra-row">
+                        <span className="analisis-barra-label" style={{color:'#2E8A5E'}}>Positivo</span>
+                        <div className="analisis-barra-wrap">
+                          <div className="analisis-barra-fill" style={{width:`${analisis.positivo}%`, background:'#34D399'}} />
+                        </div>
+                        <span className="analisis-barra-pct" style={{color:'#2E8A5E'}}>{analisis.positivo}%</span>
+                      </div>
+                      <div className="analisis-barra-row">
+                        <span className="analisis-barra-label" style={{color:'#92400E'}}>Negativo</span>
+                        <div className="analisis-barra-wrap">
+                          <div className="analisis-barra-fill" style={{width:`${analisis.negativo}%`, background:'#F87171'}} />
+                        </div>
+                        <span className="analisis-barra-pct" style={{color:'#B91C1C'}}>{analisis.negativo}%</span>
+                      </div>
+                      <div className="analisis-barra-row">
+                        <span className="analisis-barra-label" style={{color:'var(--muted)'}}>Neutro</span>
+                        <div className="analisis-barra-wrap">
+                          <div className="analisis-barra-fill" style={{width:`${analisis.neutro}%`, background:'#9CA3AF'}} />
+                        </div>
+                        <span className="analisis-barra-pct" style={{color:'var(--muted)'}}>{analisis.neutro}%</span>
+                      </div>
+                    </div>
+
+                    <div className="analisis-cols">
+                      <div>
+                        <div className="analisis-col-title" style={{color:'#2E8A5E'}}>
+                          ✅ Puntos fuertes
+                        </div>
+                        {analisis.puntos_fuertes.map((p, i) => (
+                          <div key={i} className="analisis-point" style={{background:'rgba(184,237,212,0.15)', borderLeft:'3px solid #34D399'}}>
+                            {p}
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <div className="analisis-col-title" style={{color:'#D97706'}}>
+                          🔧 Puntos de mejora
+                        </div>
+                        {analisis.puntos_mejora.map((p, i) => (
+                          <div key={i} className="analisis-point" style={{background:'rgba(253,230,138,0.15)', borderLeft:'3px solid #F59E0B'}}>
+                            {p}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="analisis-resumen">"{analisis.resumen}"</div>
+                  </>
+                ) : null}
               </div>
             )}
 
