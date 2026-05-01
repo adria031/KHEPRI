@@ -84,6 +84,7 @@ export default function Home() {
           overflow-x: hidden;
           line-height: 1.6;
         }
+        main { overflow-x: hidden; width: 100%; }
         .logo-text {
           font-family: 'Syne', sans-serif;
           font-weight: 800;
@@ -628,11 +629,39 @@ export default function Home() {
         }
         @media (max-width: 600px) {
           .hero h1 { letter-spacing: -1px; }
-          .hero-ctas { flex-direction: column; align-items: center; }
-          .cta-main, .cta-alt { width: 100%; max-width: 320px; justify-content: center; }
+          .hero-ctas { flex-direction: column; align-items: stretch; }
+          .cta-main, .cta-alt { width: 100%; max-width: 100%; justify-content: center; }
           .feat-grid { grid-template-columns: 1fr; }
           .quien-grid { grid-template-columns: repeat(2, 1fr); }
           .footer-bottom { flex-direction: column; text-align: center; }
+          .hero-preview { flex-direction: column; }
+          .preview-card { min-width: unset; width: 100%; flex: none; }
+        }
+        @media (max-width: 480px) {
+          nav { padding: 0 16px; }
+          #mobile-menu { padding: 14px 16px 20px; }
+          .hero { padding: 96px 16px 48px; }
+          .hero h1 { font-size: clamp(32px, 9vw, 48px); letter-spacing: -0.5px; }
+          .hero-sub { font-size: 15px; margin-bottom: 32px; }
+          .hero-badge { font-size: 12px; padding: 5px 12px; margin-bottom: 20px; }
+          #funciones { padding: 56px 16px; }
+          #para-quien { padding: 56px 16px; }
+          #planes { padding: 56px 16px; }
+          #clientes { padding: 56px 16px; }
+          #numeros { padding: 56px 16px; }
+          #cta-final { padding: 80px 16px; }
+          footer { padding: 40px 16px 28px; }
+          .section-sub { font-size: 15px; margin-bottom: 36px; }
+          .plan-card { padding: 24px 18px; }
+          .planes-grid { max-width: 100%; }
+          .quien-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+          .quien-card { padding: 16px 10px; }
+          .quien-icon { font-size: 26px; }
+          .quien-name { font-size: 12px; }
+          .num-item { padding: 28px 16px; }
+          .cta-final-btn { width: 100%; justify-content: center; padding: 16px 24px; font-size: 15px; }
+          .footer-top { gap: 24px; }
+          .preview-card { padding: 14px 16px; }
         }
       `}</style>
 

@@ -505,14 +505,39 @@ export default function Reservas() {
           .main { margin-left: 0; } .topbar { padding: 12px 16px; } .content { padding: 16px; }
           .reserva-card { flex-wrap: wrap; }
           .reserva-actions { width: 100%; }
-          .stats-row { gap: 8px; }
+          .stats-row { gap: 8px; flex-wrap: wrap; }
           .page-header { flex-wrap: wrap; gap: 10px; }
         }
         @media (max-width: 480px) {
-          .reserva-hora { font-size: 15px; min-width: 44px; }
+          /* KPIs en columna: cada uno ocupa 100% */
+          .stats-row { flex-direction: column; gap: 6px; }
+          .stat-mini { width: 100%; flex: none; display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+          .stat-mini-val { font-size: 20px; flex-shrink: 0; }
+          .stat-mini-label { font-size: 13px; margin-top: 0; }
+          .ocu-bar-wrap { display: none; }
+          /* Tarjetas de reserva verticales */
+          .reserva-card { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; }
+          .reserva-hora { font-size: 12px; font-weight: 600; color: var(--muted); min-width: auto; letter-spacing: 0; }
+          .reserva-cliente { font-size: 15px; font-weight: 800; }
+          .reserva-detalle { flex-direction: column; gap: 4px; align-items: flex-start; font-size: 13px; }
+          .reserva-estado { align-self: flex-start; }
+          .reserva-actions { flex-wrap: wrap; gap: 6px; width: 100%; }
+          .btn-completar, .btn-cancelar, .btn-restaurar { flex: 1; min-width: 0; text-align: center; justify-content: center; }
+          /* Slots verticales */
+          .slot-row { flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
           .slot-hora-label { font-size: 13px; min-width: 40px; }
-          .reserva-card { padding: 12px; gap: 8px; }
+          .slot-row .reserva-info { width: 100%; order: 2; }
+          .slot-row .reserva-estado { order: 3; }
+          .slot-row .reserva-actions { width: 100%; order: 4; flex-wrap: wrap; gap: 6px; }
+          /* Header de página */
+          .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+          .tab-btn { font-size: 12px; padding: 7px 10px; }
+          .content { padding: 12px; }
+          .topbar { padding: 10px 12px; }
+          /* Calendario */
           .cal-cell { font-size: 11px; min-height: 36px; }
+          .cal-card { padding: 14px; }
+          .cal-badge { font-size: 9px; padding: 1px 4px; }
         }
       `}</style>
 
