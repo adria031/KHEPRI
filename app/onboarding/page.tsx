@@ -27,23 +27,38 @@ const tiposNegocio = [
   '🎨 Tatuajes', '👗 Moda / Ropa', '🍕 Restaurante', '☕ Cafetería', '🔧 Reparaciones', '📦 Otro'
 ]
 
+const CREDITOS_POR_PLAN: Record<string, number> = {
+  starter: 100, basico: 300, pro: 1000, plus: 5000
+}
+
 const planes = [
   {
-    id: 'basico', nombre: 'Básico', precio: 'Precio próximamente', color: '#B8D8F8', colorDark: '#1D4ED8',
-    features: ['Gestión de reservas', 'Chatbot básico', 'Perfil en el mapa', 'Hasta 10 servicios']
+    id: 'starter', nombre: 'Starter', precio: '9,99€', periodo: '/mes',
+    color: '#B8EDD4', colorDark: '#2E8A5E',
+    trabajadores: '1 trabajador', creditos: '100 créditos IA',
+    features: ['Gestión de reservas', 'Chatbot básico', 'Perfil en el mapa']
   },
   {
-    id: 'pro', nombre: 'Pro', precio: 'Precio próximamente', color: '#D4C5F9', colorDark: '#6B4FD8', popular: true,
-    features: ['Todo lo del Básico', 'E-commerce de productos', 'Facturación española', 'Analytics con IA', 'Marketing y fidelización', 'Servicios ilimitados']
+    id: 'basico', nombre: 'Básico', precio: '29,99€', periodo: '/mes',
+    color: '#B8D8F8', colorDark: '#1D4ED8',
+    trabajadores: '3 trabajadores', creditos: '300 créditos IA',
+    features: ['Todo lo del Starter', 'Hasta 10 servicios', 'Facturación básica']
   },
   {
-    id: 'agencia', nombre: 'Plus', precio: 'Precio próximamente', color: '#B8EDD4', colorDark: '#2E8A5E',
-    features: ['Todo lo del Pro', 'Hasta 10 negocios', 'Panel multi-sede', 'Soporte prioritario', 'API personalizada']
+    id: 'pro', nombre: 'Pro', precio: '59,99€', periodo: '/mes',
+    color: '#D4C5F9', colorDark: '#6B4FD8', popular: true,
+    trabajadores: '5 trabajadores', creditos: '1.000 créditos IA',
+    features: ['Todo lo del Básico', 'E-commerce', 'Analytics IA', 'Marketing']
+  },
+  {
+    id: 'plus', nombre: 'Plus', precio: '99,99€', periodo: '/mes',
+    color: '#FDE68A', colorDark: '#B45309',
+    trabajadores: 'Trabajadores ilimitados', creditos: '5.000 créditos IA',
+    features: ['Todo lo del Pro', 'Multi-sede', 'API personalizada', 'Soporte prioritario']
   }
 ]
 
 export default function Onboarding() {
-  const [cargandoSesion, setCargandoSesion] = useState(false)
   const [tipoUsuario, setTipoUsuario] = useState<'negocio' | 'cliente' | null>(null)
   const [paso, setPaso] = useState(0)
   const [cargando, setCargando] = useState(false)
@@ -52,13 +67,6 @@ export default function Onboarding() {
   // Negocio
   const [nombreNegocio, setNombreNegocio] = useState('')
   const [tipoNegocio, setTipoNegocio] = useState('')
-  const [telefono, setTelefono] = useState('')
-  const [direccion, setDireccion] = useState('')
-  const [ciudad, setCiudad] = useState('')
-  const [codigoPostal, setCodigoPostal] = useState('')
-  const [instagram, setInstagram] = useState('')
-  const [whatsapp, setWhatsapp] = useState('')
-  const [facebook, setFacebook] = useState('')
   const [planSeleccionado, setPlanSeleccionado] = useState('pro')
 
   // Cliente
@@ -78,11 +86,10 @@ export default function Onboarding() {
         window.location.href = window.location.origin + '/cliente'
         return
       }
-      // Sin perfil → quedar en onboarding
     })
   }, [])
 
-  const totalPasosNegocio = 4
+  const totalPasosNegocio = 3
   const totalPasosCliente = 2
 
   const progreso = tipoUsuario === 'negocio'
@@ -96,24 +103,20 @@ export default function Onboarding() {
       if (!session?.user) throw new Error('No hay sesión activa. Recarga la página.')
       const user = session.user
 
-      // profiles must exist before negocios (FK: negocios.user_id -> profiles.id)
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email
       })
-      if (profileError) {
-        console.error('[onboarding] profile upsert error:', profileError.code, profileError.message, profileError.hint)
-        throw new Error(`Error al crear el perfil: ${profileError.message} (código: ${profileError.code})`)
-      }
+      if (profileError) throw new Error(`Error al crear el perfil: ${profileError.message}`)
+
+      const creditos_totales = CREDITOS_POR_PLAN[planSeleccionado] ?? 100
+      const hoy = new Date().toISOString().split('T')[0]
 
       const { data: negocioData, error: negocioError } = await supabase.from('negocios').insert({
         user_id: user.id, nombre: nombreNegocio, tipo: tipoNegocio,
-        direccion, ciudad, codigo_postal: codigoPostal, telefono,
-        instagram, whatsapp, facebook, plan: planSeleccionado, visible: true
+        plan: planSeleccionado, visible: true,
+        creditos_totales, creditos_usados: 0, creditos_reset_date: hoy
       }).select('id').single()
-      if (negocioError) {
-        console.error('[onboarding] negocio insert error:', negocioError.code, negocioError.message, negocioError.details, negocioError.hint)
-        throw new Error(`Error al crear el negocio: ${negocioError.message} (código: ${negocioError.code})`)
-      }
+      if (negocioError) throw new Error(`Error al crear el negocio: ${negocioError.message}`)
 
       if (negocioData?.id) {
         supabase.from('trabajadores').insert({
@@ -128,7 +131,7 @@ export default function Onboarding() {
       fetch('/api/bienvenida', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, nombre: nombreNegocio, tipo: 'negocio' }),
+        body: JSON.stringify({ email: user.email, nombre: nombreNegocio, tipo: 'negocio', plan: planSeleccionado }),
       }).catch(() => {})
 
       window.location.href = window.location.origin + '/dashboard'
@@ -144,7 +147,9 @@ export default function Onboarding() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) throw new Error('No hay sesión activa. Vuelve a registrarte.')
       const user = session.user
-      const { error: profErr } = await supabase.from('profiles').upsert({ id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email, telefono: telefonoCliente || null })
+      const { error: profErr } = await supabase.from('profiles').upsert({
+        id: user.id, tipo: 'cliente', nombre: nombreCliente, email: user.email, telefono: telefonoCliente || null
+      })
       if (profErr) throw profErr
 
       fetch('/api/bienvenida', {
@@ -160,20 +165,7 @@ export default function Onboarding() {
     setCargando(false)
   }
 
-  if (cargandoSesion) {
-    return (
-      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#F7F9FC', fontFamily:'Plus Jakarta Sans, sans-serif', flexDirection:'column', gap:'12px' }}>
-        <div style={{ width:'40px', height:'40px', borderRadius:'11px', background:'linear-gradient(135deg, #B8D8F8, #D4C5F9, #B8EDD4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
-            <path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.5"/>
-            <path d="M11 6L16 11L11 16L6 11Z" fill="white" opacity="0.7"/>
-            <circle cx="11" cy="11" r="2" fill="white"/>
-          </svg>
-        </div>
-        <p style={{color:'#9CA3AF', fontSize:'14px'}}>Cargando...</p>
-      </div>
-    )
-  }
+  const planActual = planes.find(p => p.id === planSeleccionado)
 
   return (
     <>
@@ -181,18 +173,17 @@ export default function Onboarding() {
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F7F9FC; }
         .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 32px 20px; }
-        .header { width: 100%; max-width: 600px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
-        .progress-bar { width: 100%; max-width: 600px; height: 4px; background: rgba(0,0,0,0.08); border-radius: 100px; margin-bottom: 32px; overflow: hidden; }
+        .header { width: 100%; max-width: 640px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+        .progress-bar { width: 100%; max-width: 640px; height: 4px; background: rgba(0,0,0,0.08); border-radius: 100px; margin-bottom: 32px; overflow: hidden; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #B8D8F8, #D4C5F9); border-radius: 100px; transition: width 0.4s ease; }
-        .card { background: white; border-radius: 24px; padding: 40px; width: 100%; max-width: 600px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.06); }
+        .card { background: white; border-radius: 24px; padding: 40px; width: 100%; max-width: 640px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.06); }
         .step-label { font-size: 12px; font-weight: 600; color: #9CA3AF; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
         h2 { font-size: 24px; font-weight: 800; color: #111827; letter-spacing: -0.5px; margin-bottom: 8px; }
-        .sub { font-size: 14px; color: #6B7280; margin-bottom: 28px; }
+        .sub { font-size: 14px; color: #6B7280; margin-bottom: 28px; line-height: 1.5; }
         .field { margin-bottom: 16px; }
         label { display: block; font-size: 13px; font-weight: 600; color: #111827; margin-bottom: 6px; }
-        input, select { width: 100%; padding: 12px 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 12px; font-family: inherit; font-size: 14px; color: #111827; outline: none; transition: border 0.2s; background: white; -webkit-appearance: none; }
-        input:focus, select:focus { border-color: #1D4ED8; }
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        input { width: 100%; padding: 12px 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 12px; font-family: inherit; font-size: 14px; color: #111827; outline: none; transition: border 0.2s; background: white; }
+        input:focus { border-color: #1D4ED8; }
         .btn-primary { width: 100%; padding: 14px; background: #111827; color: white; border: none; border-radius: 12px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
         .btn-primary:hover { background: #374151; }
         .btn-primary:disabled { background: #9CA3AF; cursor: not-allowed; }
@@ -212,30 +203,37 @@ export default function Onboarding() {
         .tipo-negocio-item { border: 1.5px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 10px 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600; color: #4B5563; transition: all 0.2s; background: white; }
         .tipo-negocio-item:hover { border-color: #B8D8F8; }
         .tipo-negocio-item.selected { border-color: #1D4ED8; background: rgba(184,216,248,0.15); color: #1D4ED8; }
-        .planes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
-        .plan-card { border: 2px solid rgba(0,0,0,0.08); border-radius: 18px; padding: 20px 16px; cursor: pointer; transition: all 0.2s; position: relative; }
-        .plan-card:hover { transform: translateY(-2px); }
-        .plan-popular { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #D4C5F9; color: #6B4FD8; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
-        .plan-nombre { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
-        .plan-precio { font-size: 13px; color: #9CA3AF; margin-bottom: 14px; }
+        .planes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 8px; }
+        .plan-card { border: 2px solid rgba(0,0,0,0.08); border-radius: 18px; padding: 20px 16px; cursor: pointer; transition: all 0.2s; position: relative; background: white; }
+        .plan-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+        .plan-popular { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #D4C5F9, #B8D8F8); color: #6B4FD8; font-size: 10px; font-weight: 800; padding: 3px 12px; border-radius: 100px; white-space: nowrap; letter-spacing: 0.3px; }
+        .plan-nombre { font-size: 16px; font-weight: 800; margin-bottom: 2px; }
+        .plan-precio-wrap { display: flex; align-items: baseline; gap: 2px; margin-bottom: 10px; }
+        .plan-precio-num { font-size: 22px; font-weight: 800; }
+        .plan-precio-period { font-size: 12px; color: #9CA3AF; font-weight: 500; }
+        .plan-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-bottom: 10px; }
         .plan-feature { font-size: 12px; color: #4B5563; padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+        .plan-beta-note { background: rgba(184,216,248,0.2); border: 1px solid rgba(184,216,248,0.5); border-radius: 10px; padding: 10px 14px; margin-top: 12px; font-size: 12px; color: #1D4ED8; font-weight: 500; text-align: center; }
+        .resumen-box { background: #F7F9FC; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+        .resumen-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 14px; }
+        .resumen-row:last-child { border-bottom: none; }
+        .resumen-label { color: #6B7280; font-weight: 500; }
+        .resumen-val { color: #111827; font-weight: 700; }
         @media (max-width: 600px) {
           .card { padding: 28px 20px; }
           .planes-grid { grid-template-columns: 1fr; }
           .tipo-negocio-grid { grid-template-columns: repeat(2, 1fr); }
-          .grid2 { grid-template-columns: 1fr; }
           h2 { font-size: 20px; }
-          input, select { font-size: 16px; }
+          input { font-size: 16px; }
         }
-        /* ── DARK MODE ── */
         html.dark body, html.dark .page { background: #0d0d0d; }
         html.dark .card { background: #1a1a1a; border-color: rgba(255,255,255,0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
         html.dark .progress-bar { background: rgba(255,255,255,0.08); }
         html.dark h2 { color: #f9fafb; }
         html.dark .sub, html.dark .step-label { color: #9CA3AF; }
         html.dark label { color: #f9fafb; }
-        html.dark input, html.dark select { background: #111111; color: #f9fafb; border-color: rgba(255,255,255,0.1); }
-        html.dark input:focus, html.dark select:focus { border-color: #818CF8; }
+        html.dark input { background: #111111; color: #f9fafb; border-color: rgba(255,255,255,0.1); }
+        html.dark input:focus { border-color: #818CF8; }
         html.dark .btn-primary { background: #f9fafb; color: #111827; }
         html.dark .btn-primary:hover { background: #e5e7eb; }
         html.dark .btn-primary:disabled { background: #374151; color: #9CA3AF; }
@@ -248,12 +246,13 @@ export default function Onboarding() {
         html.dark .tipo-title { color: #f9fafb; }
         html.dark .tipo-desc { color: #9CA3AF; }
         html.dark .tipo-negocio-item { border-color: rgba(255,255,255,0.08); background: #1a1a1a; color: #9CA3AF; }
-        html.dark .tipo-negocio-item:hover { border-color: rgba(184,216,248,0.4); }
         html.dark .tipo-negocio-item.selected { border-color: #818CF8; background: rgba(129,140,248,0.12); color: #818CF8; }
         html.dark .plan-card { background: #1a1a1a; border-color: rgba(255,255,255,0.08); }
         html.dark .plan-nombre { color: #f9fafb; }
-        html.dark .plan-precio { color: #6B7280; }
         html.dark .plan-feature { color: #9CA3AF; }
+        html.dark .resumen-box { background: #111111; border-color: rgba(255,255,255,0.08); }
+        html.dark .resumen-label { color: #9CA3AF; }
+        html.dark .resumen-val { color: #f9fafb; }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
@@ -261,7 +260,7 @@ export default function Onboarding() {
         <div className="header">
           <KhepriLogo />
           {tipoUsuario && paso > 0 && (
-            <span style={{fontSize:'13px', color:'#9CA3AF', fontWeight:500}}>
+            <span style={{ fontSize: '13px', color: '#9CA3AF', fontWeight: 500 }}>
               Paso {paso} de {tipoUsuario === 'negocio' ? totalPasosNegocio : totalPasosCliente}
             </span>
           )}
@@ -269,7 +268,7 @@ export default function Onboarding() {
 
         {tipoUsuario && paso > 0 && (
           <div className="progress-bar">
-            <div className="progress-fill" style={{width:`${progreso}%`}}></div>
+            <div className="progress-fill" style={{ width: `${progreso}%` }}></div>
           </div>
         )}
 
@@ -305,47 +304,12 @@ export default function Onboarding() {
             </>
           )}
 
-          {/* ── NEGOCIO PASO 1: Elegir plan ── */}
+          {/* ── NEGOCIO PASO 1: Nombre + tipo ── */}
           {tipoUsuario === 'negocio' && paso === 1 && (
             <>
-              <div className="step-label">Paso 1 de 4</div>
-              <h2>Elige tu plan</h2>
-              <p className="sub">Los precios se definirán próximamente. Puedes cambiar de plan en cualquier momento.</p>
-              <div className="planes-grid">
-                {planes.map(plan => (
-                  <div
-                    key={plan.id}
-                    className={`plan-card ${planSeleccionado === plan.id ? 'selected' : ''}`}
-                    style={{
-                      borderColor: planSeleccionado === plan.id ? plan.colorDark : 'rgba(0,0,0,0.08)',
-                      background: planSeleccionado === plan.id ? `${plan.color}20` : 'white'
-                    }}
-                    onClick={() => setPlanSeleccionado(plan.id)}
-                  >
-                    {plan.popular && <div className="plan-popular">⭐ Popular</div>}
-                    <div className="plan-nombre" style={{color: plan.colorDark}}>{plan.nombre}</div>
-                    <div className="plan-precio">{plan.precio}</div>
-                    {plan.features.map((f, i) => (
-                      <div key={i} className="plan-feature">
-                        <span style={{color: plan.colorDark}}>✓</span>{f}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-              <div className="btns">
-                <button className="btn-secondary" onClick={() => setPaso(0)}>← Atrás</button>
-                <button className="btn-primary" onClick={() => setPaso(2)}>Continuar →</button>
-              </div>
-            </>
-          )}
-
-          {/* ── NEGOCIO PASO 2: Nombre / tipo / teléfono ── */}
-          {tipoUsuario === 'negocio' && paso === 2 && (
-            <>
-              <div className="step-label">Paso 2 de 4</div>
-              <h2>Información básica</h2>
-              <p className="sub">Cuéntanos sobre tu negocio.</p>
+              <div className="step-label">Paso 1 de 3</div>
+              <h2>Cuéntanos sobre tu negocio</h2>
+              <p className="sub">Estos datos aparecerán en tu perfil público y en el chatbot IA.</p>
               <div className="field">
                 <label>Nombre del negocio *</label>
                 <input
@@ -353,6 +317,7 @@ export default function Onboarding() {
                   placeholder="Ej: Barber Co."
                   value={nombreNegocio}
                   onChange={e => setNombreNegocio(e.target.value)}
+                  autoFocus
                 />
               </div>
               <div className="field">
@@ -369,111 +334,102 @@ export default function Onboarding() {
                   ))}
                 </div>
               </div>
-              <div className="field">
-                <label>Teléfono de contacto</label>
-                <input
-                  type="tel"
-                  placeholder="+34 600 000 000"
-                  value={telefono}
-                  onChange={e => setTelefono(e.target.value)}
-                />
-              </div>
               <div className="btns">
-                <button className="btn-secondary" onClick={() => setPaso(1)}>← Atrás</button>
-                <button className="btn-primary" onClick={() => setPaso(3)} disabled={!nombreNegocio || !tipoNegocio}>
+                <button className="btn-secondary" onClick={() => setPaso(0)}>← Atrás</button>
+                <button className="btn-primary" onClick={() => setPaso(2)} disabled={!nombreNegocio || !tipoNegocio}>
                   Continuar →
                 </button>
               </div>
             </>
           )}
 
-          {/* ── NEGOCIO PASO 3: Ubicación ── */}
+          {/* ── NEGOCIO PASO 2: Plan ── */}
+          {tipoUsuario === 'negocio' && paso === 2 && (
+            <>
+              <div className="step-label">Paso 2 de 3</div>
+              <h2>Elige tu plan</h2>
+              <p className="sub">Puedes cambiar de plan en cualquier momento desde el dashboard.</p>
+              <div className="planes-grid">
+                {planes.map(plan => (
+                  <div
+                    key={plan.id}
+                    className={`plan-card`}
+                    style={{
+                      borderColor: planSeleccionado === plan.id ? plan.colorDark : 'rgba(0,0,0,0.08)',
+                      background: planSeleccionado === plan.id ? `${plan.color}30` : 'white'
+                    }}
+                    onClick={() => setPlanSeleccionado(plan.id)}
+                  >
+                    {plan.popular && <div className="plan-popular">⭐ Más popular</div>}
+                    <div className="plan-nombre" style={{ color: plan.colorDark }}>{plan.nombre}</div>
+                    <div className="plan-precio-wrap">
+                      <span className="plan-precio-num" style={{ color: plan.colorDark }}>{plan.precio}</span>
+                      <span className="plan-precio-period">{plan.periodo}</span>
+                    </div>
+                    <div className="plan-pill" style={{ background: `${plan.color}50`, color: plan.colorDark }}>
+                      {plan.trabajadores} · {plan.creditos}
+                    </div>
+                    {plan.features.map((f, i) => (
+                      <div key={i} className="plan-feature">
+                        <span style={{ color: plan.colorDark }}>✓</span>{f}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="plan-beta-note" style={{ marginTop: '16px' }}>
+                💡 Pago disponible próximamente — acceso gratuito durante la beta
+              </div>
+              <div className="btns" style={{ marginTop: '16px' }}>
+                <button className="btn-secondary" onClick={() => setPaso(1)}>← Atrás</button>
+                <button className="btn-primary" onClick={() => setPaso(3)}>Continuar →</button>
+              </div>
+            </>
+          )}
+
+          {/* ── NEGOCIO PASO 3: Listo ── */}
           {tipoUsuario === 'negocio' && paso === 3 && (
             <>
-              <div className="step-label">Paso 3 de 4</div>
-              <h2>Ubicación</h2>
-              <p className="sub">Los clientes te encontrarán en el mapa gracias a tu dirección.</p>
-              <div className="field">
-                <label>Dirección</label>
-                <input
-                  type="text"
-                  placeholder="Calle Mayor, 15"
-                  value={direccion}
-                  onChange={e => setDireccion(e.target.value)}
-                />
-              </div>
-              <div className="grid2">
-                <div className="field">
-                  <label>Ciudad *</label>
-                  <input
-                    type="text"
-                    placeholder="Barcelona"
-                    value={ciudad}
-                    onChange={e => setCiudad(e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label>Código postal</label>
-                  <input
-                    type="text"
-                    placeholder="08001"
-                    value={codigoPostal}
-                    onChange={e => setCodigoPostal(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="btns">
-                <button className="btn-secondary" onClick={() => setPaso(2)}>← Atrás</button>
-                <button className="btn-primary" onClick={() => setPaso(4)} disabled={!ciudad}>
-                  Continuar →
-                </button>
-              </div>
-            </>
-          )}
+              <div className="step-label">Paso 3 de 3</div>
+              <h2>¡Todo listo, {nombreNegocio}!</h2>
+              <p className="sub">Revisa el resumen de tu cuenta antes de crear el negocio.</p>
 
-          {/* ── NEGOCIO PASO 4: Redes sociales + crear negocio ── */}
-          {tipoUsuario === 'negocio' && paso === 4 && (
-            <>
-              <div className="step-label">Paso 4 de 4</div>
-              <h2>Redes sociales</h2>
-              <p className="sub">Opcionales. El chatbot IA las usará para atender mejor a tus clientes.</p>
-              <div className="field">
-                <label>📸 Instagram</label>
-                <input
-                  type="text"
-                  placeholder="@tunegocio"
-                  value={instagram}
-                  onChange={e => setInstagram(e.target.value)}
-                />
+              <div className="resumen-box">
+                <div className="resumen-row">
+                  <span className="resumen-label">Negocio</span>
+                  <span className="resumen-val">{nombreNegocio}</span>
+                </div>
+                <div className="resumen-row">
+                  <span className="resumen-label">Tipo</span>
+                  <span className="resumen-val">{tipoNegocio}</span>
+                </div>
+                <div className="resumen-row">
+                  <span className="resumen-label">Plan</span>
+                  <span className="resumen-val" style={{ color: planActual?.colorDark }}>
+                    {planActual?.nombre} — {planActual?.precio}{planActual?.periodo}
+                  </span>
+                </div>
+                <div className="resumen-row">
+                  <span className="resumen-label">Créditos IA incluidos</span>
+                  <span className="resumen-val">{(CREDITOS_POR_PLAN[planSeleccionado] ?? 100).toLocaleString('es-ES')} créditos/mes</span>
+                </div>
+                <div className="resumen-row">
+                  <span className="resumen-label">Trabajador inicial</span>
+                  <span className="resumen-val">Propietario (tú)</span>
+                </div>
               </div>
-              <div className="field">
-                <label>💬 WhatsApp</label>
-                <input
-                  type="tel"
-                  placeholder="+34 600 000 000"
-                  value={whatsapp}
-                  onChange={e => setWhatsapp(e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label>👤 Facebook</label>
-                <input
-                  type="text"
-                  placeholder="facebook.com/tunegocio"
-                  value={facebook}
-                  onChange={e => setFacebook(e.target.value)}
-                />
-              </div>
-              <div style={{background:'rgba(184,216,248,0.15)', border:'1px solid rgba(184,216,248,0.4)', borderRadius:'12px', padding:'14px', marginTop:'4px', marginBottom:'16px'}}>
-                <p style={{fontSize:'13px', color:'#1D4ED8', fontWeight:500}}>
-                  🤖 El chatbot IA se creará automáticamente con toda la información de tu negocio.
+
+              <div style={{ background: 'rgba(184,216,248,0.15)', border: '1px solid rgba(184,216,248,0.4)', borderRadius: '12px', padding: '14px', marginBottom: '16px' }}>
+                <p style={{ fontSize: '13px', color: '#1D4ED8', fontWeight: 500 }}>
+                  🤖 El chatbot IA se creará automáticamente con los datos de tu negocio.
                 </p>
               </div>
+
               {error && <div className="error">{error}</div>}
               <div className="btns">
-                <button className="btn-secondary" onClick={() => setPaso(3)}>← Atrás</button>
+                <button className="btn-secondary" onClick={() => setPaso(2)}>← Atrás</button>
                 <button className="btn-primary" onClick={guardarNegocio} disabled={cargando}>
-                  {cargando ? 'Guardando...' : '🚀 Crear mi negocio'}
+                  {cargando ? 'Creando tu negocio...' : '🚀 Crear mi negocio'}
                 </button>
               </div>
             </>
@@ -484,7 +440,7 @@ export default function Onboarding() {
             <>
               <div className="step-label">Paso 1 de 2</div>
               <h2>Tu perfil</h2>
-              <p className="sub">Cuéntanos un poco sobre ti.</p>
+              <p className="sub">Cuéntanos un poco sobre ti para personalizar tu experiencia.</p>
               <div className="field">
                 <label>Tu nombre *</label>
                 <input
@@ -492,6 +448,7 @@ export default function Onboarding() {
                   placeholder="María García"
                   value={nombreCliente}
                   onChange={e => setNombreCliente(e.target.value)}
+                  autoFocus
                 />
               </div>
               <div className="field">
@@ -529,9 +486,9 @@ export default function Onboarding() {
               <div className="step-label">Paso 2 de 2</div>
               <h2>¡Ya casi está!</h2>
               <p className="sub">Estás listo para descubrir negocios increíbles cerca de ti.</p>
-              <div style={{textAlign:'center', padding:'24px 0'}}>
-                <div style={{fontSize:'64px', marginBottom:'16px'}}>🗺️</div>
-                <p style={{fontSize:'15px', color:'#4B5563', lineHeight:'1.6'}}>
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ fontSize: '64px', marginBottom: '16px' }}>🗺️</div>
+                <p style={{ fontSize: '15px', color: '#4B5563', lineHeight: '1.6' }}>
                   Descubre peluquerías, spas, clínicas y mucho más cerca de <strong>{ciudadCliente}</strong>.
                 </p>
               </div>

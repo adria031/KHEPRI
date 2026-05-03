@@ -3,7 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 const RESEND_API_KEY = process.env.RESEND_API_KEY!
 const FROM = 'Khepria <onboarding@resend.dev>'
 
-function htmlNegocio(nombre: string) {
+const PLAN_LABEL: Record<string, string> = {
+  starter: 'Starter — 9,99€/mes',
+  basico: 'Básico — 29,99€/mes',
+  pro: 'Pro — 59,99€/mes',
+  plus: 'Plus — 99,99€/mes',
+}
+
+function htmlNegocio(nombre: string, plan?: string) {
+  const planLabel = PLAN_LABEL[plan ?? ''] ?? plan ?? 'Beta'
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bienvenido a Khepria</title></head>
@@ -31,7 +40,16 @@ function htmlNegocio(nombre: string) {
           <td style="padding:40px 40px 32px;">
             <p style="font-size:28px;text-align:center;margin:0 0 8px;">🚀</p>
             <h1 style="font-size:22px;font-weight:800;color:#111827;text-align:center;margin:0 0 12px;letter-spacing:-0.5px;">¡Bienvenido a Khepria, ${nombre}!</h1>
-            <p style="font-size:15px;color:#4B5563;text-align:center;line-height:1.6;margin:0 0 28px;">Tu negocio ya tiene un espacio en Khepria. Ahora puedes configurarlo, aceptar reservas y gestionar tu equipo con IA.</p>
+            <p style="font-size:15px;color:#4B5563;text-align:center;line-height:1.6;margin:0 0 24px;">Tu negocio ya tiene un espacio en Khepria. Ahora puedes configurarlo, aceptar reservas y gestionar tu equipo con IA.</p>
+
+            <!-- Plan badge -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              <tr>
+                <td align="center">
+                  <span style="display:inline-block;background:linear-gradient(135deg,#D4C5F9,#B8D8F8);color:#6B4FD8;font-size:13px;font-weight:700;padding:6px 20px;border-radius:100px;">Plan ${planLabel}</span>
+                </td>
+              </tr>
+            </table>
 
             <!-- Steps -->
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border-radius:16px;padding:24px;margin-bottom:28px;">
@@ -154,16 +172,16 @@ function htmlCliente(nombre: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, nombre, tipo } = await req.json()
+    const { email, nombre, tipo, plan } = await req.json()
     if (!email || !nombre || !tipo) {
       return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
     }
 
     const esNegocio = tipo === 'negocio'
     const subject = esNegocio
-      ? 'Bienvenido a Khepria — ya puedes configurar tu negocio'
-      : 'Bienvenido a Khepria — descubre negocios cerca de ti'
-    const html = esNegocio ? htmlNegocio(nombre) : htmlCliente(nombre)
+      ? 'Bienvenido a Khepria — Tu negocio está listo'
+      : 'Bienvenido a Khepria — Descubre negocios cerca de ti'
+    const html = esNegocio ? htmlNegocio(nombre, plan) : htmlCliente(nombre)
 
     console.log('[bienvenida] Enviando email a:', email, '| key set:', !!RESEND_API_KEY)
     const res = await fetch('https://api.resend.com/emails', {
