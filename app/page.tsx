@@ -96,7 +96,7 @@ const PLANES = [
     badge: 'Más popular', popular: true,
     color: '#D4C5F9', colorDark: '#6B4FD8',
     grad: 'linear-gradient(135deg,#D4C5F9,#A78BFA)',
-    creditos: 1000, trabajadores: 'hasta 5', negocios: '1',
+    creditos: 1000, trabajadores: 'hasta 5', negocios: '2',
     funciones: [
       'Todo lo del Básico',
       'Gestión equipo completa',

@@ -60,10 +60,12 @@ const PAGE_TITLES: Record<string, string> = {
 }
 
 const PLAN_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  basico:  { label: 'Básico',   color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
-  pro:     { label: 'Pro',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)' },
-  agencia: { label: 'Plus',     color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
-  plus:    { label: 'Plus',     color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
+  starter: { label: 'Starter', color: '#2E8A5E', bg: 'rgba(46,138,94,0.1)' },
+  basico:  { label: 'Básico',  color: '#1D4ED8', bg: 'rgba(29,78,216,0.1)' },
+  pro:     { label: 'Pro',     color: '#6B4FD8', bg: 'rgba(107,79,216,0.1)' },
+  plus:    { label: 'Plus',    color: '#C4860A', bg: 'rgba(196,134,10,0.1)' },
+  beta:    { label: 'Beta',    color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
+  agencia: { label: 'Plus',    color: '#C4860A', bg: 'rgba(196,134,10,0.1)' },
 }
 
 function KhepriLogo() {

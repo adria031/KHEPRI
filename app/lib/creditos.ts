@@ -1,13 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase as defaultClient } from './supabase'
+import { PLANES } from './planes'
 
-export const CREDITOS_POR_PLAN: Record<string, number> = {
-  starter: 100,
-  basico:  300,
-  pro:     1000,
-  plus:    5000,
-  beta:    2000,
-}
+export const CREDITOS_POR_PLAN: Record<string, number> = Object.fromEntries(
+  Object.entries(PLANES).map(([k, v]) => [k, v.creditos]),
+)
 
 export const CREDITOS_ACCION = {
   chatbot_respuesta: 1,

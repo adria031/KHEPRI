@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase, getSessionClient } from '../../lib/supabase'
+import { PLANES } from '../../lib/planes'
 
 const TIPOS = [
   '💈 Peluquería / Barbería', '💅 Estética', '💆 Spa / Masajes', '🏥 Clínica', '🦷 Dentista',
@@ -16,14 +17,20 @@ export default function NuevoNegocio() {
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [plan, setPlan] = useState('basico')
+  const [negocioCount, setNegocioCount] = useState(0)
 
   useEffect(() => {
     getSessionClient().then(({ session }) => {
       if (!session?.user) { window.location.href = '/auth'; return }
       setUserId(session.user.id)
-      // Obtener el plan actual del usuario (heredar del primer negocio)
-      supabase.from('negocios').select('plan').eq('user_id', session.user.id).limit(1).single()
-        .then(({ data }) => { if (data?.plan) setPlan(data.plan) })
+      // Obtener el plan y conteo de negocios actuales
+      supabase.from('negocios').select('plan').eq('user_id', session.user.id)
+        .then(({ data }) => {
+          if (data?.length) {
+            setPlan(data[0].plan ?? 'basico')
+            setNegocioCount(data.length)
+          }
+        })
     })
   }, [])
 
@@ -31,6 +38,14 @@ export default function NuevoNegocio() {
     if (!nombre.trim()) { setError('El nombre del negocio es obligatorio.'); return }
     if (!tipo) { setError('Selecciona el tipo de negocio.'); return }
     if (!userId) { setError('Error de sesión. Recarga la página e inténtalo de nuevo.'); return }
+
+    // Verificar límite de negocios del plan
+    const planCfg = PLANES[plan] ?? PLANES.starter
+    if (planCfg.negocios !== -1 && negocioCount >= planCfg.negocios) {
+      setError(`Tu plan ${planCfg.nombre} permite hasta ${planCfg.negocios} negocio${planCfg.negocios > 1 ? 's' : ''}. Actualiza a un plan superior.`)
+      return
+    }
+
     setGuardando(true); setError('')
 
     const { data, error: err } = await supabase

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { NegMin } from '../lib/negocioActivo'
+import { PLANES } from '../lib/planes'
 
 const PLAN_COLOR: Record<string, string> = {
   basico: '#1D4ED8',
@@ -98,6 +99,15 @@ export function NegocioSelector({
 
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) { setErrorMsg('Sin sesión'); setGuardando(false); return }
+
+    // Verificar límite de negocios del plan
+    const planActualSelector = negocios[0]?.plan ?? 'starter'
+    const planCfg = PLANES[planActualSelector] ?? PLANES.starter
+    if (planCfg.negocios !== -1 && negocios.length >= planCfg.negocios) {
+      setErrorMsg(`Tu plan ${planCfg.nombre} permite hasta ${planCfg.negocios} negocio${planCfg.negocios > 1 ? 's' : ''}. Actualiza a un plan superior para añadir más.`)
+      setGuardando(false)
+      return
+    }
 
     // Crear el negocio
     const { data: neg, error } = await supabase.from('negocios').insert({

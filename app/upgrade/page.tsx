@@ -4,87 +4,79 @@ import Link from 'next/link'
 
 const PLANES_UI = [
   {
-    key: 'starter',
-    nombre: 'Starter',
-    precio: '9,99',
-    color: '#B8EDD4',
-    colorDark: '#2E8A5E',
-    grad: 'linear-gradient(135deg,#B8EDD4,#6EE7B7)',
-    emoji: '🌱',
-    creditos: 100,
-    trabajadores: 1,
+    key: 'starter', nombre: 'Starter', precio: '9,99', badge: 'Para empezar',
+    color: '#B8EDD4', colorDark: '#2E8A5E', grad: 'linear-gradient(135deg,#B8EDD4,#6EE7B7)',
+    emoji: '🌱', creditos: 100, trabajadores: 1, negocios: 1,
     funciones: [
-      'Dashboard principal',
-      'Gestión de negocio',
-      'Reservas online',
-      'Servicios',
-      'Horarios',
-      '100 créditos IA / mes',
-      '1 trabajador',
+      'Reservas online 24/7',
+      'Ficha pública en el mapa',
+      'Horarios y servicios',
+      'Chatbot básico (responde preguntas)',
+      'Recordatorios automáticos 24h',
+      'Reseñas automáticas post-cita',
+      'Estadísticas básicas',
+      'App cliente',
+      'Configuración de agenda',
+      'Política de cancelación',
     ],
-    no: ['Productos', 'Equipo', 'Marketing IA', 'Facturación', 'Analytics', 'Caja', 'Nóminas'],
+    no: ['Caja diaria', 'Equipo', 'Marketing IA completo', 'Facturación', 'Analytics', 'Nóminas'],
   },
   {
-    key: 'basico',
-    nombre: 'Básico',
-    precio: '29,99',
-    color: '#B8D8F8',
-    colorDark: '#1D4ED8',
-    grad: 'linear-gradient(135deg,#B8D8F8,#93C5FD)',
-    emoji: '🚀',
-    creditos: 300,
-    trabajadores: 3,
+    key: 'basico', nombre: 'Básico', precio: '29,99', badge: 'Para crecer',
+    color: '#B8D8F8', colorDark: '#1D4ED8', grad: 'linear-gradient(135deg,#B8D8F8,#93C5FD)',
+    emoji: '🚀', creditos: 300, trabajadores: 3, negocios: 1,
     funciones: [
-      'Todo lo de Starter',
-      'Catálogo de productos',
-      'Gestión de reseñas',
-      'Marketing IA (posts)',
-      'Chatbot IA para clientes',
-      '300 créditos IA / mes',
-      'Hasta 3 trabajadores',
+      'Todo lo del Starter',
+      'Chatbot completo (reserva y cancela)',
+      'Importador desde otras apps',
+      'Caja diaria',
+      'Fidelización con puntos',
+      'Lista de espera automática',
+      'Descuentos y promociones',
+      'Productos y stock',
+      'Multiidioma ES/CA/EN',
+      'PWA instalable',
+      'Marketing IA básico (posts Instagram)',
     ],
-    no: ['Equipo avanzado', 'Facturación', 'Analytics', 'Caja', 'Nóminas'],
+    no: ['Equipo avanzado', 'Facturación', 'Analytics avanzado', 'Nóminas'],
   },
   {
-    key: 'pro',
-    popular: true,
-    nombre: 'Pro',
-    precio: '59,99',
-    color: '#D4C5F9',
-    colorDark: '#6B4FD8',
-    grad: 'linear-gradient(135deg,#D4C5F9,#A78BFA)',
-    emoji: '💎',
-    creditos: 1000,
-    trabajadores: 5,
+    key: 'pro', nombre: 'Pro', precio: '59,99', badge: 'Más popular', popular: true,
+    color: '#D4C5F9', colorDark: '#6B4FD8', grad: 'linear-gradient(135deg,#D4C5F9,#A78BFA)',
+    emoji: '💎', creditos: 1000, trabajadores: 5, negocios: 2,
     funciones: [
-      'Todo lo de Básico',
-      'Gestión de equipo',
-      'Analytics avanzado',
-      'Facturación IA',
-      'Caja y TPV',
-      'Nóminas',
-      '1.000 créditos IA / mes',
-      'Hasta 5 trabajadores',
+      'Todo lo del Básico',
+      '2 negocios',
+      'Marketing IA completo (posts, estrategias, calendario)',
+      'Analytics avanzado con predicciones',
+      'Facturación e IVA automático',
+      'Modelos fiscales 303 y 130',
+      'Asistente fiscal IA',
+      'Gestión equipo completa',
+      'Contratos SEPE básicos',
+      'Detector clientes VIP',
+      'Análisis sentimiento reseñas',
     ],
     no: [],
   },
   {
-    key: 'plus',
-    nombre: 'Plus',
-    precio: '99,99',
-    color: '#FDE9A2',
-    colorDark: '#C4860A',
-    grad: 'linear-gradient(135deg,#FDE9A2,#FCD34D)',
-    emoji: '⚡',
-    creditos: 5000,
-    trabajadores: -1,
+    key: 'plus', nombre: 'Plus', precio: '99,99', badge: 'Para escalar',
+    color: '#FDE9A2', colorDark: '#C4860A', grad: 'linear-gradient(135deg,#FDE9A2,#FCD34D)',
+    emoji: '⚡', creditos: 5000, trabajadores: -1, negocios: 10,
     funciones: [
-      'Todo lo de Pro',
+      'Todo lo del Pro',
+      'Hasta 10 negocios',
       'Trabajadores ilimitados',
-      '5.000 créditos IA / mes',
+      'Panel multi-negocio consolidado',
+      'Analytics comparativo entre negocios',
+      'Nóminas con plantillas SEPE',
+      'Contratos SEPE completos',
+      'Modelos fiscales 303/130/111/190',
+      'Kit para gestor PDF/CSV',
+      'Monitor cumplimiento legal',
+      'Tap to Pay Stripe',
+      'Dominio personalizado',
       'Soporte prioritario',
-      'Onboarding personalizado',
-      'API access',
     ],
     no: [],
   },
@@ -221,18 +213,14 @@ export default function UpgradePage() {
               <div className="up-credits">
                 <span>⚡</span>
                 <span><strong>{plan.creditos.toLocaleString()}</strong> créditos IA / mes</span>
-                {plan.trabajadores > 0 && (
-                  <>
-                    <span style={{ color: '#E5E7EB' }}>·</span>
-                    <span><strong>{plan.trabajadores}</strong> trabajador{plan.trabajadores > 1 ? 'es' : ''}</span>
-                  </>
-                )}
-                {plan.trabajadores === -1 && (
-                  <>
-                    <span style={{ color: '#E5E7EB' }}>·</span>
-                    <span><strong>∞</strong> trabajadores</span>
-                  </>
-                )}
+                <span style={{ color: '#E5E7EB' }}>·</span>
+                {plan.trabajadores > 0
+                  ? <span><strong>{plan.trabajadores}</strong> trabajador{plan.trabajadores > 1 ? 'es' : ''}</span>
+                  : <span><strong>∞</strong> trabajadores</span>}
+                <span style={{ color: '#E5E7EB' }}>·</span>
+                {plan.negocios === -1 || plan.negocios >= 10
+                  ? <span><strong>{plan.negocios === -1 ? '∞' : plan.negocios}</strong> negocios</span>
+                  : <span><strong>{plan.negocios}</strong> negocio{plan.negocios > 1 ? 's' : ''}</span>}
               </div>
 
               {/* CTA */}

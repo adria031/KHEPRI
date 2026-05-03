@@ -9,6 +9,7 @@ const CREDITOS_POR_PLAN: Record<string, number> = {
   pro:     1000,
   plus:    5000,
   beta:    2000,
+  // keep in sync with app/lib/planes.ts
 }
 
 export async function GET(req: NextRequest) {

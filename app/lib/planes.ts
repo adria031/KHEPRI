@@ -2,44 +2,110 @@ export type PlanKey = 'starter' | 'basico' | 'pro' | 'plus' | 'beta'
 
 export interface PlanConfig {
   nombre: string
+  precio: number
   creditos: number
   trabajadores: number   // -1 = ilimitado
+  negocios: number       // -1 = ilimitado
+  badge: string
+  funciones: string[]
   sidebar: string[]      // ['todo'] = acceso total
 }
 
 export const PLANES: Record<string, PlanConfig> = {
   starter: {
-    nombre: 'Starter',
-    creditos: 100,
-    trabajadores: 1,
-    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios'],
+    nombre: 'Starter', precio: 9.99, creditos: 100, trabajadores: 1, negocios: 1,
+    badge: 'Para empezar',
+    funciones: [
+      'Reservas online 24/7',
+      'Ficha pública en el mapa',
+      'Horarios y servicios',
+      'Chatbot básico (responde preguntas)',
+      'Recordatorios automáticos 24h',
+      'Reseñas automáticas post-cita',
+      'Estadísticas básicas',
+      'App cliente',
+      'Configuración de agenda',
+      'Política de cancelación',
+    ],
+    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios', 'resenas'],
   },
   basico: {
-    nombre: 'Básico',
-    creditos: 300,
-    trabajadores: 3,
-    sidebar: [
-      'dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios',
-      'productos', 'resenas', 'marketing', 'chatbot',
+    nombre: 'Básico', precio: 29.99, creditos: 300, trabajadores: 3, negocios: 1,
+    badge: 'Para crecer',
+    funciones: [
+      'Todo lo del Starter',
+      'Chatbot completo (reserva y cancela)',
+      'Importador desde otras apps',
+      'Caja diaria',
+      'Fidelización con puntos',
+      'Lista de espera automática',
+      'Descuentos y promociones',
+      'Productos y stock',
+      'Multiidioma ES/CA/EN',
+      'PWA instalable',
+      'Marketing IA básico (posts Instagram)',
     ],
+    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios', 'resenas', 'productos', 'caja', 'marketing'],
   },
   pro: {
-    nombre: 'Pro',
-    creditos: 1000,
-    trabajadores: 5,
+    nombre: 'Pro', precio: 59.99, creditos: 1000, trabajadores: 5, negocios: 2,
+    badge: 'Más popular',
+    funciones: [
+      'Todo lo del Básico',
+      '2 negocios',
+      'Marketing IA completo (posts, estrategias, calendario)',
+      'Analytics avanzado con predicciones',
+      'Facturación e IVA automático',
+      'Modelos fiscales 303 y 130',
+      'Asistente fiscal IA',
+      'Gestión equipo completa',
+      'Contratos SEPE básicos',
+      'Detector clientes VIP',
+      'Análisis sentimiento reseñas',
+    ],
     sidebar: [
-      'dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios',
-      'productos', 'equipo', 'resenas', 'marketing', 'chatbot',
-      'analytics', 'facturacion', 'caja', 'nominas',
+      'dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios', 'resenas',
+      'productos', 'caja', 'marketing', 'equipo', 'analytics', 'facturacion', 'nominas',
     ],
   },
-  plus: { nombre: 'Plus', creditos: 5000, trabajadores: -1, sidebar: ['todo'] },
-  beta: { nombre: 'Beta', creditos: 2000, trabajadores: -1, sidebar: ['todo'] },
+  plus: {
+    nombre: 'Plus', precio: 99.99, creditos: 5000, trabajadores: -1, negocios: 10,
+    badge: 'Para escalar',
+    funciones: [
+      'Todo lo del Pro',
+      'Hasta 10 negocios',
+      'Trabajadores ilimitados',
+      'Panel multi-negocio consolidado',
+      'Analytics comparativo entre negocios',
+      'Nóminas con plantillas SEPE',
+      'Contratos SEPE completos',
+      'Modelos fiscales 303/130/111/190',
+      'Kit para gestor PDF/CSV',
+      'Monitor cumplimiento legal',
+      'Tap to Pay Stripe',
+      'Dominio personalizado',
+      'Soporte prioritario',
+    ],
+    sidebar: ['todo'],
+  },
+  beta: {
+    nombre: 'Beta', precio: 0, creditos: 2000, trabajadores: -1, negocios: 10,
+    badge: 'Beta',
+    funciones: ['todo'],
+    sidebar: ['todo'],
+  },
 }
 
 export function tieneAcceso(plan: string, key: string): boolean {
   const cfg = PLANES[plan] ?? PLANES.starter
   return cfg.sidebar.includes('todo') || cfg.sidebar.includes(key)
+}
+
+/** Verifica si el plan puede crear más negocios dado el número actual */
+export function puedeCrearNegocio(plan: string, negociosActuales: number): boolean {
+  const cfg = PLANES[plan] ?? PLANES.starter
+  if (cfg.negocios === -1) return true
+  return negociosActuales < cfg.negocios
 }
 
 // href → sidebar key

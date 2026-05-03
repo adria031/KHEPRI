@@ -34,28 +34,52 @@ const CREDITOS_POR_PLAN: Record<string, number> = {
 const planes = [
   {
     id: 'starter', nombre: 'Starter', precio: '9,99€', periodo: '/mes',
-    color: '#B8EDD4', colorDark: '#2E8A5E',
-    trabajadores: '1 trabajador', creditos: '100 créditos IA',
-    features: ['Gestión de reservas', 'Chatbot básico', 'Perfil en el mapa']
+    badge: 'Para empezar', color: '#B8EDD4', colorDark: '#2E8A5E',
+    trabajadores: '1 trabajador', negocios: '1 negocio', creditos: '100 créditos IA',
+    features: [
+      'Reservas online 24/7',
+      'Ficha pública en el mapa',
+      'Chatbot básico',
+      'Reseñas automáticas',
+      'Estadísticas básicas',
+    ],
   },
   {
     id: 'basico', nombre: 'Básico', precio: '29,99€', periodo: '/mes',
-    color: '#B8D8F8', colorDark: '#1D4ED8',
-    trabajadores: '3 trabajadores', creditos: '300 créditos IA',
-    features: ['Todo lo del Starter', 'Hasta 10 servicios', 'Facturación básica']
+    badge: 'Para crecer', color: '#B8D8F8', colorDark: '#1D4ED8',
+    trabajadores: 'hasta 3 trabajadores', negocios: '1 negocio', creditos: '300 créditos IA',
+    features: [
+      'Todo lo del Starter',
+      'Chatbot completo (reserva y cancela)',
+      'Caja diaria',
+      'Productos y stock',
+      'Marketing IA básico',
+    ],
   },
   {
     id: 'pro', nombre: 'Pro', precio: '59,99€', periodo: '/mes',
-    color: '#D4C5F9', colorDark: '#6B4FD8', popular: true,
-    trabajadores: '5 trabajadores', creditos: '1.000 créditos IA',
-    features: ['Todo lo del Básico', 'E-commerce', 'Analytics IA', 'Marketing']
+    badge: 'Más popular', color: '#D4C5F9', colorDark: '#6B4FD8', popular: true,
+    trabajadores: 'hasta 5 trabajadores', negocios: '2 negocios', creditos: '1.000 créditos IA',
+    features: [
+      'Todo lo del Básico',
+      'Marketing IA completo',
+      'Analytics avanzado',
+      'Facturación e IVA automático',
+      'Gestión de equipo',
+    ],
   },
   {
     id: 'plus', nombre: 'Plus', precio: '99,99€', periodo: '/mes',
-    color: '#FDE68A', colorDark: '#B45309',
-    trabajadores: 'Trabajadores ilimitados', creditos: '5.000 créditos IA',
-    features: ['Todo lo del Pro', 'Multi-sede', 'API personalizada', 'Soporte prioritario']
-  }
+    badge: 'Para escalar', color: '#FDE9A2', colorDark: '#C4860A',
+    trabajadores: 'trabajadores ilimitados', negocios: 'hasta 10 negocios', creditos: '5.000 créditos IA',
+    features: [
+      'Todo lo del Pro',
+      'Multi-negocio consolidado',
+      'Nóminas y contratos SEPE',
+      'Kit para gestor',
+      'Soporte prioritario',
+    ],
+  },
 ]
 
 export default function Onboarding() {
