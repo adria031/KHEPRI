@@ -21,6 +21,15 @@ import { DashboardShell } from '../DashboardShell'
     total numeric,
     created_at timestamptz default now()
   );
+
+  -- Columnas adicionales en tabla gastos (ejecutar si faltan):
+  ALTER TABLE gastos ADD COLUMN IF NOT EXISTS proveedor text;
+  ALTER TABLE gastos ADD COLUMN IF NOT EXISTS base_imponible numeric;
+  ALTER TABLE gastos ADD COLUMN IF NOT EXISTS iva_porcentaje integer DEFAULT 21;
+  ALTER TABLE gastos ADD COLUMN IF NOT EXISTS cuota_iva numeric;
+  ALTER TABLE gastos ADD COLUMN IF NOT EXISTS total numeric;
+  ALTER TABLE gastos ADD COLUMN IF NOT EXISTS concepto text;
+  ALTER TABLE gastos ADD COLUMN IF NOT EXISTS foto_url text;
 */
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -37,11 +46,12 @@ type FacturaAuto = {
 type FilaIva = { tipo: number; base: number; cuota: number; total: number }
 type Gasto = {
   id: string; fecha: string; proveedor: string | null
-  base_imponible: number; iva_porcentaje: number; cuota_iva: number; total: number; foto_url: string | null
+  base_imponible: number; iva_porcentaje: number; cuota_iva: number; total: number
+  foto_url: string | null; concepto: string | null
 }
 type GastoDraft = {
   fecha: string; proveedor: string; base_imponible: string
-  iva_porcentaje: string; cuota_iva: string; total: string
+  iva_porcentaje: string; cuota_iva: string; total: string; concepto: string
 }
 type FacturaOficial = {
   id: string; numero: string; fecha: string
@@ -78,6 +88,10 @@ export default function Facturacion() {
   // Trimestre seleccionable
   const [trim, setTrim] = useState(Math.floor(hoy.getMonth() / 3) + 1)
   const [trimAno, setTrimAno] = useState(hoy.getFullYear())
+  // Trimestre para Kit gestor (independiente)
+  const [kitTrim, setKitTrim] = useState(Math.floor(hoy.getMonth() / 3) + 1)
+  const [kitTrimAno, setKitTrimAno] = useState(hoy.getFullYear())
+  const [exportando, setExportando] = useState(false)
   const [datosTrim, setDatosTrim] = useState<DatosTrim | null>(null)
   const [cargandoTrim, setCargandoTrim] = useState(false)
 
@@ -170,7 +184,7 @@ export default function Facturacion() {
     const hasta = `${isoMes(a, m)}-${String(hastaDate.getDate()).padStart(2,'0')}`
     const { db } = await getSessionClient()
     const { data } = await db
-      .from('gastos').select('id, fecha, proveedor, base_imponible, iva_porcentaje, cuota_iva, total, foto_url')
+      .from('gastos').select('id, fecha, proveedor, base_imponible, iva_porcentaje, cuota_iva, total, foto_url, concepto')
       .eq('negocio_id', nid).gte('fecha', desde).lte('fecha', hasta)
       .order('fecha', { ascending: false })
     setGastos((data as Gasto[]) || [])
@@ -674,37 +688,110 @@ export default function Facturacion() {
     doc.save(`modelo-111-${trimestreLabel.replace(' ','-')}.pdf`)
   }
 
+  // Legacy (used by modelos fiscales section if datosTrim loaded)
   function exportarCSV() {
-    if (!datosTrim) return
-    const d = datosTrim
-    const rendNeto = Math.max(0, d.baseIngresos - d.totalGastoBase)
-    const rows = [
-      ['Concepto', 'Importe (€)'],
-      ['--- INGRESOS ---', ''],
-      ['Ingresos brutos (con IVA)', d.totalIngresos.toFixed(2)],
-      ['Base imponible ingresos', d.baseIngresos.toFixed(2)],
-      ['IVA repercutido', d.ivaRepercutido.toFixed(2)],
-      ['--- GASTOS ---', ''],
-      ['Gastos totales (con IVA)', d.totalGastos.toFixed(2)],
-      ['Base imponible gastos', d.totalGastoBase.toFixed(2)],
-      ['IVA soportado (deducible)', d.ivaSoportado.toFixed(2)],
-      ['--- MODELOS FISCALES ---', ''],
-      ['M.303 — IVA a pagar (rep. − sop.)', (d.ivaRepercutido - d.ivaSoportado).toFixed(2)],
-      ['M.130 — Rendimiento neto', rendNeto.toFixed(2)],
-      ['M.130 — IRPF a pagar (20%)', (rendNeto * 0.20).toFixed(2)],
-      ['M.111 — Retenciones trabajadores', d.retenciones.toFixed(2)],
-      ['--- REFERENCIA ---', ''],
-      ['Período', trimestreLabel],
-      ['Meses', mesesTrimestre],
-      ['Generado', new Date().toLocaleDateString('es-ES')],
-      ['Generado con', 'Khepria'],
-    ]
-    const csv = rows.map(r => r.join(';')).join('\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `khepria-gestor-${trimestreLabel.replace(' ','-')}.csv`
-    a.click(); URL.revokeObjectURL(url)
+    if (!datosTrim || !negocioId) return
+    exportarCSVGestor(trim, trimAno).catch(() => {})
+  }
+
+  async function exportarCSVGestor(t: number, a: number) {
+    if (!negocioId) return
+    setExportando(true)
+    try {
+      const mesInicio = (t - 1) * 3
+      const desde = `${a}-${String(mesInicio + 1).padStart(2,'0')}-01`
+      const mesFin = mesInicio + 3
+      const ultimoDia = new Date(a, mesFin, 0)
+      const hasta = `${a}-${String(mesFin).padStart(2,'0')}-${String(ultimoDia.getDate()).padStart(2,'0')}`
+      const labelT = `T${t} ${a}`
+      const mesesT = [0,1,2].map(i => MESES[(t - 1) * 3 + i]).join(', ')
+
+      const [resRes, gasRes] = await Promise.all([
+        supabase.from('reservas')
+          .select('fecha, cliente_nombre, servicios(nombre, precio, iva)')
+          .eq('negocio_id', negocioId).eq('estado','completada')
+          .gte('fecha', desde).lte('fecha', hasta)
+          .order('fecha', { ascending: true }),
+        supabase.from('gastos')
+          .select('fecha, proveedor, concepto, base_imponible, iva_porcentaje, cuota_iva, total')
+          .eq('negocio_id', negocioId)
+          .gte('fecha', desde).lte('fecha', hasta)
+          .order('fecha', { ascending: true }),
+      ])
+
+      let baseIngresos = 0, ivaRepercutido = 0, totalIngresos = 0
+      const ingresoRows: string[][] = []
+      for (const r of ((resRes.data || []) as any[])) {
+        const precio = r.servicios?.precio ?? 0
+        const ivaPct = r.servicios?.iva ?? 21
+        const base = +(precio / (1 + ivaPct / 100)).toFixed(2)
+        const iva = +(precio - base).toFixed(2)
+        baseIngresos += base; ivaRepercutido += iva; totalIngresos += precio
+        ingresoRows.push([
+          r.fecha, r.cliente_nombre || '', r.servicios?.nombre || '',
+          base.toFixed(2), `${ivaPct}%`, iva.toFixed(2), precio.toFixed(2),
+        ])
+      }
+
+      let baseGastos = 0, ivaSoportado = 0, totalGastos = 0
+      const gastoRows: string[][] = []
+      for (const g of ((gasRes.data || []) as any[])) {
+        const base = g.base_imponible ?? 0
+        const iva = g.cuota_iva ?? 0
+        const total = g.total ?? 0
+        baseGastos += base; ivaSoportado += iva; totalGastos += total
+        gastoRows.push([
+          g.fecha, g.proveedor || '', g.concepto || '',
+          base.toFixed(2), `${g.iva_porcentaje ?? 21}%`, iva.toFixed(2), total.toFixed(2),
+        ])
+      }
+
+      const ivaDiferencia = ivaRepercutido - ivaSoportado
+      const rendNeto = Math.max(0, baseIngresos - baseGastos)
+      const irpfEstimado = rendNeto * 0.20
+
+      const rows: (string | number)[][] = [
+        [`Kit para Gestor — Khepria`, `Período: ${labelT} (${mesesT})`],
+        [`Generado`, new Date().toLocaleDateString('es-ES')],
+        [],
+        ['=== INGRESOS DEL TRIMESTRE ==='],
+        ['Fecha', 'Cliente', 'Servicio', 'Base imponible (€)', 'IVA %', 'Cuota IVA (€)', 'Total (€)'],
+        ...ingresoRows,
+        ['', '', 'TOTALES INGRESOS', baseIngresos.toFixed(2), '', ivaRepercutido.toFixed(2), totalIngresos.toFixed(2)],
+        [],
+        ['=== GASTOS DEL TRIMESTRE ==='],
+        ['Fecha', 'Proveedor', 'Concepto', 'Base imponible (€)', 'IVA %', 'IVA soportado (€)', 'Total (€)'],
+        ...gastoRows,
+        ['', '', 'TOTALES GASTOS', baseGastos.toFixed(2), '', ivaSoportado.toFixed(2), totalGastos.toFixed(2)],
+        [],
+        ['=== RESUMEN FISCAL ==='],
+        ['Concepto', 'Importe (€)'],
+        ['Base imponible total ingresos', baseIngresos.toFixed(2)],
+        ['IVA repercutido (cobrado a clientes)', ivaRepercutido.toFixed(2)],
+        ['Base imponible total gastos', baseGastos.toFixed(2)],
+        ['IVA soportado (deducible)', ivaSoportado.toFixed(2)],
+        ['IVA a pagar Hacienda (M.303)', ivaDiferencia.toFixed(2)],
+        ['Rendimiento neto (ingresos − gastos)', rendNeto.toFixed(2)],
+        ['IRPF estimado 20% (M.130)', irpfEstimado.toFixed(2)],
+        [],
+        ['=== REFERENCIA ==='],
+        ['Período', labelT],
+        ['Meses incluidos', mesesT],
+        ['Nº ingresos', ingresoRows.length],
+        ['Nº gastos', gastoRows.length],
+      ]
+
+      const csv = rows.map(r => r.join(';')).join('\n')
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `khepria-gestor-T${t}-${a}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExportando(false)
+    }
   }
 
   async function guardarFacturaOficial() {
@@ -762,14 +849,25 @@ export default function Facturacion() {
     setAnalizando(true)
     try {
       const b64 = await fileToBase64(file)
+      const prompt = `Analiza esta imagen de ticket/factura y extrae en JSON:
+{
+  "proveedor": "nombre del comercio",
+  "fecha": "DD/MM/YYYY",
+  "base_imponible": número,
+  "porcentaje_iva": 4 o 10 o 21,
+  "cuota_iva": número,
+  "total": número,
+  "concepto": "descripción breve"
+}
+Si no puedes leer algún campo devuelve null.`
       const res = await fetch('/api/gemini', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           contents: [{ parts: [
             { inline_data: { mime_type: tipo, data: b64 } },
-            { text: 'Extrae datos fiscales de este ticket/factura. Solo JSON: {"proveedor":"","fecha":"YYYY-MM-DD","base_imponible":number,"iva_porcentaje":number,"cuota_iva":number,"total":number}' }
+            { text: prompt }
           ]}],
-          generationConfig: { maxOutputTokens:200, temperature:0.1 },
+          generationConfig: { maxOutputTokens:300, temperature:0.1 },
         }),
       })
       if (res.ok) {
@@ -778,18 +876,27 @@ export default function Facturacion() {
         const clean = raw.trim().replace(/^```(?:json)?\n?/,'').replace(/\n?```$/,'')
         try {
           const p = JSON.parse(clean)
-          const total = p.total ?? 0; const ivaPct = p.iva_porcentaje ?? 21
+          const total = p.total ?? 0
+          const ivaPct = p.porcentaje_iva ?? p.iva_porcentaje ?? 21
           const cuota = p.cuota_iva ?? +(total - total/(1+ivaPct/100)).toFixed(2)
           const base = p.base_imponible ?? +(total/(1+ivaPct/100)).toFixed(2)
-          setGastoDraft({ fecha: p.fecha ?? hoy.toISOString().split('T')[0], proveedor: p.proveedor ?? '', base_imponible: String(base), iva_porcentaje: String(ivaPct), cuota_iva: String(cuota), total: String(total) })
-        } catch { setGastoDraft({ fecha: hoy.toISOString().split('T')[0], proveedor:'', base_imponible:'', iva_porcentaje:'21', cuota_iva:'', total:'' }) }
+          // Convert DD/MM/YYYY → YYYY-MM-DD for input[type=date]
+          let fechaISO = hoy.toISOString().split('T')[0]
+          if (p.fecha) {
+            const m = String(p.fecha).match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+            if (m) fechaISO = `${m[3]}-${m[2]}-${m[1]}`
+            else if (/^\d{4}-\d{2}-\d{2}$/.test(p.fecha)) fechaISO = p.fecha
+          }
+          setGastoDraft({ fecha: fechaISO, proveedor: p.proveedor ?? '', base_imponible: String(base), iva_porcentaje: String(ivaPct), cuota_iva: String(cuota), total: String(total), concepto: p.concepto ?? '' })
+        } catch { setGastoDraft({ fecha: hoy.toISOString().split('T')[0], proveedor:'', base_imponible:'', iva_porcentaje:'21', cuota_iva:'', total:'', concepto:'' }) }
       }
-    } catch { setGastoDraft({ fecha: hoy.toISOString().split('T')[0], proveedor:'', base_imponible:'', iva_porcentaje:'21', cuota_iva:'', total:'' }) }
+    } catch { setGastoDraft({ fecha: hoy.toISOString().split('T')[0], proveedor:'', base_imponible:'', iva_porcentaje:'21', cuota_iva:'', total:'', concepto:'' }) }
     finally { setAnalizando(false) }
   }
 
-  function recalcularCuota(draft: GastoDraft, campo: 'total'|'base_imponible'|'iva_porcentaje', valor: string): GastoDraft {
+  function recalcularCuota(draft: GastoDraft, campo: 'total'|'base_imponible'|'iva_porcentaje'|'concepto', valor: string): GastoDraft {
     const d = { ...draft, [campo]: valor }
+    if (campo === 'concepto') return d
     const ivaPct = parseFloat(d.iva_porcentaje) || 0
     if (campo === 'total') {
       const total = parseFloat(valor) || 0; const base = total / (1+ivaPct/100)
@@ -811,6 +918,7 @@ export default function Facturacion() {
       const { error: dbErr } = await supabase.from('gastos').insert({
         negocio_id: negocioId, fecha: gastoDraft.fecha || hoy.toISOString().split('T')[0],
         proveedor: gastoDraft.proveedor || null,
+        concepto: gastoDraft.concepto || null,
         base_imponible: parseFloat(gastoDraft.base_imponible)||0,
         iva_porcentaje: parseInt(gastoDraft.iva_porcentaje)||0,
         cuota_iva: parseFloat(gastoDraft.cuota_iva)||0,
@@ -1384,21 +1492,36 @@ RESEÑAS:\n${texto}`
       <div className="section-block">
         <div className="section-title">Kit para gestor</div>
         <div className="section-sub">Exporta todos los datos del trimestre en un clic para enviárselos a tu gestor</div>
-        <div className="kit-card">
+        <div className="kit-card" style={{flexDirection:'column', alignItems:'stretch', gap:16}}>
           <div>
             <div style={{fontSize:'15px', fontWeight:800, color:'var(--text)', marginBottom:4}}>Exportar datos trimestrales</div>
             <div style={{fontSize:'13px', color:'var(--text2)', lineHeight:1.6}}>
-              CSV con ingresos, gastos, IVA repercutido/soportado, diferencia IVA, IRPF estimado y retenciones.<br/>
-              {!datosTrim && <span style={{color:'var(--muted)'}}>Carga primero los datos del trimestre con el botón de arriba.</span>}
+              CSV con todos los ingresos y gastos individuales, IVA repercutido/soportado, diferencia IVA a pagar, base imponible total e IRPF estimado. Listo para entregar a tu asesor fiscal.
             </div>
           </div>
-          <button
-            onClick={exportarCSV}
-            disabled={!datosTrim}
-            style={{padding:'12px 24px', background: datosTrim ? 'var(--text)' : 'var(--muted)', color:'white', border:'none', borderRadius:'12px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor: datosTrim ? 'pointer' : 'not-allowed', whiteSpace:'nowrap', flexShrink:0}}
-          >
-            📊 Exportar para gestor
-          </button>
+          <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+            <span style={{fontSize:'13px', fontWeight:600, color:'var(--text2)'}}>Trimestre:</span>
+            <select className="trim-select" value={kitTrim} onChange={e => setKitTrim(Number(e.target.value))}>
+              <option value={1}>T1 — Ene, Feb, Mar</option>
+              <option value={2}>T2 — Abr, May, Jun</option>
+              <option value={3}>T3 — Jul, Ago, Sep</option>
+              <option value={4}>T4 — Oct, Nov, Dic</option>
+            </select>
+            <select className="trim-select" value={kitTrimAno} onChange={e => setKitTrimAno(Number(e.target.value))}>
+              {[2024, 2025, 2026].map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <button
+              onClick={() => exportarCSVGestor(kitTrim, kitTrimAno)}
+              disabled={exportando || !negocioId}
+              style={{padding:'11px 24px', background: exportando ? 'var(--muted)' : 'var(--text)', color:'white', border:'none', borderRadius:'12px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor: exportando ? 'not-allowed' : 'pointer', whiteSpace:'nowrap'}}
+            >
+              {exportando ? '⏳ Generando...' : `📊 Exportar T${kitTrim} ${kitTrimAno}`}
+            </button>
+          </div>
+          <div style={{fontSize:'12px', color:'var(--muted)'}}>
+            Archivo: <code style={{background:'var(--bg)', padding:'1px 6px', borderRadius:4}}>khepria-gestor-T{kitTrim}-{kitTrimAno}.csv</code>
+            {' '}· Incluye: ingresos individuales · gastos individuales · IVA 303 · IRPF 130
+          </div>
         </div>
       </div>
 
@@ -1606,22 +1729,40 @@ RESEÑAS:\n${texto}`
                 <div className="analyzing">
                   <div className="spinner" />
                   <div style={{fontSize:13, fontWeight:700}}>Analizando con Gemini Vision...</div>
-                  <div style={{fontSize:12, color:'var(--muted)'}}>Extrayendo importe, IVA, fecha y proveedor</div>
+                  <div style={{fontSize:12, color:'var(--muted)'}}>Extrayendo proveedor, IVA, fecha y concepto</div>
                 </div>
+              )}
+              {!gastoDraft && !analizando && archivo && (
+                <button
+                  style={{alignSelf:'flex-start', padding:'7px 14px', background:'linear-gradient(135deg,#1D4ED8,#6B4FD8)', color:'white', border:'none', borderRadius:10, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer'}}
+                  onClick={() => { setGastoDraft({ fecha: hoy.toISOString().split('T')[0], proveedor:'', base_imponible:'', iva_porcentaje:'21', cuota_iva:'', total:'', concepto:'' }) }}
+                >
+                  ✏️ Introducir manualmente
+                </button>
               )}
               {gastoDraft && !analizando && (
                 <div style={{display:'flex', flexDirection:'column', gap:12}}>
                   <div style={{display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', background:'rgba(212,197,249,0.3)', borderRadius:100, fontSize:11, fontWeight:700, color:'var(--lila-dark)'}}>
                     ✨ Datos extraídos por IA — revisa antes de guardar
                   </div>
-                  <div className="form-field" style={{margin:0}}>
-                    <label>Proveedor</label>
-                    <input type="text" value={gastoDraft.proveedor} onChange={e => setGastoDraft(d => d ? {...d, proveedor: e.target.value} : d)} />
-                  </div>
                   <div className="grid2">
+                    <div className="form-field" style={{margin:0}}>
+                      <label>Proveedor</label>
+                      <input type="text" placeholder="Nombre del comercio" value={gastoDraft.proveedor} onChange={e => setGastoDraft(d => d ? {...d, proveedor: e.target.value} : d)} />
+                    </div>
                     <div className="form-field" style={{margin:0}}>
                       <label>Fecha</label>
                       <input type="date" value={gastoDraft.fecha} onChange={e => setGastoDraft(d => d ? {...d, fecha: e.target.value} : d)} />
+                    </div>
+                  </div>
+                  <div className="form-field" style={{margin:0}}>
+                    <label>Concepto</label>
+                    <input type="text" placeholder="Descripción breve del gasto" value={gastoDraft.concepto} onChange={e => setGastoDraft(d => d ? recalcularCuota(d,'concepto',e.target.value) : d)} />
+                  </div>
+                  <div className="grid2">
+                    <div className="form-field" style={{margin:0}}>
+                      <label>Total (€)</label>
+                      <input type="number" step="0.01" placeholder="0.00" value={gastoDraft.total} onChange={e => setGastoDraft(d => d ? recalcularCuota(d,'total',e.target.value) : d)} />
                     </div>
                     <div className="form-field" style={{margin:0}}>
                       <label>IVA %</label>
@@ -1632,14 +1773,20 @@ RESEÑAS:\n${texto}`
                   </div>
                   <div className="grid2">
                     <div className="form-field" style={{margin:0}}>
-                      <label>Total (€)</label>
-                      <input type="number" step="0.01" value={gastoDraft.total} onChange={e => setGastoDraft(d => d ? recalcularCuota(d,'total',e.target.value) : d)} />
+                      <label>Base imponible (€)</label>
+                      <input type="number" step="0.01" placeholder="0.00" value={gastoDraft.base_imponible} onChange={e => setGastoDraft(d => d ? recalcularCuota(d,'base_imponible',e.target.value) : d)} />
                     </div>
                     <div className="form-field" style={{margin:0}}>
-                      <label>Base imponible (€)</label>
-                      <input type="number" step="0.01" value={gastoDraft.base_imponible} onChange={e => setGastoDraft(d => d ? recalcularCuota(d,'base_imponible',e.target.value) : d)} />
+                      <label>Cuota IVA (€)</label>
+                      <input type="number" step="0.01" placeholder="0.00" value={gastoDraft.cuota_iva} readOnly style={{background:'var(--bg)', cursor:'default'}} />
                     </div>
                   </div>
+                  {gastoDraft.total && parseFloat(gastoDraft.total) > 0 && (
+                    <div style={{background:'rgba(184,237,212,0.2)', border:'1px solid rgba(46,138,94,0.3)', borderRadius:10, padding:'10px 14px', fontSize:13, display:'flex', justifyContent:'space-between'}}>
+                      <span style={{color:'var(--text2)'}}>Total gasto</span>
+                      <strong style={{color:'var(--green-dark)'}}>{fmt(parseFloat(gastoDraft.total))} €</strong>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
