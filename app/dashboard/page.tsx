@@ -110,7 +110,8 @@ export default function Dashboard() {
   const [servicioTop, setServicioTop]   = useState('')
   const [trabajadorTop, setTrabajadorTop] = useState('')
 
-  // Créditos IA
+  // Plan y créditos IA
+  const [planActual, setPlanActual] = useState<string>('starter')
   const [creditos, setCreditos] = useState<{ totales: number; usados: number; disponibles: number; pct: number } | null>(null)
 
   // Notificaciones realtime
@@ -151,14 +152,21 @@ export default function Dashboard() {
           const disponibles = Math.max(0, totales - usados)
           const pct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
           setCreditos({ totales, usados, disponibles, pct })
+          // Plan del negocio activo (primer relevante)
+          const planRef = relevant.find(n => n.id === neg.id) ?? relevant[0]
+          if (planRef?.plan) setPlanActual(planRef.plan)
         } else {
           const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
-          const totales = planDefaults[neg.plan ?? 'starter'] ?? 100
+          const p = neg.plan ?? 'starter'
+          const totales = planDefaults[p] ?? 100
+          setPlanActual(p)
           setCreditos({ totales, usados: 0, disponibles: totales, pct: 100 })
         }
       } catch {
         const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
-        const totales = planDefaults[neg.plan ?? 'starter'] ?? 100
+        const p = neg.plan ?? 'starter'
+        const totales = planDefaults[p] ?? 100
+        setPlanActual(p)
         setCreditos({ totales, usados: 0, disponibles: totales, pct: 100 })
       }
 
@@ -499,7 +507,24 @@ export default function Dashboard() {
             <div className="cr-bar-icon">⚡</div>
             <div className="cr-bar-body">
               <div className="cr-bar-header">
-                <span className="cr-bar-label">Créditos IA disponibles</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="cr-bar-label">Créditos IA disponibles</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+                    background: planActual === 'plus' ? 'linear-gradient(135deg,#D4C5F9,#B8D8F8)'
+                      : planActual === 'pro' ? 'linear-gradient(135deg,#FDE68A,#FCA5A5)'
+                      : planActual === 'basico' ? 'linear-gradient(135deg,#B8EDD4,#B8D8F8)'
+                      : planActual === 'beta' ? 'linear-gradient(135deg,#D4C5F9,#B8EDD4)'
+                      : '#F3F4F6',
+                    color: planActual === 'plus' ? '#6B4FD8'
+                      : planActual === 'pro' ? '#92400E'
+                      : planActual === 'basico' ? '#065F46'
+                      : planActual === 'beta' ? '#4F46E5'
+                      : '#6B7280',
+                  }}>
+                    {planActual === 'plus' ? 'Plus' : planActual === 'pro' ? 'Pro' : planActual === 'basico' ? 'Básico' : planActual === 'beta' ? 'Beta' : 'Starter'}
+                  </span>
+                </div>
                 <span className="cr-bar-nums">{creditos.disponibles} / {creditos.totales}</span>
               </div>
               <div className="cr-bar-track">
@@ -515,11 +540,18 @@ export default function Dashboard() {
                   }}
                 />
               </div>
-              {creditos.pct <= 20 ? (
-                <span className="cr-bar-warn">⚠️ Quedan pocos créditos — renueva tu plan</span>
-              ) : (
-                <span className="cr-bar-ok">✓ {creditos.pct}% disponible</span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {creditos.pct <= 20 ? (
+                  <span className="cr-bar-warn">⚠️ Quedan pocos créditos — renueva tu plan</span>
+                ) : (
+                  <span className="cr-bar-ok">✓ {creditos.pct}% disponible</span>
+                )}
+                {planActual !== 'plus' && planActual !== 'beta' && (
+                  <Link href="/upgrade" style={{ fontSize: 12, fontWeight: 700, color: '#6B4FD8', textDecoration: 'none' }}>
+                    Ver planes →
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         )}

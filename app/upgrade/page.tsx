@@ -34,7 +34,6 @@ const PLANES_UI = [
     emoji: '🚀',
     creditos: 300,
     trabajadores: 3,
-    popular: true,
     funciones: [
       'Todo lo de Starter',
       'Catálogo de productos',
@@ -48,6 +47,7 @@ const PLANES_UI = [
   },
   {
     key: 'pro',
+    popular: true,
     nombre: 'Pro',
     precio: '59,99',
     color: '#D4C5F9',
@@ -113,11 +113,11 @@ export default function UpgradePage() {
           display: flex; flex-direction: column; gap: 20px;
         }
         .up-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,0.1); }
-        .up-card.popular { border-color: #B8D8F8; box-shadow: 0 8px 24px rgba(29,78,216,0.12); }
+        .up-card.popular { border-color: #D4C5F9; box-shadow: 0 8px 24px rgba(107,79,216,0.15); }
         .up-popular-badge {
           position: absolute; top: 16px; right: 16px;
-          background: linear-gradient(135deg,#B8D8F8,#93C5FD);
-          color: #1D4ED8; font-size: 10px; font-weight: 800;
+          background: linear-gradient(135deg,#D4C5F9,#A78BFA);
+          color: #6B4FD8; font-size: 10px; font-weight: 800;
           padding: 3px 10px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.5px;
         }
         .up-card-emoji { font-size: 32px; width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
@@ -170,6 +170,9 @@ export default function UpgradePage() {
           <div className="up-badge">⚡ Planes Khepria</div>
           <h1 className="up-title">Elige el plan perfecto<br />para tu negocio</h1>
           <p className="up-sub">Todos los planes incluyen reservas online, chatbot IA y panel de gestión. Sin permanencia.</p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 16, background: 'linear-gradient(135deg,rgba(212,197,249,0.2),rgba(184,237,212,0.2))', border: '1.5px solid rgba(212,197,249,0.5)', borderRadius: 12, padding: '10px 20px', fontSize: 13, color: '#4F46E5', fontWeight: 600 }}>
+            🎉 Pago disponible próximamente — acceso gratuito durante la beta
+          </div>
         </div>
 
         {/* Cards */}
