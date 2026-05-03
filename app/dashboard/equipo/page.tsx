@@ -53,7 +53,8 @@ type NegocioDatos = {
 }
 type ContratoForm = {
   tipo: string; fecha_inicio: string; fecha_fin: string
-  salario_bruto: string; jornada: string; horas_semana: string
+  salario_anual: string; num_pagas: string; num_pagas_custom: string
+  jornada: string; horas_semana: string
   categoria: string; empresa_cif: string; empresa_representante: string
 }
 
@@ -89,7 +90,8 @@ export default function Equipo() {
   const [vistaContrato, setVistaContrato] = useState<string | null>(null) // trabajador id expanded
   const [contratoForm, setContratoForm] = useState<ContratoForm>({
     tipo:'indefinido', fecha_inicio: new Date().toISOString().split('T')[0], fecha_fin:'',
-    salario_bruto:'', jornada:'completa', horas_semana:'40',
+    salario_anual:'', num_pagas:'14', num_pagas_custom:'',
+    jornada:'completa', horas_semana:'40',
     categoria:'', empresa_cif:'', empresa_representante:'',
   })
   const [guardandoContrato, setGuardandoContrato] = useState(false)
@@ -197,15 +199,21 @@ export default function Equipo() {
     setTrabajadorContrato(t)
     setContratoForm({
       tipo:'indefinido', fecha_inicio: new Date().toISOString().split('T')[0], fecha_fin:'',
-      salario_bruto:'', jornada:'completa', horas_semana:'40',
+      salario_anual:'', num_pagas:'14', num_pagas_custom:'',
+      jornada:'completa', horas_semana:'40',
       categoria: t.especialidad || '', empresa_cif:'', empresa_representante:'',
     })
     setContratoModal(true)
   }
 
   async function guardarContrato() {
-    if (!trabajadorContrato || !negocioId || !contratoForm.fecha_inicio || !contratoForm.salario_bruto) return
+    if (!trabajadorContrato || !negocioId || !contratoForm.fecha_inicio || !contratoForm.salario_anual) return
     setGuardandoContrato(true)
+    const pagas = contratoForm.num_pagas === 'custom'
+      ? parseInt(contratoForm.num_pagas_custom) || 14
+      : parseInt(contratoForm.num_pagas) || 14
+    const anual = parseFloat(contratoForm.salario_anual) || 0
+    const porPaga = pagas > 0 ? +(anual / pagas).toFixed(2) : 0
     const jornadaTexto = contratoForm.jornada === 'completa'
       ? 'Jornada completa (40 horas/semana)'
       : `Jornada parcial (${contratoForm.horas_semana} horas/semana)`
@@ -215,9 +223,9 @@ export default function Equipo() {
       tipo_contrato: contratoForm.tipo,
       fecha_inicio: contratoForm.fecha_inicio,
       fecha_fin: contratoForm.fecha_fin || null,
-      salario_bruto: parseFloat(contratoForm.salario_bruto) || 0,
+      salario_bruto: porPaga,
       jornada: jornadaTexto,
-      categoria: contratoForm.categoria || null,
+      categoria: `${contratoForm.categoria || ''}||pagas:${pagas}||anual:${anual}`,
     }).select().single()
 
     if (!error && data) {
@@ -226,7 +234,7 @@ export default function Equipo() {
         [trabajadorContrato.id]: [data as Contrato, ...(prev[trabajadorContrato.id] || [])],
       }))
       // Auto-generate PDF and download
-      await generarContratoPDF(data as Contrato, trabajadorContrato, contratoForm.empresa_cif, contratoForm.empresa_representante)
+      await generarContratoPDF(data as Contrato, trabajadorContrato, contratoForm.empresa_cif, contratoForm.empresa_representante, pagas, anual)
       setContratoModal(false)
     } else if (error) {
       alert(`Error: ${error.message}`)
@@ -236,7 +244,8 @@ export default function Equipo() {
 
   async function generarContratoPDF(
     c: Contrato, t: Trabajador,
-    empresaCif = '', empresaRepresentante = ''
+    empresaCif = '', empresaRepresentante = '',
+    numPagas = 14, salarioAnual = 0
   ) {
     const { jsPDF } = await import('jspdf')
     const doc = new jsPDF({ unit:'mm', format:'a4' })
@@ -315,7 +324,9 @@ export default function Equipo() {
     campo('Duración', c.tipo_contrato === 'indefinido' || c.tipo_contrato === 'parcial'
       ? 'INDEFINIDA' : c.fecha_fin ? `Hasta el ${fmtFecha(c.fecha_fin)}` : 'A determinar')
     campo('Jornada laboral', c.jornada)
-    campo('Salario bruto mensual', `${fmt(c.salario_bruto)} € / mes (14 pagas)`)
+    const salAnual = salarioAnual > 0 ? salarioAnual : c.salario_bruto * numPagas
+    campo('Salario bruto anual', `${fmt(salAnual)} € / año`)
+    campo(`Salario por paga (${numPagas} pagas)`, `${fmt(c.salario_bruto)} € / paga`)
     campo('Categoría profesional', c.categoria || t.especialidad || '—')
     campo('Centro de trabajo', dir || negocioDatos.nombre || '—')
     y += 4
@@ -378,11 +389,19 @@ export default function Equipo() {
     doc.text('Fecha: ___/___/______', mR-41, y+40, {align:'center'})
     y += 50
 
+    // ── Aviso orientativo ─────────────────────────────────────────────────────
+    if (y < 268) {
+      doc.setFillColor(255,251,235); doc.setDrawColor(253,211,77)
+      doc.roundedRect(mL, y, mR-mL, 14, 2, 2, 'FD')
+      doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(146,64,14)
+      doc.text('AVISO: Este documento es orientativo. Debe ser revisado y firmado ante el SEPE o gestor laboral.', 105, y+9, {align:'center'})
+    }
+
     // ── Pie ───────────────────────────────────────────────────────────────────
     doc.setFillColor(247,249,252); doc.rect(0, 285, W, 12, 'F')
     doc.setDrawColor(229,231,235); doc.line(0, 285, W, 285)
     doc.setFontSize(6.5); doc.setTextColor(153,153,153)
-    doc.text(`Generado con Khepria · Contrato ${tipoInfo?.label} · ${t.nombre} · Ref: KH-${c.id.slice(0,8).toUpperCase()} · ${new Date().toLocaleDateString('es-ES')}`, 105, 292, {align:'center'})
+    doc.text(`Generado con Khepria · Contrato ${tipoInfo?.label} · ${t.nombre} · Ref: KH-${c.id.slice(0,8).toUpperCase()} · ${new Date().toLocaleDateString('es-ES')} · Documento orientativo`, 105, 292, {align:'center'})
 
     const filename = `contrato-${c.tipo_contrato}-${t.nombre.toLowerCase().replace(/\s+/g,'-')}-${c.fecha_inicio}.pdf`
     doc.save(filename)
@@ -712,23 +731,62 @@ export default function Equipo() {
 
             <div className="grid2">
               <div className="field">
-                <label>Salario bruto mensual (€) *</label>
-                <input type="number" step="0.01" placeholder="1.184,00" value={contratoForm.salario_bruto}
-                  onChange={e => setContratoForm(f => ({...f, salario_bruto:e.target.value}))} />
+                <label>Salario bruto ANUAL (€) *</label>
+                <input type="number" step="0.01" placeholder="Ej: 20000" value={contratoForm.salario_anual}
+                  onChange={e => setContratoForm(f => ({...f, salario_anual:e.target.value}))} />
               </div>
               <div className="field">
-                <label>Categoría profesional</label>
-                <input type="text" placeholder="Ej: Oficial 1ª, Técnico..." value={contratoForm.categoria}
-                  onChange={e => setContratoForm(f => ({...f, categoria:e.target.value}))} />
+                <label>Número de pagas</label>
+                <select value={contratoForm.num_pagas} onChange={e => setContratoForm(f => ({...f, num_pagas:e.target.value}))}>
+                  <option value="12">12 pagas</option>
+                  <option value="14">14 pagas</option>
+                  <option value="custom">Personalizado</option>
+                </select>
               </div>
             </div>
 
-            {/* SMI 2026 check */}
-            {contratoForm.salario_bruto && parseFloat(contratoForm.salario_bruto) > 0 && parseFloat(contratoForm.salario_bruto) < 1184 && contratoForm.jornada === 'completa' && (
-              <div style={{background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#991B1B', marginBottom:10}}>
-                ⚠️ El salario introducido ({fmt(parseFloat(contratoForm.salario_bruto))} €) es inferior al SMI 2026 (1.184 €/mes para jornada completa).
+            {contratoForm.num_pagas === 'custom' && (
+              <div className="field">
+                <label>Número de pagas (personalizado)</label>
+                <input type="number" min="1" max="24" placeholder="Ej: 16" value={contratoForm.num_pagas_custom}
+                  onChange={e => setContratoForm(f => ({...f, num_pagas_custom:e.target.value}))} />
               </div>
             )}
+
+            {/* Desglose antes de generar */}
+            {contratoForm.salario_anual && parseFloat(contratoForm.salario_anual) > 0 && (() => {
+              const pagas = contratoForm.num_pagas === 'custom' ? parseInt(contratoForm.num_pagas_custom)||14 : parseInt(contratoForm.num_pagas)||14
+              const anual = parseFloat(contratoForm.salario_anual)
+              const porPaga = +(anual/pagas).toFixed(2)
+              return (
+                <div style={{background:'#F0FDF4', border:'1px solid #A7F3D0', borderRadius:12, padding:'12px 14px', marginBottom:10, fontSize:13}}>
+                  <div style={{fontWeight:700, color:'#065F46', marginBottom:6}}>📊 Desglose calculado</div>
+                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
+                    <span style={{color:'#047857'}}>Salario anual bruto</span>
+                    <strong>{fmt(anual)} €</strong>
+                  </div>
+                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
+                    <span style={{color:'#047857'}}>Número de pagas</span>
+                    <strong>{pagas}</strong>
+                  </div>
+                  <div style={{display:'flex', justifyContent:'space-between', paddingTop:6, borderTop:'1px solid #A7F3D0', marginTop:4}}>
+                    <span style={{color:'#065F46', fontWeight:700}}>Salario por paga</span>
+                    <strong style={{color:'#065F46', fontSize:15}}>{fmt(porPaga)} €</strong>
+                  </div>
+                  {porPaga < 1184 && contratoForm.jornada === 'completa' && (
+                    <div style={{marginTop:8, background:'#FEF2F2', borderRadius:8, padding:'8px 10px', color:'#991B1B', fontSize:12}}>
+                      ⚠️ La paga mensual ({fmt(porPaga)} €) es inferior al SMI 2026 (1.184 €/mes).
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
+            <div className="field">
+              <label>Categoría profesional</label>
+              <input type="text" placeholder="Ej: Oficial 1ª, Técnico..." value={contratoForm.categoria}
+                onChange={e => setContratoForm(f => ({...f, categoria:e.target.value}))} />
+            </div>
 
             <div className="aviso-legal">
               ⚖️ <strong>Aviso legal:</strong> El PDF generado es un borrador orientativo basado en plantillas SEPE 2026. Antes de firmarlo, revísalo con un asesor laboral o gestoría. Khepria no asume responsabilidad por su uso directo.
@@ -739,7 +797,7 @@ export default function Equipo() {
               <button
                 className="btn-primary"
                 onClick={guardarContrato}
-                disabled={guardandoContrato || !contratoForm.fecha_inicio || !contratoForm.salario_bruto}
+                disabled={guardandoContrato || !contratoForm.fecha_inicio || !contratoForm.salario_anual}
               >
                 {guardandoContrato ? 'Generando...' : '📄 Guardar y descargar PDF'}
               </button>
