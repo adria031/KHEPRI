@@ -207,7 +207,7 @@ export default function Admin() {
 
   // ── Cumplimiento legal ──
   const mrr = ingresosMes
-  const faseCompliance = mrr < 500 ? 1 : mrr < 800 ? 2 : mrr < 1134 ? 3 : 4
+  const faseCompliance = mrr < 500 ? 1 : mrr < 800 ? 2 : mrr < 1184 ? 3 : 4
 
   // ── Fiscal ──
   const costeGeminiEur = parseFloat(costeGeminiTotal) * EUR_PER_USD
@@ -223,6 +223,8 @@ export default function Admin() {
   function exportCSV() {
     const hoy = new Date().toLocaleDateString('es-ES')
     const mes = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+    const trimestre = Math.ceil((new Date().getMonth() + 1) / 3)
+    const year = new Date().getFullYear()
 
     // Ingresos por negocio
     const rows = [
@@ -230,6 +232,7 @@ export default function Admin() {
       [],
       ['== RESUMEN MENSUAL =='],
       ['Mes', mes],
+      ['Trimestre', `T${trimestre} ${year}`],
       ['MRR estimado (EUR)', mrr],
       ['Coste Vercel (EUR)', costeVercel],
       ['Coste Supabase (EUR)', costeSupabase],
@@ -956,37 +959,52 @@ export default function Admin() {
                   {[
                     {
                       fase: 1, umbral: '< 500 €/mes',
-                      titulo: 'Fase 1 — Sin obligaciones formales',
-                      desc: 'Ingresos inferiores al umbral de notificación. Puedes operar sin alta en Hacienda ni en autónomos. Guarda todos los registros por si te los solicitan.',
+                      titulo: '✅ Fase de Validación',
+                      desc: 'Puedes operar como pruebas sin obligación de alta inmediata. Guarda todos los registros por si te los solicitan.',
+                      color: '#4ADE80', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.25)',
                     },
                     {
-                      fase: 2, umbral: '> 500 €/mes',
-                      titulo: 'Fase 2 — Consideración de alta en Hacienda',
-                      desc: 'Por encima de 500 €/mes es recomendable darte de alta en Hacienda como empresario individual (modelo 037). Empieza a emitir facturas y llevar registro de ingresos/gastos.',
+                      fase: 2, umbral: '500 – 800 €/mes',
+                      titulo: '⚠️ Umbral de Habitualidad',
+                      desc: 'Considera contactar con un gestor. Es recomendable darte de alta en Hacienda (modelo 037) y empezar a emitir facturas con IVA.',
+                      color: '#F59E0B', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.3)',
                     },
                     {
-                      fase: 3, umbral: '> 800 €/mes',
-                      titulo: 'Fase 3 — Prepara el alta como autónomo',
-                      desc: 'Cerca del umbral del SMI (~1.134 €). Consulta con un gestor para planificar el alta en autónomos. Cuota mínima ~292 €/mes (tarifa plana 80 € primer año). Presentarás 303 (IVA) y 130 (IRPF) trimestralmente.',
+                      fase: 3, umbral: '800 – 1.184 €/mes',
+                      titulo: '🔴 Alta Recomendada',
+                      desc: 'Es momento de tramitar el alta en autónomos. Cuota mínima ~292 €/mes (tarifa plana 80 € primer año). Presentarás 303 (IVA) y 130 (IRPF) trimestralmente.',
+                      color: '#FB923C', bg: 'rgba(251,146,60,0.08)', border: 'rgba(251,146,60,0.3)',
                     },
                     {
-                      fase: 4, umbral: '> SMI (1.134 €/mes)',
-                      titulo: 'Fase 4 — Alta en autónomos obligatoria',
-                      desc: 'Superado el SMI, la ley exige el alta en RETA. Obligaciones: IVA (modelo 303), IRPF pagos fraccionados (modelo 130), declaración anual (modelo 100), autoliquidación IVA anual (modelo 390).',
+                      fase: 4, umbral: '> SMI (1.184 €/mes)',
+                      titulo: '🚨 Alta Obligatoria',
+                      desc: 'Debes emitir facturas con IVA e IRPF. Obligaciones: IVA (modelo 303), IRPF pagos fraccionados (modelo 130), declaración anual (modelo 100), autoliquidación IVA anual (modelo 390).',
+                      color: '#F87171', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.35)',
                     },
                   ].map(item => {
-                    const status = faseCompliance === item.fase ? 'active' : faseCompliance > item.fase ? 'done' : 'pending'
+                    const isActive = faseCompliance === item.fase
+                    const isDone = faseCompliance > item.fase
                     return (
-                      <div key={item.fase} className={`compliance-card ${status}`}>
-                        <div className={`compliance-dot ${status}`} />
+                      <div key={item.fase} style={{
+                        display: 'flex', alignItems: 'flex-start', gap: '14px',
+                        padding: '16px 18px', borderRadius: '14px', border: '1px solid',
+                        background: isActive ? item.bg : isDone ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.02)',
+                        borderColor: isActive ? item.border : isDone ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)',
+                      }}>
+                        <div style={{
+                          width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0, marginTop: '4px',
+                          background: isActive ? item.color : isDone ? '#4ADE80' : '#334155',
+                          boxShadow: isActive ? `0 0 8px ${item.color}80` : 'none',
+                        }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
                             <div className="compliance-title">{item.titulo}</div>
-                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '5px', flexShrink: 0,
-                              background: status === 'active' ? 'rgba(251,191,36,0.15)' : status === 'done' ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.04)',
-                              color: status === 'active' ? '#F59E0B' : status === 'done' ? '#4ADE80' : '#334155',
+                            <span style={{
+                              fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '5px', flexShrink: 0,
+                              background: isActive ? `${item.color}25` : isDone ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.04)',
+                              color: isActive ? item.color : isDone ? '#4ADE80' : '#334155',
                             }}>
-                              {status === 'active' ? '● ACTUAL' : status === 'done' ? '✓ SUPERADO' : 'PENDIENTE'}
+                              {isActive ? '● ACTUAL' : isDone ? '✓ SUPERADO' : 'PENDIENTE'}
                             </span>
                             <span style={{ fontSize: '11px', color: '#475569', marginLeft: 'auto' }}>{item.umbral}</span>
                           </div>
@@ -998,10 +1016,10 @@ export default function Admin() {
                 </div>
 
                 {/* Calculadora fiscal */}
-                <div className="section-title" style={{ marginBottom: '16px', marginTop: '8px' }}>Calculadora fiscal mensual</div>
-                <div className="fiscal-grid">
+                <div className="section-title" style={{ marginBottom: '16px', marginTop: '8px' }}>Calculadora fiscal</div>
+                <div className="fiscal-grid" style={{ marginBottom: '20px' }}>
                   <div className="fiscal-card">
-                    <div className="fiscal-card-title">Ingresos y costes</div>
+                    <div className="fiscal-card-title">Costes plataforma (mensual)</div>
                     <div className="fiscal-row">
                       <span className="fiscal-row-label">MRR estimado</span>
                       <span className="fiscal-row-val">{mrr.toLocaleString('es-ES')} €</span>
@@ -1038,13 +1056,13 @@ export default function Admin() {
                   </div>
 
                   <div className="fiscal-card">
-                    <div className="fiscal-card-title">Retenciones e impuestos</div>
+                    <div className="fiscal-card-title">Retenciones (mensual)</div>
                     <div className="fiscal-row">
                       <span className="fiscal-row-label">IVA repercutido (21%)</span>
                       <span className="fiscal-row-val yellow">{ivaRepercutido.toFixed(2)} €</span>
                     </div>
                     <div className="fiscal-row">
-                      <span className="fiscal-row-label">IVA soportado (21% costes)</span>
+                      <span className="fiscal-row-label">IVA soportado (costes × 21%)</span>
                       <span className="fiscal-row-val" style={{ color: '#4ADE80' }}>−{ivaaSoportado.toFixed(2)} €</span>
                     </div>
                     <div className="fiscal-row">
@@ -1055,10 +1073,6 @@ export default function Admin() {
                       </div>
                     </div>
                     <div className="fiscal-row">
-                      <span className="fiscal-row-label">IRPF retención</span>
-                      <span className="fiscal-row-val red">−{irpfRetencion.toFixed(2)} €</span>
-                    </div>
-                    <div className="fiscal-row">
                       <span className="fiscal-row-label">Cuota autónomos (€/mes)</span>
                       <div className="fiscal-editable">
                         <input type="number" className="fiscal-edit-input" value={cuotaAutonomos} onChange={e => setCuotaAutonomos(parseFloat(e.target.value) || 0)} />
@@ -1066,32 +1080,56 @@ export default function Admin() {
                       </div>
                     </div>
                     <div className="fiscal-row" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '4px', paddingTop: '10px' }}>
-                      <span className="fiscal-row-label" style={{ fontWeight: 700, color: '#F1F5F9' }}>Beneficio neto estimado</span>
-                      <span className={`fiscal-row-val ${beneficioNeto >= 0 ? 'green' : 'red'}`} style={{ fontSize: '16px' }}>
+                      <span className="fiscal-row-label" style={{ fontWeight: 700, color: '#F1F5F9' }}>Beneficio neto mensual</span>
+                      <span className={`fiscal-row-val ${beneficioNeto >= 0 ? 'green' : 'red'}`} style={{ fontSize: '15px' }}>
                         {beneficioNeto.toFixed(2)} €
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* IVA trimestral */}
+                {/* Tabla trimestral */}
                 <div className="fiscal-card" style={{ marginBottom: '28px' }}>
-                  <div className="fiscal-card-title">IVA trimestral — Modelo 303</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                    <div>
-                      <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '6px' }}>IVA repercutido (3 meses)</div>
-                      <div style={{ fontSize: '22px', fontWeight: 800, color: '#F59E0B' }}>{(ivaRepercutido * 3).toFixed(2)} €</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '6px' }}>IVA soportado (3 meses)</div>
-                      <div style={{ fontSize: '22px', fontWeight: 800, color: '#4ADE80' }}>{(ivaaSoportado * 3).toFixed(2)} €</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '6px' }}>A pagar a Hacienda</div>
-                      <div style={{ fontSize: '22px', fontWeight: 800, color: ivaTrimestral >= 0 ? '#F87171' : '#4ADE80' }}>
-                        {ivaTrimestral.toFixed(2)} €
-                      </div>
-                    </div>
+                  <div className="fiscal-card-title">Resumen fiscal trimestral — Modelo 303 + 130</div>
+                  <div className="fiscal-row">
+                    <span className="fiscal-row-label">Ingresos trimestrales (MRR × 3)</span>
+                    <span className="fiscal-row-val">{(mrr * 3).toFixed(2)} €</span>
+                  </div>
+                  <div className="fiscal-row">
+                    <span className="fiscal-row-label">IVA 21% repercutido (cobrado a clientes)</span>
+                    <span className="fiscal-row-val yellow">−{(ivaRepercutido * 3).toFixed(2)} €</span>
+                  </div>
+                  <div className="fiscal-row">
+                    <span className="fiscal-row-label">IVA soportado deducible (costes × 21%)</span>
+                    <span className="fiscal-row-val" style={{ color: '#4ADE80' }}>+{(ivaaSoportado * 3).toFixed(2)} €</span>
+                  </div>
+                  <div className="fiscal-row">
+                    <span className="fiscal-row-label" style={{ fontWeight: 600, color: '#F1F5F9' }}>→ A pagar Hacienda IVA (303)</span>
+                    <span className={`fiscal-row-val ${ivaTrimestral >= 0 ? 'red' : 'green'}`} style={{ fontSize: '15px' }}>
+                      {ivaTrimestral.toFixed(2)} €
+                    </span>
+                  </div>
+                  <div className="fiscal-row" style={{ marginTop: '8px' }}>
+                    <span className="fiscal-row-label">Dinero real (79% ingresos brutos)</span>
+                    <span className="fiscal-row-val" style={{ color: '#B8D8F8' }}>{(mrr * 3 * 0.79).toFixed(2)} €</span>
+                  </div>
+                  <div className="fiscal-row">
+                    <span className="fiscal-row-label">IRPF {tasaIrpf}% pago fraccionado (130)</span>
+                    <span className="fiscal-row-val red">−{(irpfRetencion * 3).toFixed(2)} €</span>
+                  </div>
+                  <div className="fiscal-row">
+                    <span className="fiscal-row-label">Cuota autónomos ({cuotaAutonomos} €/mes × 3)</span>
+                    <span className="fiscal-row-val red">−{(cuotaAutonomos * 3).toFixed(2)} €</span>
+                  </div>
+                  <div className="fiscal-row">
+                    <span className="fiscal-row-label">Costes plataforma (× 3)</span>
+                    <span className="fiscal-row-val red">−{(costesTotalesPlataforma * 3).toFixed(2)} €</span>
+                  </div>
+                  <div className="fiscal-row" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '4px', paddingTop: '12px' }}>
+                    <span className="fiscal-row-label" style={{ fontWeight: 700, color: '#F1F5F9', fontSize: '14px' }}>Beneficio neto trimestral</span>
+                    <span className={`fiscal-row-val ${(beneficioNeto * 3) >= 0 ? 'green' : 'red'}`} style={{ fontSize: '20px' }}>
+                      {(beneficioNeto * 3).toFixed(2)} €
+                    </span>
                   </div>
                 </div>
 
