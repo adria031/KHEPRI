@@ -75,16 +75,18 @@ export default function Home() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; max-width: 100%; }
+        html { scroll-behavior: smooth; overflow-x: hidden; }
         body {
           font-family: 'Plus Jakarta Sans', sans-serif;
           background: #FFFFFF;
           color: #0F172A;
           overflow-x: hidden;
           line-height: 1.6;
+          width: 100%;
         }
         main { overflow-x: hidden; width: 100%; }
+        section, header, footer { overflow-x: hidden; width: 100%; }
         .logo-text {
           font-family: 'Syne', sans-serif;
           font-weight: 800;
@@ -170,7 +172,7 @@ export default function Home() {
         }
         .hero-blob {
           position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.55;
-          pointer-events: none;
+          pointer-events: none; max-width: none; max-height: none;
         }
         .blob-1 {
           width: 600px; height: 600px; top: -200px; left: -100px;
@@ -345,7 +347,7 @@ export default function Home() {
           position: relative; overflow: hidden;
         }
         .nums-bg {
-          position: absolute; inset: 0; opacity: 0.08;
+          position: absolute; inset: 0; opacity: 0.08; max-width: none;
           background: radial-gradient(ellipse at 20% 50%, #3B82F6 0%, transparent 50%),
                       radial-gradient(ellipse at 80% 50%, #7C3AED 0%, transparent 50%);
           pointer-events: none;
@@ -500,7 +502,7 @@ export default function Home() {
           text-align: center; position: relative; overflow: hidden;
         }
         .cta-bg {
-          position: absolute; inset: 0; pointer-events: none;
+          position: absolute; inset: 0; pointer-events: none; max-width: none;
           background: radial-gradient(ellipse at 30% 50%, rgba(59,130,246,0.15) 0%, transparent 60%),
                       radial-gradient(ellipse at 70% 50%, rgba(124,58,237,0.15) 0%, transparent 60%);
         }
@@ -627,41 +629,64 @@ export default function Home() {
           footer { padding: 48px 24px 32px; }
           .quien-grid { grid-template-columns: repeat(3, 1fr); }
         }
+
+        /* ── MÓVIL ≤600px ── */
         @media (max-width: 600px) {
-          .hero h1 { letter-spacing: -1px; }
-          .hero-ctas { flex-direction: column; align-items: stretch; }
-          .cta-main, .cta-alt { width: 100%; max-width: 100%; justify-content: center; }
+          /* Nav: solo logo + hamburger en móvil */
+          .nav-actions .btn-primary { display: none; }
+          .nav-lang-wrap { display: none; }
+          /* Hero */
+          .hero { padding: 96px 16px 56px; }
+          .hero h1 { font-size: clamp(28px, 8.5vw, 40px); letter-spacing: -1px; margin-bottom: 16px; }
+          .hero-sub { font-size: 15px; margin-bottom: 28px; max-width: 100%; }
+          .hero-badge { font-size: 12px; padding: 5px 12px; margin-bottom: 18px; }
+          .hero-ctas { flex-direction: column; align-items: stretch; gap: 10px; width: 100%; }
+          .cta-main, .cta-alt { width: 100%; max-width: 100%; justify-content: center; padding: 15px 24px; font-size: 15px; }
+          /* Ocultar preview cards en móvil (mockup) */
+          .hero-preview { display: none; }
+          /* Funciones: 1 col */
           .feat-grid { grid-template-columns: 1fr; }
-          .quien-grid { grid-template-columns: repeat(2, 1fr); }
-          .footer-bottom { flex-direction: column; text-align: center; }
-          .hero-preview { flex-direction: column; }
-          .preview-card { min-width: unset; width: 100%; flex: none; }
-        }
-        @media (max-width: 480px) {
-          nav { padding: 0 16px; }
-          #mobile-menu { padding: 14px 16px 20px; }
-          .hero { padding: 96px 16px 48px; }
-          .hero h1 { font-size: clamp(32px, 9vw, 48px); letter-spacing: -0.5px; }
-          .hero-sub { font-size: 15px; margin-bottom: 32px; }
-          .hero-badge { font-size: 12px; padding: 5px 12px; margin-bottom: 20px; }
-          #funciones { padding: 56px 16px; }
-          #para-quien { padding: 56px 16px; }
-          #planes { padding: 56px 16px; }
-          #clientes { padding: 56px 16px; }
-          #numeros { padding: 56px 16px; }
-          #cta-final { padding: 80px 16px; }
-          footer { padding: 40px 16px 28px; }
-          .section-sub { font-size: 15px; margin-bottom: 36px; }
-          .plan-card { padding: 24px 18px; }
-          .planes-grid { max-width: 100%; }
+          /* Para quién: 2 col */
           .quien-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
           .quien-card { padding: 16px 10px; }
           .quien-icon { font-size: 26px; }
           .quien-name { font-size: 12px; }
+          /* Números: 2 col */
           .num-item { padding: 28px 16px; }
-          .cta-final-btn { width: 100%; justify-content: center; padding: 16px 24px; font-size: 15px; }
-          .footer-top { gap: 24px; }
-          .preview-card { padding: 14px 16px; }
+          /* Planes: 1 col */
+          .planes-grid { grid-template-columns: 1fr; max-width: 100%; }
+          .plan-card { padding: 24px 18px; }
+          /* Clientes */
+          .clientes-visual { padding: 20px 16px; }
+          .app-biz-card { gap: 10px; }
+          .biz-btn { padding: 6px 10px; font-size: 11px; }
+          /* CTA final */
+          .cta-final-btn { width: 100%; justify-content: center; padding: 15px 20px; font-size: 15px; }
+          /* Footer */
+          .footer-top { flex-direction: column; gap: 24px; }
+          .footer-bottom { flex-direction: column; text-align: center; gap: 16px; }
+          /* Sections padding */
+          #funciones, #para-quien, #planes, #clientes, #cta-final { padding: 56px 16px; }
+          #numeros { padding: 56px 16px; }
+          footer { padding: 40px 16px 28px; }
+          .section-sub { font-size: 15px; margin-bottom: 32px; }
+        }
+
+        /* ── MÓVIL PEQUEÑO ≤390px ── */
+        @media (max-width: 390px) {
+          nav { padding: 0 12px; }
+          #mobile-menu { padding: 12px 16px 20px; }
+          .hero { padding: 88px 12px 48px; }
+          .hero h1 { font-size: 28px; letter-spacing: -0.5px; }
+          .hero-sub { font-size: 14px; }
+          .hero-badge { font-size: 11px; padding: 5px 10px; }
+          .section-h { font-size: 26px; letter-spacing: -0.5px; }
+          #funciones, #para-quien, #planes, #clientes, #cta-final { padding: 48px 12px; }
+          #numeros { padding: 48px 12px; }
+          footer { padding: 36px 12px 24px; }
+          .plan-card { padding: 20px 14px; }
+          .quien-grid { gap: 6px; }
+          .clientes-visual { padding: 16px 12px; }
         }
       `}</style>
 
@@ -720,7 +745,7 @@ export default function Home() {
         </div>
 
         <div className="nav-actions">
-          <LandingLangSelector />
+          <span className="nav-lang-wrap"><LandingLangSelector /></span>
           <Link href="/auth" className="btn-ghost">Iniciar sesión</Link>
           <Link href="/auth?modo=registro" className="btn-primary">Registrarse →</Link>
           <button id="hamburger" className="hamburger" aria-label="Menú">
