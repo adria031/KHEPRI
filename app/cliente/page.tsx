@@ -192,6 +192,32 @@ function ClienteContent(){
   const[reservas,setReservas]=useState<ReservaCliente[]>([])
   const[cancelando,setCancelando]=useState<string|null>(null)
 
+  // ── Geocodificación en background para negocios sin lat/lng ──────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function geocodificarSinCoordenadas(lista: any[]) {
+    const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+    if (!MAPBOX_TOKEN) return
+    const sinCoords = lista.filter(n => n.lat == null || n.lng == null)
+    if (!sinCoords.length) return
+
+    for (const n of sinCoords) {
+      const query = [n.direccion, n.ciudad].filter(Boolean).join(', ')
+      if (!query) continue
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=1&country=es`
+        )
+        const json = await res.json()
+        const [lng, lat] = json.features?.[0]?.center ?? []
+        if (lng == null || lat == null) continue
+        // Actualizar estado local inmediatamente
+        setNegocios(prev => prev.map(p => p.id === n.id ? { ...p, lat, lng } : p))
+        // Guardar en Supabase en background (sin bloquear)
+        supabase.from('negocios').update({ lat, lng }).eq('id', n.id).then(() => {})
+      } catch { /* ignorar errores de geocoding individuales */ }
+    }
+  }
+
   useEffect(()=>{
     supabase.auth.getUser().then(async({data:{user}})=>{
       if(!user){window.location.href='/auth';return}
@@ -265,7 +291,12 @@ function ClienteContent(){
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
     ]).then(([{data:ns},{data:hs},{data:rs}])=>{
-      if(ns) setNegocios(ns.filter((n:any)=>n.visible!==false))
+      if(ns){
+        const visibles=ns.filter((n:any)=>n.visible!==false)
+        setNegocios(visibles)
+        // Geocodificar negocios sin lat/lng (en background)
+        geocodificarSinCoordenadas(visibles)
+      }
       if(hs){
         const m:Record<string,HorarioDB[]>={}
         for(const h of hs as HorarioDB[]){if(!m[h.negocio_id])m[h.negocio_id]=[];m[h.negocio_id].push(h)}

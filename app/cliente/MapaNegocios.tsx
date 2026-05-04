@@ -178,7 +178,7 @@ export default function MapaNegocios({
   const popupRef      = useRef<mapboxgl.Popup | null>(null)
   const latestDataRef = useRef<GeoJSON.FeatureCollection | null>(null)
   const markersRef    = useRef<mapboxgl.Marker[]>([])
-  const geolocateRef  = useRef<mapboxgl.GeolocateControl | null>(null)
+  const userPosRef    = useRef<{ lng: number; lat: number } | null>(null)
 
   const [filtroTipo,  setFiltroTipo]  = useState('todos')
   const [busqueda,    setBusqueda]    = useState('')
@@ -235,23 +235,52 @@ export default function MapaNegocios({
 
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left')
 
-    // ── GeolocateControl ──
-    const geolocate = new mapboxgl.GeolocateControl({
-      positionOptions:   { enableHighAccuracy: true, timeout: 8000 },
-      trackUserLocation: false,
-      showAccuracyCircle: false,
-      fitBoundsOptions:  { zoom: 13, duration: 1200 },
-    })
-    map.addControl(geolocate, 'bottom-right')
-    geolocateRef.current = geolocate
-    ;(geolocate as mapboxgl.GeolocateControl & { on: (e: string, cb: () => void) => void })
-      .on('geolocate', () => setLocalizando(false))
-    ;(geolocate as mapboxgl.GeolocateControl & { on: (e: string, cb: () => void) => void })
-      .on('error', () => setLocalizando(false))
-
     map.on('load', () => {
       mapLoadedRef.current = true
       const initialData = latestDataRef.current || { type: 'FeatureCollection', features: [] }
+
+      // ── Geolocalización inmediata ──
+      if (navigator.geolocation) {
+        setLocalizando(true)
+        navigator.geolocation.getCurrentPosition(
+          ({ coords: { longitude, latitude } }) => {
+            setLocalizando(false)
+            userPosRef.current = { lng: longitude, lat: latitude }
+            map.flyTo({ center: [longitude, latitude], zoom: 13, duration: 1500 })
+
+            // Marcador usuario con pulso
+            userMarkerRef.current?.remove()
+            const el = document.createElement('div')
+            el.style.cssText = 'position:relative;width:24px;height:24px;'
+            const pulse = document.createElement('div')
+            pulse.style.cssText = `
+              position:absolute;inset:0;border-radius:50%;
+              background:rgba(59,130,246,0.35);
+              animation:khepria-user-pulse 2s ease-out infinite;
+            `
+            el.appendChild(pulse)
+            const dot = document.createElement('div')
+            dot.style.cssText = `
+              position:absolute;inset:5px;border-radius:50%;
+              background:#3B82F6;border:2.5px solid white;
+              box-shadow:0 2px 8px rgba(59,130,246,0.45);
+              animation:pulse 2s infinite;
+            `
+            el.appendChild(dot)
+            userMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
+              .setLngLat([longitude, latitude])
+              .setPopup(new mapboxgl.Popup({ offset: 14 }).setHTML(
+                '<b style="font-family:sans-serif;font-size:13px;">📍 Estás aquí</b>'
+              ))
+              .addTo(map)
+          },
+          () => {
+            setLocalizando(false)
+            map.flyTo({ center: [-3.7038, 40.4168], zoom: 6 })
+          },
+          { enableHighAccuracy: true, timeout: 8000 },
+        )
+      }
 
       // ── Source ──
       map.addSource('businesses', {
@@ -398,11 +427,6 @@ export default function MapaNegocios({
       map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
       map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = '' })
 
-      // ── Auto-trigger geolocation ──
-      setTimeout(() => {
-        setLocalizando(true)
-        geolocate.trigger()
-      }, 1000)
     })
 
     return () => {
@@ -455,12 +479,21 @@ export default function MapaNegocios({
 
   // ── Centrar en mi posición ─────────────────────────────────────────────────
   function centrarEnMi() {
-    if (userPos && mapRef.current) {
-      flyTo(userPos.lng, userPos.lat, 13)
+    if (userPosRef.current && mapRef.current) {
+      flyTo(userPosRef.current.lng, userPosRef.current.lat, 14)
       return
     }
+    if (!navigator.geolocation) return
     setLocalizando(true)
-    geolocateRef.current?.trigger()
+    navigator.geolocation.getCurrentPosition(
+      ({ coords: { longitude, latitude } }) => {
+        setLocalizando(false)
+        userPosRef.current = { lng: longitude, lat: latitude }
+        flyTo(longitude, latitude, 14)
+      },
+      () => setLocalizando(false),
+      { enableHighAccuracy: true, timeout: 8000 },
+    )
   }
 
   // ── Search result click ────────────────────────────────────────────────────
