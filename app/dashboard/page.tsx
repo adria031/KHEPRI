@@ -556,6 +556,12 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ── Nota dominio email ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(253,230,138,0.25)', border: '1px solid rgba(253,230,138,0.8)', borderRadius: 12, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400E' }}>
+          <span style={{ flexShrink: 0 }}>⚠️</span>
+          <span>Los emails funcionarán completamente cuando verifiques el dominio <strong>khepria.app</strong> en <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" style={{ color: '#92400E', fontWeight: 700 }}>resend.com/domains</a></span>
+        </div>
+
         {/* ── KPIs ── */}
         <div className="db-kpis">
           <KpiCard
