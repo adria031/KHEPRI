@@ -849,17 +849,17 @@ export default function Facturacion() {
     setAnalizando(true)
     try {
       const b64 = await fileToBase64(file)
-      const prompt = `Analiza esta imagen de ticket/factura y extrae en JSON:
+      const prompt = `Analiza este ticket/factura y devuelve SOLO un JSON sin markdown:
 {
   "proveedor": "nombre del comercio",
   "fecha": "DD/MM/YYYY",
-  "base_imponible": número,
+  "base_imponible": número sin símbolo,
   "porcentaje_iva": 4 o 10 o 21,
-  "cuota_iva": número,
-  "total": número,
-  "concepto": "descripción breve"
+  "cuota_iva": número sin símbolo,
+  "total": número sin símbolo,
+  "concepto": "descripción breve del gasto"
 }
-Si no puedes leer algún campo devuelve null.`
+Si no puedes leer un campo devuelve null.`
       const res = await fetch('/api/gemini', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
