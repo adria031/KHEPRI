@@ -67,7 +67,8 @@
     "groups": {
       "principal": "Principal",
       "gestion": "Gestión",
-      "herramientas": "Herramientas"
+      "herramientas": "Herramientas",
+      "cuenta": "Cuenta"
     },
     "nav": {
       "dashboard": "Dashboard",
@@ -83,7 +84,9 @@
       "reviews": "Reseñas",
       "cash": "Caja",
       "payroll": "Nóminas",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "settings": "Ajustes",
+      "integrations": "Integraciones"
     },
     "titles": {
       "dashboard": "Dashboard",
@@ -99,7 +102,9 @@
       "reviews": "Reseñas",
       "cash": "Caja",
       "payroll": "Nóminas",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "settings": "Ajustes",
+      "integrations": "Integraciones"
     },
     "logout": "Cerrar sesión",
     "allBusinesses": "Todos los negocios",

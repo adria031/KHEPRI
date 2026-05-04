@@ -40,6 +40,13 @@ const NAV_GROUPS = [
       { icon: '📈', label: 'Analytics', href: '/dashboard/analytics' },
     ],
   },
+  {
+    label: 'Cuenta',
+    items: [
+      { icon: '⚙️', label: 'Ajustes', href: '/dashboard/ajustes' },
+      { icon: '🔌', label: 'Integraciones', href: '/dashboard/integraciones' },
+    ],
+  },
 ]
 
 const PAGE_TITLES: Record<string, string> = {
@@ -57,6 +64,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/caja': 'Caja',
   '/dashboard/nominas': 'Nóminas',
   '/dashboard/analytics': 'Analytics',
+  '/dashboard/ajustes': 'Ajustes',
+  '/dashboard/integraciones': 'Integraciones',
 }
 
 const PLAN_CFG: Record<string, { label: string; color: string; bg: string }> = {
@@ -112,13 +121,16 @@ export function DashboardShell({
     '/dashboard/resenas':     t('nav.reviews'),
     '/dashboard/caja':        t('nav.cash'),
     '/dashboard/nominas':     t('nav.payroll'),
-    '/dashboard/analytics':   t('nav.analytics'),
+    '/dashboard/analytics':      t('nav.analytics'),
+    '/dashboard/ajustes':        t('nav.settings'),
+    '/dashboard/integraciones':  t('nav.integrations'),
   }
 
   const GROUP_LABELS: Record<string, string> = {
-    'Principal':   t('groups.principal'),
-    'Gestión':     t('groups.gestion'),
+    'Principal':    t('groups.principal'),
+    'Gestión':      t('groups.gestion'),
     'Herramientas': t('groups.herramientas'),
+    'Cuenta':       t('groups.cuenta'),
   }
 
   const PAGE_TITLES_I18N: Record<string, string> = {
@@ -135,7 +147,9 @@ export function DashboardShell({
     '/dashboard/resenas':     t('titles.reviews'),
     '/dashboard/caja':        t('titles.cash'),
     '/dashboard/nominas':     t('titles.payroll'),
-    '/dashboard/analytics':   t('titles.analytics'),
+    '/dashboard/analytics':      t('titles.analytics'),
+    '/dashboard/ajustes':        t('titles.settings'),
+    '/dashboard/integraciones':  t('titles.integrations'),
   }
 
   const router = useRouter()

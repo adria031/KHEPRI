@@ -67,7 +67,8 @@
     "groups": {
       "principal": "Main",
       "gestion": "Management",
-      "herramientas": "Tools"
+      "herramientas": "Tools",
+      "cuenta": "Account"
     },
     "nav": {
       "dashboard": "Dashboard",
@@ -83,7 +84,9 @@
       "reviews": "Reviews",
       "cash": "Cash register",
       "payroll": "Payroll",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "settings": "Settings",
+      "integrations": "Integrations"
     },
     "titles": {
       "dashboard": "Dashboard",
@@ -99,7 +102,9 @@
       "reviews": "Reviews",
       "cash": "Cash register",
       "payroll": "Payroll",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "settings": "Settings",
+      "integrations": "Integrations"
     },
     "logout": "Sign out",
     "allBusinesses": "All businesses",

@@ -67,7 +67,8 @@
     "groups": {
       "principal": "Principal",
       "gestion": "Gestió",
-      "herramientas": "Eines"
+      "herramientas": "Eines",
+      "cuenta": "Compte"
     },
     "nav": {
       "dashboard": "Tauler",
@@ -83,7 +84,9 @@
       "reviews": "Ressenyes",
       "cash": "Caixa",
       "payroll": "Nòmines",
-      "analytics": "Analítica"
+      "analytics": "Analítica",
+      "settings": "Configuració",
+      "integrations": "Integracions"
     },
     "titles": {
       "dashboard": "Tauler",
@@ -99,7 +102,9 @@
       "reviews": "Ressenyes",
       "cash": "Caixa",
       "payroll": "Nòmines",
-      "analytics": "Analítica"
+      "analytics": "Analítica",
+      "settings": "Configuració",
+      "integrations": "Integracions"
     },
     "logout": "Tanca la sessió",
     "allBusinesses": "Tots els negocis",
