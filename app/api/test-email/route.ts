@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 
 export async function GET() {
-  const resend = new Resend('re_N8LsEXXq_GE7J444xiXkHjRyxWwgZNgS1')
+  const resend = new Resend(process.env.RESEND_API_KEY)
   const { data, error } = await resend.emails.send({
     from: 'Khepria <onboarding@resend.dev>',
     to: 'adria.gaitan.sola@gmail.com',
