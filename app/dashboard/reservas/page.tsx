@@ -295,6 +295,26 @@ export default function Reservas() {
     if (vista === 'dia') cargarReservas()
   }, [cargarReservas, vista])
 
+  // Realtime: refrescar reservas del día cuando hay cambios
+  useEffect(() => {
+    if (!negocio || vista !== 'dia') return
+    const channel = supabase
+      .channel(`reservas-realtime-${negocio.id}-${fecha}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reservas', filter: `negocio_id=eq.${negocio.id}` },
+        (payload) => {
+          // Solo refrescar si afecta al día visible
+          const row = (payload.new ?? payload.old) as { fecha?: string } | null
+          if (!row?.fecha || row.fecha === fecha) {
+            cargarReservas()
+          }
+        },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [negocio, fecha, vista, cargarReservas])
+
   function seleccionarDia(iso: string) {
     setFecha(iso)
     // Sync calendar to show the month of selected day

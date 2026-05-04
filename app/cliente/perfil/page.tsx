@@ -69,6 +69,7 @@ export default function PerfilCliente() {
   // Reservas
   const [reservas,          setReservas]          = useState<Reserva[]>([])
   const [cargandoReservas,  setCargandoReservas]  = useState(false)
+  const [telefonoPerfil,    setTelefonoPerfil]    = useState('')
 
   // Favoritos
   const [favIds,    setFavIds]    = useState<string[]>([])
@@ -78,7 +79,7 @@ export default function PerfilCliente() {
   // ── Init ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { window.location.href = '/auth'; return }
       setUserId(user.id)
       setForm({
@@ -87,27 +88,39 @@ export default function PerfilCliente() {
         ciudad:     user.user_metadata?.ciudad || '',
         avatar_url: user.user_metadata?.avatar_url || '',
       })
+      // Cargar teléfono del perfil para query de reservas cross-device
+      const { data: profile } = await supabase.from('profiles').select('telefono').eq('id', user.id).single()
+      if (profile?.telefono) setTelefonoPerfil(profile.telefono)
       setCargando(false)
     })
   }, [])
 
   // Cargar reservas cuando se activa esa sección
   useEffect(() => {
-    if ((seccion !== 'reservas' && seccion !== 'puntos') || !form.email) return
+    if ((seccion !== 'reservas' && seccion !== 'puntos') || (!userId && !form.email)) return
     setCargandoReservas(true)
+    // Buscar por user_id O por teléfono (cross-device) O por email
+    let filter = `cliente_email.eq.${form.email}`
+    if (userId) filter = `user_id.eq.${userId},${filter}`
+    if (telefonoPerfil) filter += `,cliente_telefono.eq.${telefonoPerfil}`
     supabase
       .from('reservas')
       .select('id, fecha, hora, estado, negocio_id, puntos_ganados, negocios(id, nombre, tipo, logo_url), servicios(nombre, precio), trabajadores(nombre)')
-      .eq('cliente_email', form.email)
+      .or(filter)
       .order('fecha', { ascending: false })
-      .limit(50)
+      .limit(100)
       .then(({ data }) => {
-        const lista = (data as unknown as Reserva[]) || []
+        // Dedup por ID (en caso de matches múltiples)
+        const seen = new Set<string>()
+        const lista = ((data as unknown as Reserva[]) || []).filter(r => {
+          if (seen.has(r.id)) return false
+          seen.add(r.id); return true
+        })
         setReservas(lista)
         setReservasConPuntos(lista.filter(r => r.puntos_ganados && r.puntos_ganados > 0))
         setCargandoReservas(false)
       })
-  }, [seccion, form.email])
+  }, [seccion, userId, form.email, telefonoPerfil])
 
   // Cargar puntos totales del perfil
   useEffect(() => {
@@ -365,67 +378,79 @@ export default function PerfilCliente() {
         )}
 
         {/* ── RESERVAS ── */}
-        {seccion === 'reservas' && (
-          <>
-            <div style={{ fontSize: '13px', color: '#9CA3AF', marginBottom: '14px' }}>
-              Tus últimas {reservas.length > 0 ? reservas.length : ''} citas
-            </div>
+        {seccion === 'reservas' && (() => {
+          const hoy = new Date(); hoy.setHours(0,0,0,0)
+          const proximas   = reservas.filter(r => r.estado !== 'cancelada' && new Date(r.fecha) >= hoy)
+          const pasadas    = reservas.filter(r => r.estado !== 'cancelada' && new Date(r.fecha) < hoy)
+          const canceladas = reservas.filter(r => r.estado === 'cancelada')
 
-            {cargandoReservas ? (
-              <div style={{ textAlign: 'center', padding: '52px 20px', color: '#9CA3AF', fontSize: '14px' }}>Cargando reservas...</div>
-            ) : !form.email ? (
-              <div className="empty">
-                <div className="empty-emoji">📧</div>
-                <div className="empty-title">Sin email registrado</div>
-                <div className="empty-sub">Añade tu email para ver el historial.</div>
+          function ReservaCard({ r }: { r: Reserva }) {
+            const est   = estadoStyle[r.estado] ?? estadoStyle['pendiente']
+            const neg   = r.negocios
+            const emoji = tipoEmoji[neg?.tipo?.toLowerCase() ?? ''] ?? '🏪'
+            const imagen = neg?.logo_url
+            return (
+              <div className="res-card">
+                <div className="res-icon" style={{ background: 'rgba(184,216,248,0.25)' }}>
+                  {imagen
+                    ? <img src={imagen} alt={neg?.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : emoji
+                  }
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {neg?.nombre ?? 'Negocio'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>
+                    {r.servicios?.nombre ?? '—'}{r.trabajadores?.nombre ? ` · ${r.trabajadores.nombre}` : ''} · {formatFecha(r.fecha)} {r.hora?.slice(0,5)}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className="estado-badge" style={{ background: est.bg, color: est.color }}>
+                      {est.label}
+                    </span>
+                    {neg?.id && (
+                      <Link href={`/negocio/${neg.id}/reservar`} className="btn-repetir">
+                        {r.estado === 'cancelada' ? 'Reservar →' : 'Repetir →'}
+                      </Link>
+                    )}
+                  </div>
+                </div>
               </div>
-            ) : reservas.length === 0 ? (
-              <div className="empty">
-                <div className="empty-emoji">📅</div>
-                <div className="empty-title">Sin reservas todavía</div>
-                <div className="empty-sub">Reserva en cualquier negocio y aparecerá aquí.</div>
-              </div>
-            ) : (
-              <>
-                {reservas.map(r => {
-                  const est  = estadoStyle[r.estado] ?? estadoStyle['pendiente']
-                  const neg  = r.negocios
-                  const emoji = tipoEmoji[neg?.tipo?.toLowerCase() ?? ''] ?? '🏪'
-                  const imagen = neg?.logo_url
+            )
+          }
 
-                  return (
-                    <div key={r.id} className="res-card">
-                      <div className="res-icon" style={{ background: 'rgba(184,216,248,0.25)' }}>
-                        {imagen
-                          ? <img src={imagen} alt={neg?.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : emoji
-                        }
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {neg?.nombre ?? 'Negocio'}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>
-                          {r.servicios?.nombre ?? '—'}{r.trabajadores?.nombre ? ` · ${r.trabajadores.nombre}` : ''} · {formatFecha(r.fecha)} {r.hora?.slice(0,5)}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          <span className="estado-badge" style={{ background: est.bg, color: est.color }}>
-                            {est.label}
-                          </span>
-                          {r.estado !== 'cancelada' && neg?.id && (
-                            <Link href={`/negocio/${neg.id}/reservar`} className="btn-repetir">
-                              Repetir →
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </>
-            )}
-          </>
-        )}
+          function Grupo({ titulo, items }: { titulo: string; items: Reserva[] }) {
+            if (items.length === 0) return null
+            return (
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                  {titulo} · {items.length}
+                </div>
+                {items.map(r => <ReservaCard key={r.id} r={r} />)}
+              </div>
+            )
+          }
+
+          return (
+            <>
+              {cargandoReservas ? (
+                <div style={{ textAlign: 'center', padding: '52px 20px', color: '#9CA3AF', fontSize: '14px' }}>Cargando reservas...</div>
+              ) : reservas.length === 0 ? (
+                <div className="empty">
+                  <div className="empty-emoji">📅</div>
+                  <div className="empty-title">Sin reservas todavía</div>
+                  <div className="empty-sub">Reserva en cualquier negocio y aparecerá aquí.</div>
+                </div>
+              ) : (
+                <>
+                  <Grupo titulo="Próximas" items={proximas} />
+                  <Grupo titulo="Pasadas" items={pasadas} />
+                  <Grupo titulo="Canceladas" items={canceladas} />
+                </>
+              )}
+            </>
+          )
+        })()}
 
         {/* ── FAVORITOS ── */}
         {seccion === 'favoritos' && (

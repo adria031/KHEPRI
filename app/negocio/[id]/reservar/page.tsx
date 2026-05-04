@@ -101,6 +101,7 @@ export default function Reservar() {
   const [telefono, setTelefono] = useState('')
   const [email, setEmail] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [reservando, setReservando] = useState(false)
   const [error, setError] = useState('')
   const [horasOcupadas, setHorasOcupadas] = useState<Set<string>>(new Set())
   const [cargandoSlots, setCargandoSlots] = useState(false)
@@ -364,62 +365,64 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
   }
 
   async function confirmar() {
+    if (reservando) return
     if (!nombre.trim()) { setError('Introduce tu nombre'); return }
     if (!telefono.trim()) { setError('Introduce tu teléfono'); return }
     if (!servicio) { setError('Selecciona un servicio'); return }
     if (!id) { setError('Error: negocio no identificado'); return }
     if (!captchaToken) { setError('Por favor completa la verificación de seguridad'); return }
-    setError(''); setEnviando(true)
+    setError(''); setEnviando(true); setReservando(true)
     const captchaOk = await verifyCaptcha(captchaToken)
-    if (!captchaOk) { setError('Verificación de seguridad fallida. Inténtalo de nuevo.'); setEnviando(false); captchaRef.current?.resetCaptcha(); setCaptchaToken(''); return }
+    if (!captchaOk) { setError('Verificación de seguridad fallida. Inténtalo de nuevo.'); setEnviando(false); setReservando(false); captchaRef.current?.resetCaptcha(); setCaptchaToken(''); return }
 
-    const nombreSanitized  = sanitizeField(nombre, 100)
+    const nombreSanitized   = sanitizeField(nombre, 100)
     const telefonoSanitized = sanitizeField(telefono, 20)
-    const emailSanitized   = sanitizeField(email, 254)
+    const emailSanitized    = sanitizeField(email, 254)
 
-    const { error: err } = await supabase.rpc('crear_reserva', {
-      p_negocio_id: id,
-      p_servicio_id: servicio.id,
-      p_trabajador_id: trabajador?.id || null,
-      p_cliente_nombre: nombreSanitized,
-      p_cliente_telefono: telefonoSanitized,
-      p_cliente_email: emailSanitized || null,
-      p_fecha: fecha,
-      p_hora: hora,
-    })
+    // Obtener user_id si hay sesión activa
+    const { data: { session } } = await supabase.auth.getSession()
+    const userId = session?.user?.id ?? null
+
+    const { data: nueva, error: err } = await supabase
+      .from('reservas')
+      .insert({
+        negocio_id:       id,
+        servicio_id:      servicio.id,
+        trabajador_id:    trabajador?.id ?? null,
+        cliente_nombre:   nombreSanitized,
+        cliente_telefono: telefonoSanitized,
+        cliente_email:    emailSanitized || null,
+        fecha,
+        hora,
+        estado:           'confirmada',
+        user_id:          userId,
+      })
+      .select('id')
+      .single()
 
     captchaRef.current?.resetCaptcha()
     setCaptchaToken('')
 
-    if (err) {
-      setError(`Error al guardar: ${err.message}${err.details ? ' — ' + err.details : ''}`)
+    if (err || !nueva) {
+      setError(`Error al guardar: ${err?.message ?? 'sin respuesta'}`)
       console.error('[reservar] insert error:', err)
-      setEnviando(false)
+      setEnviando(false); setReservando(false)
       return
     }
 
-    // Guardar teléfono y vincular reserva al usuario (historial cross-device)
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      if (telefono.trim()) {
-        supabase.from('profiles').update({ telefono: telefono.trim() }).eq('id', session.user.id).then(() => {})
-      }
-      // Vincular la reserva recién creada al user_id para que aparezca en móvil/PC
-      supabase.from('reservas')
-        .update({ user_id: session.user.id })
-        .eq('negocio_id', id)
-        .eq('fecha', fecha)
-        .eq('hora', hora)
-        .is('user_id', null)
-        .then(() => {})
+    // Guardar teléfono en el perfil si hay sesión
+    if (session?.user && telefono.trim()) {
+      supabase.from('profiles').update({ telefono: telefono.trim() }).eq('id', session.user.id).then(() => {})
     }
 
-    // Fire confirmation email (non-blocking, without needing the new row ID)
-    fetch('/api/reservas/confirmar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ negocio_id: id, cliente_email: email.trim(), fecha, hora }),
-    }).catch(() => {})
+    // Enviar email de confirmación (non-blocking)
+    if (emailSanitized) {
+      fetch('/api/reservas/confirmar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reserva_id: nueva.id }),
+      }).catch(() => {})
+    }
 
     setPaso(5)
   }
