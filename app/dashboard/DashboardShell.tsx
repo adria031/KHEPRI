@@ -140,7 +140,7 @@ export function DashboardShell({
 
   const router = useRouter()
   const esTodos = negocio === null && todosNegocios.length > 1
-  const planActual = negocio?.plan ?? 'starter'
+  const planActual = negocio?.plan?.toLowerCase() ?? 'starter'
   const planCfg = PLAN_CFG[planActual] ?? PLAN_CFG.basico
 
   function navClick(e: React.MouseEvent, href: string) {

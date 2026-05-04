@@ -483,7 +483,7 @@ export default function Dashboard() {
           <div>
             <div className="db-greet-title">
               {negocio === null && todosNegocios.length > 1
-                ? `${saludo}, vista global 🏢`
+                ? `Vista general — ${todosNegocios.length} negocios activos 🏢`
                 : `${saludo}, ${negocio?.nombre ?? 'bienvenido'} 👋`}
             </div>
             <div className="db-greet-sub">{fechaHoy}</div>

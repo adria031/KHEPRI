@@ -65,7 +65,7 @@ export const PLANES: Record<string, PlanConfig> = {
     ],
     sidebar: [
       'dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios', 'resenas',
-      'productos', 'caja', 'marketing', 'equipo', 'analytics', 'facturacion', 'nominas',
+      'productos', 'caja', 'marketing', 'equipo', 'analytics', 'facturacion', 'nominas', 'chatbot',
     ],
   },
   plus: {

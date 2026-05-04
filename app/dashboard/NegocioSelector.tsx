@@ -109,17 +109,25 @@ export function NegocioSelector({
       return
     }
 
-    // Crear el negocio
+    // Crear el negocio con el mismo plan que el activo
+    const planNuevo = negocios[0]?.plan ?? 'starter'
+    const creditosPorPlan: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
+
     const { data: neg, error } = await supabase.from('negocios').insert({
-      user_id: session.user.id,
-      nombre: nombre.trim(),
+      user_id:          session.user.id,
+      nombre:           nombre.trim(),
       tipo,
-      plan: 'basico',
-      visible: true,
+      plan:             planNuevo,
+      visible:          true,
+      creditos_totales: creditosPorPlan[planNuevo] ?? 100,
+      creditos_usados:  0,
     }).select('id').single()
 
     if (error || !neg) {
-      setErrorMsg(error?.message ?? 'Error al crear el negocio')
+      const msg = error?.message ?? 'Error al crear el negocio'
+      const hint = (error as { hint?: string } | null)?.hint ?? ''
+      alert(`Error al crear el negocio:\n${msg}${hint ? '\nHint: ' + hint : ''}`)
+      setErrorMsg(msg)
       setGuardando(false)
       return
     }
