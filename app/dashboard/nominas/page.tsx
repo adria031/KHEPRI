@@ -78,6 +78,20 @@ export default function Nominas() {
   const anual = parseFloat(form.salario_anual) || 0
   const mensual = pagas > 0 && anual > 0 ? +(anual / pagas).toFixed(2) : 0
 
+  // Spanish SS + IRPF (orientativo 2024)
+  function calcSSEmpresa(bruto: number) { return +(bruto * 0.309).toFixed(2) }
+  function calcSSTrabajador(bruto: number) { return +(bruto * 0.0635).toFixed(2) }
+  function calcIRPF(brutoAnual: number, numPagas: number): number {
+    let tasa = 0.19
+    if (brutoAnual > 300000) tasa = 0.47
+    else if (brutoAnual > 60000) tasa = 0.45
+    else if (brutoAnual > 35200) tasa = 0.37
+    else if (brutoAnual > 20200) tasa = 0.30
+    else if (brutoAnual > 12450) tasa = 0.24
+    const irpfMensual = numPagas > 0 ? +((brutoAnual * tasa) / numPagas).toFixed(2) : 0
+    return irpfMensual
+  }
+
   function abrirModal(n?: Nomina) {
     if (n) {
       setEditando(n)
@@ -95,10 +109,14 @@ export default function Nominas() {
     if (!form.trabajador_id || !form.salario_anual) { setApiError('Selecciona trabajador e introduce el salario.'); return }
     if (mensual <= 0) { setApiError('El salario debe ser mayor que 0.'); return }
     setGuardando(true); setApiError('')
+    const irpfMensual = calcIRPF(anual, pagas)
+    const ssTrabajador = calcSSTrabajador(mensual)
+    const ssEmpresa = calcSSEmpresa(mensual)
+    const neto = +(mensual - irpfMensual - ssTrabajador).toFixed(2)
     const datos = {
       negocio_id: negocioId, trabajador_id: form.trabajador_id, mes,
-      salario_bruto: mensual, irpf: 0, ss_trabajador: 0, ss_empresa: 0,
-      salario_neto: mensual, horas_semana: pagas,
+      salario_bruto: mensual, irpf: irpfMensual, ss_trabajador: ssTrabajador, ss_empresa: ssEmpresa,
+      salario_neto: neto, horas_semana: pagas,
     }
     if (editando) {
       const { error } = await supabase.from('nominas').update(datos).eq('id', editando.id)

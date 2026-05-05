@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     console.log('[invitar-trabajador] Enviando email a:', email)
     const { data, error: resendError } = await resend.emails.send({
-      from: 'Khepria <onboarding@resend.dev>',
+      from: process.env.EMAIL_FROM ?? 'Khepria <reservas@khepria.app>',
       to: [email],
       subject: `✂️ ${nombreNegocio} te ha añadido a su equipo en Khepria`,
       html,
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     if (resendError && (resendError as { statusCode?: number }).statusCode === 403) {
       console.warn('[invitar-trabajador] Dominio no verificado, redirigiendo a khepriacontact@gmail.com')
       const { error: fallbackErr } = await resend.emails.send({
-        from: 'Khepria <onboarding@resend.dev>',
+        from: process.env.EMAIL_FROM ?? 'Khepria <reservas@khepria.app>',
         to: ['khepriacontact@gmail.com'],
         subject: `📨 Reenviar a: ${email} — Invitación equipo ${nombreNegocio}`,
         html: `<p><strong>Reenviar manualmente a:</strong> ${email}</p><hr/>${html}`,

@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, enviados: 0, mensaje: 'Sin reservas para mañana' })
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khepri-nu.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khepria.app'
   let enviados = 0
   let errores = 0
 
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Khepria <onboarding@resend.dev>',
+        from: process.env.EMAIL_FROM ?? 'Khepria <reservas@khepria.app>',
         to: [reserva.cliente_email as string],
         subject: `⏰ Recordatorio: tu cita de mañana en ${(reserva.negocios as any)?.nombre ?? 'tu negocio'}`,
         html,

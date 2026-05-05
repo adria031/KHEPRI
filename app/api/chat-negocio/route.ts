@@ -142,7 +142,13 @@ When booking intent detected: include [MOSTRAR_OPCIONES].`,
     const langNombres: Record<string, string> = { es: 'español', ca: 'catalán', en: 'inglés' }
     const idiomaNombre = langNombres[lang] ?? 'español'
 
+    const ahora = new Date()
+    const fechaHoyStr = ahora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    const fechaISO = ahora.toISOString().split('T')[0]
+
     const systemPrompt = `Eres el asistente de ${neg?.nombre ?? 'este negocio'}, un negocio de tipo ${neg?.tipo ?? 'servicios'} que usa Khepria.
+
+FECHA ACTUAL: Hoy es ${fechaHoyStr} (${fechaISO}). Usa esto cuando el cliente diga "hoy", "mañana", "esta semana", etc.
 
 IMPORTANTE: Responde siempre en ${idiomaNombre}. No cambies de idioma aunque el cliente escriba en otro idioma.
 

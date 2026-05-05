@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Khepria <onboarding@resend.dev>',
+        from: process.env.EMAIL_FROM ?? 'Khepria <reservas@khepria.app>',
         to: [reserva.cliente_email as string],
         subject: `✅ Reserva confirmada en ${(reserva.negocios as any)?.nombre ?? 'tu negocio'}`,
         html: buildHtml(reserva, cancelUrl),

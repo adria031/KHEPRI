@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY!
-const FROM = 'Khepria <onboarding@resend.dev>'
+const FROM = process.env.EMAIL_FROM ?? 'Khepria <reservas@khepria.app>'
 
 const PLAN_UPGRADE: Record<string, { siguiente: string; label: string; creditos: number }> = {
   starter: { siguiente: 'basico',  label: 'Básico — 29,99€/mes',  creditos: 300 },

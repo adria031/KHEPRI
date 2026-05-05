@@ -60,9 +60,18 @@ function buildSystemPrompt(
     ? trabajadores.map(t => `  - ID:${t.id} | ${t.nombre}${t.especialidad ? ` (${t.especialidad})` : ''}`).join('\n')
     : '  (No hay trabajadores registrados)'
 
+  const hoy = new Date()
+  const fechaHoy = hoy.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const diaHoy = hoy.toLocaleDateString('es-ES', { weekday: 'long' }).toLowerCase()
+  const fechaISO = hoy.toISOString().split('T')[0]
+
   return `Eres ${config.nombreBot}, el asistente virtual de ${negocio.nombre}, un negocio de tipo ${negocio.tipo}.
 Tu tono es ${tonoDesc}.
 Responde siempre en español. Sé conciso: máximo 3-4 frases por respuesta salvo que se pida información extensa.
+
+== FECHA ACTUAL ==
+Hoy es ${fechaHoy} (${fechaISO}). Día de la semana: ${diaHoy}.
+Usa esta información cuando el cliente pregunte "hoy", "mañana", "esta semana", etc.
 
 == INFORMACIÓN DEL NEGOCIO ==
 Nombre: ${negocio.nombre}
