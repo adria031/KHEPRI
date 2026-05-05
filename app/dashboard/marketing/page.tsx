@@ -67,6 +67,18 @@ export default function Marketing() {
   const [textoCopy, setTextoCopy] = useState(false)
   const [tagsCopy, setTagsCopy] = useState(false)
 
+  // Post con imagen
+  const [imgTipo, setImgTipo] = useState<'promocion'|'nuevo_servicio'|'consejo'|'equipo'|'fecha_especial'>('promocion')
+  const [imgTono, setImgTono] = useState<'profesional'|'cercano'|'divertido'>('profesional')
+  const [imgServicio, setImgServicio] = useState('')
+  const [imgColor, setImgColor] = useState<'oscuro'|'claro'|'pastel'>('oscuro')
+  const [imgContenido, setImgContenido] = useState<{titulo:string;subtitulo:string;dato:string;cta:string;hashtags:string[]}|null>(null)
+  const [imgGenerando, setImgGenerando] = useState(false)
+  const [imgError, setImgError] = useState('')
+  const [imgDescargando, setImgDescargando] = useState(false)
+  const [imgCopy, setImgCopy] = useState(false)
+  const postImgRef = useRef<HTMLDivElement>(null)
+
   // Reseñas BD + editable
   const [resenasDB, setResenasDB] = useState<{id:string;valoracion:number;texto:string;autor_nombre:string|null;created_at:string}[]>([])
   const [reseñaEditable, setReseñaEditable] = useState('')
@@ -380,6 +392,137 @@ Las ofertas deben ser:
     navigator.clipboard.writeText(texto).then(() => {
       setter(true); setTimeout(() => setter(false), 2200)
     })
+  }
+
+  async function generarPostImagen() {
+    if (!negocioNombre) return
+    setImgGenerando(true); setImgError(''); setImgContenido(null)
+    const tipoLabels: Record<string, string> = {
+      promocion: 'Promoción', nuevo_servicio: 'Nuevo servicio', consejo: 'Consejo',
+      equipo: 'Presentación de equipo', fecha_especial: 'Fecha especial',
+    }
+    const servicioSeleccionado = imgServicio || negocioServicios[0]?.nombre || negocioTipo
+    const prompt = `Genera contenido para un post de Instagram para ${negocioNombre}, un negocio de ${negocioTipo} en España.
+Tipo: ${tipoLabels[imgTipo]}
+Tono: ${imgTono}
+Servicio: ${servicioSeleccionado}
+Devuelve SOLO JSON sin markdown:
+{
+  "titulo": "título impactante máximo 5 palabras",
+  "subtitulo": "frase corta máximo 10 palabras",
+  "dato": "dato o cifra impactante si aplica, o cadena vacía",
+  "cta": "llamada a la acción máximo 5 palabras",
+  "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"]
+}`
+    try {
+      const raw = await llamarGemini(prompt)
+      const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const parsed = JSON.parse(jsonStr)
+      setImgContenido(parsed)
+      if (negocioId) descontarCreditos(negocioId, 10, 'post_imagen').catch(() => {})
+    } catch {
+      setImgError('No se pudo generar el contenido. Inténtalo de nuevo.')
+    } finally {
+      setImgGenerando(false)
+    }
+  }
+
+  async function descargarPostImagen() {
+    if (!postImgRef.current || !imgContenido) return
+    setImgDescargando(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(postImgRef.current, {
+        width: 540, height: 540, scale: 2,
+        useCORS: true, backgroundColor: null, logging: false,
+      })
+      const a = document.createElement('a')
+      a.download = `post-${negocioNombre.toLowerCase().replace(/\s+/g, '-')}.png`
+      a.href = canvas.toDataURL('image/png')
+      a.click()
+    } catch (e) {
+      console.error('[post-imagen] html2canvas error:', e)
+    } finally {
+      setImgDescargando(false)
+    }
+  }
+
+  function renderTemplateDark() {
+    return (
+      <div style={{width:'540px',height:'540px',background:'#080810',position:'relative',overflow:'hidden',fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",flexShrink:0}}>
+        <div style={{position:'absolute',width:'320px',height:'320px',borderRadius:'50%',background:'rgba(139,92,246,0.28)',filter:'blur(80px)',top:'-80px',right:'-60px'}} />
+        <div style={{position:'absolute',width:'240px',height:'240px',borderRadius:'50%',background:'rgba(59,130,246,0.22)',filter:'blur(60px)',bottom:'60px',left:'-50px'}} />
+        <div style={{position:'absolute',width:'200px',height:'200px',borderRadius:'50%',background:'rgba(236,72,153,0.18)',filter:'blur(50px)',bottom:'-20px',right:'80px'}} />
+        <div style={{position:'absolute',inset:0,backgroundImage:'radial-gradient(rgba(255,255,255,0.15) 1px,transparent 1px)',backgroundSize:'28px 28px'}} />
+        <div style={{position:'relative',zIndex:1,padding:'48px',display:'flex',flexDirection:'column',height:'100%',boxSizing:'border-box'}}>
+          <div style={{fontSize:'11px',fontWeight:700,color:'rgba(255,255,255,0.4)',letterSpacing:'2.5px',textTransform:'uppercase'}}>{negocioNombre}</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'14px',marginTop:'32px',flex:1,justifyContent:'center'}}>
+            {imgContenido?.dato && (
+              <div style={{display:'inline-flex',alignItems:'center',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'100px',padding:'6px 16px',width:'fit-content'}}>
+                <span style={{fontSize:'13px',fontWeight:700,color:'rgba(255,255,255,0.7)'}}>{imgContenido.dato}</span>
+              </div>
+            )}
+            <div style={{fontSize:'48px',fontWeight:900,color:'#FFFFFF',lineHeight:1.05,letterSpacing:'-1.5px'}}>{imgContenido?.titulo}</div>
+            <div style={{fontSize:'18px',color:'rgba(255,255,255,0.6)',lineHeight:1.45}}>{imgContenido?.subtitulo}</div>
+            <div style={{display:'inline-block',padding:'13px 28px',background:'linear-gradient(135deg,#7C3AED,#2563EB)',borderRadius:'100px',fontSize:'15px',fontWeight:700,color:'white',width:'fit-content',marginTop:'4px'}}>{imgContenido?.cta}</div>
+          </div>
+          <div style={{marginTop:'auto',paddingTop:'24px',fontSize:'11px',color:'rgba(255,255,255,0.22)',fontWeight:500}}>{urlPublica}</div>
+        </div>
+      </div>
+    )
+  }
+
+  function renderTemplateClaro() {
+    return (
+      <div style={{width:'540px',height:'540px',background:'#F7F9FC',position:'relative',overflow:'hidden',fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",flexShrink:0}}>
+        <div style={{position:'absolute',width:'300px',height:'300px',borderRadius:'50%',background:'rgba(184,216,248,0.55)',filter:'blur(60px)',top:'-80px',right:'-60px'}} />
+        <div style={{position:'absolute',width:'220px',height:'220px',borderRadius:'50%',background:'rgba(212,197,249,0.45)',filter:'blur(50px)',bottom:'40px',left:'-40px'}} />
+        <div style={{position:'absolute',width:'180px',height:'180px',borderRadius:'50%',background:'rgba(184,237,212,0.4)',filter:'blur(40px)',bottom:'-20px',right:'100px'}} />
+        <div style={{position:'relative',zIndex:1,padding:'48px',display:'flex',flexDirection:'column',height:'100%',boxSizing:'border-box'}}>
+          <div style={{fontSize:'11px',fontWeight:700,color:'#9CA3AF',letterSpacing:'2.5px',textTransform:'uppercase'}}>{negocioNombre}</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'14px',marginTop:'32px',flex:1,justifyContent:'center'}}>
+            {imgContenido?.dato && (
+              <div style={{background:'white',borderRadius:'16px',padding:'14px 20px',boxShadow:'0 4px 24px rgba(0,0,0,0.08)',border:'1px solid rgba(0,0,0,0.05)',width:'fit-content'}}>
+                <span style={{fontSize:'14px',fontWeight:800,color:'#1D4ED8'}}>{imgContenido.dato}</span>
+              </div>
+            )}
+            <div style={{fontSize:'46px',fontWeight:900,color:'#111827',lineHeight:1.05,letterSpacing:'-1.5px'}}>{imgContenido?.titulo}</div>
+            <div style={{fontSize:'18px',color:'#4B5563',lineHeight:1.45}}>{imgContenido?.subtitulo}</div>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap' as const,marginTop:'4px',alignItems:'center'}}>
+              <div style={{padding:'12px 24px',background:'#111827',borderRadius:'100px',fontSize:'14px',fontWeight:700,color:'white'}}>{imgContenido?.cta}</div>
+              {imgContenido?.hashtags?.slice(0,2).map((h: string, i: number) => (
+                <div key={i} style={{padding:'10px 16px',background:'rgba(29,78,216,0.08)',borderRadius:'100px',fontSize:'13px',fontWeight:600,color:'#1D4ED8'}}>{h}</div>
+              ))}
+            </div>
+          </div>
+          <div style={{marginTop:'auto',paddingTop:'24px',fontSize:'11px',color:'#9CA3AF',fontWeight:500}}>{urlPublica}</div>
+        </div>
+      </div>
+    )
+  }
+
+  function renderTemplatePastel() {
+    return (
+      <div style={{width:'540px',height:'540px',background:'linear-gradient(135deg,#FDE8F3 0%,#E8F3FD 50%,#EDE8FD 100%)',position:'relative',overflow:'hidden',fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",flexShrink:0}}>
+        <div style={{position:'absolute',width:'280px',height:'280px',borderRadius:'50%',background:'rgba(251,207,232,0.6)',filter:'blur(50px)',top:'-60px',right:'-40px'}} />
+        <div style={{position:'absolute',width:'200px',height:'200px',borderRadius:'50%',background:'rgba(196,181,253,0.5)',filter:'blur(40px)',bottom:'40px',left:'-30px'}} />
+        <div style={{position:'absolute',width:'160px',height:'160px',borderRadius:'50%',background:'rgba(167,243,208,0.4)',filter:'blur(35px)',bottom:'-10px',right:'80px'}} />
+        <div style={{position:'relative',zIndex:1,padding:'48px',display:'flex',flexDirection:'column',height:'100%',boxSizing:'border-box'}}>
+          <div style={{fontSize:'11px',fontWeight:700,color:'rgba(107,33,168,0.5)',letterSpacing:'2.5px',textTransform:'uppercase'}}>{negocioNombre}</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'14px',marginTop:'32px',flex:1,justifyContent:'center'}}>
+            {imgContenido?.dato && (
+              <div style={{background:'white',borderRadius:'16px',padding:'12px 20px',boxShadow:'0 2px 16px rgba(107,33,168,0.12)',width:'fit-content'}}>
+                <span style={{fontSize:'13px',fontWeight:800,color:'#7C3AED'}}>{imgContenido.dato}</span>
+              </div>
+            )}
+            <div style={{fontSize:'46px',fontWeight:900,color:'#3B0764',lineHeight:1.05,letterSpacing:'-1.5px'}}>{imgContenido?.titulo}</div>
+            <div style={{fontSize:'18px',color:'rgba(59,7,100,0.7)',lineHeight:1.45}}>{imgContenido?.subtitulo}</div>
+            <div style={{display:'inline-block',padding:'13px 28px',background:'linear-gradient(135deg,#C026D3,#7C3AED)',borderRadius:'100px',fontSize:'15px',fontWeight:700,color:'white',width:'fit-content',marginTop:'4px'}}>{imgContenido?.cta}</div>
+          </div>
+          <div style={{marginTop:'auto',paddingTop:'24px',fontSize:'11px',color:'rgba(107,33,168,0.35)',fontWeight:500}}>{urlPublica}</div>
+        </div>
+      </div>
+    )
   }
 
 
@@ -906,7 +1049,103 @@ Las ofertas deben ser:
 
             </div>
 
-            {/* ── 5. CONSEJOS ── */}
+            {/* ── 5. POST CON IMAGEN ── */}
+            <div className="sec-title" style={{marginTop:'8px'}}>🖼️ Crear post con imagen</div>
+            <div className="card" style={{marginBottom:'20px'}}>
+              <div style={{fontSize:'13px',color:'var(--muted)',marginBottom:'16px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                Genera una imagen lista para publicar en Instagram (1080×1080 px) con contenido creado por IA.
+                <span style={{display:'inline-flex',alignItems:'center',gap:'4px',fontSize:'11px',fontWeight:700,color:'#C4860A',background:'rgba(253,233,162,0.4)',padding:'3px 8px',borderRadius:'100px',flexShrink:0}}>10 créditos</span>
+              </div>
+
+              <div className="ia-row2">
+                <div className="ia-form-row" style={{marginBottom:0}}>
+                  <label className="ia-label">Tipo de post</label>
+                  <select className="ia-select" value={imgTipo} onChange={e => setImgTipo(e.target.value as typeof imgTipo)}>
+                    <option value="promocion">🏷️ Promoción</option>
+                    <option value="nuevo_servicio">✨ Nuevo servicio</option>
+                    <option value="consejo">💡 Consejo</option>
+                    <option value="equipo">👥 Presentación equipo</option>
+                    <option value="fecha_especial">🎉 Fecha especial</option>
+                  </select>
+                </div>
+                <div className="ia-form-row" style={{marginBottom:0}}>
+                  <label className="ia-label">Tono</label>
+                  <select className="ia-select" value={imgTono} onChange={e => setImgTono(e.target.value as typeof imgTono)}>
+                    <option value="profesional">💼 Profesional</option>
+                    <option value="cercano">😊 Cercano</option>
+                    <option value="divertido">🎉 Divertido</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="ia-row2" style={{marginTop:'12px'}}>
+                <div className="ia-form-row" style={{marginBottom:0}}>
+                  <label className="ia-label">Servicio destacado</label>
+                  <select className="ia-select" value={imgServicio} onChange={e => setImgServicio(e.target.value)}>
+                    <option value="">— Seleccionar servicio —</option>
+                    {negocioServicios.map((s, i) => <option key={i} value={s.nombre}>{s.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="ia-form-row" style={{marginBottom:0}}>
+                  <label className="ia-label">Color del fondo</label>
+                  <select className="ia-select" value={imgColor} onChange={e => setImgColor(e.target.value as typeof imgColor)}>
+                    <option value="oscuro">🌑 Oscuro</option>
+                    <option value="claro">☀️ Claro</option>
+                    <option value="pastel">🌸 Pastel</option>
+                  </select>
+                </div>
+              </div>
+
+              <button className="btn-ia" style={{marginTop:'16px'}} onClick={generarPostImagen} disabled={imgGenerando || !negocioNombre}>
+                {imgGenerando ? '⏳ Generando contenido...' : '✨ Generar post con imagen'}
+              </button>
+              {imgError && <div className="ia-error">⚠️ {imgError}</div>}
+
+              {imgContenido && (
+                <div style={{marginTop:'20px'}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px',flexWrap:'wrap',gap:'8px'}}>
+                    <span style={{fontSize:'13px',fontWeight:700,color:'var(--text2)'}}>Vista previa · 1080×1080 px</span>
+                    <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                      <button
+                        className={`btn-copy-sm ${imgCopy ? 'ok' : ''}`}
+                        onClick={() => copiarIA((imgContenido.hashtags || []).join(' '), setImgCopy)}
+                        style={{padding:'7px 14px'}}
+                      >
+                        {imgCopy ? '✓ Copiado' : '# Copiar hashtags'}
+                      </button>
+                      <button
+                        className="btn-ia"
+                        style={{width:'auto',padding:'8px 18px',fontSize:'13px'}}
+                        onClick={descargarPostImagen}
+                        disabled={imgDescargando}
+                      >
+                        {imgDescargando ? '⏳ Procesando...' : '⬇️ Descargar PNG'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Preview (visible) + Capture target */}
+                  <div style={{overflow:'auto',borderRadius:'16px',border:'1.5px solid var(--border)',background:'#f0f0f0'}}>
+                    <div ref={postImgRef}>
+                      {imgColor === 'oscuro' && renderTemplateDark()}
+                      {imgColor === 'claro' && renderTemplateClaro()}
+                      {imgColor === 'pastel' && renderTemplatePastel()}
+                    </div>
+                  </div>
+
+                  {/* Hashtags */}
+                  {imgContenido.hashtags && imgContenido.hashtags.length > 0 && (
+                    <div style={{marginTop:'12px',display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                      {imgContenido.hashtags.map((h: string, i: number) => (
+                        <span key={i} style={{fontSize:'13px',color:'#1D4ED8',fontWeight:600}}>{h}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── 6. CONSEJOS ── */}
             <div className="sec-title">💡 Consejos para mejorar tu perfil</div>
             <div className="tips-grid">
               {tips.map((tip, i) => (
