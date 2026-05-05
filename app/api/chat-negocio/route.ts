@@ -191,7 +191,7 @@ ${LANG_INSTRUCTIONS[lang]}`
         contents,
         generationConfig: { maxOutputTokens: 800, temperature: 0.7 },
       },
-      process.env.NEXT_PUBLIC_GEMINI_API_KEY!
+      process.env.GEMINI_API_KEY!
     )
 
     if (!result.ok) {

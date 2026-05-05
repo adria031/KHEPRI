@@ -275,22 +275,13 @@ Al finalizar cualquier respuesta sobre cálculos o importes, añade siempre: "Pa
 Pregunta: ${msg}`
 
     try {
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
-      if (!apiKey) throw new Error('API key no disponible')
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
-      let respuesta = ''
-      for (const model of models) {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 500, temperature: 0.4 } }) }
-        )
-        if (!res.ok) continue
-        const d = await res.json()
-        const text = d?.candidates?.[0]?.content?.parts?.[0]?.text
-        if (text) { respuesta = text; break }
-      }
-      setChatMsgs(prev => [...prev, { role: 'ai', text: respuesta || 'Sin respuesta de la IA.' }])
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, generationConfig: { maxOutputTokens: 500, temperature: 0.4 } }),
+      })
+      const d = await res.json()
+      setChatMsgs(prev => [...prev, { role: 'ai', text: d.text || 'Sin respuesta de la IA.' }])
     } catch {
       setChatMsgs(prev => [...prev, { role: 'ai', text: 'Error al conectar con la IA. Inténtalo de nuevo.' }])
     }

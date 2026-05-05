@@ -122,9 +122,9 @@ function buildResenaHtml(r: any, resenaUrl: string, appUrl: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get('x-cron-secret')
-  if (auth !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const auth = req.headers.get('authorization')
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createClient(

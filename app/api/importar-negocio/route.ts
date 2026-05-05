@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { geminiGenerate } from '../../lib/gemini'
 
-const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY!
+const GEMINI_KEY = process.env.GEMINI_API_KEY!
 
 export async function POST(req: NextRequest) {
   const { url } = await req.json()

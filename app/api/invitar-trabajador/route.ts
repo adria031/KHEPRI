@@ -100,25 +100,12 @@ export async function POST(req: NextRequest) {
     })
     console.log('[invitar-trabajador] Respuesta Resend:', JSON.stringify({ data, error: resendError }))
 
-    // Si hay error 403 (dominio no verificado) → reenviar a cuenta propietaria para gestión manual
-    if (resendError && (resendError as { statusCode?: number }).statusCode === 403) {
-      console.warn('[invitar-trabajador] Dominio no verificado, redirigiendo a khepriacontact@gmail.com')
-      const { error: fallbackErr } = await resend.emails.send({
-        from: process.env.EMAIL_FROM ?? 'Khepria <reservas@khepria.app>',
-        to: ['khepriacontact@gmail.com'],
-        subject: `📨 Reenviar a: ${email} — Invitación equipo ${nombreNegocio}`,
-        html: `<p><strong>Reenviar manualmente a:</strong> ${email}</p><hr/>${html}`,
-      })
-      if (fallbackErr) {
-        console.error('[invitar-trabajador] Fallback también falló:', fallbackErr)
-        return NextResponse.json({ error: resendError.message }, { status: 502 })
-      }
-      return NextResponse.json({ ok: true, fallback: true })
-    }
-
     if (resendError) {
       console.error('[invitar-trabajador] Resend error:', resendError)
-      return NextResponse.json({ error: resendError.message }, { status: 502 })
+      return NextResponse.json(
+        { error: 'No se pudo enviar el email. Verifica el dominio en Resend.' },
+        { status: 502 },
+      )
     }
 
     return NextResponse.json({ ok: true })

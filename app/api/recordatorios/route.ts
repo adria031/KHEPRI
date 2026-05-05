@@ -99,10 +99,10 @@ export async function POST(req: NextRequest) {
   const rl = rateLimit(getIP(req), 10)
   if (!rl.ok) return NextResponse.json({ error: 'Demasiadas peticiones' }, { status: 429 })
 
-  // Verificar clave de autorización para evitar llamadas no autorizadas
-  const auth = req.headers.get('x-cron-secret')
-  if (auth !== process.env.CRON_SECRET && process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  // Verificar clave de autorización — siempre obligatoria
+  const auth = req.headers.get('authorization')
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createClient(

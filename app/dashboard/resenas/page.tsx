@@ -60,8 +60,6 @@ export default function Resenas() {
     if (conComentario.length === 0) return
     setAnalizando(true)
     try {
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
-      if (!apiKey) return
       const prompt = `Analiza estas reseñas de un negocio y devuelve SOLO un JSON válido sin markdown ni explicaciones:
 {
   "positivo": número del 0 al 100,
@@ -73,29 +71,16 @@ export default function Resenas() {
 }
 Reseñas: ${JSON.stringify(conComentario.map(r => ({ valoracion: r.valoracion, comentario: r.comentario })))}`
 
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
-      for (const model of models) {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: { maxOutputTokens: 600, temperature: 0.3 },
-            }),
-          }
-        )
-        if (!res.ok) continue
-        const d = await res.json()
-        const texto = d?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-        const jsonStr = texto.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-        try {
-          const parsed = JSON.parse(jsonStr) as Analisis
-          setAnalisis(parsed)
-          break
-        } catch { continue }
-      }
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, generationConfig: { maxOutputTokens: 600, temperature: 0.3 } }),
+      })
+      const d = await res.json()
+      const jsonStr = (d.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      try {
+        setAnalisis(JSON.parse(jsonStr) as Analisis)
+      } catch { /* JSON inválido — ignorar */ }
     } catch { /* silencioso */ } finally {
       setAnalizando(false)
     }
