@@ -1,20 +1,44 @@
-import Link from 'next/link'
+'use client'
+
+import { useEffect, useState } from 'react'
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: '📅', color: '#B8D8F8', dark: '#1D4ED8', title: 'Reservas automáticas 24/7', desc: 'Tus clientes reservan en cualquier momento. Confirmaciones y recordatorios automáticos sin intervención.' },
-  { icon: '🤖', color: '#D4C5F9', dark: '#6B4FD8', title: 'Chatbot IA WhatsApp e Instagram', desc: 'Responde consultas, reserva citas y cancela automáticamente sin intervención humana.' },
-  { icon: '🧾', color: '#B8EDD4', dark: '#2E8A5E', title: 'Facturación española', desc: 'Facturas con IVA, modelos 303, 130 y 111. Compatible con normativa fiscal española vigente.' },
-  { icon: '📊', color: '#FDE9A2', dark: '#C4860A', title: 'Analytics con IA', desc: 'Predicciones de ingresos y recomendaciones accionables para crecer cada mes.' },
-  { icon: '📣', color: '#FBCFE8', dark: '#9D174D', title: 'Marketing IA', desc: 'Posts automáticos, estrategias de captación y calendario editorial generados con IA.' },
-  { icon: '👥', color: '#B8D8F8', dark: '#1D4ED8', title: 'Equipo y nóminas', desc: 'Gestiona empleados, turnos, nóminas y contratos SEPE desde el panel de control.' },
-  { icon: '💰', color: '#B8EDD4', dark: '#2E8A5E', title: 'Caja diaria', desc: 'Control de ingresos y gastos en tiempo real. Cierre automático con resumen del día.' },
-  { icon: '⭐', color: '#FDE9A2', dark: '#C4860A', title: 'Reseñas post-cita automáticas', desc: 'Solicita reseñas al finalizar cada visita. Mejora tu reputación sin esfuerzo extra.' },
-  { icon: '🗺️', color: '#D4C5F9', dark: '#6B4FD8', title: 'Mapa para clientes', desc: 'Aparece en el mapa de Khepria y atrae nuevos clientes de tu zona.' },
-  { icon: '🏷️', color: '#FBCFE8', dark: '#9D174D', title: 'Descuentos inteligentes', desc: 'Crea ofertas dinámicas para maximizar la ocupación en horas valle.' },
-  { icon: '📲', color: '#B8EDD4', dark: '#2E8A5E', title: 'Importador desde otras apps', desc: 'Migra clientes, citas y servicios desde Booksy, Fresha, Treatwell y más.' },
-  { icon: '🎁', color: '#FDE9A2', dark: '#C4860A', title: 'Fidelización con puntos', desc: 'Premia a clientes habituales con puntos canjeables por descuentos.' },
+  { icon: '📅', color: '#B8D8F8', title: 'Reservas automáticas 24/7', desc: 'Tus clientes reservan en cualquier momento. Confirmaciones y recordatorios automáticos sin que muevas un dedo.' },
+  { icon: '🤖', color: '#D4C5F9', title: 'Chatbot IA WhatsApp e Instagram', desc: 'Responde consultas, reserva citas y cancela automáticamente sin intervención humana, a cualquier hora.' },
+  { icon: '🧾', color: '#B8EDD4', title: 'Facturación e IVA automático', desc: 'Facturas con IVA, modelos 303, 130 y 111. Compatible con la normativa fiscal española vigente.' },
+  { icon: '📊', color: '#FDE9A2', title: 'Analytics con IA', desc: 'Predicciones de ingresos, análisis de clientes y recomendaciones accionables para crecer cada mes.' },
+  { icon: '📸', color: '#FBCFE8', title: 'Marketing con IA', desc: 'Posts automáticos para redes sociales, estrategias de captación y calendario editorial generados con IA.' },
+  { icon: '👥', color: '#B8D8F8', title: 'Gestión de equipo y nóminas', desc: 'Gestiona empleados, turnos, nóminas y contratos SEPE desde el panel de control.' },
+]
+
+const PROBLEMAS = [
+  {
+    icon: '📞', color: '#FFE4E1', borderColor: '#FECACA',
+    title: 'Tu teléfono no para de sonar',
+    desc: 'Clientes que quieren reservar, cambiar o cancelar. Interrupciones constantes que te impiden concentrarte en tu trabajo.',
+    sol: 'Reservas online 24/7 sin que muevas un dedo',
+  },
+  {
+    icon: '🌙', color: '#EDE8FD', borderColor: '#DDD6FE',
+    title: 'Pierdes clientes fuera de horario',
+    desc: 'Cuando cierras, las consultas quedan sin respuesta. Esos clientes que escriben a las 11 de la noche van a la competencia.',
+    sol: 'Chatbot IA que responde y reserva a cualquier hora',
+  },
+  {
+    icon: '📋', color: '#DCFCE7', borderColor: '#BBF7D0',
+    title: 'Horas perdidas con contabilidad',
+    desc: 'Facturas, IVA, modelos fiscales... tiempo que podrías dedicar a tus clientes o simplemente a descansar.',
+    sol: 'Facturación e IVA 100% automático',
+  },
+]
+
+const NUMEROS = [
+  { num: '3h', label: 'ahorradas al día', color: '#B8D8F8', icon: '⏱️' },
+  { num: '+30%', label: 'más reservas', color: '#D4C5F9', icon: '📈' },
+  { num: '24/7', label: 'atención automática', color: '#B8EDD4', icon: '🤖' },
+  { num: '0€', label: 'en gestores de IVA', color: '#FDE9A2', icon: '💰' },
 ]
 
 const QUIENES = [
@@ -24,989 +48,965 @@ const QUIENES = [
   { icon: '🏥', name: 'Clínicas y consultas' },
   { icon: '🧘', name: 'Yoga y pilates' },
   { icon: '🏋️', name: 'Gimnasios y entrenadores' },
-  { icon: '🦷', name: 'Dentistas' },
-  { icon: '🐾', name: 'Veterinarias' },
-  { icon: '🔧', name: 'Cualquier negocio de servicios' },
 ]
 
 const PLANES = [
   {
-    key: 'starter', nombre: 'Starter', precio: '9,99', emoji: '🌱', badge: 'Para empezar',
-    color: '#B8EDD4', colorDark: '#2E8A5E', grad: 'linear-gradient(135deg,#B8EDD4,#6EE7B7)', creditos: 100, trabajadores: '1 trabajador', negocios: '1',
-    funciones: ['Reservas online 24/7','Ficha pública en mapa','Chatbot básico','Recordatorios automáticos','Reseñas post-cita','Estadísticas básicas'],
+    nombre: 'Starter', precio: '9,99', emoji: '🌱', badge: 'Para empezar', popular: false,
+    color: '#B8EDD4', colorDark: '#2E8A5E',
+    funciones: ['Reservas online 24/7', 'Ficha pública en mapa', 'Chatbot básico', 'Recordatorios automáticos', 'Reseñas post-cita', 'Estadísticas básicas'],
   },
   {
-    key: 'basico', nombre: 'Básico', precio: '29,99', emoji: '🚀', badge: 'Para crecer',
-    color: '#B8D8F8', colorDark: '#1D4ED8', grad: 'linear-gradient(135deg,#B8D8F8,#93C5FD)', creditos: 300, trabajadores: 'hasta 3', negocios: '1',
-    funciones: ['Todo lo del Starter','Chatbot completo','Caja diaria','Importador de apps','Fidelización puntos','Descuentos y promociones'],
+    nombre: 'Básico', precio: '29,99', emoji: '🚀', badge: 'Para crecer', popular: false,
+    color: '#B8D8F8', colorDark: '#1D4ED8',
+    funciones: ['Todo lo del Starter', 'Chatbot completo', 'Caja diaria', 'Importador de apps', 'Fidelización con puntos', 'Descuentos y promociones'],
   },
   {
-    key: 'pro', nombre: 'Pro', precio: '59,99', emoji: '💎', badge: 'Más popular', popular: true,
-    color: '#D4C5F9', colorDark: '#6B4FD8', grad: 'linear-gradient(135deg,#D4C5F9,#A78BFA)', creditos: 1000, trabajadores: 'hasta 5', negocios: '2',
-    funciones: ['Todo lo del Básico','2 negocios','Gestión de equipo','Marketing IA completo','Analytics avanzado','Facturación e IVA'],
+    nombre: 'Pro', precio: '59,99', emoji: '💎', badge: 'Más popular', popular: true,
+    color: '#D4C5F9', colorDark: '#6B4FD8',
+    funciones: ['Todo lo del Básico', '2 negocios', 'Gestión de equipo', 'Marketing IA completo', 'Analytics avanzado', 'Facturación e IVA'],
   },
   {
-    key: 'plus', nombre: 'Plus', precio: '99,99', emoji: '⚡', badge: 'Para escalar',
-    color: '#FDE9A2', colorDark: '#C4860A', grad: 'linear-gradient(135deg,#FDE9A2,#FCD34D)', creditos: 5000, trabajadores: 'ilimitados', negocios: 'hasta 10',
-    funciones: ['Todo lo del Pro','Hasta 10 negocios','Nóminas con plantillas SEPE','Contratos SEPE oficiales','Kit para gestor PDF/CSV','Soporte prioritario'],
+    nombre: 'Plus', precio: '99,99', emoji: '⚡', badge: 'Para escalar', popular: false,
+    color: '#FDE9A2', colorDark: '#C4860A',
+    funciones: ['Todo lo del Pro', 'Hasta 10 negocios', 'Nóminas + plantillas SEPE', 'Contratos SEPE oficiales', 'Kit gestor PDF/CSV', 'Soporte prioritario'],
   },
 ]
 
-type CmpVal = boolean | string
-const COMPARE: { feat: string; s: CmpVal; b: CmpVal; p: CmpVal; pl: CmpVal }[] = [
-  { feat: 'Créditos IA/mes',            s: '100',   b: '300',    p: '1.000', pl: '5.000' },
-  { feat: 'Trabajadores',               s: '1',     b: '3',      p: '5',     pl: '∞' },
-  { feat: 'Negocios',                   s: '1',     b: '1',      p: '2',     pl: '10' },
-  { feat: 'Reservas online 24/7',       s: true,    b: true,     p: true,    pl: true },
-  { feat: 'Ficha pública en mapa',      s: true,    b: true,     p: true,    pl: true },
-  { feat: 'Reseñas automáticas',        s: true,    b: true,     p: true,    pl: true },
-  { feat: 'Recordatorios automáticos',  s: true,    b: true,     p: true,    pl: true },
-  { feat: 'Chatbot básico',             s: true,    b: true,     p: true,    pl: true },
-  { feat: 'Chatbot completo',           s: false,   b: true,     p: true,    pl: true },
-  { feat: 'Fidelización con puntos',    s: false,   b: true,     p: true,    pl: true },
-  { feat: 'Lista de espera',            s: false,   b: true,     p: true,    pl: true },
-  { feat: 'Descuentos y promociones',   s: false,   b: true,     p: true,    pl: true },
-  { feat: 'Gestión de equipo',          s: false,   b: false,    p: true,    pl: true },
-  { feat: 'Marketing IA',               s: false,   b: false,    p: true,    pl: true },
-  { feat: 'Analytics avanzado',         s: false,   b: false,    p: true,    pl: true },
-  { feat: 'Caja diaria',                s: false,   b: true,     p: true,    pl: true },
-  { feat: 'Facturación e IVA',          s: false,   b: false,    p: true,    pl: true },
-  { feat: 'Modelos 303/130',            s: false,   b: false,    p: true,    pl: true },
-  { feat: 'Multi-negocio',              s: false,   b: false,    p: '2',     pl: '10' },
-  { feat: 'Nóminas y contratos SEPE',   s: false,   b: false,    p: false,   pl: true },
-  { feat: 'Soporte prioritario',        s: false,   b: false,    p: false,   pl: true },
+const TIPOS_NEGOCIO = [
+  'Peluquería / Barbería',
+  'Centro de estética / Uñas',
+  'Spa / Masajes',
+  'Clínica / Consulta médica',
+  'Yoga / Pilates',
+  'Gimnasio / Entrenador personal',
+  'Dentista',
+  'Veterinaria',
+  'Otro tipo de negocio',
 ]
-
-function CmpCell({ val, highlight }: { val: CmpVal; highlight?: boolean }) {
-  const bg = highlight ? 'rgba(212,197,249,0.1)' : 'transparent'
-  const border = '1px solid rgba(255,255,255,0.04)'
-  if (typeof val === 'boolean') return (
-    <td style={{ padding: '11px 0', textAlign: 'center', background: bg, borderBottom: border, fontSize: 15 }}>
-      {val ? <span style={{ color: '#4ADE80', fontWeight: 800 }}>✓</span> : <span style={{ color: '#334155' }}>—</span>}
-    </td>
-  )
-  return (
-    <td style={{ padding: '11px 8px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: highlight ? '#C4B5FD' : '#94A3B8', background: bg, borderBottom: border }}>
-      {val}
-    </td>
-  )
-}
 
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [count, setCount] = useState(0)
+  const [displayCount, setDisplayCount] = useState(0)
+  const [form, setForm] = useState({ nombre: '', email: '', tipo_negocio: '', ciudad: '' })
+  const [enviando, setEnviando] = useState(false)
+  const [enviado, setEnviado] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  // Fetch waitlist count
+  useEffect(() => {
+    fetch('/api/waitlist')
+      .then(r => r.json())
+      .then(d => setCount(Math.max(d.count ?? 0, 0) + 47))
+      .catch(() => setCount(47))
+  }, [])
+
+  // Animate counter up when count changes
+  useEffect(() => {
+    if (count === 0) return
+    let current = 0
+    const target = count
+    const step = Math.max(1, Math.ceil(target / 80))
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target)
+      setDisplayCount(current)
+      if (current >= target) clearInterval(timer)
+    }, 20)
+    return () => clearInterval(timer)
+  }, [count])
+
+  // IntersectionObserver for scroll animations
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries =>
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            ;(e.target as HTMLElement).classList.add('visible')
+            observer.unobserve(e.target)
+          }
+        }),
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' },
+    )
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    setMenuOpen(false)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.email) { setFormError('El email es obligatorio'); return }
+    setEnviando(true)
+    setFormError('')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (res.ok) {
+        setEnviado(true)
+        setCount(c => c + 1)
+      } else {
+        const d = await res.json()
+        setFormError(d.error || 'Error al guardar. Inténtalo de nuevo.')
+      }
+    } catch {
+      setFormError('Error de conexión. Inténtalo de nuevo.')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      {/* ── FONTS ── */}
+      <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet"
+      />
+
+      {/* ── GLOBAL STYLES ── */}
       <style>{`
-        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-        html{scroll-behavior:smooth;overflow-x:hidden;}
-        body{font-family:'Plus Jakarta Sans',sans-serif;background:#080810;color:#F1F5F9;overflow-x:hidden;line-height:1.6;width:100%;}
-        main,section,header,footer{overflow-x:hidden;width:100%;}
-        a{color:inherit;text-decoration:none;}
+        *, *::before, *::after { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
 
-        /* ── NAVBAR ── */
-        #navbar{
-          position:fixed;top:0;left:0;right:0;z-index:200;
-          display:flex;align-items:center;justify-content:space-between;
-          padding:0 48px;height:68px;
-          transition:background 0.3s,box-shadow 0.3s,backdrop-filter 0.3s;
-        }
-        #navbar.scrolled{
-          background:rgba(8,8,16,0.85);
-          backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-          box-shadow:0 1px 0 rgba(255,255,255,0.06),0 8px 32px rgba(0,0,0,0.4);
-        }
-        .nav-links{display:flex;align-items:center;gap:2px;}
-        .nav-links a{color:#94A3B8;font-size:14px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all 0.15s;}
-        .nav-links a:hover{color:#F1F5F9;background:rgba(255,255,255,0.06);}
-        .nav-actions{display:flex;align-items:center;gap:8px;}
-        .btn-ghost{color:#94A3B8;font-size:14px;font-weight:600;padding:8px 16px;border-radius:10px;transition:all 0.15s;}
-        .btn-ghost:hover{color:#F1F5F9;background:rgba(255,255,255,0.08);}
-        .btn-primary{
-          background:linear-gradient(135deg,#6B4FD8,#4F46E5);color:#fff;
-          font-size:14px;font-weight:700;padding:9px 22px;border-radius:100px;
-          transition:all 0.2s;white-space:nowrap;
-          box-shadow:0 4px 20px rgba(107,79,216,0.35);
-        }
-        .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(107,79,216,0.5);filter:brightness(1.08);}
-
-        .hamburger{display:none;background:none;border:none;cursor:pointer;padding:8px;color:#F1F5F9;flex-direction:column;gap:5px;align-items:center;justify-content:center;}
-        .hamburger span{display:block;width:22px;height:2px;background:currentColor;border-radius:2px;transition:all 0.3s;}
-        .hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
-        .hamburger.open span:nth-child(2){opacity:0;}
-        .hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
-        #mobile-menu{
-          display:none;position:fixed;top:68px;left:0;right:0;
-          background:#0d0d1a;border-bottom:1px solid rgba(255,255,255,0.08);
-          padding:16px 24px 28px;flex-direction:column;gap:2px;
-          box-shadow:0 20px 60px rgba(0,0,0,0.5);z-index:190;
-        }
-        #mobile-menu.open{display:flex;}
-        #mobile-menu a{color:#C4C4D4;font-size:16px;font-weight:600;padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:block;transition:color 0.15s;}
-        #mobile-menu a:hover{color:#F1F5F9;}
-        .mobile-cta{margin-top:14px;background:linear-gradient(135deg,#6B4FD8,#4F46E5);color:#fff !important;text-align:center;padding:14px !important;border-radius:14px;border-bottom:none !important;font-size:15px;font-weight:700;}
-
-        /* ── HERO ── */
-        #hero{
-          position:relative;overflow:hidden;min-height:100vh;
-          display:flex;flex-direction:column;align-items:center;justify-content:center;
-          text-align:center;padding:140px 24px 100px;background:#080810;
+        body {
+          font-family: 'Plus Jakarta Sans', sans-serif !important;
+          background: #fff;
+          color: #111827;
+          overflow-x: hidden;
         }
 
-        /* dot grid */
-        #hero::before{
-          content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
-          background-image:radial-gradient(rgba(255,255,255,0.07) 1px,transparent 1px);
-          background-size:32px 32px;
-          -webkit-mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 40%,transparent 100%);
-          mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,#000 40%,transparent 100%);
+        /* ── Keyframes ── */
+        @keyframes blobA {
+          0%,100% { transform: translate(0,0) scale(1); }
+          33%      { transform: translate(50px,-40px) scale(1.08); }
+          66%      { transform: translate(-30px,30px) scale(0.94); }
+        }
+        @keyframes blobB {
+          0%,100% { transform: translate(0,0) scale(1); }
+          33%      { transform: translate(-60px,40px) scale(1.06); }
+          66%      { transform: translate(40px,-50px) scale(0.92); }
+        }
+        @keyframes blobC {
+          0%,100% { transform: translate(0,0) scale(1); }
+          50%      { transform: translate(30px,40px) scale(1.1); }
+        }
+        @keyframes floatUp {
+          0%,100% { transform: translateY(0) rotate(-3deg); }
+          50%      { transform: translateY(-14px) rotate(3deg); }
+        }
+        @keyframes badgePulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.35); }
+          50%      { box-shadow: 0 0 0 10px rgba(124,58,237,0); }
+        }
+        @keyframes slideDown {
+          from { opacity:0; transform: translateY(-16px); }
+          to   { opacity:1; transform: translateY(0); }
         }
 
-        /* blobs */
-        .blob{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;will-change:transform;}
-        .blob-1{width:650px;height:650px;top:-200px;left:-150px;background:radial-gradient(circle,rgba(184,216,248,0.22) 0%,transparent 70%);animation:blobFloat1 12s ease-in-out infinite;}
-        .blob-2{width:550px;height:550px;top:-100px;right:-100px;background:radial-gradient(circle,rgba(212,197,249,0.25) 0%,transparent 70%);animation:blobFloat2 15s ease-in-out infinite;}
-        .blob-3{width:500px;height:500px;bottom:-80px;left:25%;background:radial-gradient(circle,rgba(184,237,212,0.18) 0%,transparent 70%);animation:blobFloat3 18s ease-in-out infinite;}
-        .blob-4{width:350px;height:350px;bottom:100px;right:5%;background:radial-gradient(circle,rgba(253,233,162,0.15) 0%,transparent 70%);animation:blobFloat1 10s ease-in-out infinite reverse;}
-        .blob-5{width:300px;height:300px;top:30%;left:8%;background:radial-gradient(circle,rgba(251,207,232,0.12) 0%,transparent 70%);animation:blobFloat2 13s ease-in-out infinite 3s;}
-
-        @keyframes blobFloat1{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-50px) scale(1.07)}66%{transform:translate(-25px,25px) scale(0.96)}}
-        @keyframes blobFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-50px,35px) scale(1.1)}}
-        @keyframes blobFloat3{0%,100%{transform:translate(0,0) scale(1)}40%{transform:translate(25px,-35px) scale(1.05)}80%{transform:translate(-30px,15px) scale(0.94)}}
-
-        /* particles */
-        .particle{position:absolute;border-radius:50%;pointer-events:none;opacity:0;animation:particleFade var(--dur,6s) ease-in-out infinite var(--delay,0s);}
-        @keyframes particleFade{0%{opacity:0;transform:translateY(0) scale(0.5)}20%{opacity:var(--op,0.6)}80%{opacity:var(--op,0.6)}100%{opacity:0;transform:translateY(-120px) scale(1.2)}}
-
-        /* badge */
-        .hero-badge{
-          display:inline-flex;align-items:center;gap:8px;position:relative;z-index:1;
-          background:rgba(107,79,216,0.15);border:1px solid rgba(212,197,249,0.3);
-          color:#C4B5FD;font-size:13px;font-weight:700;padding:7px 18px;border-radius:100px;
-          margin-bottom:32px;backdrop-filter:blur(8px);
+        /* ── Scroll reveal ── */
+        .fade-up {
+          opacity: 0;
+          transform: translateY(28px);
+          transition: opacity 0.65s ease, transform 0.65s ease;
         }
-        .badge-pulse{width:7px;height:7px;border-radius:50%;background:#A78BFA;animation:pulseDot 2s ease-in-out infinite;}
-        @keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 rgba(167,139,250,0.7)}70%{box-shadow:0 0 0 8px rgba(167,139,250,0)}}
+        .fade-up.visible { opacity:1; transform:translateY(0); }
 
-        /* title */
-        .hero-title{
-          font-family:'Syne',sans-serif;font-size:clamp(44px,7.5vw,96px);
-          font-weight:800;line-height:1.0;letter-spacing:-3px;
-          color:#F8FAFC;max-width:1000px;margin-bottom:28px;position:relative;z-index:1;
+        /* ── Navbar ── */
+        .kh-nav {
+          position: fixed; top:0; left:0; right:0; z-index:200;
+          background: rgba(255,255,255,0.88);
+          backdrop-filter: blur(14px);
+          border-bottom: 1px solid rgba(0,0,0,0.06);
         }
-        .hero-grad{
-          background:linear-gradient(135deg,#93C5FD 0%,#C4B5FD 30%,#6EE7B7 60%,#93C5FD 100%);
-          background-size:300% 300%;
-          -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
-          animation:gradShift 6s ease infinite;
-          display:inline;
+        .kh-nav-inner {
+          max-width: 1200px; margin: 0 auto;
+          padding: 0 24px; height: 64px;
+          display: flex; align-items: center; justify-content: space-between; gap:12px;
         }
-        @keyframes gradShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-
-        .hero-word-wrap{display:inline-block;overflow:hidden;vertical-align:bottom;}
-        .hero-words{display:flex;flex-direction:column;animation:wordCycle 8s ease infinite;}
-        @keyframes wordCycle{
-          0%,20%{transform:translateY(0)}
-          25%,45%{transform:translateY(-1.05em)}
-          50%,70%{transform:translateY(-2.1em)}
-          75%,95%{transform:translateY(-3.15em)}
-          100%{transform:translateY(-4.2em)}
+        .kh-logo {
+          font-family: 'Syne', sans-serif;
+          font-size: clamp(18px, 3vw, 22px);
+          font-weight: 800; color: #111827;
+          text-decoration: none; letter-spacing: -0.5px; flex-shrink:0;
+        }
+        .kh-logo em { font-style:normal; color:#7C3AED; }
+        .kh-nav-links { display:flex; gap:4px; align-items:center; }
+        .kh-nav-btn {
+          font-size: 14px; font-weight:600; color:#374151;
+          padding: 8px 14px; border-radius:8px;
+          cursor:pointer; border:none; background:none;
+          transition: background 0.2s, color 0.2s; white-space:nowrap;
+        }
+        .kh-nav-btn:hover { background:#F3F4F6; color:#111827; }
+        .kh-nav-cta {
+          font-size:14px; font-weight:700; color:#fff;
+          background: linear-gradient(135deg,#7C3AED,#4F46E5);
+          padding:10px 22px; border-radius:999px; border:none;
+          cursor:pointer; white-space:nowrap;
+          transition: transform 0.2s, box-shadow 0.2s;
+          flex-shrink:0;
+        }
+        .kh-nav-cta:hover { transform:translateY(-1px); box-shadow:0 6px 24px rgba(124,58,237,0.4); }
+        .kh-hamburger {
+          display:none; flex-direction:column; gap:5px;
+          cursor:pointer; border:none; background:none; padding:6px; flex-shrink:0;
+        }
+        .kh-hamburger span {
+          display:block; width:22px; height:2px;
+          background:#111827; border-radius:2px;
+          transition: transform 0.3s, opacity 0.3s;
+        }
+        .kh-mobile {
+          display:none; flex-direction:column; gap:4px;
+          padding:8px 16px 16px;
+          border-top:1px solid rgba(0,0,0,0.06);
+          background:rgba(255,255,255,0.98);
+          animation: slideDown 0.25s ease;
+        }
+        .kh-mobile.open { display:flex; }
+        .kh-mobile-btn {
+          font-size:15px; font-weight:600; color:#374151;
+          padding:13px 12px; border-radius:10px;
+          cursor:pointer; border:none; background:none; text-align:left;
+          transition: background 0.2s;
+        }
+        .kh-mobile-btn:hover { background:#F3F4F6; }
+        .kh-mobile-cta {
+          margin-top:6px; font-size:15px; font-weight:700; color:#fff;
+          background: linear-gradient(135deg,#7C3AED,#4F46E5);
+          padding:14px 12px; border-radius:12px; border:none; cursor:pointer; text-align:center;
+        }
+        @media(max-width:768px) {
+          .kh-nav-links { display:none; }
+          .kh-hamburger { display:flex; }
         }
 
-        .hero-sub{font-size:clamp(17px,2.2vw,22px);color:#94A3B8;max-width:600px;margin-bottom:48px;position:relative;z-index:1;font-weight:400;line-height:1.55;}
-        .hero-cta{
-          position:relative;z-index:1;display:inline-flex;align-items:center;gap:10px;
-          background:linear-gradient(135deg,#6B4FD8,#4F46E5);color:#fff;
-          font-size:17px;font-weight:700;padding:18px 44px;border-radius:18px;
-          transition:all 0.25s;box-shadow:0 8px 40px rgba(107,79,216,0.4);
-          margin-bottom:80px;
+        /* ── Hero ── */
+        .kh-hero {
+          min-height:100svh; display:flex; align-items:center;
+          position:relative; overflow:hidden;
+          background:#fff; padding-top:64px;
         }
-        .hero-cta:hover{transform:translateY(-3px);box-shadow:0 14px 56px rgba(107,79,216,0.55);filter:brightness(1.08);}
-        .cta-glow{animation:ctaGlow 3s ease-in-out infinite;}
-        @keyframes ctaGlow{0%,100%{box-shadow:0 8px 40px rgba(107,79,216,0.4)}50%{box-shadow:0 8px 60px rgba(107,79,216,0.65)}}
-
-        /* hero cards preview */
-        .hero-preview{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;max-width:880px;}
-        .preview-card{
-          background:rgba(255,255,255,0.04);backdrop-filter:blur(12px);
-          border:1px solid rgba(255,255,255,0.1);border-radius:20px;
-          padding:20px 24px;flex:1;min-width:200px;text-align:left;
-          transition:transform 0.3s,border-color 0.3s,background 0.3s;
+        .kh-blob {
+          position:absolute; border-radius:50%;
+          filter:blur(90px); opacity:0.45; pointer-events:none;
         }
-        .preview-card:hover{transform:translateY(-6px);border-color:rgba(212,197,249,0.3);background:rgba(255,255,255,0.07);}
-        .pc-icon{font-size:24px;margin-bottom:12px;}
-        .pc-label{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;}
-        .pc-val{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#F1F5F9;}
-        .pc-sub{font-size:12px;color:#64748B;margin-top:3px;}
-        .pc-green{color:#4ADE80;font-weight:700;}
-        .chat-b{padding:8px 13px;border-radius:14px;font-size:12px;font-weight:500;max-width:175px;line-height:1.4;}
-        .chat-in{background:rgba(255,255,255,0.08);color:#C4C4D4;align-self:flex-start;}
-        .chat-out{background:linear-gradient(135deg,#6B4FD8,#4F46E5);color:#fff;align-self:flex-end;border-radius:14px 14px 4px 14px;}
-
-        /* scroll arrow */
-        .scroll-arrow{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);z-index:1;display:flex;flex-direction:column;align-items:center;gap:4px;animation:arrowBounce 2s ease-in-out infinite;opacity:0.5;}
-        @keyframes arrowBounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(8px)}}
-
-        /* ── REVEAL ── */
-        .reveal{opacity:0;transform:translateY(30px);transition:opacity 0.65s ease,transform 0.65s ease;}
-        .reveal.visible{opacity:1;transform:translateY(0);}
-        .rd1{transition-delay:0.1s}.rd2{transition-delay:0.2s}.rd3{transition-delay:0.3s}.rd4{transition-delay:0.4s}.rd5{transition-delay:0.5s}
-
-        /* ── SECTION COMMON ── */
-        .sec-pad{padding:110px 48px;}
-        .sec-dark{background:#080810;}
-        .sec-mid{background:#0d0d1a;}
-        .sec-light{background:#F8FAFC;color:#0F172A;}
-        .sec-light .sec-tag{color:#6B4FD8;background:rgba(107,79,216,0.08);}
-        .sec-light .sec-h{color:#0F172A;}
-        .sec-light .sec-sub{color:#64748B;}
-        .sec-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:#A78BFA;background:rgba(167,139,250,0.12);padding:6px 14px;border-radius:100px;margin-bottom:16px;}
-        .sec-h{font-family:'Syne',sans-serif;font-size:clamp(30px,5vw,54px);font-weight:800;letter-spacing:-1.5px;color:#F8FAFC;line-height:1.05;margin-bottom:16px;}
-        .sec-sub{font-size:17px;color:#64748B;max-width:560px;margin:0 auto 60px;line-height:1.6;}
-        .sec-center{text-align:center;}
-        .max{max-width:1200px;margin:0 auto;}
-
-        /* ── STATS ── */
-        #stats{background:linear-gradient(135deg,#0d0d1a 0%,#120d20 50%,#0d1a14 100%);padding:100px 48px;position:relative;overflow:hidden;}
-        #stats::before{content:'';position:absolute;inset:0;opacity:0.06;background:radial-gradient(ellipse 60% 80% at 20% 50%,#60A5FA 0%,transparent 60%),radial-gradient(ellipse 60% 80% at 80% 50%,#A78BFA 0%,transparent 60%);pointer-events:none;}
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);max-width:1000px;margin:0 auto;position:relative;z-index:1;}
-        .stat-item{text-align:center;padding:48px 24px;border-right:1px solid rgba(255,255,255,0.05);}
-        .stat-item:last-child{border-right:none;}
-        .stat-val{font-family:'Syne',sans-serif;font-size:clamp(44px,6.5vw,80px);font-weight:800;letter-spacing:-2px;line-height:1;background:linear-gradient(135deg,#93C5FD,#C4B5FD,#6EE7B7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px;}
-        .stat-label{font-size:15px;color:#64748B;font-weight:500;line-height:1.5;white-space:pre-line;}
-
-        /* ── FEATURES ── */
-        #funciones{padding:110px 48px;background:#F8FAFC;color:#0F172A;}
-        .feat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1200px;margin:0 auto;}
-        .feat-card{
-          background:#fff;border-radius:22px;padding:26px;
-          border:1.5px solid rgba(0,0,0,0.06);transition:all 0.3s;cursor:default;
-          position:relative;overflow:hidden;
+        .kh-blob-1 { width:560px; height:560px; background:#D4C5F9; top:-140px; right:-120px; animation:blobA 14s ease-in-out infinite; }
+        .kh-blob-2 { width:440px; height:440px; background:#B8D8F8; bottom:-80px; left:-100px; animation:blobB 17s ease-in-out infinite; }
+        .kh-blob-3 { width:320px; height:320px; background:#B8EDD4; top:45%; left:42%; animation:blobC 11s ease-in-out infinite; }
+        .kh-hero-inner {
+          max-width:820px; margin:0 auto;
+          padding: clamp(56px,10vw,120px) 24px;
+          text-align:center; position:relative; z-index:1;
         }
-        .feat-card::after{content:'';position:absolute;inset:0;border-radius:22px;opacity:0;transition:opacity 0.3s;pointer-events:none;}
-        .feat-card:hover{transform:translateY(-6px);box-shadow:0 20px 60px rgba(0,0,0,0.1);}
-        .feat-card:hover::after{opacity:1;}
-        .feat-icon{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:18px;transition:transform 0.3s;}
-        .feat-card:hover .feat-icon{transform:scale(1.1) rotate(-5deg);}
-        .feat-title{font-size:15px;font-weight:700;color:#0F172A;margin-bottom:8px;}
-        .feat-desc{font-size:13px;color:#64748B;line-height:1.6;}
+        .kh-badge {
+          display:inline-flex; align-items:center; gap:8px;
+          background: linear-gradient(135deg,rgba(212,197,249,0.45),rgba(184,216,248,0.45));
+          border:1px solid rgba(124,58,237,0.22);
+          color:#6D28D9; font-size:clamp(12px,2vw,14px); font-weight:700;
+          padding:8px 20px; border-radius:999px; margin-bottom:28px;
+          animation: slideDown 0.8s ease, badgePulse 3s ease-in-out 1.5s infinite;
+          letter-spacing:0.3px;
+        }
+        .kh-h1 {
+          font-family:'Syne',sans-serif;
+          font-size:clamp(2.4rem,7.5vw,5.2rem);
+          font-weight:800; color:#111827;
+          line-height:1.08; letter-spacing:-2.5px;
+          margin-bottom:20px;
+        }
+        .kh-h1 mark {
+          background: linear-gradient(135deg,#7C3AED,#4F46E5,#0EA5E9);
+          -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+          background-clip:text; font-style:normal;
+        }
+        .kh-sub {
+          font-size:clamp(1rem,2.6vw,1.2rem); color:#6B7280;
+          line-height:1.75; max-width:580px; margin:0 auto 36px;
+          font-weight:500;
+        }
+        .kh-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:44px; }
+        .kh-btn-p {
+          font-size:clamp(14px,2vw,16px); font-weight:700; color:#fff;
+          background:linear-gradient(135deg,#7C3AED,#4F46E5);
+          padding:16px 34px; border-radius:999px; border:none; cursor:pointer;
+          transition:transform 0.2s,box-shadow 0.2s;
+        }
+        .kh-btn-p:hover { transform:translateY(-2px); box-shadow:0 10px 32px rgba(124,58,237,0.42); }
+        .kh-btn-s {
+          font-size:clamp(14px,2vw,16px); font-weight:700; color:#374151;
+          background:#fff; border:2px solid #E5E7EB;
+          padding:16px 34px; border-radius:999px; cursor:pointer;
+          transition:border-color 0.2s,transform 0.2s,box-shadow 0.2s;
+        }
+        .kh-btn-s:hover { border-color:#D4C5F9; transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.08); }
+        .kh-counter {
+          display:inline-flex; align-items:center; gap:8px;
+          background:#F9FAFB; border:1px solid #E5E7EB;
+          border-radius:999px; padding:10px 22px;
+          font-size:14px; color:#6B7280; font-weight:500;
+        }
+        .kh-counter strong { color:#7C3AED; font-weight:800; font-size:16px; }
+        .kh-floats { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+        .kh-float {
+          position:absolute; font-size:clamp(1.5rem,3vw,2.2rem);
+          animation:floatUp 4s ease-in-out infinite; opacity:0.65;
+        }
 
-        /* ── PARA QUIÉN ── */
-        #para-quien{padding:110px 48px;background:#0d0d1a;}
-        .quien-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:900px;margin:0 auto;}
-        .quien-card{
-          display:flex;align-items:center;gap:16px;padding:22px 24px;
-          border-radius:20px;background:rgba(255,255,255,0.04);
-          border:1.5px solid rgba(255,255,255,0.07);
-          transition:all 0.25s;cursor:default;
+        /* ── Section commons ── */
+        .kh-sec { padding: clamp(64px,10vw,100px) 24px; }
+        .kh-wrap { max-width:1200px; margin:0 auto; }
+        .kh-tag {
+          display:inline-block; font-size:11px; font-weight:700;
+          letter-spacing:1.8px; text-transform:uppercase;
+          padding:6px 14px; border-radius:999px; margin-bottom:14px;
         }
-        .quien-card:hover{
-          background:rgba(212,197,249,0.08);border-color:rgba(212,197,249,0.25);
-          transform:translateY(-3px);box-shadow:0 12px 40px rgba(107,79,216,0.12);
+        .kh-tag-purple { color:#7C3AED; background:rgba(124,58,237,0.09); border:1px solid rgba(124,58,237,0.18); }
+        .kh-tag-light  { color:#A78BFA; background:rgba(167,139,250,0.14); border:1px solid rgba(167,139,250,0.28); }
+        .kh-tag-green  { color:#4ADE80; background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.2); }
+        .kh-h2 {
+          font-family:'Syne',sans-serif;
+          font-size:clamp(1.8rem,4vw,3rem);
+          font-weight:800; letter-spacing:-1px; line-height:1.15;
+          margin-bottom:10px;
         }
-        .quien-icon{font-size:34px;flex-shrink:0;transition:transform 0.3s;}
-        .quien-card:hover .quien-icon{animation:iconBounce 0.6s ease;}
-        @keyframes iconBounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}70%{transform:translateY(-4px)}}
-        .quien-name{font-size:15px;font-weight:700;color:#C4C4D4;}
-        .quien-card:hover .quien-name{color:#F1F5F9;}
+        .kh-h2-dark { color:#fff; }
+        .kh-h2-light { color:#111827; }
+        .kh-p { font-size:clamp(14px,2vw,16px); line-height:1.75; max-width:580px; }
+        .kh-p-dark  { color:#94A3B8; }
+        .kh-p-light { color:#6B7280; }
+        .kh-center { text-align:center; }
+        .kh-center .kh-p { margin:0 auto; }
 
-        /* ── DEMO VISUAL ── */
-        #demo{padding:110px 48px;background:#F8FAFC;color:#0F172A;}
-        .demo-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;}
-        .demo-steps{display:flex;flex-direction:column;gap:32px;}
-        .step{display:flex;align-items:flex-start;gap:18px;}
-        .step-num{width:42px;height:42px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,#6B4FD8,#4F46E5);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#fff;}
-        .step-title{font-size:16px;font-weight:700;color:#0F172A;margin-bottom:4px;}
-        .step-desc{font-size:14px;color:#64748B;line-height:1.55;}
-        .phone-wrap{display:flex;justify-content:center;position:relative;}
-        .phone{
-          width:280px;background:#1a1a2e;border-radius:36px;padding:16px 12px;
-          box-shadow:0 40px 100px rgba(0,0,0,0.25),0 0 0 1px rgba(255,255,255,0.06);
-          position:relative;overflow:hidden;
+        /* ── Problemas (dark) ── */
+        .kh-problemas { background:#0F172A; }
+        .kh-prob-grid {
+          display:grid; grid-template-columns:repeat(3,1fr);
+          gap:20px; margin-top:48px;
         }
-        .phone-bar{display:flex;justify-content:space-between;align-items:center;padding:0 8px 14px;font-size:11px;color:#475569;}
-        .phone-header{text-align:center;padding:10px 0 16px;border-bottom:1px solid rgba(255,255,255,0.06);}
-        .phone-header-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#F1F5F9;}
-        .phone-header-sub{font-size:11px;color:#475569;margin-top:2px;}
-        .phone-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:12px 14px;margin:8px 0;display:flex;align-items:center;gap:12px;transition:all 0.3s;}
-        .phone-card:hover{background:rgba(212,197,249,0.08);border-color:rgba(212,197,249,0.2);}
-        .phone-av{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
-        .phone-biz-name{font-size:13px;font-weight:700;color:#F1F5F9;}
-        .phone-biz-meta{font-size:11px;color:#475569;margin-top:1px;}
-        .phone-btn{margin-left:auto;padding:5px 12px;border-radius:8px;background:linear-gradient(135deg,#6B4FD8,#4F46E5);color:#fff;font-size:11px;font-weight:700;white-space:nowrap;}
-        .phone-ping{width:8px;height:8px;background:#4ADE80;border-radius:50%;animation:ping 2s ease-in-out infinite;}
-        @keyframes ping{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.6)}70%{box-shadow:0 0 0 8px rgba(74,222,128,0)}}
+        .kh-prob-card {
+          background:rgba(255,255,255,0.04);
+          border:1px solid rgba(255,255,255,0.07);
+          border-radius:20px; padding:30px 26px;
+          transition:background 0.3s,transform 0.2s;
+        }
+        .kh-prob-card:hover { background:rgba(255,255,255,0.07); transform:translateY(-2px); }
+        .kh-prob-ico { font-size:2.2rem; margin-bottom:14px; }
+        .kh-prob-t {
+          font-family:'Syne',sans-serif;
+          font-size:clamp(1rem,1.8vw,1.15rem);
+          font-weight:700; color:#F1F5F9; margin-bottom:10px;
+        }
+        .kh-prob-d { font-size:14px; color:#94A3B8; line-height:1.65; margin-bottom:18px; }
+        .kh-sol {
+          display:inline-flex; align-items:center; gap:7px;
+          font-size:12px; font-weight:700; color:#4ADE80;
+          background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.22);
+          padding:7px 14px; border-radius:999px;
+        }
+        @media(max-width:768px) {
+          .kh-prob-grid { grid-template-columns:1fr; }
+        }
 
-        /* ── PLANES ── */
-        #planes{padding:110px 48px;background:#080810;}
-        .planes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;max-width:1200px;margin:0 auto;align-items:start;}
-        .plan-card{
-          background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.08);
-          border-radius:26px;padding:30px 24px;transition:all 0.3s;position:relative;
-          display:flex;flex-direction:column;gap:20px;backdrop-filter:blur(4px);
+        /* ── Features ── */
+        .kh-features { background:#fff; }
+        .kh-feat-grid {
+          display:grid; grid-template-columns:repeat(3,1fr);
+          gap:18px; margin-top:48px;
         }
-        .plan-card:hover{transform:translateY(-6px);background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.15);}
-        .plan-card.popular{border-color:rgba(212,197,249,0.35);background:rgba(212,197,249,0.05);}
-        .plan-card.popular:hover{border-color:rgba(212,197,249,0.5);}
-        .plan-glow{
-          position:absolute;inset:-2px;border-radius:27px;pointer-events:none;
-          background:linear-gradient(135deg,rgba(107,79,216,0.4),rgba(167,139,250,0.2),rgba(107,79,216,0.4));
-          background-size:300% 300%;opacity:0;transition:opacity 0.3s;
-          animation:glowPulse 3s ease infinite;
+        .kh-feat-card {
+          background:#F9FAFB; border:1px solid #EAECEF;
+          border-radius:20px; padding:26px 24px;
+          transition:transform 0.22s,box-shadow 0.22s;
         }
-        .plan-card.popular .plan-glow{opacity:1;}
-        @keyframes glowPulse{0%,100%{background-position:0% 50%;filter:blur(6px)}50%{background-position:100% 50%;filter:blur(10px)}}
-        .popular-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#6B4FD8,#A78BFA);color:#fff;font-size:11px;font-weight:800;padding:4px 18px;border-radius:100px;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap;box-shadow:0 4px 16px rgba(107,79,216,0.4);}
-        .plan-emoji-wrap{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;}
-        .plan-name{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;color:#F1F5F9;}
-        .plan-badge-tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;margin-top:4px;}
-        .plan-price-num{font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#F1F5F9;}
-        .plan-price-per{font-size:14px;color:#475569;}
-        .plan-divider{height:1px;background:rgba(255,255,255,0.07);}
-        .plan-feat{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:#94A3B8;line-height:1.45;margin-bottom:8px;}
-        .plan-feat-ck{flex-shrink:0;width:17px;height:17px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;margin-top:1px;}
-        .plan-cta{
-          display:block;text-align:center;padding:13px;border-radius:14px;
-          font-size:14px;font-weight:700;transition:all 0.2s;cursor:pointer;font-family:inherit;
+        .kh-feat-card:hover { transform:translateY(-5px); box-shadow:0 14px 44px rgba(0,0,0,0.08); }
+        .kh-feat-ico {
+          width:50px; height:50px; border-radius:14px;
+          display:flex; align-items:center; justify-content:center;
+          font-size:1.4rem; margin-bottom:14px; flex-shrink:0;
         }
-        .plan-note{font-size:11px;color:#334155;text-align:center;margin-top:-10px;}
-
-        /* Compare table */
-        .cmp-wrap{max-width:1200px;margin:64px auto 0;overflow-x:auto;}
-        .cmp-table{width:100%;border-collapse:collapse;min-width:580px;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);}
-        .cmp-table thead th{padding:15px 12px;font-size:13px;font-weight:800;color:#94A3B8;background:rgba(255,255,255,0.04);text-align:center;border-bottom:1px solid rgba(255,255,255,0.07);}
-        .cmp-table thead th:first-child{text-align:left;padding-left:20px;}
-        .cmp-table tbody td:first-child{text-align:left;padding-left:20px;font-size:13px;color:#64748B;font-weight:500;padding-top:11px;padding-bottom:11px;}
-        .cmp-th-pop{color:#C4B5FD !important;background:rgba(212,197,249,0.08) !important;}
-        .beta-banner{display:inline-flex;align-items:center;gap:10px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);color:#4ADE80;font-size:13px;font-weight:600;padding:10px 20px;border-radius:12px;}
-
-        /* ── CTA FINAL ── */
-        #cta-final{
-          padding:130px 48px;text-align:center;position:relative;overflow:hidden;
-          background:linear-gradient(160deg,#0a0420 0%,#080810 40%,#02100a 100%);
+        .kh-feat-t {
+          font-family:'Syne',sans-serif;
+          font-size:clamp(0.9rem,1.6vw,1rem);
+          font-weight:700; color:#111827; margin-bottom:7px;
         }
-        #cta-final::before{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,0.05) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;}
-        .cta-blob-1{position:absolute;width:500px;height:500px;top:-150px;left:-100px;background:radial-gradient(circle,rgba(107,79,216,0.2) 0%,transparent 70%);filter:blur(60px);animation:blobFloat1 12s ease-in-out infinite;pointer-events:none;}
-        .cta-blob-2{position:absolute;width:400px;height:400px;bottom:-100px;right:-50px;background:radial-gradient(circle,rgba(74,222,128,0.12) 0%,transparent 70%);filter:blur(60px);animation:blobFloat2 10s ease-in-out infinite;pointer-events:none;}
-        #cta-final h2{font-family:'Syne',sans-serif;font-size:clamp(34px,6vw,72px);font-weight:800;letter-spacing:-2px;color:#F8FAFC;margin-bottom:20px;line-height:1.0;position:relative;z-index:1;}
-        #cta-final p{font-size:19px;color:#64748B;margin-bottom:52px;position:relative;z-index:1;}
-        .cta-final-btn{
-          display:inline-flex;align-items:center;gap:10px;
-          background:linear-gradient(135deg,#6B4FD8,#4F46E5);color:#fff;
-          font-size:18px;font-weight:700;padding:20px 52px;border-radius:20px;
-          transition:all 0.25s;position:relative;z-index:1;
-          animation:ctaGlow 3s ease-in-out infinite;
-        }
-        .cta-final-btn:hover{transform:translateY(-4px);filter:brightness(1.1);}
-        .trust-row{margin-top:52px;display:flex;gap:32px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1;}
-        .trust-item{display:flex;align-items:center;gap:8px;color:#475569;font-size:14px;font-weight:500;}
-        .trust-check{color:#4ADE80;font-weight:800;}
-
-        /* ── FOOTER ── */
-        footer{background:#060608;padding:60px 48px 42px;border-top:1px solid rgba(255,255,255,0.05);}
-        .footer-inner{max-width:1200px;margin:0 auto;}
-        .footer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:48px;margin-bottom:44px;flex-wrap:wrap;}
-        .footer-logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:#F8FAFC;letter-spacing:-0.4px;}
-        .footer-tagline{font-size:13px;color:#334155;margin-top:8px;max-width:220px;line-height:1.5;}
-        .footer-col-title{font-size:11px;font-weight:800;color:#334155;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:14px;}
-        .footer-links{display:flex;flex-direction:column;gap:9px;}
-        .footer-links a{color:#475569;font-size:14px;transition:color 0.15s;}
-        .footer-links a:hover{color:#94A3B8;}
-        .footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid rgba(255,255,255,0.05);flex-wrap:wrap;gap:14px;}
-        .footer-copy{font-size:13px;color:#334155;}
-        .footer-social{display:flex;gap:12px;align-items:center;}
-        .social-link{display:inline-flex;align-items:center;gap:8px;color:#475569;font-size:13px;font-weight:500;transition:all 0.15s;padding:7px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.07);}
-        .social-link:hover{color:#94A3B8;border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.03);}
-
-        /* ── RESPONSIVE ── */
-        @media(max-width:1100px){
-          .feat-grid{grid-template-columns:repeat(3,1fr);}
-          .planes-grid{grid-template-columns:repeat(2,1fr);}
-          .quien-grid{grid-template-columns:repeat(3,1fr);}
-          .stats-grid{grid-template-columns:repeat(2,1fr);}
-          .stat-item{border-right:none;border-bottom:1px solid rgba(255,255,255,0.05);}
-          .stat-item:nth-child(odd){border-right:1px solid rgba(255,255,255,0.05);}
-          .stat-item:nth-child(3),.stat-item:nth-child(4){border-bottom:none;}
-        }
-        @media(max-width:900px){
-          #navbar{padding:0 24px;}
-          .nav-links,.nav-actions .btn-ghost{display:none;}
-          .hamburger{display:flex;}
-          .sec-pad,.sec-pad{padding:80px 24px;}
-          #hero{padding:120px 24px 80px;}
-          #funciones,#para-quien,#demo,#planes,#cta-final,#stats{padding:80px 24px;}
-          .demo-inner{grid-template-columns:1fr;gap:48px;}
-          .planes-grid{grid-template-columns:1fr 1fr;}
-          footer{padding:48px 24px 32px;}
-          .footer-top{flex-direction:column;gap:32px;}
-        }
-        @media(max-width:640px){
-          .nav-actions .btn-primary{display:none;}
-          #hero{padding:104px 16px 60px;}
-          .hero-title{font-size:clamp(34px,9vw,48px);letter-spacing:-1.5px;}
-          .hero-sub{font-size:15px;}
-          .hero-cta{font-size:15px;padding:15px 32px;margin-bottom:56px;width:100%;max-width:320px;justify-content:center;}
-          .hero-preview{display:none;}
-          .stats-grid{grid-template-columns:repeat(2,1fr);}
-          .demo-inner{gap:36px;}
-          .phone{width:240px;}
-          #cta-final h2{font-size:clamp(26px,7vw,42px);}
-          .cta-final-btn{font-size:15px;padding:16px 32px;width:100%;max-width:300px;justify-content:center;}
-          .trust-row{gap:16px;}
-          .footer-bottom{flex-direction:column;text-align:center;}
-          #stats,#demo,#cta-final{padding:64px 16px;}
-          footer{padding:40px 16px 28px;}
-
-          /* ── FUNCIONES — carrusel horizontal ── */
-          #funciones{padding:64px 0 80px;}
-          #funciones .sec-center{padding:0 16px;margin-bottom:40px;}
-          .feat-grid{
-            display:flex !important;overflow-x:auto;scroll-snap-type:x mandatory;
-            gap:14px;padding:4px 20px 20px;scrollbar-width:none;
-            -webkit-overflow-scrolling:touch;grid-template-columns:unset;
-            max-width:unset;width:100%;
+        .kh-feat-d { font-size:13px; color:#6B7280; line-height:1.6; }
+        @media(max-width:768px) {
+          .kh-feat-grid {
+            display:flex !important;
+            overflow-x:auto; scroll-snap-type:x mandatory;
+            gap:14px; padding:4px 24px 20px;
+            scrollbar-width:none; -webkit-overflow-scrolling:touch;
+            grid-template-columns:unset !important;
+            margin-left:-24px; margin-right:-24px; margin-top:32px;
           }
-          .feat-grid::-webkit-scrollbar{display:none;}
-          .feat-card{flex-shrink:0;width:260px;scroll-snap-align:start;}
-
-          /* ── PARA QUIÉN — carrusel horizontal ── */
-          #para-quien{padding:64px 0 80px;}
-          #para-quien .sec-center{padding:0 16px;margin-bottom:40px;}
-          .quien-grid{
-            display:flex !important;overflow-x:auto;scroll-snap-type:x mandatory;
-            gap:10px;padding:4px 20px 16px;scrollbar-width:none;
-            -webkit-overflow-scrolling:touch;grid-template-columns:unset;
-            max-width:unset;width:100%;
-          }
-          .quien-grid::-webkit-scrollbar{display:none;}
-          .quien-card{flex-shrink:0;width:195px;scroll-snap-align:start;}
-
-          /* ── PLANES — carrusel horizontal ── */
-          #planes{padding:64px 0 80px;}
-          #planes .sec-center{padding:0 16px;margin-bottom:40px;}
-          .planes-grid{
-            display:flex !important;overflow-x:auto;scroll-snap-type:x mandatory;
-            gap:16px;padding:4px 20px 24px;scrollbar-width:none;
-            -webkit-overflow-scrolling:touch;grid-template-columns:unset;
-            max-width:unset;width:100%;
-          }
-          .planes-grid::-webkit-scrollbar{display:none;}
-          .plan-card{flex-shrink:0;width:min(calc(100vw - 48px),300px);scroll-snap-align:center;}
-          .cmp-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 4px;}
+          .kh-feat-grid::-webkit-scrollbar { display:none; }
+          .kh-feat-card { flex-shrink:0; width:260px; scroll-snap-align:start; }
         }
-        @media(max-width:420px){
-          #navbar{padding:0 12px;}
-          .hero-title{font-size:32px;letter-spacing:-1px;}
-          .feat-card{width:240px;}
-          .quien-card{width:180px;}
-          .plan-card{width:calc(100vw - 40px);}
+
+        /* ── Números ── */
+        .kh-nums { background:#F8FAFC; }
+        .kh-num-grid {
+          display:grid; grid-template-columns:repeat(4,1fr);
+          gap:16px; margin-top:48px;
+        }
+        .kh-num-card { border-radius:20px; padding:30px 20px; text-align:center; }
+        .kh-num-ico { font-size:2rem; margin-bottom:10px; }
+        .kh-num-n {
+          font-family:'Syne',sans-serif;
+          font-size:clamp(2rem,4.5vw,3.2rem);
+          font-weight:800; color:#111827; letter-spacing:-2px;
+        }
+        .kh-num-l { font-size:clamp(12px,1.8vw,14px); color:#6B7280; font-weight:600; margin-top:6px; }
+        @media(max-width:640px) {
+          .kh-num-grid { grid-template-columns:repeat(2,1fr); }
+        }
+
+        /* ── Para quién ── */
+        .kh-quien { background:#fff; }
+        .kh-q-grid {
+          display:grid; grid-template-columns:repeat(6,1fr);
+          gap:14px; margin-top:48px;
+        }
+        .kh-q-card {
+          border-radius:16px; padding:22px 12px;
+          text-align:center; border:2px solid #E5E7EB;
+          transition:border-color 0.2s,transform 0.2s,box-shadow 0.2s;
+          cursor:default;
+        }
+        .kh-q-card:hover { border-color:#D4C5F9; transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,0.07); }
+        .kh-q-ico { font-size:1.9rem; margin-bottom:8px; }
+        .kh-q-name { font-size:11px; font-weight:700; color:#374151; line-height:1.35; }
+        @media(max-width:900px) { .kh-q-grid { grid-template-columns:repeat(3,1fr); } }
+        @media(max-width:600px) {
+          .kh-q-grid {
+            display:flex !important;
+            overflow-x:auto; scroll-snap-type:x mandatory;
+            gap:12px; padding:4px 24px 20px;
+            scrollbar-width:none; -webkit-overflow-scrolling:touch;
+            grid-template-columns:unset !important;
+            margin-left:-24px; margin-right:-24px; margin-top:32px;
+          }
+          .kh-q-grid::-webkit-scrollbar { display:none; }
+          .kh-q-card { flex-shrink:0; width:130px; scroll-snap-align:start; }
+        }
+
+        /* ── Planes ── */
+        .kh-planes { background:#F8FAFC; }
+        .kh-plan-grid {
+          display:grid; grid-template-columns:repeat(4,1fr);
+          gap:18px; margin-top:48px;
+        }
+        .kh-plan-card {
+          border-radius:24px; padding:28px 22px;
+          background:#fff; border:2px solid #E5E7EB;
+          position:relative; transition:transform 0.22s,box-shadow 0.22s;
+          display:flex; flex-direction:column;
+        }
+        .kh-plan-card.popular { border-color:#D4C5F9; }
+        .kh-plan-card:hover { transform:translateY(-5px); box-shadow:0 14px 44px rgba(0,0,0,0.09); }
+        .kh-plan-pop-badge {
+          position:absolute; top:-13px; left:50%; transform:translateX(-50%);
+          font-size:11px; font-weight:700;
+          padding:5px 14px; border-radius:999px; white-space:nowrap;
+        }
+        .kh-plan-emoji { font-size:1.9rem; margin-bottom:10px; }
+        .kh-plan-name {
+          font-family:'Syne',sans-serif;
+          font-size:1.2rem; font-weight:800; color:#111827; margin-bottom:4px;
+        }
+        .kh-plan-price {
+          font-family:'Syne',sans-serif;
+          font-size:clamp(1.8rem,3vw,2.2rem);
+          font-weight:800; color:#111827; letter-spacing:-1px; line-height:1;
+        }
+        .kh-plan-price sup { font-size:0.6em; font-weight:700; vertical-align:super; }
+        .kh-plan-price sub { font-size:13px; font-weight:500; color:#6B7280; letter-spacing:0; vertical-align:baseline; }
+        .kh-plan-sep { height:1px; background:#E5E7EB; margin:18px 0; }
+        .kh-plan-feats { display:flex; flex-direction:column; gap:9px; flex:1; margin-bottom:20px; }
+        .kh-plan-feat { font-size:12.5px; color:#374151; display:flex; align-items:flex-start; gap:7px; line-height:1.45; }
+        .kh-plan-feat-ok { color:#4ADE80; font-weight:800; flex-shrink:0; margin-top:1px; }
+        .kh-plan-cta {
+          width:100%; padding:11px; border-radius:12px;
+          border:2px solid #E5E7EB; background:#F9FAFB;
+          font-size:13px; font-weight:700; color:#9CA3AF;
+          cursor:not-allowed; display:flex; align-items:center; justify-content:center; gap:5px;
+        }
+        @media(max-width:960px) { .kh-plan-grid { grid-template-columns:repeat(2,1fr); } }
+        @media(max-width:580px) {
+          .kh-plan-grid {
+            display:flex !important;
+            overflow-x:auto; scroll-snap-type:x mandatory;
+            gap:16px; padding:20px 24px 24px;
+            scrollbar-width:none; -webkit-overflow-scrolling:touch;
+            grid-template-columns:unset !important;
+            margin-left:-24px; margin-right:-24px; margin-top:28px;
+          }
+          .kh-plan-grid::-webkit-scrollbar { display:none; }
+          .kh-plan-card { flex-shrink:0; width:min(calc(100vw - 48px),290px); scroll-snap-align:center; }
+        }
+
+        /* ── Waitlist ── */
+        .kh-waitlist {
+          background:linear-gradient(135deg,#EDE8FD 0%,#E8F3FD 50%,#E8FDF0 100%);
+          padding: clamp(64px,10vw,100px) 24px;
+        }
+        .kh-wl-inner { max-width:640px; margin:0 auto; text-align:center; }
+        .kh-wl-card {
+          background:#fff; border-radius:24px;
+          padding:clamp(28px,5vw,48px);
+          box-shadow:0 24px 64px rgba(0,0,0,0.09);
+          margin-top:40px; text-align:left;
+        }
+        .kh-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .kh-input {
+          width:100%; padding:14px 16px;
+          border:2px solid #E5E7EB; border-radius:12px;
+          font-size:15px; font-family:'Plus Jakarta Sans',sans-serif;
+          color:#111827; background:#F9FAFB;
+          transition:border-color 0.2s, background 0.2s; outline:none;
+          -webkit-appearance:none;
+        }
+        .kh-input:focus { border-color:#7C3AED; background:#fff; }
+        .kh-input-full { grid-column:1 / -1; }
+        .kh-submit {
+          grid-column:1 / -1; width:100%;
+          padding:16px; border-radius:12px; border:none;
+          background:linear-gradient(135deg,#7C3AED,#4F46E5);
+          color:#fff; font-family:'Plus Jakarta Sans',sans-serif;
+          font-size:16px; font-weight:700; cursor:pointer;
+          transition:transform 0.2s,box-shadow 0.2s;
+          margin-top:4px;
+        }
+        .kh-submit:hover { transform:translateY(-2px); box-shadow:0 10px 32px rgba(124,58,237,0.42); }
+        .kh-submit:disabled { opacity:0.7; cursor:not-allowed; transform:none; box-shadow:none; }
+        .kh-form-err { color:#EF4444; font-size:13px; margin-top:8px; }
+        .kh-success { text-align:center; padding:32px 16px; }
+        .kh-success-ico { font-size:3rem; margin-bottom:14px; }
+        .kh-success-t {
+          font-family:'Syne',sans-serif;
+          font-size:1.4rem; font-weight:800; color:#111827; margin-bottom:8px;
+        }
+        .kh-success-p { font-size:15px; color:#6B7280; }
+        .kh-wl-counter {
+          display:inline-flex; align-items:center; gap:7px;
+          font-size:14px; color:#6B7280; margin-top:20px; font-weight:500;
+        }
+        .kh-wl-counter strong { color:#7C3AED; font-weight:800; font-size:16px; }
+        @media(max-width:480px) {
+          .kh-form-grid { grid-template-columns:1fr; }
+          .kh-input-full { grid-column:1; }
+          .kh-submit { grid-column:1; }
+        }
+
+        /* ── Para clientes ── */
+        .kh-clients { background:#0F172A; padding:clamp(56px,8vw,88px) 24px; text-align:center; }
+
+        /* ── Footer ── */
+        .kh-footer { background:#080F1A; padding:clamp(40px,6vw,64px) 24px 28px; }
+        .kh-footer-wrap { max-width:1200px; margin:0 auto; }
+        .kh-footer-top {
+          display:grid; grid-template-columns:1fr auto;
+          gap:40px; align-items:start;
+          border-bottom:1px solid rgba(255,255,255,0.06);
+          padding-bottom:28px; margin-bottom:20px;
+        }
+        .kh-footer-logo { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:#fff; margin-bottom:6px; }
+        .kh-footer-logo em { font-style:normal; color:#A78BFA; }
+        .kh-footer-tag { font-size:13px; color:#475569; font-style:italic; }
+        .kh-footer-links { display:flex; flex-direction:column; gap:10px; align-items:flex-end; }
+        .kh-footer-a {
+          display:flex; align-items:center; gap:8px;
+          font-size:13px; color:#64748B; text-decoration:none;
+          transition:color 0.2s;
+        }
+        .kh-footer-a:hover { color:#94A3B8; }
+        .kh-footer-bot {
+          display:flex; justify-content:space-between;
+          align-items:center; flex-wrap:wrap; gap:12px;
+        }
+        .kh-footer-copy { font-size:12px; color:#334155; }
+        .kh-footer-legal { display:flex; gap:18px; flex-wrap:wrap; }
+        .kh-footer-legal a { font-size:12px; color:#334155; text-decoration:none; transition:color 0.2s; }
+        .kh-footer-legal a:hover { color:#64748B; }
+        @media(max-width:600px) {
+          .kh-footer-top { grid-template-columns:1fr; }
+          .kh-footer-links { align-items:flex-start; }
         }
       `}</style>
 
-      {/* ── SCRIPTS ── */}
-      <script dangerouslySetInnerHTML={{ __html: `
-        (function(){
-          // Navbar scroll
-          function initNav(){
-            var nav=document.getElementById('navbar');
-            window.addEventListener('scroll',function(){if(nav)nav.classList.toggle('scrolled',window.scrollY>30);},{passive:true});
-          }
-          // Reveal on scroll
-          function initReveal(){
-            var obs=new IntersectionObserver(function(entries){
-              entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});
-            },{threshold:0.12});
-            document.querySelectorAll('.reveal').forEach(function(el){obs.observe(el);});
-          }
-          // Hamburger
-          function initMenu(){
-            document.addEventListener('click',function(e){
-              var hb=e.target.closest('#hamburger');
-              var mm=document.getElementById('mobile-menu');
-              if(!mm)return;
-              if(hb){mm.classList.toggle('open');hb.classList.toggle('open');}
-              else if(!e.target.closest('#mobile-menu')){
-                mm.classList.remove('open');
-                var h=document.getElementById('hamburger');
-                if(h)h.classList.remove('open');
-              }
-            });
-            document.querySelectorAll('#mobile-menu a').forEach(function(a){
-              a.addEventListener('click',function(){
-                var mm=document.getElementById('mobile-menu');
-                if(mm)mm.classList.remove('open');
-                var h=document.getElementById('hamburger');
-                if(h)h.classList.remove('open');
-              });
-            });
-          }
-          // Counters
-          function animateCounter(el,target,suffix,prefix,duration){
-            var start=0,startTime=null;
-            function step(ts){
-              if(!startTime)startTime=ts;
-              var prog=Math.min((ts-startTime)/duration,1);
-              var ease=1-Math.pow(1-prog,4);
-              var current=Math.round(ease*target);
-              el.textContent=(prefix||'')+current.toLocaleString('es-ES')+(suffix||'');
-              if(prog<1)requestAnimationFrame(step);
-              else el.textContent=(prefix||'')+target.toLocaleString('es-ES')+(suffix||'');
-            }
-            requestAnimationFrame(step);
-          }
-          function initCounters(){
-            var items=document.querySelectorAll('.stat-val[data-target]');
-            if(!items.length)return;
-            var obs=new IntersectionObserver(function(entries){
-              entries.forEach(function(e){
-                if(e.isIntersecting){
-                  var el=e.target;
-                  var target=parseInt(el.getAttribute('data-target'));
-                  var suffix=el.getAttribute('data-suffix')||'';
-                  var prefix=el.getAttribute('data-prefix')||'';
-                  animateCounter(el,target,suffix,prefix,2000);
-                  obs.unobserve(el);
-                }
-              });
-            },{threshold:0.5});
-            items.forEach(function(el){obs.observe(el);});
-          }
-          // Scroll planes carousel to Pro card on mobile
-          function initPlanesCarousel(){
-            if(window.innerWidth>640)return;
-            var g=document.querySelector('.planes-grid');
-            if(!g)return;
-            var pro=g.querySelector('.plan-card.popular');
-            if(!pro)return;
-            var scrollLeft=pro.offsetLeft-(g.clientWidth/2)+(pro.offsetWidth/2);
-            g.scrollLeft=Math.max(0,scrollLeft);
-          }
-          if(document.readyState==='loading'){
-            document.addEventListener('DOMContentLoaded',function(){initNav();initReveal();initMenu();initCounters();initPlanesCarousel();});
-          }else{initNav();initReveal();initMenu();initCounters();initPlanesCarousel();}
-        })();
-      ` }} />
+      {/* ────────────────── NAVBAR ────────────────── */}
+      <nav className="kh-nav">
+        <div className="kh-nav-inner">
+          <a className="kh-logo" href="#"><em>Kh</em>epria</a>
 
-      {/* ── NAVBAR ── */}
-      <nav id="navbar">
-        <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 9 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 11, background: 'linear-gradient(135deg,#B8D8F8 0%,#D4C5F9 50%,#B8EDD4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 22 22" fill="none"><path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.4"/><path d="M11 6L16 11L11 16L6 11Z" fill="white" opacity="0.75"/><circle cx="11" cy="11" r="2.2" fill="white"/></svg>
+          <div className="kh-nav-links">
+            <button className="kh-nav-btn" onClick={() => scrollTo('funciones')}>Funciones</button>
+            <button className="kh-nav-btn" onClick={() => scrollTo('quien')}>Para quién</button>
+            <button className="kh-nav-btn" onClick={() => scrollTo('planes')}>Planes</button>
+            <button className="kh-nav-cta" onClick={() => scrollTo('waitlist')}>Unirme a la beta</button>
           </div>
-          <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: '-0.4px', color: '#F8FAFC' }}>Khepria</span>
-        </Link>
 
-        <div className="nav-links">
-          <a href="#funciones">Funciones</a>
-          <a href="#para-quien">Para quién</a>
-          <a href="#planes">Planes</a>
+          <button
+            className="kh-hamburger"
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label="Menú"
+          >
+            <span style={{ transform: menuOpen ? 'rotate(45deg) translate(5px,5px)' : '' }} />
+            <span style={{ opacity: menuOpen ? 0 : 1 }} />
+            <span style={{ transform: menuOpen ? 'rotate(-45deg) translate(5px,-5px)' : '' }} />
+          </button>
         </div>
 
-        <div className="nav-actions">
-          <Link href="/auth" className="btn-ghost">Iniciar sesión</Link>
-          <Link href="/auth" className="btn-primary">Empezar gratis →</Link>
-          <button id="hamburger" className="hamburger" aria-label="Menú">
-            <span /><span /><span />
-          </button>
+        <div className={`kh-mobile${menuOpen ? ' open' : ''}`}>
+          <button className="kh-mobile-btn" onClick={() => scrollTo('funciones')}>Funciones</button>
+          <button className="kh-mobile-btn" onClick={() => scrollTo('quien')}>Para quién</button>
+          <button className="kh-mobile-btn" onClick={() => scrollTo('planes')}>Planes</button>
+          <button className="kh-mobile-cta" onClick={() => scrollTo('waitlist')}>Unirme a la lista de espera</button>
         </div>
       </nav>
 
-      <div id="mobile-menu">
-        <a href="#funciones">Funciones</a>
-        <a href="#para-quien">Para quién</a>
-        <a href="#planes">Planes</a>
-        <Link href="/auth" style={{ color: '#94A3B8', fontWeight: 500 }}>Iniciar sesión</Link>
-        <Link href="/auth" className="mobile-cta">Empezar gratis →</Link>
-      </div>
+      {/* ────────────────── HERO ────────────────── */}
+      <section className="kh-hero">
+        <div className="kh-blob kh-blob-1" />
+        <div className="kh-blob kh-blob-2" />
+        <div className="kh-blob kh-blob-3" />
 
-      <main>
-        {/* ── HERO ── */}
-        <section id="hero">
-          <div className="blob blob-1" />
-          <div className="blob blob-2" />
-          <div className="blob blob-3" />
-          <div className="blob blob-4" />
-          <div className="blob blob-5" />
+        {/* Floating emojis — hidden on very small screens */}
+        <div className="kh-floats" aria-hidden="true">
+          <span className="kh-float" style={{ top: '22%', left: '6%', animationDelay: '0s', animationDuration: '3.8s', fontSize: 'clamp(1.2rem,3vw,2rem)' }}>📅</span>
+          <span className="kh-float" style={{ top: '28%', right: '7%', animationDelay: '1.1s', animationDuration: '4.2s', fontSize: 'clamp(1.2rem,3vw,2rem)' }}>🤖</span>
+          <span className="kh-float" style={{ bottom: '28%', left: '5%', animationDelay: '0.5s', animationDuration: '3.2s', fontSize: 'clamp(1.2rem,3vw,2rem)' }}>💬</span>
+          <span className="kh-float" style={{ bottom: '24%', right: '6%', animationDelay: '1.6s', animationDuration: '4.6s', fontSize: 'clamp(1.2rem,3vw,2rem)' }}>⭐</span>
+        </div>
 
-          {/* floating particles */}
-          {[
-            { top:'20%',left:'12%',size:6,color:'rgba(184,216,248,0.7)',dur:'7s',delay:'0s',op:'0.7' },
-            { top:'60%',left:'7%',size:4,color:'rgba(212,197,249,0.8)',dur:'9s',delay:'1.5s',op:'0.6' },
-            { top:'35%',right:'10%',size:5,color:'rgba(184,237,212,0.7)',dur:'8s',delay:'3s',op:'0.65' },
-            { top:'70%',right:'15%',size:7,color:'rgba(253,233,162,0.6)',dur:'11s',delay:'0.5s',op:'0.5' },
-            { top:'50%',left:'22%',size:3,color:'rgba(251,207,232,0.8)',dur:'6s',delay:'2s',op:'0.6' },
-            { top:'25%',right:'25%',size:4,color:'rgba(184,216,248,0.6)',dur:'10s',delay:'4s',op:'0.55' },
-          ].map((p, i) => (
-            <div key={i} className="particle" style={{
-              top: p.top, left: (p as { left?: string }).left, right: (p as { right?: string }).right,
-              width: p.size, height: p.size, background: p.color,
-              ['--dur' as never]: p.dur, ['--delay' as never]: p.delay, ['--op' as never]: p.op,
-            } as React.CSSProperties} />
-          ))}
-
-          <div className="hero-badge reveal">
-            <span className="badge-pulse" />
-            Ahora en beta — acceso gratuito
+        <div className="kh-hero-inner">
+          <div className="kh-badge">
+            🚀 En desarrollo — Beta próximamente
           </div>
 
-          <h1 className="hero-title reveal rd1">
-            Tu negocio,<br />
-            <span className="hero-grad">reinventado</span><br />
-            con IA
+          <h1 className="kh-h1">
+            La app que tu negocio<br />
+            <mark>estaba esperando</mark>
           </h1>
 
-          <p className="hero-sub reveal rd2">
-            Reservas automáticas, chatbot 24/7, facturación española<br className="br-hide" /> y mucho más. Todo en una sola plataforma.
+          <p className="kh-sub">
+            Reservas automáticas, chatbot IA 24/7, facturación española y mucho más.
+            Estamos construyendo algo grande.
           </p>
 
-          <Link href="/auth" className="hero-cta cta-glow reveal rd3">
-            Empezar gratis →
-          </Link>
+          <div className="kh-btns">
+            <button className="kh-btn-p" onClick={() => scrollTo('waitlist')}>
+              Quiero ser beta tester
+            </button>
+            <button className="kh-btn-s" onClick={() => scrollTo('funciones')}>
+              Ver funciones ↓
+            </button>
+          </div>
 
-          <div className="hero-preview">
-            <div className="preview-card reveal rd2">
-              <div className="pc-icon">📅</div>
-              <div className="pc-label">Reservas hoy</div>
-              <div className="pc-val">12 citas</div>
-              <div className="pc-sub"><span className="pc-green">↑ 4</span> más que ayer</div>
-            </div>
-            <div className="preview-card reveal rd3">
-              <div className="pc-icon">💬</div>
-              <div className="pc-label">Chatbot activo 24/7</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 4 }}>
-                <div className="chat-b chat-in">¿Tenéis hueco mañana a las 5?</div>
-                <div className="chat-b chat-out">¡Sí! Te reservo a las 17:00 ✓</div>
+          <div className="kh-counter">
+            <span>🏢</span>
+            <strong>{displayCount}</strong>
+            <span>negocios ya en lista de espera</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ────────────────── PROBLEMA ────────────────── */}
+      <section className="kh-sec kh-problemas">
+        <div className="kh-wrap">
+          <div className="kh-center fade-up">
+            <div className="kh-tag kh-tag-light">El problema</div>
+            <h2 className="kh-h2 kh-h2-dark">¿Te suena familiar?</h2>
+            <p className="kh-p kh-p-dark" style={{ margin: '10px auto 0' }}>
+              Estos son los problemas que tienen a diario miles de negocios de servicios en España
+            </p>
+          </div>
+
+          <div className="kh-prob-grid">
+            {PROBLEMAS.map((p, i) => (
+              <div key={i} className="kh-prob-card fade-up" style={{ transitionDelay: `${i * 0.12}s` }}>
+                <div className="kh-prob-ico">{p.icon}</div>
+                <div className="kh-prob-t">{p.title}</div>
+                <div className="kh-prob-d">{p.desc}</div>
+                <div className="kh-sol">
+                  <span>✓</span>
+                  <span>{p.sol}</span>
+                </div>
               </div>
-            </div>
-            <div className="preview-card reveal rd4">
-              <div className="pc-icon">📊</div>
-              <div className="pc-label">Ingresos este mes</div>
-              <div className="pc-val">2.840 €</div>
-              <div className="pc-sub"><span className="pc-green">↑ 32%</span> vs mes anterior</div>
-            </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ────────────────── FUNCIONES ────────────────── */}
+      <section className="kh-sec kh-features" id="funciones">
+        <div className="kh-wrap">
+          <div className="kh-center fade-up">
+            <div className="kh-tag kh-tag-purple">Funciones</div>
+            <h2 className="kh-h2 kh-h2-light">Todo lo que necesitas,<br />en un solo lugar</h2>
+            <p className="kh-p kh-p-light" style={{ margin: '10px auto 0' }}>
+              Herramientas diseñadas específicamente para negocios de servicios en España
+            </p>
           </div>
 
-          <div className="scroll-arrow">
-            <div style={{ width: 1, height: 40, background: 'linear-gradient(to bottom,transparent,rgba(255,255,255,0.2))' }} />
-            <svg width="16" height="10" viewBox="0 0 16 10" fill="none" style={{ opacity: 0.5 }}>
-              <path d="M1 1l7 7 7-7" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-        </section>
-
-        {/* ── STATS ── */}
-        <section id="stats">
-          <div style={{ textAlign: 'center', marginBottom: 64, position: 'relative', zIndex: 1 }}>
-            <h2 className="sec-h reveal" style={{ marginBottom: 0 }}>Resultados que se notan</h2>
-          </div>
-          <div className="stats-grid reveal">
-            <div className="stat-item">
-              <div className="stat-val" data-target="3" data-suffix="h">3h</div>
-              <div className="stat-label">{'ahorradas al día\npor cada negocio'}</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-val" data-target="30" data-prefix="+" data-suffix="%">+30%</div>
-              <div className="stat-label">{'más reservas\ncon el chatbot IA'}</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-val">24/7</div>
-              <div className="stat-label">{'atención automática\nsin intervención humana'}</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-val" data-target="0" data-suffix="€">0€</div>
-              <div className="stat-label">{'en gestores para\ntu IVA trimestral'}</div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── FUNCIONES ── */}
-        <section id="funciones">
-          <div className="sec-center sec-light" style={{ marginBottom: 64 }}>
-            <span className="sec-tag reveal">Funciones</span>
-            <h2 className="sec-h reveal rd1">Una plataforma,<br />todas las herramientas</h2>
-            <p className="sec-sub reveal rd2">Deja de usar 5 apps distintas. Khepria centraliza todo tu negocio en un panel intuitivo.</p>
-          </div>
-          <div className="feat-grid max">
+          <div className="kh-feat-grid">
             {FEATURES.map((f, i) => (
-              <div key={f.title} className={`feat-card reveal rd${((i % 4) + 1) as 1|2|3|4}`}
-                style={{ ['--hover-shadow' as never]: `0 20px 60px ${f.color}40` } as React.CSSProperties}>
-                <div className="feat-icon" style={{ background: f.color + '55' }}>{f.icon}</div>
-                <div className="feat-title">{f.title}</div>
-                <div className="feat-desc">{f.desc}</div>
+              <div key={i} className="kh-feat-card fade-up" style={{ transitionDelay: `${(i % 3) * 0.1}s` }}>
+                <div className="kh-feat-ico" style={{ background: f.color }}>{f.icon}</div>
+                <div className="kh-feat-t">{f.title}</div>
+                <div className="kh-feat-d">{f.desc}</div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── PARA QUIÉN ── */}
-        <section id="para-quien">
-          <div className="sec-center" style={{ marginBottom: 64 }}>
-            <span className="sec-tag reveal">Para quién</span>
-            <h2 className="sec-h reveal rd1">Hecho para tu sector</h2>
-            <p className="sec-sub reveal rd2">Si recibes clientes con cita, Khepria es para ti. Funciona en todos los sectores de servicios.</p>
+      {/* ────────────────── NÚMEROS ────────────────── */}
+      <section className="kh-sec kh-nums">
+        <div className="kh-wrap">
+          <div className="kh-center fade-up">
+            <div className="kh-tag kh-tag-purple">Resultados</div>
+            <h2 className="kh-h2 kh-h2-light">Números que hablan<br />por sí solos</h2>
           </div>
-          <div className="quien-grid max">
+
+          <div className="kh-num-grid">
+            {NUMEROS.map((n, i) => (
+              <div key={i} className="kh-num-card fade-up" style={{ background: n.color, transitionDelay: `${i * 0.1}s` }}>
+                <div className="kh-num-ico">{n.icon}</div>
+                <div className="kh-num-n">{n.num}</div>
+                <div className="kh-num-l">{n.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ────────────────── PARA QUIÉN ────────────────── */}
+      <section className="kh-sec kh-quien" id="quien">
+        <div className="kh-wrap">
+          <div className="kh-center fade-up">
+            <div className="kh-tag kh-tag-purple">Para quién</div>
+            <h2 className="kh-h2 kh-h2-light">Diseñado para tu sector</h2>
+            <p className="kh-p kh-p-light" style={{ margin: '10px auto 0' }}>
+              Cualquier negocio que trabaje con citas y reservas
+            </p>
+          </div>
+
+          <div className="kh-q-grid">
             {QUIENES.map((q, i) => (
-              <div key={q.name} className={`quien-card reveal rd${((i % 3) + 1) as 1|2|3}`}>
-                <div className="quien-icon">{q.icon}</div>
-                <div className="quien-name">{q.name}</div>
+              <div key={i} className="kh-q-card fade-up" style={{ transitionDelay: `${i * 0.07}s` }}>
+                <div className="kh-q-ico">{q.icon}</div>
+                <div className="kh-q-name">{q.name}</div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── DEMO VISUAL ── */}
-        <section id="demo">
-          <div className="demo-inner">
-            <div>
-              <span className="sec-tag reveal" style={{ color: '#6B4FD8', background: 'rgba(107,79,216,0.08)' }}>App para clientes</span>
-              <h2 className="sec-h reveal rd1" style={{ textAlign: 'left', color: '#0F172A', maxWidth: 460 }}>
-                Descubre y reserva<br />en segundos
-              </h2>
-              <p style={{ fontSize: 17, color: '#64748B', lineHeight: 1.6, margin: '0 0 44px', maxWidth: 460 }} className="reveal rd2">
-                La app de Khepria conecta negocios con clientes. Mapa en tiempo real, reserva en 3 toques, recordatorios automáticos.
-              </p>
-              <div className="demo-steps">
-                {[
-                  { n: '1', title: 'Descubre negocios cerca', desc: 'Filtra por tipo, precio y valoraciones en el mapa interactivo.' },
-                  { n: '2', title: 'Reserva en pocos toques', desc: 'Elige servicio, profesional y hora. Confirmación al instante.' },
-                  { n: '3', title: 'Recordatorios automáticos', desc: 'Aviso 24h antes. Modifica o cancela sin llamar.' },
-                  { n: '4', title: 'Fidelización con puntos', desc: 'Acumula puntos y canjéalos por descuentos en futuras visitas.' },
-                ].map((s, i) => (
-                  <div key={s.n} className={`step reveal rd${(i + 1) as 1|2|3|4}`}>
-                    <div className="step-num">{s.n}</div>
-                    <div>
-                      <div className="step-title">{s.title}</div>
-                      <div className="step-desc">{s.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Link href="/auth" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 40,
-                background: 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
-                color: '#fff', fontSize: 15, fontWeight: 700,
-                padding: '14px 30px', borderRadius: 14, boxShadow: '0 6px 28px rgba(107,79,216,0.25)',
-              }} className="reveal rd4">
-                Empezar gratis →
-              </Link>
-            </div>
-
-            {/* Phone mockup */}
-            <div className="phone-wrap reveal rd2">
-              <div className="phone">
-                <div className="phone-bar">
-                  <span>9:41</span>
-                  <div style={{ display: 'flex', gap: 5 }}>
-                    <div className="phone-ping" />
-                    <span style={{ fontSize: 10 }}>●●●</span>
-                  </div>
-                </div>
-                <div className="phone-header">
-                  <div className="phone-header-title">📍 Cerca de ti</div>
-                  <div className="phone-header-sub">Madrid · Actualizado ahora</div>
-                </div>
-                {[
-                  { icon: '✂️', bg: 'rgba(184,216,248,0.15)', name: 'Peluquería Style', meta: '⭐ 4.9 · 0.3km · Disponible hoy' },
-                  { icon: '💅', bg: 'rgba(251,207,232,0.15)', name: 'Nails & Beauty', meta: '⭐ 4.8 · 0.7km · 16:00 libre' },
-                  { icon: '🧖', bg: 'rgba(184,237,212,0.15)', name: 'Spa Relax', meta: '⭐ 4.7 · 1.2km · Disponible hoy' },
-                  { icon: '🦷', bg: 'rgba(212,197,249,0.15)', name: 'Clínica Dental Sol', meta: '⭐ 4.9 · 1.5km · Hoy hasta 20h' },
-                ].map(b => (
-                  <div key={b.name} className="phone-card">
-                    <div className="phone-av" style={{ background: b.bg }}>{b.icon}</div>
-                    <div>
-                      <div className="phone-biz-name">{b.name}</div>
-                      <div className="phone-biz-meta">{b.meta}</div>
-                    </div>
-                    <div className="phone-btn">Reservar</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── PLANES ── */}
-        <section id="planes">
-          <div className="sec-center" style={{ marginBottom: 64 }}>
-            <span className="sec-tag reveal">Planes</span>
-            <h2 className="sec-h reveal rd1">Elige tu plan</h2>
-            <p className="sec-sub reveal rd2">Empieza con lo esencial y escala cuando lo necesites. Sin permanencia.</p>
-            <div className="beta-banner reveal rd3">
-              🎉 Pago disponible próximamente — acceso gratuito durante la beta
-            </div>
+      {/* ────────────────── PLANES ────────────────── */}
+      <section className="kh-sec kh-planes" id="planes">
+        <div className="kh-wrap">
+          <div className="kh-center fade-up">
+            <div className="kh-tag kh-tag-purple">Precios</div>
+            <h2 className="kh-h2 kh-h2-light">Planes para cada negocio</h2>
+            <p className="kh-p kh-p-light" style={{ margin: '10px auto 0' }}>
+              Los precios que verás al lanzamiento. Transparentes, sin sorpresas.
+            </p>
           </div>
 
-          <div className="planes-grid max">
+          <div className="kh-plan-grid">
             {PLANES.map((p, i) => (
-              <div key={p.key} className={`plan-card${p.popular ? ' popular' : ''} reveal rd${(i + 1) as 1|2|3|4}`}>
-                {p.popular && <div className="plan-glow" />}
-                {p.popular && <div className="popular-badge">Más popular</div>}
-                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  <div>
-                    <div className="plan-emoji-wrap" style={{ background: p.grad }}>{p.emoji}</div>
-                    <div style={{ marginTop: 12 }}>
-                      <div className="plan-name">{p.nombre}</div>
-                      <span className="plan-badge-tag" style={{ background: p.color + '20', color: p.color }}>{p.badge}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                    <span className="plan-price-num">{p.precio}€</span>
-                    <span className="plan-price-per">/mes</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#475569', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span>⚡ <strong style={{ color: '#64748B' }}>{p.creditos.toLocaleString('es-ES')}</strong> créditos IA/mes</span>
-                    <span>👤 {p.trabajadores}</span>
-                    {p.negocios !== '1' && <span>🏢 {p.negocios} negocios</span>}
-                  </div>
-                  <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
-                  <div>
-                    {p.funciones.map(feat => (
-                      <div key={feat} className="plan-feat">
-                        <div className="plan-feat-ck" style={{ background: p.color + '22', color: p.color }}>✓</div>
-                        <span>{feat}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Link
-                    href="/auth"
-                    className="plan-cta"
-                    style={p.popular
-                      ? { background: 'linear-gradient(135deg,#6B4FD8,#A78BFA)', color: '#fff', boxShadow: '0 6px 24px rgba(107,79,216,0.4)' }
-                      : { background: p.color + '18', color: p.color, border: `1.5px solid ${p.color}40` }
-                    }
+              <div
+                key={i}
+                className={`kh-plan-card fade-up${p.popular ? ' popular' : ''}`}
+                style={{ transitionDelay: `${i * 0.1}s` }}
+              >
+                {p.popular && (
+                  <div
+                    className="kh-plan-pop-badge"
+                    style={{ background: p.color, color: p.colorDark }}
                   >
-                    Empezar con {p.nombre} →
-                  </Link>
-                  <p className="plan-note">Próximamente disponible</p>
+                    ⭐ {p.badge}
+                  </div>
+                )}
+                <div className="kh-plan-emoji">{p.emoji}</div>
+                <div className="kh-plan-name">{p.nombre}</div>
+                <div className="kh-plan-price">
+                  <sup>€</sup>{p.precio}<sub>/mes</sub>
                 </div>
+                <div className="kh-plan-sep" />
+                <div className="kh-plan-feats">
+                  {p.funciones.map((f, j) => (
+                    <div key={j} className="kh-plan-feat">
+                      <span className="kh-plan-feat-ok">✓</span>
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="kh-plan-cta">🔒 Próximamente</div>
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          {/* Comparison table */}
-          <div className="cmp-wrap reveal">
-            <div style={{ textAlign: 'center', margin: '64px 0 24px' }}>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 22, fontWeight: 800, color: '#F1F5F9', letterSpacing: '-0.5px' }}>Comparativa completa</h3>
-            </div>
-            <table className="cmp-table">
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', paddingLeft: 20, width: '36%' }}>Funcionalidad</th>
-                  <th>🌱 Starter</th>
-                  <th>🚀 Básico</th>
-                  <th className="cmp-th-pop">💎 Pro</th>
-                  <th>⚡ Plus</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARE.map(row => (
-                  <tr key={row.feat}>
-                    <td>{row.feat}</td>
-                    <CmpCell val={row.s} />
-                    <CmpCell val={row.b} />
-                    <CmpCell val={row.p} highlight />
-                    <CmpCell val={row.pl} />
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* ────────────────── WAITLIST ────────────────── */}
+      <section className="kh-waitlist" id="waitlist">
+        <div className="kh-wl-inner">
+          <div className="fade-up">
+            <div className="kh-tag kh-tag-purple">Lista de espera</div>
+            <h2 className="kh-h2 kh-h2-light" style={{ fontSize: 'clamp(1.8rem,4.5vw,2.8rem)' }}>
+              Sé de los primeros<br />en probarlo
+            </h2>
+            <p className="kh-p kh-p-light" style={{ margin: '10px auto 0' }}>
+              Regístrate ahora y te avisamos cuando abramos la beta
+            </p>
           </div>
-        </section>
 
-        {/* ── CTA FINAL ── */}
-        <section id="cta-final">
-          <div className="cta-blob-1" />
-          <div className="cta-blob-2" />
-          <h2 className="reveal">¿Tienes un negocio?<br /><span className="hero-grad">Empieza gratis hoy</span></h2>
-          <p className="reveal rd1">Únete a los negocios que ya gestionan todo desde Khepria. Sin permanencia, sin tarjeta.</p>
-          <div className="reveal rd2">
-            <Link href="/auth" className="cta-final-btn">
-              Empezar gratis →
-            </Link>
-          </div>
-          <div className="trust-row reveal rd3">
-            {['Sin permanencia', 'Beta gratuita', 'Datos en Europa', 'Soporte en español'].map(t => (
-              <div key={t} className="trust-item">
-                <span className="trust-check">✓</span> {t}
+          <div className="kh-wl-card fade-up" style={{ transitionDelay: '0.15s' }}>
+            {enviado ? (
+              <div className="kh-success">
+                <div className="kh-success-ico">🎉</div>
+                <div className="kh-success-t">¡Apuntado!</div>
+                <p className="kh-success-p">Te avisaremos muy pronto cuando abramos la beta.</p>
               </div>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      {/* ── FOOTER ── */}
-      <footer>
-        <div className="footer-inner">
-          <div className="footer-top">
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg,#B8D8F8,#D4C5F9,#B8EDD4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="16" height="16" viewBox="0 0 22 22" fill="none"><path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.5"/><path d="M11 6L16 11L11 16L6 11Z" fill="white" opacity="0.75"/><circle cx="11" cy="11" r="2.2" fill="white"/></svg>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <div className="kh-form-grid">
+                  <input
+                    className="kh-input"
+                    type="text"
+                    placeholder="Tu nombre"
+                    value={form.nombre}
+                    onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+                    autoComplete="name"
+                  />
+                  <input
+                    className="kh-input"
+                    type="email"
+                    placeholder="Tu email *"
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    required
+                    autoComplete="email"
+                  />
+                  <select
+                    className="kh-input"
+                    value={form.tipo_negocio}
+                    onChange={e => setForm(f => ({ ...f, tipo_negocio: e.target.value }))}
+                  >
+                    <option value="">Tipo de negocio</option>
+                    {TIPOS_NEGOCIO.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  <input
+                    className="kh-input"
+                    type="text"
+                    placeholder="Ciudad"
+                    value={form.ciudad}
+                    onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))}
+                    autoComplete="address-level2"
+                  />
+                  <button
+                    className="kh-submit"
+                    type="submit"
+                    disabled={enviando}
+                  >
+                    {enviando ? 'Guardando...' : 'Unirme a la lista de espera →'}
+                  </button>
                 </div>
-                <span className="footer-logo-text">Khepria</span>
-              </div>
-              <p className="footer-tagline">La plataforma de gestión inteligente para negocios de servicios en España.</p>
-            </div>
-
-            <div>
-              <div className="footer-col-title">Funciones</div>
-              <div className="footer-links">
-                <a href="#funciones">Reservas automáticas</a>
-                <a href="#funciones">Chatbot IA</a>
-                <a href="#funciones">Facturación española</a>
-                <a href="#funciones">Marketing IA</a>
-              </div>
-            </div>
-
-            <div>
-              <div className="footer-col-title">Plataforma</div>
-              <div className="footer-links">
-                <a href="#planes">Planes y precios</a>
-                <a href="#para-quien">Para negocios</a>
-                <Link href="/auth">Iniciar sesión</Link>
-                <Link href="/auth">Registrarse gratis</Link>
-              </div>
-            </div>
-
-            <div>
-              <div className="footer-col-title">Legal</div>
-              <div className="footer-links">
-                <Link href="/privacidad">Privacidad</Link>
-                <Link href="/terminos">Términos</Link>
-                <Link href="/cookies">Cookies</Link>
-                <Link href="/aviso-legal">Aviso Legal</Link>
-              </div>
-            </div>
+                {formError && <p className="kh-form-err">{formError}</p>}
+              </form>
+            )}
           </div>
 
-          <div className="footer-bottom">
-            <div className="footer-copy">© 2026 Khepria. Todos los derechos reservados.</div>
-            <div className="footer-social">
-              <a href="mailto:khepriacontact@gmail.com" className="social-link" target="_blank" rel="noopener noreferrer">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="4" width="20" height="16" rx="2" stroke="#EA4335" strokeWidth="1.5" fill="none"/>
-                  <path d="M2 6l10 7 10-7" stroke="#EA4335" strokeWidth="1.5" strokeLinecap="round"/>
+          <div className="kh-wl-counter fade-up" style={{ transitionDelay: '0.25s' }}>
+            <span>🏢</span>
+            <strong>{displayCount}</strong>
+            <span>negocios ya apuntados</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ────────────────── PARA CLIENTES ────────────────── */}
+      <section className="kh-clients">
+        <div style={{ maxWidth: 580, margin: '0 auto' }}>
+          <div className="fade-up">
+            <div className="kh-tag kh-tag-light" style={{ marginBottom: 16 }}>Para clientes</div>
+            <h2
+              style={{
+                fontFamily: "'Syne',sans-serif",
+                fontSize: 'clamp(1.6rem,3.5vw,2.4rem)',
+                fontWeight: 800, color: '#fff',
+                letterSpacing: '-1px', marginBottom: 14,
+              }}
+            >
+              ¿Eres cliente?
+            </h2>
+            <p style={{ fontSize: 'clamp(14px,2vw,16px)', color: '#94A3B8', lineHeight: 1.75, marginBottom: 26 }}>
+              Pronto podrás descubrir y reservar en los mejores negocios cerca de ti,
+              con reseñas reales y disponibilidad en tiempo real.
+            </p>
+            <div className="kh-tag kh-tag-green" style={{ fontSize: 12 }}>
+              🔜 Próximamente
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ────────────────── FOOTER ────────────────── */}
+      <footer className="kh-footer">
+        <div className="kh-footer-wrap">
+          <div className="kh-footer-top">
+            <div>
+              <div className="kh-footer-logo"><em>Kh</em>epria</div>
+              <div className="kh-footer-tag">Estamos construyendo algo grande ✨</div>
+            </div>
+            <div className="kh-footer-links">
+              <a href="mailto:khepriacontact@gmail.com" className="kh-footer-a">
+                {/* Gmail */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M20 4H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z" fill="#EA4335" />
                 </svg>
                 khepriacontact@gmail.com
               </a>
-              <a href="https://instagram.com/khepria_es" className="social-link" target="_blank" rel="noopener noreferrer">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#igf)" strokeWidth="1.5"/>
-                  <circle cx="12" cy="12" r="4" stroke="url(#igf)" strokeWidth="1.5"/>
-                  <circle cx="17.5" cy="6.5" r="0.8" fill="#E1306C"/>
+              <a href="https://instagram.com/khepria_es" target="_blank" rel="noopener noreferrer" className="kh-footer-a">
+                {/* Instagram */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <defs>
-                    <linearGradient id="igf" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#FFDC80"/>
-                      <stop offset="30%" stopColor="#F77737"/>
-                      <stop offset="65%" stopColor="#C13584"/>
-                      <stop offset="100%" stopColor="#833AB4"/>
+                    <linearGradient id="ig" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stopColor="#F58529" />
+                      <stop offset="50%" stopColor="#DD2A7B" />
+                      <stop offset="100%" stopColor="#8134AF" />
                     </linearGradient>
                   </defs>
+                  <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#ig)" strokeWidth="2" />
+                  <circle cx="12" cy="12" r="4" stroke="url(#ig)" strokeWidth="2" />
+                  <circle cx="17.5" cy="6.5" r="1.2" fill="url(#ig)" />
                 </svg>
                 @khepria_es
               </a>
+            </div>
+          </div>
+
+          <div className="kh-footer-bot">
+            <div className="kh-footer-copy">© 2026 Khepria. Todos los derechos reservados.</div>
+            <div className="kh-footer-legal">
+              <a href="/terminos">Términos</a>
+              <a href="/privacidad">Privacidad</a>
+              <a href="/aviso-legal">Aviso legal</a>
+              <a href="/cookies">Cookies</a>
             </div>
           </div>
         </div>
