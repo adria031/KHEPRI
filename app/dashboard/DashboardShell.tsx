@@ -17,6 +17,7 @@ const NAV_GROUPS = [
       { icon: '📊', label: 'Dashboard', href: '/dashboard' },
       { icon: '🏪', label: 'Mi negocio', href: '/dashboard/mi-negocio' },
       { icon: '📅', label: 'Reservas', href: '/dashboard/reservas' },
+      { icon: '👥', label: 'Clientes', href: '/dashboard/clientes' },
     ],
   },
   {
@@ -53,6 +54,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/dashboard/mi-negocio': 'Mi negocio',
   '/dashboard/reservas': 'Reservas',
+  '/dashboard/clientes': 'Clientes',
   '/dashboard/servicios': 'Servicios',
   '/dashboard/horarios': 'Horarios',
   '/dashboard/productos': 'Productos',

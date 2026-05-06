@@ -45,7 +45,7 @@ export const PLANES: Record<string, PlanConfig> = {
       'PWA instalable',
       'Marketing IA básico (posts Instagram)',
     ],
-    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios', 'resenas', 'productos', 'caja', 'marketing', 'ajustes', 'integraciones'],
+    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'clientes', 'servicios', 'horarios', 'resenas', 'productos', 'caja', 'marketing', 'ajustes', 'integraciones'],
   },
   pro: {
     nombre: 'Pro', precio: 59.99, creditos: 1000, trabajadores: 5, negocios: 2,
@@ -64,7 +64,7 @@ export const PLANES: Record<string, PlanConfig> = {
       'Análisis sentimiento reseñas',
     ],
     sidebar: [
-      'dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios', 'resenas',
+      'dashboard', 'mi-negocio', 'reservas', 'clientes', 'servicios', 'horarios', 'resenas',
       'productos', 'caja', 'marketing', 'equipo', 'analytics', 'facturacion', 'nominas', 'chatbot',
       'ajustes', 'integraciones',
     ],
@@ -114,6 +114,7 @@ export const HREF_KEY: Record<string, string> = {
   '/dashboard':             'dashboard',
   '/dashboard/mi-negocio':  'mi-negocio',
   '/dashboard/reservas':    'reservas',
+  '/dashboard/clientes':    'clientes',
   '/dashboard/servicios':   'servicios',
   '/dashboard/horarios':    'horarios',
   '/dashboard/productos':   'productos',
