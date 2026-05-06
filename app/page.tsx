@@ -444,28 +444,63 @@ export default function Home() {
         @media(max-width:640px){
           .nav-actions .btn-primary{display:none;}
           #hero{padding:104px 16px 60px;}
-          .hero-title{font-size:clamp(36px,10vw,52px);letter-spacing:-1.5px;}
-          .hero-sub{font-size:16px;}
-          .hero-cta{font-size:15px;padding:15px 32px;margin-bottom:56px;}
+          .hero-title{font-size:clamp(34px,9vw,48px);letter-spacing:-1.5px;}
+          .hero-sub{font-size:15px;}
+          .hero-cta{font-size:15px;padding:15px 32px;margin-bottom:56px;width:100%;max-width:320px;justify-content:center;}
           .hero-preview{display:none;}
-          .feat-grid{grid-template-columns:1fr 1fr;}
-          .quien-grid{grid-template-columns:repeat(2,1fr);}
           .stats-grid{grid-template-columns:repeat(2,1fr);}
-          .planes-grid{grid-template-columns:1fr;}
           .demo-inner{gap:36px;}
           .phone{width:240px;}
-          #cta-final h2{font-size:clamp(28px,7vw,44px);}
-          .cta-final-btn{font-size:15px;padding:16px 32px;}
+          #cta-final h2{font-size:clamp(26px,7vw,42px);}
+          .cta-final-btn{font-size:15px;padding:16px 32px;width:100%;max-width:300px;justify-content:center;}
           .trust-row{gap:16px;}
           .footer-bottom{flex-direction:column;text-align:center;}
-          #funciones,#para-quien,#demo,#planes,#cta-final,#stats{padding:64px 16px;}
+          #stats,#demo,#cta-final{padding:64px 16px;}
           footer{padding:40px 16px 28px;}
+
+          /* ── FUNCIONES — carrusel horizontal ── */
+          #funciones{padding:64px 0 80px;}
+          #funciones .sec-center{padding:0 16px;margin-bottom:40px;}
+          .feat-grid{
+            display:flex !important;overflow-x:auto;scroll-snap-type:x mandatory;
+            gap:14px;padding:4px 20px 20px;scrollbar-width:none;
+            -webkit-overflow-scrolling:touch;grid-template-columns:unset;
+            max-width:unset;width:100%;
+          }
+          .feat-grid::-webkit-scrollbar{display:none;}
+          .feat-card{flex-shrink:0;width:260px;scroll-snap-align:start;}
+
+          /* ── PARA QUIÉN — carrusel horizontal ── */
+          #para-quien{padding:64px 0 80px;}
+          #para-quien .sec-center{padding:0 16px;margin-bottom:40px;}
+          .quien-grid{
+            display:flex !important;overflow-x:auto;scroll-snap-type:x mandatory;
+            gap:10px;padding:4px 20px 16px;scrollbar-width:none;
+            -webkit-overflow-scrolling:touch;grid-template-columns:unset;
+            max-width:unset;width:100%;
+          }
+          .quien-grid::-webkit-scrollbar{display:none;}
+          .quien-card{flex-shrink:0;width:195px;scroll-snap-align:start;}
+
+          /* ── PLANES — carrusel horizontal ── */
+          #planes{padding:64px 0 80px;}
+          #planes .sec-center{padding:0 16px;margin-bottom:40px;}
+          .planes-grid{
+            display:flex !important;overflow-x:auto;scroll-snap-type:x mandatory;
+            gap:16px;padding:4px 20px 24px;scrollbar-width:none;
+            -webkit-overflow-scrolling:touch;grid-template-columns:unset;
+            max-width:unset;width:100%;
+          }
+          .planes-grid::-webkit-scrollbar{display:none;}
+          .plan-card{flex-shrink:0;width:min(calc(100vw - 48px),300px);scroll-snap-align:center;}
+          .cmp-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 4px;}
         }
         @media(max-width:420px){
           #navbar{padding:0 12px;}
-          .feat-grid{grid-template-columns:1fr;}
-          .quien-grid{grid-template-columns:1fr 1fr;gap:8px;}
-          .hero-title{font-size:34px;letter-spacing:-1px;}
+          .hero-title{font-size:32px;letter-spacing:-1px;}
+          .feat-card{width:240px;}
+          .quien-card{width:180px;}
+          .plan-card{width:calc(100vw - 40px);}
         }
       `}</style>
 
@@ -537,9 +572,19 @@ export default function Home() {
             },{threshold:0.5});
             items.forEach(function(el){obs.observe(el);});
           }
+          // Scroll planes carousel to Pro card on mobile
+          function initPlanesCarousel(){
+            if(window.innerWidth>640)return;
+            var g=document.querySelector('.planes-grid');
+            if(!g)return;
+            var pro=g.querySelector('.plan-card.popular');
+            if(!pro)return;
+            var scrollLeft=pro.offsetLeft-(g.clientWidth/2)+(pro.offsetWidth/2);
+            g.scrollLeft=Math.max(0,scrollLeft);
+          }
           if(document.readyState==='loading'){
-            document.addEventListener('DOMContentLoaded',function(){initNav();initReveal();initMenu();initCounters();});
-          }else{initNav();initReveal();initMenu();initCounters();}
+            document.addEventListener('DOMContentLoaded',function(){initNav();initReveal();initMenu();initCounters();initPlanesCarousel();});
+          }else{initNav();initReveal();initMenu();initCounters();initPlanesCarousel();}
         })();
       ` }} />
 

@@ -184,6 +184,7 @@ function ClienteContent(){
   const[favs,setFavs]=useState<string[]>([])
   const[negocios,setNegocios]=useState<Negocio[]>([])
   const[cargando,setCargando]=useState(true)
+  const[panelOpen,setPanelOpen]=useState(false)
   const[filtro,setFiltro]=useState<Filtro>('ninguno')
   const[pos,setPos]=useState<{lat:number;lng:number}|null>(null)
   const[geoErr,setGeoErr]=useState(false)
@@ -524,6 +525,23 @@ function ClienteContent(){
       .bnav-item.on .bnav-ico{color:#0F172A}
       .bnav-dot{width:4px;height:4px;border-radius:50%;background:#6366F1;margin:1px auto 0}
 
+      /* MAPA BOTTOM SHEET */
+      .map-panel{
+        position:absolute;bottom:0;left:0;right:0;z-index:10;
+        background:white;border-radius:20px 20px 0 0;
+        box-shadow:0 -4px 24px rgba(0,0,0,0.12);
+        transition:transform 0.35s cubic-bezier(.32,1.25,.6,1);
+        max-height:50vh;overflow:hidden;
+      }
+      .map-panel.collapsed{transform:translateY(calc(100% - 72px));}
+      .map-panel-handle{display:flex;flex-direction:column;align-items:center;padding:10px 0 8px;cursor:pointer;user-select:none;}
+      .map-panel-pill{width:36px;height:4px;border-radius:2px;background:#E2E8F0;margin-bottom:4px;}
+      .map-panel-title{font-size:13px;font-weight:800;color:#0F172A;letter-spacing:-0.2px;}
+      .map-panel-list{overflow-y:auto;padding:0 16px 20px;max-height:calc(50vh - 72px);}
+      .map-panel-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F1F5F9;cursor:pointer;text-decoration:none;}
+      .map-panel-item:last-child{border-bottom:none;}
+      .map-panel-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+
       /* RESPONSIVE */
       @media(max-width:1200px){:root{--cols:2}}
       @media(max-width:900px){
@@ -534,6 +552,8 @@ function ClienteContent(){
         .fbar{padding:8px 20px}
         .content{padding:20px 20px 110px}
         .bnav{display:block}
+        /* Map full height minus top + bottom nav */
+        .cliente-map-wrap{height:calc(100dvh - 60px - 64px) !important;position:relative;}
       }
       @media(max-width:600px){
         :root{--cols:1}
@@ -794,13 +814,37 @@ function ClienteContent(){
 
       {/* ══════════ MAPA ══════════ */}
       {tab==='mapa'&&(
-        <div style={{height:'calc(100vh - 60px)'}}>
+        <div className="cliente-map-wrap" style={{height:'calc(100dvh - 60px)',position:'relative'}}>
           <MapaNegocios
             negocios={negocios.map(n=>({id:n.id,nombre:n.nombre,tipo:n.tipo,ciudad:n.ciudad,direccion:n.direccion,logo_url:n.logo_url,lat:n.lat??null,lng:n.lng??null}))}
             valPorNeg={vals}
             userPos={pos}
             abiertoMap={Object.fromEntries(negocios.map(n=>[n.id,estaAbierto(hors[n.id]||[])]))}
           />
+          {/* Panel deslizable con lista de negocios */}
+          <div className={`map-panel${panelOpen?'':' collapsed'}`}>
+            <div className="map-panel-handle" onClick={()=>setPanelOpen(o=>!o)}>
+              <div className="map-panel-pill"/>
+              <div className="map-panel-title">
+                {panelOpen?'▼ Ocultar lista':'▲ ' + negocios.length + ' negocios cerca'}
+              </div>
+            </div>
+            <div className="map-panel-list">
+              {negocios.slice(0,10).map(n=>{
+                const cfg=TIPO_CFG[normTipo(n.tipo||'')]||TIPO_DEF
+                return(
+                  <a key={n.id} className="map-panel-item" href={`/negocio/${n.id}`}>
+                    <div className="map-panel-ico" style={{background:cfg.grad}}>{cfg.emoji}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:'14px',fontWeight:800,color:'#0F172A',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{n.nombre}</div>
+                      <div style={{fontSize:'12px',color:'#94A3B8'}}>{n.tipo} · {n.ciudad}</div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="#CBD5E1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </a>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 

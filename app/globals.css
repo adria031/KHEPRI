@@ -16,9 +16,13 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-img, video {
+img, video, iframe {
   max-width: 100%;
   height: auto;
+}
+
+* {
+  max-width: 100%;
 }
 
 html.dark body {
@@ -58,6 +62,13 @@ button {
   0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.5); }
   70%  { box-shadow: 0 0 0 12px rgba(59,130,246,0); }
   100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+}
+
+/* ── Dashboard charts — horizontal scroll on mobile ── */
+@media (max-width: 768px) {
+  .recharts-wrapper { overflow-x: auto !important; }
+  .recharts-surface { min-width: 300px; }
+  [class*="-chart-wrap"], [class*="chart-wrap"] { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
 /* ── 480px (small phones) global fixes ── */
