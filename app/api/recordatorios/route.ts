@@ -10,6 +10,22 @@ function manana(): string {
   return d.toISOString().split('T')[0]
 }
 
+/**
+ * Devuelve el rango de horas de cita que deben recibir recordatorio AHORA,
+ * según la hora UTC actual:
+ *   - 16:xx UTC (18:xx España) → citas mañana entre 08:00-12:00
+ *   - 08:xx UTC (10:xx España) → citas mañana entre 12:00-17:00
+ *   - 10:xx UTC (12:xx España) → citas mañana entre 17:00-21:00
+ * Fuera de esas horas devuelve null (no enviar nada).
+ */
+function getHoraWindow(): { desde: string; hasta: string } | null {
+  const horaUtc = new Date().getUTCHours()
+  if (horaUtc === 16) return { desde: '08:00', hasta: '12:00' }
+  if (horaUtc === 8)  return { desde: '12:00', hasta: '17:00' }
+  if (horaUtc === 10) return { desde: '17:00', hasta: '21:00' }
+  return null  // Fuera de ventana — no enviar
+}
+
 function formatFecha(fecha: string): string {
   const [y, m, d] = fecha.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('es-ES', {
@@ -17,7 +33,7 @@ function formatFecha(fecha: string): string {
   })
 }
 
-function buildHtml(r: any, cancelUrl: string): string {
+function buildHtml(r: any, confirmarUrl: string, cancelUrl: string): string {
   const negocio    = r.negocios    ?? {}
   const servicio   = r.servicios   ?? {}
   const trabajador = r.trabajadores
@@ -67,10 +83,16 @@ function buildHtml(r: any, cancelUrl: string): string {
 
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
             <tr>
-              <td align="center">
+              <td style="padding:0 6px 0 0;">
+                <a href="${confirmarUrl}"
+                   style="display:block;padding:13px 16px;background:#DCFCE7;color:#166534;text-align:center;font-size:13px;font-weight:700;text-decoration:none;border-radius:10px;border:1px solid #BBF7D0;">
+                  ✅ Confirmo mi asistencia
+                </a>
+              </td>
+              <td style="padding:0 0 0 6px;">
                 <a href="${cancelUrl}"
-                   style="display:inline-block;padding:12px 28px;background:#F3F4F6;color:#6B7280;font-size:13px;font-weight:600;text-decoration:none;border-radius:10px;border:1px solid #E5E7EB;">
-                  Cancelar esta cita
+                   style="display:block;padding:13px 16px;background:#FEE2E2;color:#991B1B;text-align:center;font-size:13px;font-weight:700;text-decoration:none;border-radius:10px;border:1px solid #FECACA;">
+                  ❌ Cancelar mi cita
                 </a>
               </td>
             </tr>
@@ -111,13 +133,23 @@ export async function POST(req: NextRequest) {
   )
 
   const fechaManana = manana()
+  const window = getHoraWindow()
 
-  const { data: reservas, error } = await supabase
+  // Si no estamos en ninguna ventana horaria, salir sin enviar nada
+  if (!window) {
+    return NextResponse.json({ ok: true, enviados: 0, mensaje: 'Fuera de ventana horaria. No se envían recordatorios ahora.' })
+  }
+
+  let query = supabase
     .from('reservas')
     .select('*, servicios(nombre, precio), trabajadores(nombre), negocios(nombre, direccion, ciudad, telefono)')
     .eq('fecha', fechaManana)
     .eq('estado', 'confirmada')
     .eq('recordatorio_enviado', false)
+    .gte('hora', window.desde)
+    .lt('hora', window.hasta)
+
+  const { data: reservas, error } = await query
 
   if (error) {
     console.error('[recordatorios] error al buscar reservas:', error)
@@ -135,8 +167,9 @@ export async function POST(req: NextRequest) {
   for (const reserva of reservas) {
     if (!reserva.cliente_email) continue
 
-    const cancelUrl = `${appUrl}/reserva/${reserva.id}/cancelar`
-    const html = buildHtml(reserva, cancelUrl)
+    const confirmarUrl = `${appUrl}/reserva/${reserva.id}/confirmar`
+    const cancelUrl    = `${appUrl}/reserva/${reserva.id}/cancelar`
+    const html = buildHtml(reserva, confirmarUrl, cancelUrl)
 
     console.log('[recordatorios] Enviando email a:', reserva.cliente_email, 'para reserva:', reserva.id)
     const res = await fetch('https://api.resend.com/emails', {

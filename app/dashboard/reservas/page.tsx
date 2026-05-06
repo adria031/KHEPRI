@@ -12,12 +12,14 @@ type Reserva = {
   id: string
   cliente_nombre: string
   cliente_telefono: string
+  cliente_email: string | null
   fecha: string
   hora: string
   estado: 'confirmada' | 'cancelada' | 'completada'
   servicio_id: string
   trabajador_id: string | null
   puntos_ganados: number | null
+  confirmada_cliente: boolean | null
   servicios: { nombre: string } | null
   trabajadores: { nombre: string } | null
 }
@@ -33,6 +35,9 @@ type EsperaEntry = {
   created_at: string
   servicios: { nombre: string } | null
 }
+
+type ServicioMin = { id: string; nombre: string; duracion_minutos: number | null }
+type TrabajadorMin = { id: string; nombre: string }
 
 type Horario = {
   dia: string
@@ -107,6 +112,16 @@ export default function Reservas() {
   const [cancelacionesSem, setCancelacionesSem] = useState(0)
   const [serviciosSinReservar, setServiciosSinReservar] = useState<string[]>([])
 
+  // Modal nueva reserva
+  const [modalNueva, setModalNueva] = useState(false)
+  const [guardandoNueva, setGuardandoNueva] = useState(false)
+  const [serviciosList, setServiciosList] = useState<ServicioMin[]>([])
+  const [trabajadoresList, setTrabajadoresList] = useState<TrabajadorMin[]>([])
+  const [nuevaForm, setNuevaForm] = useState({ servicio_id: '', trabajador_id: '', nombre: '', telefono: '', email: '', hora: '' })
+  const [nuevaError, setNuevaError] = useState('')
+  // Cancelar con confirmación
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
+
   useEffect(() => {
     ;(async () => {
       const { session } = await getSessionClient()
@@ -140,6 +155,15 @@ export default function Reservas() {
       .select('dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2')
       .eq('negocio_id', negocio.id)
       .then(({ data }) => { if (data) setHorarios(data as Horario[]) })
+  }, [negocio])
+
+  // Cargar servicios y trabajadores para el modal de nueva reserva
+  useEffect(() => {
+    if (!negocio) return
+    supabase.from('servicios').select('id,nombre,duracion_minutos').eq('negocio_id', negocio.id).eq('activo', true).order('nombre')
+      .then(({ data }) => setServiciosList((data as ServicioMin[]) || []))
+    supabase.from('trabajadores').select('id,nombre').eq('negocio_id', negocio.id).order('nombre')
+      .then(({ data }) => setTrabajadoresList((data as TrabajadorMin[]) || []))
   }, [negocio])
 
   // Cargar estadísticas históricas de clientes para badge de riesgo
@@ -283,7 +307,7 @@ export default function Reservas() {
     const { db } = await getSessionClient()
     const { data } = await db
       .from('reservas')
-      .select('*, servicios(nombre), trabajadores(nombre)')
+      .select('*, servicios(nombre), trabajadores(nombre), confirmada_cliente, cliente_email')
       .eq('negocio_id', negocio.id)
       .eq('fecha', fecha)
       .order('hora')
@@ -380,6 +404,44 @@ export default function Reservas() {
     setActualizando(null)
   }
 
+  async function insertarReserva() {
+    if (!negocio || !nuevaForm.servicio_id || !nuevaForm.nombre || !nuevaForm.telefono || !nuevaForm.hora) {
+      setNuevaError('Completa los campos obligatorios: servicio, nombre, teléfono y hora.')
+      return
+    }
+    setGuardandoNueva(true)
+    setNuevaError('')
+    const { data: nuevaRes, error } = await supabase.from('reservas').insert({
+      negocio_id: negocio.id,
+      servicio_id: nuevaForm.servicio_id,
+      trabajador_id: nuevaForm.trabajador_id || null,
+      cliente_nombre: nuevaForm.nombre.trim(),
+      cliente_telefono: nuevaForm.telefono.trim(),
+      cliente_email: nuevaForm.email.trim() || null,
+      fecha,
+      hora: nuevaForm.hora + ':00',
+      estado: 'confirmada',
+      confirmada_cliente: false,
+    }).select().single()
+    if (error) {
+      setNuevaError('Error al crear la reserva: ' + error.message)
+      setGuardandoNueva(false)
+      return
+    }
+    // Enviar email de confirmación si tiene email
+    if (nuevaForm.email.trim() && nuevaRes) {
+      fetch('/api/reservas/confirmar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reserva_id: nuevaRes.id }),
+      }).catch(() => {})
+    }
+    setModalNueva(false)
+    setNuevaForm({ servicio_id: '', trabajador_id: '', nombre: '', telefono: '', email: '', hora: '' })
+    setNuevaError('')
+    setGuardandoNueva(false)
+    cargarReservas()
+  }
 
   const confirmadas = reservas.filter(r => r.estado === 'confirmada').length
   const completadas = reservas.filter(r => r.estado === 'completada').length
@@ -524,6 +586,24 @@ export default function Reservas() {
         .stat-hist-ico { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
         .stat-hist-label { font-size: 12px; color: var(--muted); font-weight: 500; }
         .stat-hist-val { font-size: 15px; font-weight: 800; color: var(--text); text-transform: capitalize; }
+        /* Nueva reserva modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .modal-card { background: white; border-radius: 20px; padding: 28px; width: 100%; max-width: 480px; box-shadow: 0 24px 64px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); padding: 4px; line-height: 1; }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+        .form-input { width: 100%; padding: 11px 13px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; font-family: inherit; font-size: 14px; color: var(--text); background: #F9FAFB; outline: none; }
+        .form-input:focus { border-color: var(--blue-dark); background: white; }
+        .btn-nueva { padding: 10px 18px; background: linear-gradient(135deg, #1D4ED8, #6B4FD8); color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .btn-nueva:hover { opacity: 0.9; }
+        /* Badge confirmada_cliente */
+        .badge-confirmado-cli { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: rgba(184,237,212,0.35); color: #2E8A5E; white-space: nowrap; }
+        .badge-pendiente-cli { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: rgba(253,230,138,0.35); color: #92400E; white-space: nowrap; }
+        /* Cancel confirm dialog */
+        .cancel-confirm { background: rgba(254,226,226,0.6); border: 1px solid rgba(220,38,38,0.2); border-radius: 10px; padding: 12px 14px; margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: #991B1B; font-weight: 500; }
+        .btn-cancel-confirm { padding: 7px 14px; background: #DC2626; color: white; border: none; border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .btn-cancel-abort { padding: 7px 14px; background: none; color: #6B7280; border: 1px solid #E5E7EB; border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
         @media (max-width: 768px) {
           .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); }
           .sidebar-overlay.open { display: block; } .hamburger { display: flex; }
@@ -556,7 +636,8 @@ export default function Reservas() {
                 <h1>Reservas</h1>
                 <p>Gestiona las citas de tu negocio</p>
               </div>
-              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
+                <button className="btn-nueva" onClick={() => { setNuevaForm({ servicio_id: '', trabajador_id: '', nombre: '', telefono: '', email: '', hora: '' }); setNuevaError(''); setModalNueva(true) }}>+ Nueva reserva</button>
                 <button className={`tab-btn ${vista==='calendario'?'active':''}`} onClick={() => setVista('calendario')}>📅 Calendario</button>
                 <button className={`tab-btn ${vista==='dia'?'active':''}`} onClick={() => setVista('dia')}>📋 Día</button>
                 <button className={`tab-btn ${vista==='espera'?'active':''}`} onClick={() => setVista('espera')}>⏳ Espera</button>
@@ -725,6 +806,9 @@ export default function Reservas() {
                             <div className="rc-nombre">
                               {r.cliente_nombre}
                               {badgeRiesgo(r.cliente_telefono)}
+                              {r.estado === 'confirmada' && (r.confirmada_cliente
+                                ? <span className="badge-confirmado-cli">✅ Confirmada por cliente</span>
+                                : <span className="badge-pendiente-cli">⏳ Pendiente confirmar</span>)}
                             </div>
                             {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}</div>}
                             {r.trabajadores?.nombre && <div className="rc-linea">👤 {r.trabajadores.nombre}</div>}
@@ -734,13 +818,20 @@ export default function Reservas() {
                               {r.estado === 'confirmada' && (
                                 <>
                                   <button className="btn-completar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'completada')}>✓ Completada</button>
-                                  <button className="btn-cancelar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'cancelada')}>Cancelar</button>
+                                  <button className="btn-cancelar" disabled={actualizando===r.id} onClick={() => setCancelConfirmId(r.id)}>Cancelar</button>
                                 </>
                               )}
                               {(r.estado === 'cancelada' || r.estado === 'completada') && (
                                 <button className="btn-restaurar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'confirmada')}>Restaurar</button>
                               )}
                             </div>
+                            {cancelConfirmId === r.id && (
+                              <div className="cancel-confirm">
+                                <span>¿Cancelar esta cita?</span>
+                                <button className="btn-cancel-confirm" onClick={() => { cambiarEstado(r.id, 'cancelada'); setCancelConfirmId(null) }}>Sí, cancelar</button>
+                                <button className="btn-cancel-abort" onClick={() => setCancelConfirmId(null)}>No</button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )
@@ -768,6 +859,9 @@ export default function Reservas() {
                               <div className="rc-nombre">
                                 {r.cliente_nombre}
                                 {badgeRiesgo(r.cliente_telefono)}
+                                {r.estado === 'confirmada' && (r.confirmada_cliente
+                                  ? <span className="badge-confirmado-cli">✅ Confirmada por cliente</span>
+                                  : <span className="badge-pendiente-cli">⏳ Pendiente confirmar</span>)}
                               </div>
                               {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}</div>}
                               {r.trabajadores?.nombre && <div className="rc-linea">👤 {r.trabajadores.nombre}</div>}
@@ -777,13 +871,20 @@ export default function Reservas() {
                                 {r.estado === 'confirmada' && (
                                   <>
                                     <button className="btn-completar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'completada')}>✓ Completada</button>
-                                    <button className="btn-cancelar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'cancelada')}>Cancelar</button>
+                                    <button className="btn-cancelar" disabled={actualizando===r.id} onClick={() => setCancelConfirmId(r.id)}>Cancelar</button>
                                   </>
                                 )}
                                 {(r.estado === 'cancelada' || r.estado === 'completada') && (
                                   <button className="btn-restaurar" disabled={actualizando===r.id} onClick={() => cambiarEstado(r.id,'confirmada')}>Restaurar</button>
                                 )}
                               </div>
+                              {cancelConfirmId === r.id && (
+                                <div className="cancel-confirm">
+                                  <span>¿Cancelar esta cita?</span>
+                                  <button className="btn-cancel-confirm" onClick={() => { cambiarEstado(r.id, 'cancelada'); setCancelConfirmId(null) }}>Sí, cancelar</button>
+                                  <button className="btn-cancel-abort" onClick={() => setCancelConfirmId(null)}>No</button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         )
@@ -896,6 +997,68 @@ export default function Reservas() {
                 )}
               </>
             )}
+      {/* ── MODAL NUEVA RESERVA ── */}
+      {modalNueva && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setModalNueva(false) }}>
+          <div className="modal-card">
+            <div className="modal-title">
+              <span>+ Nueva reserva</span>
+              <button className="modal-close" onClick={() => setModalNueva(false)}>✕</button>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Servicio *</label>
+              <select className="form-input" value={nuevaForm.servicio_id} onChange={e => setNuevaForm(f => ({ ...f, servicio_id: e.target.value }))}>
+                <option value="">Selecciona un servicio</option>
+                {serviciosList.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Profesional</label>
+              <select className="form-input" value={nuevaForm.trabajador_id} onChange={e => setNuevaForm(f => ({ ...f, trabajador_id: e.target.value }))}>
+                <option value="">Sin preferencia</option>
+                {trabajadoresList.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre del cliente *</label>
+              <input className="form-input" type="text" placeholder="Nombre y apellidos" value={nuevaForm.nombre} onChange={e => setNuevaForm(f => ({ ...f, nombre: e.target.value }))} />
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+              <div className="form-group">
+                <label className="form-label">Teléfono *</label>
+                <input className="form-input" type="tel" placeholder="6XX XXX XXX" value={nuevaForm.telefono} onChange={e => setNuevaForm(f => ({ ...f, telefono: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email (opcional)</label>
+                <input className="form-input" type="email" placeholder="cliente@email.com" value={nuevaForm.email} onChange={e => setNuevaForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+              <div className="form-group">
+                <label className="form-label">Fecha</label>
+                <input className="form-input" type="date" value={fecha} onChange={e => { const d = e.target.value; if (d) { setFecha(d); setNuevaForm(f => ({ ...f, hora: '' })) } }} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Hora *</label>
+                <select className="form-input" value={nuevaForm.hora} onChange={e => setNuevaForm(f => ({ ...f, hora: e.target.value }))}>
+                  <option value="">Selecciona hora</option>
+                  {getSlotsDelDia()
+                    .filter(s => !s.reserva || s.reserva.estado === 'cancelada')
+                    .map(s => <option key={s.hora} value={s.hora}>{s.hora}</option>)}
+                  {getSlotsDelDia().length === 0 && <option value="" disabled>Sin horario configurado</option>}
+                </select>
+              </div>
+            </div>
+            {nuevaError && <div style={{color:'#DC2626',fontSize:'13px',marginBottom:'12px',padding:'10px',background:'rgba(254,202,202,0.3)',borderRadius:'8px'}}>{nuevaError}</div>}
+            <div style={{display:'flex',gap:'10px',justifyContent:'flex-end',marginTop:'4px'}}>
+              <button onClick={() => setModalNueva(false)} style={{padding:'11px 20px',background:'none',border:'1.5px solid var(--border)',borderRadius:'10px',fontFamily:'inherit',fontSize:'14px',fontWeight:600,color:'var(--text2)',cursor:'pointer'}}>Cancelar</button>
+              <button onClick={insertarReserva} disabled={guardandoNueva} className="btn-nueva" style={{padding:'11px 24px',fontSize:'14px'}}>
+                {guardandoNueva ? 'Guardando...' : 'Crear reserva'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardShell>
   )
 }
