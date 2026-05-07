@@ -20,6 +20,8 @@ type Reserva = {
   trabajador_id: string | null
   puntos_ganados: number | null
   confirmada_cliente: boolean | null
+  grupo_id: string | null
+  precio_total: number | null
   servicios: { nombre: string } | null
   trabajadores: { nombre: string } | null
 }
@@ -307,7 +309,7 @@ export default function Reservas() {
     const { db } = await getSessionClient()
     const { data } = await db
       .from('reservas')
-      .select('*, servicios(nombre), trabajadores(nombre), confirmada_cliente, cliente_email')
+      .select('*, servicios(nombre), trabajadores(nombre), confirmada_cliente, cliente_email, grupo_id, precio_total')
       .eq('negocio_id', negocio.id)
       .eq('fecha', fecha)
       .order('hora')
@@ -810,7 +812,7 @@ export default function Reservas() {
                                 ? <span className="badge-confirmado-cli">✅ Confirmada por cliente</span>
                                 : <span className="badge-pendiente-cli">⏳ Pendiente confirmar</span>)}
                             </div>
-                            {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}</div>}
+                            {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}{r.precio_total ? <span style={{marginLeft:'6px', fontWeight:700, color:'#1D4ED8'}}>· €{r.precio_total.toFixed(2)}</span> : null}</div>}
                             {r.trabajadores?.nombre && <div className="rc-linea">👤 {r.trabajadores.nombre}</div>}
                             {r.cliente_telefono && <div className="rc-linea">📞 {r.cliente_telefono}</div>}
                             {r.estado === 'completada' && r.puntos_ganados ? <div className="rc-linea" style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</div> : null}
@@ -863,7 +865,7 @@ export default function Reservas() {
                                   ? <span className="badge-confirmado-cli">✅ Confirmada por cliente</span>
                                   : <span className="badge-pendiente-cli">⏳ Pendiente confirmar</span>)}
                               </div>
-                              {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}</div>}
+                              {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}{r.precio_total ? <span style={{marginLeft:'6px', fontWeight:700, color:'#1D4ED8'}}>· €{r.precio_total.toFixed(2)}</span> : null}</div>}
                               {r.trabajadores?.nombre && <div className="rc-linea">👤 {r.trabajadores.nombre}</div>}
                               {r.cliente_telefono && <div className="rc-linea">📞 {r.cliente_telefono}</div>}
                               {r.estado === 'completada' && r.puntos_ganados ? <div className="rc-linea" style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</div> : null}

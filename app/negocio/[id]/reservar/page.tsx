@@ -93,7 +93,7 @@ export default function Reservar() {
   const [negocioAgenda, setNegocioAgenda] = useState({ intervalo: 15, margen: 0, anteMin: 60, anteMax: 43200, maxSimul: 1 })
 
   // Selecciones
-  const [servicio, setServicio] = useState<Servicio | null>(null)
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState<Servicio[]>([])
   const [trabajador, setTrabajador] = useState<Trabajador | null>(null)
   const [fecha, setFecha] = useState<string>('')
   const [hora, setHora] = useState<string>('')
@@ -122,6 +122,11 @@ export default function Reservar() {
   const [chatEnviando, setChatEnviando] = useState(false)
   const chatBodyRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
+
+  // Valores derivados de multi-selección
+  const servicio        = serviciosSeleccionados[0] ?? null
+  const duracionTotal   = serviciosSeleccionados.reduce((acc, s) => acc + s.duracion, 0) || 30
+  const precioTotal     = serviciosSeleccionados.reduce((acc, s) => acc + s.precio, 0)
 
   // Calendario
   const hoy = new Date()
@@ -179,7 +184,7 @@ export default function Reservar() {
 
   // Cargar horas ocupadas cuando llegamos al paso de hora
   useEffect(() => {
-    if (paso !== 3 || !fecha || !servicio || !id) return
+    if (paso !== 3 || !fecha || serviciosSeleccionados.length === 0 || !id) return
     setCargandoSlots(true)
     let query = supabase
       .from('reservas')
@@ -200,25 +205,25 @@ export default function Reservar() {
       setHorasOcupadas(ocupados)
       setCargandoSlots(false)
     })
-  }, [paso, fecha, servicio, trabajador, id, negocioAgenda])
+  }, [paso, fecha, serviciosSeleccionados, trabajador, id, negocioAgenda])
 
-  // Generar slots para la fecha y servicio seleccionados
+  // Generar slots para la fecha y duración total seleccionada
   const slots = useCallback((): string[] => {
-    if (!fecha || !servicio) return []
+    if (!fecha || serviciosSeleccionados.length === 0) return []
     const [y, m, d] = fecha.split('-').map(Number)
     const diaNombre = diasNombre[new Date(y, m-1, d).getDay()]
     const horario = horarios.find(h => h.dia === diaNombre)
     if (!horario || !horario.abierto) return []
     const { intervalo, margen, anteMin } = negocioAgenda
-    const s1 = generarSlots(horario.hora_apertura, horario.hora_cierre, servicio.duracion, intervalo, margen)
-    const s2 = horario.hora_apertura2 ? generarSlots(horario.hora_apertura2, horario.hora_cierre2!, servicio.duracion, intervalo, margen) : []
+    const s1 = generarSlots(horario.hora_apertura, horario.hora_cierre, duracionTotal, intervalo, margen)
+    const s2 = horario.hora_apertura2 ? generarSlots(horario.hora_apertura2, horario.hora_cierre2!, duracionTotal, intervalo, margen) : []
     const ahora = Date.now()
     return [...s1, ...s2].filter(slot => {
       const [sh, sm] = slot.split(':').map(Number)
       const slotTime = new Date(y, m - 1, d, sh, sm).getTime()
       return slotTime >= ahora + anteMin * 60 * 1000
     })
-  }, [fecha, servicio, horarios, negocioAgenda])
+  }, [fecha, serviciosSeleccionados, duracionTotal, horarios, negocioAgenda])
 
   function diaDisponible(y: number, m: number, d: number): boolean {
     const f = new Date(y, m, d)
@@ -350,11 +355,11 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
   }
 
   async function inscribirEspera() {
-    if (!nombre.trim() || !id || !servicio || !fecha) return
+    if (!nombre.trim() || !id || serviciosSeleccionados.length === 0 || !fecha) return
     setEnviandoEspera(true)
     await supabase.from('lista_espera').insert({
       negocio_id: id,
-      servicio_id: servicio.id,
+      servicio_id: serviciosSeleccionados[0].id,
       cliente_nombre: nombre.trim(),
       cliente_telefono: telefono.trim() || null,
       cliente_email: email.trim() || null,
@@ -368,7 +373,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     if (reservando) return
     if (!nombre.trim()) { setError('Introduce tu nombre'); return }
     if (!telefono.trim()) { setError('Introduce tu teléfono'); return }
-    if (!servicio) { setError('Selecciona un servicio'); return }
+    if (serviciosSeleccionados.length === 0) { setError('Selecciona al menos un servicio'); return }
     if (!id) { setError('Error: negocio no identificado'); return }
     if (!captchaToken) { setError('Por favor completa la verificación de seguridad'); return }
     setError(''); setEnviando(true); setReservando(true)
@@ -383,32 +388,50 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     const { data: { session } } = await supabase.auth.getSession()
     const userId = session?.user?.id ?? null
 
-    const { data: nueva, error: err } = await supabase
-      .from('reservas')
-      .insert({
-        negocio_id:       id,
-        servicio_id:      servicio.id,
-        trabajador_id:    trabajador?.id ?? null,
-        cliente_nombre:   nombreSanitized,
-        cliente_telefono: telefonoSanitized,
-        cliente_email:    emailSanitized || null,
-        fecha,
-        hora,
-        estado:           'confirmada',
-        user_id:          userId,
-      })
-      .select('id')
-      .single()
+    // grupo_id vincula todas las reservas de esta sesión
+    const grupoId = crypto.randomUUID()
+
+    // Insertar una reserva por servicio; los tiempos se asignan secuencialmente
+    let primeraId: string | null = null
+    let minutosAcum = 0
+    for (const svc of serviciosSeleccionados) {
+      const [hh, mm] = hora.split(':').map(Number)
+      const minTotales = hh * 60 + mm + minutosAcum
+      const horaStr = `${String(Math.floor(minTotales / 60)).padStart(2,'0')}:${String(minTotales % 60).padStart(2,'0')}`
+
+      const { data: nueva, error: err } = await supabase
+        .from('reservas')
+        .insert({
+          negocio_id:       id,
+          servicio_id:      svc.id,
+          trabajador_id:    trabajador?.id ?? null,
+          cliente_nombre:   nombreSanitized,
+          cliente_telefono: telefonoSanitized,
+          cliente_email:    emailSanitized || null,
+          fecha,
+          hora:             horaStr,
+          estado:           'confirmada',
+          user_id:          userId,
+          grupo_id:         grupoId,
+          precio_total:     precioTotal,
+        })
+        .select('id')
+        .single()
+
+      if (err || !nueva) {
+        setError(`Error al guardar: ${err?.message ?? 'sin respuesta'}`)
+        console.error('[reservar] insert error:', err)
+        setEnviando(false); setReservando(false)
+        captchaRef.current?.resetCaptcha(); setCaptchaToken('')
+        return
+      }
+
+      if (!primeraId) primeraId = nueva.id
+      minutosAcum += svc.duracion
+    }
 
     captchaRef.current?.resetCaptcha()
     setCaptchaToken('')
-
-    if (err || !nueva) {
-      setError(`Error al guardar: ${err?.message ?? 'sin respuesta'}`)
-      console.error('[reservar] insert error:', err)
-      setEnviando(false); setReservando(false)
-      return
-    }
 
     // Guardar teléfono en el perfil si hay sesión
     if (session?.user && telefono.trim()) {
@@ -416,20 +439,25 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     }
 
     // Enviar email de confirmación (non-blocking)
-    if (emailSanitized) {
+    if (emailSanitized && primeraId) {
       fetch('/api/confirmar-reserva', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reserva_id: nueva.id }),
+        body: JSON.stringify({ reserva_id: primeraId }),
       }).catch(() => {})
     }
 
     setPaso(5)
   }
 
-  function avanzarServicio(s: Servicio) {
-    setServicio(s)
-    // Si no hay trabajadores o solo hay uno, saltar ese paso
+  function toggleServicio(s: Servicio) {
+    setServiciosSeleccionados(prev =>
+      prev.some(x => x.id === s.id) ? prev.filter(x => x.id !== s.id) : [...prev, s]
+    )
+  }
+
+  function avanzarServicios() {
+    if (serviciosSeleccionados.length === 0) return
     if (trabajadores.length <= 1) {
       setTrabajador(trabajadores[0] || null)
       setPaso(2)
@@ -590,10 +618,16 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
             <div className="exito-titulo">¡Cita confirmada!</div>
             <div className="exito-sub">Tu reserva ha sido registrada correctamente. Te esperamos.</div>
             <div className="exito-card">
-              <div className="exito-card-row"><span style={{color:'#6B7280'}}>Servicio</span><span style={{fontWeight:700}}>{servicio?.nombre}</span></div>
+              {serviciosSeleccionados.length === 1 ? (
+                <div className="exito-card-row"><span style={{color:'#6B7280'}}>Servicio</span><span style={{fontWeight:700}}>{serviciosSeleccionados[0].nombre}</span></div>
+              ) : (
+                <div className="exito-card-row"><span style={{color:'#6B7280'}}>Servicios</span><span style={{fontWeight:700, textAlign:'right'}}>{serviciosSeleccionados.map(s => s.nombre).join(' + ')}</span></div>
+              )}
               {trabajador && <div className="exito-card-row"><span style={{color:'#6B7280'}}>Profesional</span><span style={{fontWeight:700}}>{trabajador.nombre}</span></div>}
+              <div className="exito-card-row"><span style={{color:'#6B7280'}}>Duración</span><span style={{fontWeight:700}}>{duracionTotal} min</span></div>
               <div className="exito-card-row"><span style={{color:'#6B7280'}}>Fecha</span><span style={{fontWeight:700}}>{fecha && new Date(fecha+'T00:00:00').toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'long'})}</span></div>
               <div className="exito-card-row"><span style={{color:'#6B7280'}}>Hora</span><span style={{fontWeight:700}}>{hora}</span></div>
+              <div className="exito-card-row"><span style={{color:'#6B7280'}}>Total</span><span style={{fontWeight:700, color:'#1D4ED8'}}>€{precioTotal.toFixed(2)}</span></div>
               <div className="exito-card-row"><span style={{color:'#6B7280'}}>Nombre</span><span style={{fontWeight:700}}>{nombre}</span></div>
             </div>
             <Link href={`/negocio/${id}`} style={{display:'block', width:'100%', padding:'14px', background:'#111827', color:'white', border:'none', borderRadius:'12px', fontFamily:'inherit', fontSize:'15px', fontWeight:700, textAlign:'center', textDecoration:'none'}}>
@@ -613,31 +647,57 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
               ))}
             </div>
 
-            {/* PASO 0: SERVICIO */}
+            {/* PASO 0: SERVICIO (selección múltiple) */}
             {paso === 0 && (
               <>
                 <div className="step-header">
-                  <h2>¿Qué servicio necesitas?</h2>
-                  <p>Selecciona el servicio que quieres reservar</p>
+                  <h2>¿Qué servicios necesitas?</h2>
+                  <p>Puedes seleccionar uno o varios servicios</p>
                 </div>
                 {servicios.length === 0 ? (
                   <div style={{textAlign:'center', padding:'40px', color:'#9CA3AF', fontSize:'14px'}}>Este negocio aún no tiene servicios configurados.</div>
                 ) : (
-                  <div className="opcion-lista">
-                    {servicios.map(s => (
-                      <div key={s.id} className={`opcion ${servicio?.id === s.id ? 'selected' : ''}`}
-                        onClick={() => avanzarServicio(s)}
-                        onTouchEnd={(e) => { e.preventDefault(); avanzarServicio(s) }}
-                      >
-                        <div className="opcion-icon">🔧</div>
-                        <div>
-                          <div className="opcion-nombre">{s.nombre}</div>
-                          <div className="opcion-sub">⏱ {s.duracion} min</div>
+                  <>
+                    <div className="opcion-lista">
+                      {servicios.map(s => {
+                        const sel = serviciosSeleccionados.some(x => x.id === s.id)
+                        return (
+                          <div key={s.id}
+                            className={`opcion ${sel ? 'selected' : ''}`}
+                            onClick={() => toggleServicio(s)}
+                            onTouchEnd={(e) => { e.preventDefault(); toggleServicio(s) }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div style={{ width: '22px', height: '22px', borderRadius: '6px', border: `2px solid ${sel ? '#1D4ED8' : 'rgba(0,0,0,0.15)'}`, background: sel ? '#1D4ED8' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all .15s' }}>
+                              {sel && <span style={{ color: '#fff', fontSize: '13px', fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div className="opcion-nombre">{s.nombre}</div>
+                              <div className="opcion-sub">⏱ {s.duracion} min</div>
+                            </div>
+                            <div className="opcion-precio">€{s.precio.toFixed(2)}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Resumen dinámico + botón continuar */}
+                    {serviciosSeleccionados.length > 0 && (
+                      <div style={{ marginTop: '16px', padding: '14px 16px', background: 'rgba(29,78,216,0.06)', border: '1.5px solid rgba(29,78,216,0.2)', borderRadius: '14px' }}>
+                        <div style={{ fontSize: '13px', color: '#1D4ED8', fontWeight: 700, marginBottom: '4px' }}>
+                          {serviciosSeleccionados.length === 1
+                            ? serviciosSeleccionados[0].nombre
+                            : serviciosSeleccionados.map(s => s.nombre).join(' + ')}
                         </div>
-                        <div className="opcion-precio">€{s.precio.toFixed(2)}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '12px' }}>
+                          {serviciosSeleccionados.length} {serviciosSeleccionados.length === 1 ? 'servicio' : 'servicios'} · ⏱ {duracionTotal} min · 💰 €{precioTotal.toFixed(2)}
+                        </div>
+                        <button className="btn-primary" style={{ marginTop: 0 }} onClick={avanzarServicios}>
+                          Continuar →
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -754,7 +814,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                             <span className="slot-hora">{s}</span>
                             {ocupado
                               ? <span className="slot-tag">Ocupado</span>
-                              : <span className="slot-precio">{servicio ? `€${servicio.precio.toFixed(2)}` : ''}</span>
+                              : <span className="slot-precio">{precioTotal > 0 ? `€${precioTotal.toFixed(2)}` : ''}</span>
                             }
                           </div>
                         )
@@ -830,11 +890,23 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
 
                 <div className="resumen">
                   <div className="resumen-row"><span className="resumen-label">Negocio</span><span className="resumen-val">{negocioNombre}</span></div>
-                  <div className="resumen-row"><span className="resumen-label">Servicio</span><span className="resumen-val">{servicio?.nombre}</span></div>
+                  {serviciosSeleccionados.length === 1 ? (
+                    <div className="resumen-row"><span className="resumen-label">Servicio</span><span className="resumen-val">{serviciosSeleccionados[0].nombre}</span></div>
+                  ) : (
+                    <div className="resumen-row" style={{ alignItems: 'flex-start' }}>
+                      <span className="resumen-label">Servicios</span>
+                      <span className="resumen-val" style={{ textAlign: 'right' }}>
+                        {serviciosSeleccionados.map((s, i) => (
+                          <span key={s.id}>{s.nombre}{i < serviciosSeleccionados.length - 1 ? <br /> : ''}</span>
+                        ))}
+                      </span>
+                    </div>
+                  )}
                   {trabajador && <div className="resumen-row"><span className="resumen-label">Profesional</span><span className="resumen-val">{trabajador.nombre}</span></div>}
+                  <div className="resumen-row"><span className="resumen-label">Duración</span><span className="resumen-val">{duracionTotal} min</span></div>
                   <div className="resumen-row"><span className="resumen-label">Fecha</span><span className="resumen-val">{new Date(fecha+'T00:00:00').toLocaleDateString('es-ES', {weekday:'short', day:'numeric', month:'short'})}</span></div>
                   <div className="resumen-row"><span className="resumen-label">Hora</span><span className="resumen-val">{hora}</span></div>
-                  <div className="resumen-row"><span className="resumen-label">Precio</span><span className="resumen-val">€{servicio?.precio.toFixed(2)}</span></div>
+                  <div className="resumen-row"><span className="resumen-label">Total</span><span className="resumen-val" style={{ color:'#1D4ED8', fontSize:'16px' }}>€{precioTotal.toFixed(2)}</span></div>
                   {nombre && <div className="resumen-row"><span className="resumen-label">Nombre</span><span className="resumen-val">{nombre}</span></div>}
                   {telefono && <div className="resumen-row"><span className="resumen-label">Teléfono</span><span className="resumen-val">{telefono}</span></div>}
                 </div>
