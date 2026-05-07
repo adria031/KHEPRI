@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { setNegocioActivo } from './negocio-activo'
 
 export type NegMin = { id: string; nombre: string; plan: string; logo_url?: string | null; tipo?: string | null; ciudad?: string | null }
 
@@ -46,7 +47,7 @@ export async function getNegocioActivo(userId: string, _accessToken?: string): P
   const activo = todos.find(n => n.id === saved) ?? todos[0]
 
   if (typeof window !== 'undefined') {
-    localStorage.setItem('negocio_activo_id', activo.id)
+    setNegocioActivo(activo.id, activo.plan ?? 'starter', activo.nombre)
   }
 
   return { activo, todos }

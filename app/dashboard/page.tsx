@@ -8,6 +8,7 @@ import {
 } from 'recharts'
 import { getSessionClient, supabase } from '../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
+import { setNegocioActivo } from '../lib/negocio-activo'
 import { DashboardShell } from './DashboardShell'
 
 function isoLocal(d: Date) {
@@ -154,7 +155,11 @@ export default function Dashboard() {
           setCreditos({ totales, usados, disponibles, pct })
           // Plan del negocio activo (primer relevante)
           const planRef = relevant.find(n => n.id === neg.id) ?? relevant[0]
-          if (planRef?.plan) setPlanActual(planRef.plan)
+          if (planRef?.plan) {
+            setPlanActual(planRef.plan)
+            // Persistir plan en localStorage para todas las subpáginas
+            if (!modoTodos) setNegocioActivo(neg.id, planRef.plan, neg.nombre)
+          }
         } else {
           const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
           const p = neg.plan ?? 'starter'

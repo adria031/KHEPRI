@@ -1,10 +1,11 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { NegocioSelector } from './NegocioSelector'
 import type { NegMin } from '../lib/negocioActivo'
+import { getPlanActivo } from '../lib/negocio-activo'
 import { useTheme } from '../components/ThemeProvider'
 import { useTranslations } from 'next-intl'
 import { LanguageSelector } from '../components/LanguageSelector'
@@ -104,9 +105,15 @@ export function DashboardShell({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [planFromStorage, setPlanFromStorage] = useState<string>('starter')
   const pathname = usePathname() ?? ''
   const { theme, toggle: toggleTheme } = useTheme()
   const t = useTranslations('dashboard')
+
+  // Leer plan de localStorage una sola vez (evita query Supabase en cada subpágina)
+  useEffect(() => {
+    setPlanFromStorage(getPlanActivo())
+  }, [])
 
   // Translated nav labels keyed by href
   const NAV_LABELS: Record<string, string> = {
@@ -156,7 +163,8 @@ export function DashboardShell({
 
   const router = useRouter()
   const esTodos = negocio === null && todosNegocios.length > 1
-  const planActual = negocio?.plan?.toLowerCase() ?? 'starter'
+  // Usar el plan del negocio activo; en modo "todos" usar localStorage para no perder accesos
+  const planActual = (negocio?.plan?.toLowerCase()) ?? planFromStorage ?? 'starter'
   const planCfg = PLAN_CFG[planActual] ?? PLAN_CFG.basico
 
   function navClick(e: React.MouseEvent, href: string) {

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { NegMin } from '../lib/negocioActivo'
+import { setNegocioActivo } from '../lib/negocio-activo'
 import { PLANES } from '../lib/planes'
 
 const PLAN_COLOR: Record<string, string> = {
@@ -66,7 +67,14 @@ export function NegocioSelector({
 
   function cambiar(id: string) {
     if (id === activoId) { setOpen(false); return }
-    localStorage.setItem('negocio_activo_id', id)
+    if (id === TODOS_ID) {
+      localStorage.setItem('negocio_activo_id', TODOS_ID)
+    } else {
+      const neg = negocios.find(n => n.id === id)
+      if (neg) setNegocioActivo(neg.id, neg.plan ?? 'starter', neg.nombre)
+      else localStorage.setItem('negocio_activo_id', id)
+    }
+    setOpen(false)
     window.location.reload()
   }
 
@@ -149,7 +157,7 @@ export function NegocioSelector({
       await copiarNegocio(fuenteId, newId)
     }
 
-    localStorage.setItem('negocio_activo_id', newId)
+    setNegocioActivo(newId, planNuevo, nombre.trim())
     window.location.reload()
   }
 
