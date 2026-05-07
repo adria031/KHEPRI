@@ -526,8 +526,8 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
         .resumen { background: rgba(184,216,248,0.1); border: 1.5px solid rgba(184,216,248,0.4); border-radius: 14px; padding: 16px 18px; margin-bottom: 20px; }
         .resumen-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; }
         .resumen-row:not(:last-child) { border-bottom: 1px solid rgba(0,0,0,0.06); }
-        .resumen-label { color: #6B7280; font-weight: 500; }
-        .resumen-val { color: #111827; font-weight: 700; }
+        .resumen-label { color: #6B7280; font-weight: 500; flex-shrink: 0; }
+        .resumen-val { color: #111827; font-weight: 700; text-align: right; word-break: break-word; }
         /* Botones nav */
         .btn-primary { width: 100%; padding: 15px; background: #111827; color: white; border: none; border-radius: 12px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 20px; min-height: 44px; }
         .btn-primary:disabled { background: #9CA3AF; cursor: not-allowed; }
@@ -600,6 +600,16 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
         @media (max-width: 768px) {
           input, select, textarea { font-size: 16px !important; }
           .page { padding: 16px 16px 48px; }
+          .opcion { padding: 12px 14px; gap: 10px; }
+          .opcion-nombre { font-size: 14px; }
+          .opcion-precio { font-size: 14px; }
+          .slots-grid { grid-template-columns: repeat(3, 1fr); }
+          .resumen-row { align-items: flex-start; gap: 8px; }
+        }
+        @media (max-width: 375px) {
+          .slots-grid { grid-template-columns: repeat(3, 1fr); }
+          .step-header h2 { font-size: 18px; }
+          .opcion { padding: 10px 12px; }
         }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />

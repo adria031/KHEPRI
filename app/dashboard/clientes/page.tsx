@@ -488,11 +488,20 @@ Responde con este JSON exacto:
         .cli-error { background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:9px 12px; font-size:13px; color:#B91C1C; margin-bottom:12px; }
 
         @media (max-width:768px) {
-          .cli-page { flex-direction:column; height:auto; }
-          .cli-left { flex:none; border-right:none; border-bottom:1px solid rgba(0,0,0,0.07); max-height:50vh; }
-          .cli-right { min-height:300px; }
+          .cli-page { flex-direction:column; height:auto; overflow:visible; }
+          .cli-left { flex:none; width:100%; border-right:none; border-bottom:1px solid rgba(0,0,0,0.07); max-height:50vh; }
+          .cli-right { min-height:300px; overflow-y:visible; width:100%; }
           .cli-stats-grid { grid-template-columns:repeat(2,1fr); }
-          .cli-detail { padding:20px 16px; }
+          .cli-detail { padding:20px 16px; max-width:100%; }
+          .cli-ai-label { width:auto; min-width:110px; }
+          .cli-ai-row { flex-wrap:wrap; }
+          .cli-sort { flex-wrap:wrap; }
+        }
+        @media (max-width:480px) {
+          .cli-header { padding:16px 14px 10px; }
+          .cli-detail { padding:16px 12px; }
+          .cli-stat-val { font-size:18px; }
+          .cli-filter-btn { font-size:11px; padding:4px 8px; }
         }
       `}</style>
 

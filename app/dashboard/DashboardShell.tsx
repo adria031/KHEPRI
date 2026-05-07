@@ -342,6 +342,12 @@ export function DashboardShell({
           .ds-notif-btn { display: none; }
           .ds-user-av { display: none; }
           .ds-page-title { font-size: 14px; }
+          /* Prevent horizontal overflow on mobile */
+          .ds-main, .ds-content { overflow-x: hidden; max-width: 100vw; }
+        }
+        @media (max-width: 480px) {
+          .ds-content { padding: 12px; }
+          .content { padding: 12px; }
         }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
