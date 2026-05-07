@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos' }, { status: 400 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khepria.vercel.app'
-    const registroUrl = `${appUrl}/auth?modo=registro&email=${encodeURIComponent(email)}&negocio=${negocioId}&rol=trabajador`
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khepria.app'
+    const registroUrl = `${appUrl}/onboarding/trabajador?negocio_id=${negocioId}&email=${encodeURIComponent(email)}&nombre=${encodeURIComponent(nombreTrabajador)}`
 
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -34,10 +34,10 @@ export async function POST(req: NextRequest) {
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
 
       <tr>
-        <td style="background:linear-gradient(135deg,#0F172A 0%,#1D4ED8 100%);padding:36px;text-align:center;">
-          <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.15);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:56px;">✂️</div>
-          <h1 style="margin:0;color:white;font-size:22px;font-weight:800;letter-spacing:-0.3px;">¡Bienvenido al equipo!</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.7);font-size:14px;">${nombreNegocio}</p>
+        <td style="background:linear-gradient(135deg,#B8D8F8,#D4C5F9);padding:36px;text-align:center;">
+          <div style="font-size:40px;margin-bottom:12px;">👋</div>
+          <h1 style="margin:0;color:#1E3A5F;font-size:22px;font-weight:800;letter-spacing:-0.3px;">¡Bienvenido al equipo!</h1>
+          <p style="margin:8px 0 0;color:rgba(30,58,95,0.7);font-size:14px;">${nombreNegocio}</p>
         </td>
       </tr>
 
@@ -47,18 +47,18 @@ export async function POST(req: NextRequest) {
             Hola <strong style="color:#111827;">${nombreTrabajador}</strong> 👋
           </p>
           <p style="margin:0 0 16px;font-size:14px;color:#6B7280;line-height:1.7;">
-            <strong style="color:#111827;">${nombreNegocio}</strong> te ha añadido a su equipo${especialidad ? ` como <strong style="color:#1D4ED8;">${especialidad}</strong>` : ''} en Khepria.
+            <strong style="color:#111827;">${nombreNegocio}</strong> te ha invitado a unirte a su equipo${especialidad ? ` como <strong style="color:#4F46E5;">${especialidad}</strong>` : ''} en Khepria.
           </p>
           <p style="margin:0 0 28px;font-size:14px;color:#6B7280;line-height:1.7;">
-            Crea tu cuenta para ver tu agenda, gestionar tus citas y acceder a todo tu panel de trabajador.
+            Haz clic en el botón para crear tu cuenta y acceder a tu agenda de citas.
           </p>
 
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
             <tr>
               <td align="center">
                 <a href="${registroUrl}"
-                   style="display:inline-block;padding:15px 36px;background:linear-gradient(135deg,#111827,#1D4ED8);color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;letter-spacing:-0.2px;">
-                  Acceder a mi panel →
+                   style="display:inline-block;padding:15px 36px;background:linear-gradient(135deg,#4F46E5,#7C3AED);color:white;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;letter-spacing:-0.2px;">
+                  Crear mi cuenta →
                 </a>
               </td>
             </tr>
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
           <div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:12px;padding:16px 20px;margin-bottom:20px;">
             <p style="margin:0;font-size:13px;color:#6B7280;line-height:1.6;">
               🔗 Si el botón no funciona, copia este enlace:<br>
-              <a href="${registroUrl}" style="color:#1D4ED8;word-break:break-all;font-size:12px;">${registroUrl}</a>
+              <a href="${registroUrl}" style="color:#4F46E5;word-break:break-all;font-size:12px;">${registroUrl}</a>
             </p>
           </div>
 
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
       <tr>
         <td style="background:#F8FAFC;padding:16px 36px;text-align:center;border-top:1px solid #F1F5F9;">
           <p style="margin:0;font-size:12px;color:#9CA3AF;">
-            Gestionado con <strong style="color:#1D4ED8;">Khepria</strong> · Reservas inteligentes para negocios
+            Gestionado con <strong style="color:#6B7280;">Khepria</strong>
           </p>
         </td>
       </tr>

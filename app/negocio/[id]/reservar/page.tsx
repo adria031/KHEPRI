@@ -417,7 +417,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
 
     // Enviar email de confirmación (non-blocking)
     if (emailSanitized) {
-      fetch('/api/reservas/confirmar', {
+      fetch('/api/confirmar-reserva', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reserva_id: nueva.id }),
