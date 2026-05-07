@@ -119,7 +119,8 @@ function ResenaForm() {
 
   if (estado === 'invalida') {
     return (
-      <Pantalla emoji="❌" titulo="Enlace no válido" sub="Este enlace no corresponde a ninguna cita o negocio." />
+      <Pantalla emoji="🔍" titulo="Enlace no válido" sub="Este enlace no corresponde a ninguna cita o negocio."
+        extra={<a href="https://khepria.app" style={{display:'inline-block',marginTop:'8px',fontSize:'13px',color:'#9CA3AF',textDecoration:'none'}}>Ir a khepria.app →</a>} />
     )
   }
 
