@@ -125,39 +125,16 @@ export default function Dashboard() {
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
-    const cargar = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      console.log('SESSION:', session?.user?.id)
-
-      if (!session) return
-
-      const { data: negocios, error: negError } = await supabase
-        .from('negocios')
-        .select('*')
-        .eq('user_id', session.user.id)
-      console.log('NEGOCIOS:', negocios, negError)
-
-      if (!negocios?.length) return
-      const negocio = negocios[0]
-
-      const { data: reservas, error: resError } = await supabase
-        .from('reservas')
-        .select('*, servicios(nombre, precio)')
-        .eq('negocio_id', negocio.id)
-      console.log('RESERVAS:', reservas, resError)
-    }
-    cargar()
-  }, [])
-
-  useEffect(() => {
     (async () => {
+      try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      if (!session) { setCargando(false); return }
 
       const negocioId = localStorage.getItem('negocio_activo_id')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let query: any = supabase.from('negocios').select('*').eq('user_id', session.user.id)
-      if (negocioId) query = query.eq('id', negocioId)
+      // Ignorar 'todos' y UUIDs inválidos; simplemente coger el primero del usuario
+      if (negocioId && negocioId !== 'todos') query = query.eq('id', negocioId)
       const { data: negocios } = await query
       const neg = negocios?.[0]
 
@@ -313,7 +290,11 @@ export default function Dashboard() {
       const trbTop = Object.entries(trbMap).sort((a, b) => b[1] - a[1])[0]
       if (trbTop) setTrabajadorTop(trbTop[0])
 
-      setCargando(false)
+      } catch (e) {
+        console.error('[dashboard] error cargando datos:', e)
+      } finally {
+        setCargando(false)
+      }
     })()
   }, [])
 
