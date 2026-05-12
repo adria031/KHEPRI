@@ -1,36 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { geminiGenerate } from '../../lib/gemini'
+import { NextResponse } from 'next/server'
 
-/**
- * Proxy server-side para llamadas a Gemini desde componentes client-side.
- * Los client components NO deben llamar a Gemini directamente — usan este endpoint.
- */
-export async function POST(req: NextRequest) {
-  const KEY = process.env.GEMINI_API_KEY
-  if (!KEY) {
+export async function POST(req: Request) {
+  const { prompt } = await req.json()
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
+  if (!apiKey) {
     return NextResponse.json({ error: 'API key no configurada' }, { status: 500 })
   }
-
-  const body = await req.json()
-  const { prompt, generationConfig } = body as { prompt: string; generationConfig?: object }
-
-  if (!prompt) {
-    return NextResponse.json({ error: 'prompt requerido' }, { status: 400 })
-  }
-
-  const { ok, data } = await geminiGenerate(
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: generationConfig ?? { maxOutputTokens: 600, temperature: 0.4 },
-    },
-    KEY,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    }
   )
-
-  if (!ok) {
-    return NextResponse.json({ error: 'Error de IA' }, { status: 502 })
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const text = (data as any)?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  const data = await response.json()
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
   return NextResponse.json({ text })
 }
