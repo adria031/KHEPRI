@@ -6,9 +6,8 @@ import {
   PieChart, Pie, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { getSessionClient, supabase } from '../lib/supabase'
-import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
-import { setNegocioActivo } from '../lib/negocio-activo'
+import { supabase } from '../lib/supabase'
+import { type NegMin } from '../lib/negocioActivo'
 import { DashboardShell } from './DashboardShell'
 
 function isoLocal(d: Date) {
@@ -97,6 +96,7 @@ export default function Dashboard() {
   const [noShows, setNoShows]               = useState(0)
   const [tasaExito, setTasaExito]           = useState(0)
   const [reservasEnRiesgo, setReservasEnRiesgo] = useState(0)
+  const [sinNegocio, setSinNegocio] = useState(false)
 
   // Charts
   const [barras7, setBarras7]   = useState<DiaBar[]>([])
@@ -126,54 +126,45 @@ export default function Dashboard() {
 
   useEffect(() => {
     (async () => {
-      const { session, db } = await getSessionClient()
-      if (!session?.user) { window.location.href = '/auth'; return }
-      const user = session.user
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
 
-      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
-      if (!neg) { window.location.href = '/onboarding'; return }
-      setTodosNegocios(todosNegs)
+      const negocioId = localStorage.getItem('negocio_activo_id')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let query: any = supabase.from('negocios').select('*').eq('user_id', session.user.id)
+      if (negocioId) query = query.eq('id', negocioId)
+      const { data: negocios } = await query
+      const neg = negocios?.[0]
 
-      const savedId = localStorage.getItem('negocio_activo_id')
-      // Vista consolidada cuando: no hay selección guardada O está en 'todos', Y hay >1 negocio
-      const modoTodos = (!savedId || savedId === 'todos') && todosNegs.length > 1
-      setNegocio(modoTodos ? null : neg)
-      const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
-
-      // Cargar créditos directamente desde la tabla negocios
-      try {
-        const { data: negociosCredits } = await db
-          .from('negocios')
-          .select('id,creditos_totales,creditos_usados,plan')
-          .eq('user_id', user.id)
-        if (negociosCredits && negociosCredits.length > 0) {
-          const relevant = modoTodos ? negociosCredits : negociosCredits.filter(n => n.id === neg.id)
-          const totales = relevant.reduce((s, n) => s + (n.creditos_totales ?? 100), 0)
-          const usados  = relevant.reduce((s, n) => s + (n.creditos_usados  ?? 0),   0)
-          const disponibles = Math.max(0, totales - usados)
-          const pct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
-          setCreditos({ totales, usados, disponibles, pct })
-          // Plan del negocio activo (primer relevante)
-          const planRef = relevant.find(n => n.id === neg.id) ?? relevant[0]
-          if (planRef?.plan) {
-            setPlanActual(planRef.plan)
-            // Persistir plan en localStorage para todas las subpáginas
-            if (!modoTodos) setNegocioActivo(neg.id, planRef.plan, neg.nombre)
-          }
-        } else {
-          const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
-          const p = neg.plan ?? 'starter'
-          const totales = planDefaults[p] ?? 100
-          setPlanActual(p)
-          setCreditos({ totales, usados: 0, disponibles: totales, pct: 100 })
-        }
-      } catch {
-        const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
-        const p = neg.plan ?? 'starter'
-        const totales = planDefaults[p] ?? 100
-        setPlanActual(p)
-        setCreditos({ totales, usados: 0, disponibles: totales, pct: 100 })
+      if (!neg) {
+        setSinNegocio(true)
+        setCargando(false)
+        return
       }
+
+      setNegocio(neg)
+      setTodosNegocios([neg])
+
+      // Plan y créditos
+      const p = neg.plan ?? 'starter'
+      setPlanActual(p)
+      const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
+      const totales = neg.creditos_totales ?? planDefaults[p] ?? 100
+      const usados = neg.creditos_usados ?? 0
+      const disponibles = Math.max(0, totales - usados)
+      const creditPct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
+      setCreditos({ totales, usados, disponibles, pct: creditPct })
+
+      const { data: reservas } = await supabase
+        .from('reservas')
+        .select('*, servicios(nombre, precio), trabajadores(nombre)')
+        .eq('negocio_id', neg.id)
+        .order('fecha', { ascending: false })
+
+      const { data: rResenas } = await supabase
+        .from('resenas')
+        .select('valoracion')
+        .eq('negocio_id', neg.id)
 
       const now = new Date()
       const hoyISO          = isoLocal(now)
@@ -190,21 +181,11 @@ export default function Dashboard() {
       const inicioSemAnt    = new Date(inicioSem); inicioSemAnt.setDate(inicioSem.getDate() - 7)
       const inicioSemAntISO = isoLocal(inicioSemAnt)
 
-      const [rHoy, rPeriodo, rResenas] = await Promise.all([
-        db.from('reservas')
-          .select('id, hora, cliente_nombre, estado, servicios(nombre, precio), trabajadores(nombre)')
-          .in('negocio_id', ids).eq('fecha', hoyISO).order('hora'),
-        db.from('reservas')
-          .select('fecha, hora, estado, cliente_nombre, cliente_telefono, servicios(nombre, precio), trabajadores(nombre)')
-          .in('negocio_id', ids).gte('fecha', inicioMesAntISO).order('fecha'),
-        db.from('resenas').select('valoracion').in('negocio_id', ids),
-      ])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allRes: any[] = reservas || []
+      const resenasData = rResenas || []
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hoyData: any[]    = rHoy.data    || []
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const periodData: any[] = rPeriodo.data || []
-      const resenasData       = rResenas.data || []
+      const hoyData = allRes.filter((r: { fecha: string }) => r.fecha === hoyISO)
 
       setAgenda(hoyData as CitaHoy[])
       setReservasHoy(hoyData.length)
@@ -214,8 +195,10 @@ export default function Dashboard() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setIngresosHoy(hoyData.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0))
 
-      const resMesActual = periodData.filter((r: { fecha: string }) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
-      const resMesAnt    = periodData.filter((r: { fecha: string }) => r.fecha >= inicioMesAntISO && r.fecha <= finMesAntISO)
+      const resMesActual = allRes.filter((r: { fecha: string }) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
+      const resMesAnt    = allRes.filter((r: { fecha: string }) => r.fecha >= inicioMesAntISO && r.fecha <= finMesAntISO)
+      // periodData alias for the rest of the calculations
+      const periodData = allRes
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setIngresosMes(resMesActual.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0))
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -482,7 +465,18 @@ export default function Dashboard() {
         .cr-bar-ok { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 10px; background: #ECFDF5; border: 1px solid #6EE7B7; border-radius: 100px; font-size: 11px; font-weight: 700; color: #065F46; }
       `}</style>
 
-      <div className="db-wrap">
+      {sinNegocio && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 320, gap: 16, textAlign: 'center', padding: 40 }}>
+          <div style={{ fontSize: 48 }}>🏪</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#111827' }}>Configura tu negocio para empezar</div>
+          <div style={{ fontSize: 14, color: '#6B7280', maxWidth: 360 }}>Aún no tienes un negocio creado. Completa el proceso de configuración para acceder a tu dashboard.</div>
+          <Link href="/onboarding" style={{ marginTop: 8, padding: '12px 28px', background: '#111827', color: 'white', borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+            Crear mi negocio
+          </Link>
+        </div>
+      )}
+
+      {!sinNegocio && <div className="db-wrap">
         {/* Greeting */}
         <div className="db-greet">
           <div>
@@ -910,7 +904,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
     </DashboardShell>
   )
 }
