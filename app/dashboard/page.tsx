@@ -125,6 +125,31 @@ export default function Dashboard() {
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
+    const cargar = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('SESSION:', session?.user?.id)
+
+      if (!session) return
+
+      const { data: negocios, error: negError } = await supabase
+        .from('negocios')
+        .select('*')
+        .eq('user_id', session.user.id)
+      console.log('NEGOCIOS:', negocios, negError)
+
+      if (!negocios?.length) return
+      const negocio = negocios[0]
+
+      const { data: reservas, error: resError } = await supabase
+        .from('reservas')
+        .select('*, servicios(nombre, precio)')
+        .eq('negocio_id', negocio.id)
+      console.log('RESERVAS:', reservas, resError)
+    }
+    cargar()
+  }, [])
+
+  useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
