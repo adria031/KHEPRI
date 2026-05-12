@@ -132,7 +132,29 @@ export default function Dashboard() {
       if (!session?.user) { setCargando(false); return }
       const user = session.user
 
-      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
+      let neg: NegMin | null = null
+      let todosNegs: NegMin[] = []
+
+      // Intento 1: getNegocioActivo (puede fallar si 'creado_en' no existe en la tabla)
+      try {
+        const r = await getNegocioActivo(user.id, session.access_token)
+        neg = r.activo
+        todosNegs = r.todos
+      } catch { /* ignorar */ }
+
+      // Intento 2: query directa sin order para no depender de nombre de columna
+      if (!neg) {
+        const savedId2 = localStorage.getItem('negocio_activo_id')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let q: any = db.from('negocios').select('id, nombre, plan, logo_url, tipo, ciudad').eq('user_id', user.id)
+        if (savedId2 && savedId2 !== 'todos') q = q.eq('id', savedId2)
+        const { data: fallbackNegs } = await q.limit(10)
+        if (fallbackNegs?.length) {
+          todosNegs = fallbackNegs.map((n: { id: string; nombre: string; plan?: string; logo_url?: string; tipo?: string; ciudad?: string }) => ({ ...n, plan: n.plan ?? 'starter' }))
+          neg = todosNegs[0]
+        }
+      }
+
       if (!neg) { setSinNegocio(true); setCargando(false); return }
       setTodosNegocios(todosNegs)
 
