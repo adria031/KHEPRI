@@ -6,8 +6,9 @@ import {
   PieChart, Pie, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid,
 } from 'recharts'
-import { supabase } from '../lib/supabase'
-import { type NegMin } from '../lib/negocioActivo'
+import { getSessionClient, supabase } from '../lib/supabase'
+import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
+import { setNegocioActivo } from '../lib/negocio-activo'
 import { DashboardShell } from './DashboardShell'
 
 function isoLocal(d: Date) {
@@ -127,46 +128,49 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { setCargando(false); return }
+      const { session, db } = await getSessionClient()
+      if (!session?.user) { setCargando(false); return }
+      const user = session.user
 
-      const negocioId = localStorage.getItem('negocio_activo_id')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let query: any = supabase.from('negocios').select('*').eq('user_id', session.user.id)
-      // Ignorar 'todos' y UUIDs inválidos; simplemente coger el primero del usuario
-      if (negocioId && negocioId !== 'todos') query = query.eq('id', negocioId)
-      const { data: negocios } = await query
-      const neg = negocios?.[0]
+      const { activo: neg, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
+      if (!neg) { setSinNegocio(true); setCargando(false); return }
+      setTodosNegocios(todosNegs)
 
-      if (!neg) {
-        setSinNegocio(true)
-        setCargando(false)
-        return
+      const savedId = localStorage.getItem('negocio_activo_id')
+      const modoTodos = (!savedId || savedId === 'todos') && todosNegs.length > 1
+      setNegocio(modoTodos ? null : neg)
+      const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
+
+      // Créditos
+      try {
+        const { data: negociosCredits } = await db
+          .from('negocios')
+          .select('id,creditos_totales,creditos_usados,plan')
+          .eq('user_id', user.id)
+        if (negociosCredits && negociosCredits.length > 0) {
+          const relevant = modoTodos ? negociosCredits : negociosCredits.filter(n => n.id === neg.id)
+          const totales = relevant.reduce((s, n) => s + (n.creditos_totales ?? 100), 0)
+          const usados  = relevant.reduce((s, n) => s + (n.creditos_usados  ?? 0),   0)
+          const disponibles = Math.max(0, totales - usados)
+          const pct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
+          setCreditos({ totales, usados, disponibles, pct })
+          const planRef = relevant.find(n => n.id === neg.id) ?? relevant[0]
+          if (planRef?.plan) {
+            setPlanActual(planRef.plan)
+            if (!modoTodos) setNegocioActivo(neg.id, planRef.plan, neg.nombre)
+          }
+        } else {
+          const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
+          const p = neg.plan ?? 'starter'
+          setPlanActual(p)
+          setCreditos({ totales: planDefaults[p] ?? 100, usados: 0, disponibles: planDefaults[p] ?? 100, pct: 100 })
+        }
+      } catch {
+        const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
+        const p = neg.plan ?? 'starter'
+        setPlanActual(p)
+        setCreditos({ totales: planDefaults[p] ?? 100, usados: 0, disponibles: planDefaults[p] ?? 100, pct: 100 })
       }
-
-      setNegocio(neg)
-      setTodosNegocios([neg])
-
-      // Plan y créditos
-      const p = neg.plan ?? 'starter'
-      setPlanActual(p)
-      const planDefaults: Record<string, number> = { starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000 }
-      const totales = neg.creditos_totales ?? planDefaults[p] ?? 100
-      const usados = neg.creditos_usados ?? 0
-      const disponibles = Math.max(0, totales - usados)
-      const creditPct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
-      setCreditos({ totales, usados, disponibles, pct: creditPct })
-
-      const { data: reservas } = await supabase
-        .from('reservas')
-        .select('*, servicios(nombre, precio), trabajadores(nombre)')
-        .eq('negocio_id', neg.id)
-        .order('fecha', { ascending: false })
-
-      const { data: rResenas } = await supabase
-        .from('resenas')
-        .select('valoracion')
-        .eq('negocio_id', neg.id)
 
       const now = new Date()
       const hoyISO          = isoLocal(now)
@@ -183,11 +187,21 @@ export default function Dashboard() {
       const inicioSemAnt    = new Date(inicioSem); inicioSemAnt.setDate(inicioSem.getDate() - 7)
       const inicioSemAntISO = isoLocal(inicioSemAnt)
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const allRes: any[] = reservas || []
-      const resenasData = rResenas || []
+      const [rHoy, rPeriodo, rResenas] = await Promise.all([
+        db.from('reservas')
+          .select('id, hora, cliente_nombre, estado, servicios(nombre, precio), trabajadores(nombre)')
+          .in('negocio_id', ids).eq('fecha', hoyISO).order('hora'),
+        db.from('reservas')
+          .select('fecha, hora, estado, cliente_nombre, cliente_telefono, servicios(nombre, precio), trabajadores(nombre)')
+          .in('negocio_id', ids).gte('fecha', inicioMesAntISO).order('fecha'),
+        db.from('resenas').select('valoracion').in('negocio_id', ids),
+      ])
 
-      const hoyData = allRes.filter((r: { fecha: string }) => r.fecha === hoyISO)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hoyData: any[]    = rHoy.data    || []
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const periodData: any[] = rPeriodo.data || []
+      const resenasData       = rResenas.data || []
 
       setAgenda(hoyData as CitaHoy[])
       setReservasHoy(hoyData.length)
@@ -197,10 +211,8 @@ export default function Dashboard() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setIngresosHoy(hoyData.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0))
 
-      const resMesActual = allRes.filter((r: { fecha: string }) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
-      const resMesAnt    = allRes.filter((r: { fecha: string }) => r.fecha >= inicioMesAntISO && r.fecha <= finMesAntISO)
-      // periodData alias for the rest of the calculations
-      const periodData = allRes
+      const resMesActual = periodData.filter((r: { fecha: string }) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
+      const resMesAnt    = periodData.filter((r: { fecha: string }) => r.fecha >= inicioMesAntISO && r.fecha <= finMesAntISO)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setIngresosMes(resMesActual.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0))
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
