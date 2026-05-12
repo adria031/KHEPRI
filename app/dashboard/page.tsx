@@ -155,6 +155,7 @@ export default function Dashboard() {
         }
       }
 
+      console.log('[DB] neg:', neg?.id, '| todos:', todosNegs.length)
       if (!neg) { setSinNegocio(true); setCargando(false); return }
       setTodosNegocios(todosNegs)
 
@@ -219,6 +220,10 @@ export default function Dashboard() {
         db.from('resenas').select('valoracion').in('negocio_id', ids),
       ])
 
+      console.log('[DB] hoyISO:', hoyISO, '| inicioMesAntISO:', inicioMesAntISO)
+      console.log('[DB] rHoy:', rHoy.data?.length, rHoy.error?.message)
+      console.log('[DB] rPeriodo:', rPeriodo.data?.length, rPeriodo.error?.message)
+      console.log('[DB] rResenas:', rResenas.data?.length, rResenas.error?.message)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hoyData: any[]    = rHoy.data    || []
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
