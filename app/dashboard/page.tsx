@@ -283,6 +283,7 @@ export default function Dashboard() {
       setTotalResenas(resenasData.length)
 
       // BarChart 7 días
+      console.log('[DB] hace6ISO:', hace6ISO, '| periodData total:', periodData.length, '| fechas:', periodData.slice(0,3).map((r: {fecha:string}) => r.fecha))
       const res7 = periodData.filter((r: { fecha: string }) => r.fecha >= hace6ISO && r.fecha <= hoyISO)
       const dias7: DiaBar[] = []
       for (let i = 0; i < 7; i++) {
@@ -290,6 +291,7 @@ export default function Dashboard() {
         const dISO = isoLocal(d)
         dias7.push({ dia: DIAS[d.getDay() === 0 ? 6 : d.getDay() - 1], reservas: res7.filter((r: { fecha: string }) => r.fecha === dISO).length, isHoy: dISO === hoyISO })
       }
+      console.log('[DB] res7:', res7.length, '| dias7:', dias7.map(d => `${d.dia}:${d.reservas}`).join(','))
       setBarras7(dias7)
 
       // AreaChart 4 semanas
