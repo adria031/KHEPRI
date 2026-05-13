@@ -119,9 +119,9 @@ export default function Dashboard() {
   // Notificaciones realtime
   const [notifs, setNotifs] = useState<Notif[]>([])
 
-  const hora = new Date().getHours()
+  const hora = mounted ? new Date().getHours() : 12
   const saludo = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
-  const fechaHoy = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+  const fechaHoy = mounted ? new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : ''
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -362,7 +362,7 @@ export default function Dashboard() {
     return () => { supabase.removeChannel(ch) }
   }, [negocio])
 
-  const ahora  = new Date().toTimeString().slice(0, 5)
+  const ahora  = mounted ? new Date().toTimeString().slice(0, 5) : '00:00'
   const proxima = agenda.find(c => c.hora >= ahora && (c.estado === 'confirmada' || c.estado === 'pendiente'))
 
   const pct = (a: number, b: number) => b === 0 ? null : Math.round((a - b) / b * 100)
