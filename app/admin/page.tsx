@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
 const ADMIN_EMAIL = 'adria.gaitan.sola@gmail.com'
@@ -36,6 +37,7 @@ type Cliente = {
 type TabActiva = 'overview' | 'negocios' | 'clientes' | 'fiscal'
 
 export default function Admin() {
+  const router = useRouter()
   const [cargando, setCargando] = useState(true)
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -74,9 +76,9 @@ export default function Admin() {
     } catch {}
 
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/auth'; return }
-      if (user.email !== ADMIN_EMAIL) { window.location.href = '/dashboard'; return }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/auth'); return }
+      if (session.user.email !== ADMIN_EMAIL) { router.push('/dashboard'); return }
 
       const { data: negs } = await supabase
         .from('negocios')
