@@ -202,6 +202,135 @@ export default function Analytics() {
       .slice(0, 10)
   })()
 
+  // Mapa de calor (días × horas, basado en histórico total)
+  const HORAS_MAPA = [8,9,10,11,12,13,14,15,16,17,18,19,20]
+  const mapaCalor: Record<number, Record<number, number>> = {}
+  for (let d = 0; d < 7; d++) {
+    mapaCalor[d] = {}
+    HORAS_MAPA.forEach(h => { mapaCalor[d][h] = 0 })
+  }
+  reservasAll.filter(r => r.estado !== 'cancelada').forEach(r => {
+    try {
+      const dia = new Date(r.fecha + 'T12:00').getDay()
+      if (r.hora) {
+        const h = parseInt(r.hora.slice(0, 2))
+        if (HORAS_MAPA.includes(h)) mapaCalor[dia][h] = (mapaCalor[dia][h] || 0) + 1
+      }
+    } catch {}
+  })
+  const mapaCalorMax = Math.max(1, ...Object.values(mapaCalor).flatMap(row => Object.values(row)))
+  const mejorDiaHora = (() => {
+    let best = { dia: 0, hora: 0, count: 0 }
+    for (let d = 0; d < 7; d++) {
+      HORAS_MAPA.forEach(h => { if (mapaCalor[d][h] > best.count) best = { dia: d, hora: h, count: mapaCalor[d][h] } })
+    }
+    return best
+  })()
+
+  // Forecasting básico (media últimos 3 meses)
+  const forecasting = (() => {
+    const meses: Record<string, { reservas: number; ingresos: number }> = {}
+    reservasAll.filter(r => r.estado === 'completada').forEach(r => {
+      const m = r.fecha.slice(0, 7)
+      if (!meses[m]) meses[m] = { reservas: 0, ingresos: 0 }
+      meses[m].reservas++
+      meses[m].ingresos += r.servicios?.precio ?? 0
+    })
+    const keys = Object.keys(meses).sort().slice(-3)
+    const mediaReservas = keys.length > 0 ? Math.round(keys.reduce((s, m) => s + meses[m].reservas, 0) / keys.length) : 0
+    const mediaIngresos = keys.length > 0 ? keys.reduce((s, m) => s + meses[m].ingresos, 0) / keys.length : 0
+    const tendencia = keys.length >= 2
+      ? meses[keys[keys.length - 1]].ingresos - meses[keys[0]].ingresos
+      : 0
+    return { mediaReservas, mediaIngresos, tendencia, meses, keys }
+  })()
+
+  // Análisis de clientes: frecuencia, próxima visita, en riesgo
+  const analisisClientes = (() => {
+    const clientMap: Record<string, { nombre: string; fechas: string[] }> = {}
+    reservasAll.filter(r => r.estado === 'completada').forEach(r => {
+      const k = r.cliente_telefono || r.cliente_nombre
+      if (!clientMap[k]) clientMap[k] = { nombre: r.cliente_nombre, fechas: [] }
+      clientMap[k].fechas.push(r.fecha)
+    })
+    const hoyStr = isoDate(hoy)
+    const results: Array<{
+      nombre: string; ultimaVisita: string; diasDesde: number
+      frecuenciaMedia: number; proximaEstimada: string
+      estado: 'ok' | 'pronto' | 'atrasado' | 'perdido'
+    }> = []
+    Object.values(clientMap).forEach(c => {
+      const fechas = [...new Set(c.fechas)].sort()
+      if (fechas.length < 2) return
+      const gaps: number[] = []
+      for (let i = 1; i < fechas.length; i++) {
+        gaps.push((new Date(fechas[i]).getTime() - new Date(fechas[i-1]).getTime()) / 86400000)
+      }
+      const frecuenciaMedia = Math.max(1, Math.round(gaps.reduce((s, g) => s + g, 0) / gaps.length))
+      const ultimaVisita = fechas[fechas.length - 1]
+      const diasDesde = Math.round((new Date(hoyStr).getTime() - new Date(ultimaVisita).getTime()) / 86400000)
+      const proximaEstimada = isoDate(addDays(new Date(ultimaVisita), frecuenciaMedia))
+      const estado: 'ok' | 'pronto' | 'atrasado' | 'perdido' =
+        diasDesde < frecuenciaMedia * 0.9 ? 'ok'
+        : diasDesde < frecuenciaMedia * 1.2 ? 'pronto'
+        : diasDesde < frecuenciaMedia * 2   ? 'atrasado'
+        : 'perdido'
+      results.push({ nombre: c.nombre, ultimaVisita, diasDesde, frecuenciaMedia, proximaEstimada, estado })
+    })
+    return results.sort((a, b) => a.diasDesde - b.diasDesde)
+  })()
+  const clientesEnRiesgo = analisisClientes.filter(c => c.estado === 'atrasado' || c.estado === 'perdido').slice(0, 8)
+  const proximasVisitas = analisisClientes
+    .filter(c => (c.estado === 'pronto' || c.estado === 'ok') && c.proximaEstimada >= isoDate(hoy) && c.proximaEstimada <= isoDate(addDays(hoy, 21)))
+    .sort((a, b) => a.proximaEstimada.localeCompare(b.proximaEstimada))
+    .slice(0, 6)
+
+  // Días flojos (por debajo del 70% de la media)
+  const diasFlojos = (() => {
+    const cntDia = [0,0,0,0,0,0,0]
+    reservasAll.filter(r => r.estado === 'completada').forEach(r => {
+      try { cntDia[new Date(r.fecha + 'T12:00').getDay()]++ } catch {}
+    })
+    const total = cntDia.reduce((s, v) => s + v, 0)
+    if (total === 0) return []
+    const mediaDia = total / 7
+    return cntDia.map((count, idx) => ({
+      dia: DIAS_FULL[idx], diaCorto: DIAS_ES[idx], count,
+      esFlojo: count < mediaDia * 0.7,
+      pct: Math.round(count / total * 100),
+    })).filter(d => d.esFlojo)
+  })()
+
+  // No-shows (clientes con alta tasa de cancelación)
+  const noShowClientes = (() => {
+    const stats: Record<string, { nombre: string; cancelaciones: number; total: number }> = {}
+    reservasAll.forEach(r => {
+      const k = r.cliente_telefono || r.cliente_nombre
+      if (!stats[k]) stats[k] = { nombre: r.cliente_nombre, cancelaciones: 0, total: 0 }
+      stats[k].total++
+      if (r.estado === 'cancelada') stats[k].cancelaciones++
+    })
+    return Object.values(stats)
+      .filter(c => c.total >= 3 && c.cancelaciones / c.total >= 0.4)
+      .sort((a, b) => b.cancelaciones / b.total - a.cancelaciones / a.total)
+      .slice(0, 8)
+      .map(c => ({ ...c, tasa: Math.round(c.cancelaciones / c.total * 100) }))
+  })()
+
+  // Alerta fiscal trimestral
+  const alertaFiscal = (() => {
+    const trimestre = Math.floor(hoy.getMonth() / 3) + 1
+    const inicioTrim = new Date(hoy.getFullYear(), (trimestre - 1) * 3, 1)
+    const finTrim = new Date(hoy.getFullYear(), trimestre * 3, 0)
+    const diasRestantes = Math.round((finTrim.getTime() - hoy.getTime()) / 86400000)
+    const diasPasados = Math.max(1, Math.round((hoy.getTime() - inicioTrim.getTime()) / 86400000))
+    const ingTrimestre = reservasAll
+      .filter(r => r.estado === 'completada' && r.fecha >= isoDate(inicioTrim) && r.fecha <= isoDate(finTrim))
+      .reduce((s, r) => s + (r.servicios?.precio ?? 0), 0)
+    const proyeccion = Math.round(ingTrimestre / diasPasados * (diasPasados + diasRestantes))
+    return { trimestre, diasRestantes, ingTrimestre, proyeccion, finTrim: isoDate(finTrim) }
+  })()
+
   // ── Data loaders ──────────────────────────────────────────────────────────
   const cargarDatos = useCallback(async (nid: string, p: Periodo) => {
     setCargando(true)
@@ -216,7 +345,7 @@ export default function Analytics() {
         .select('id, fecha, created_at, estado, cliente_nombre, cliente_telefono, hora, servicios(nombre,precio), trabajadores(nombre)')
         .eq('negocio_id', nid).gte('fecha', desdePrev).lt('fecha', desde).order('fecha'),
       supabase.from('reservas')
-        .select('id, fecha, estado, cliente_nombre, cliente_telefono, servicios(nombre,precio)')
+        .select('id, fecha, estado, cliente_nombre, cliente_telefono, hora, servicios(nombre,precio)')
         .eq('negocio_id', nid).order('fecha'),
     ])
     setReservas((curr || []) as unknown as ReservaRaw[])
@@ -604,6 +733,218 @@ export default function Analytics() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+
+          {/* ── Mapa de calor demanda ── */}
+          <div className="an-section">
+            <div className="an-section-title">🔥 Mapa de demanda — Días × Horas</div>
+            <div className="an-card" style={{ overflowX:'auto' }}>
+              {mejorDiaHora.count > 0 && (
+                <div style={{ fontSize:13, color:'var(--text2)', marginBottom:14, padding:'8px 12px', background:`${K.yellow}50`, borderRadius:10, display:'inline-block' }}>
+                  Tu momento más ocupado: <strong>{DIAS_FULL[mejorDiaHora.dia]} a las {String(mejorDiaHora.hora).padStart(2,'0')}:00</strong> ({mejorDiaHora.count} reservas)
+                </div>
+              )}
+              <div style={{ display:'grid', gridTemplateColumns:`64px repeat(${HORAS_MAPA.length},1fr)`, gap:3, minWidth:600 }}>
+                <div style={{ fontSize:10, color:'var(--muted)', paddingBottom:6 }}></div>
+                {HORAS_MAPA.map(h => (
+                  <div key={h} style={{ fontSize:10, color:'var(--muted)', textAlign:'center', paddingBottom:6 }}>{String(h).padStart(2,'0')}h</div>
+                ))}
+                {[0,1,2,3,4,5,6].map(d => (
+                  <>
+                    <div key={`l${d}`} style={{ fontSize:11, color:'var(--text2)', display:'flex', alignItems:'center', paddingRight:6 }}>{DIAS_ES[d]}</div>
+                    {HORAS_MAPA.map(h => {
+                      const v = mapaCalor[d][h] || 0
+                      const intensity = mapaCalorMax > 0 ? v / mapaCalorMax : 0
+                      const bg = intensity === 0
+                        ? '#F3F4F6'
+                        : `rgba(29,78,216,${0.1 + intensity * 0.85})`
+                      const fg = intensity > 0.5 ? 'white' : intensity > 0.2 ? '#1D4ED8' : 'transparent'
+                      return (
+                        <div key={h} style={{ height:32, borderRadius:6, background:bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:fg, transition:'opacity 0.2s' }} title={`${DIAS_FULL[d]} ${String(h).padStart(2,'0')}:00 — ${v} reservas`}>
+                          {v > 0 ? v : ''}
+                        </div>
+                      )
+                    })}
+                  </>
+                ))}
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:12, fontSize:11, color:'var(--muted)' }}>
+                <span>Menos</span>
+                {[0.05,0.25,0.5,0.75,1].map((i,idx) => (
+                  <div key={idx} style={{ width:18, height:12, borderRadius:3, background:`rgba(29,78,216,${0.1 + i * 0.85})` }}/>
+                ))}
+                <span>Más</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Forecasting básico ── */}
+          <div className="an-section">
+            <div className="an-section-title">📈 Previsión próximo mes</div>
+            <div className="an-grid3">
+              <div className="an-card">
+                <div className="an-card-title">Reservas previstas</div>
+                <div style={{ fontSize:36, fontWeight:800, color:K.blueDark, letterSpacing:'-1px', marginBottom:6 }}>{forecasting.mediaReservas}</div>
+                <div style={{ fontSize:12, color:'var(--muted)' }}>Media últimos {forecasting.keys.length} meses</div>
+              </div>
+              <div className="an-card">
+                <div className="an-card-title">Ingresos previstos</div>
+                <div style={{ fontSize:28, fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px', marginBottom:6 }}>{fmtEur(forecasting.mediaIngresos)} €</div>
+                <div style={{ fontSize:12, color:'var(--muted)' }}>Media mensual reciente</div>
+              </div>
+              <div className="an-card">
+                <div className="an-card-title">Tendencia</div>
+                <div style={{ fontSize:24, fontWeight:800, letterSpacing:'-0.5px', marginBottom:6, color: forecasting.tendencia >= 0 ? K.greenDark : '#DC2626' }}>
+                  {forecasting.tendencia >= 0 ? '▲' : '▼'} {fmtEur(Math.abs(forecasting.tendencia))} €
+                </div>
+                <div style={{ fontSize:12, color:'var(--muted)' }}>Primer al último mes analizado</div>
+              </div>
+            </div>
+            {forecasting.keys.length > 0 && (
+              <div className="an-card" style={{ marginTop:14 }}>
+                <div className="an-card-title">Ingresos por mes (histórico)</div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={Object.entries(forecasting.meses).sort((a,b) => a[0].localeCompare(b[0])).map(([m, v]) => ({ mes: m.slice(5), reservas: v.reservas, ingresos: +v.ingresos.toFixed(2) }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                    <XAxis dataKey="mes" tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} width={42} tickFormatter={v => `${v}€`} />
+                    <Tooltip formatter={(v: any, name: any) => [name === 'ingresos' ? `${fmtEur(v)} €` : v, name === 'ingresos' ? 'Ingresos' : 'Reservas']} />
+                    <Bar dataKey="ingresos" fill={K.green} radius={[4,4,0,0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* ── Próximas visitas estimadas ── */}
+          {proximasVisitas.length > 0 && (
+            <div className="an-section">
+              <div className="an-section-title">🗓️ Clientes con visita estimada próxima (21 días)</div>
+              <div className="an-card">
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, padding:'0 0 10px', borderBottom:'1px solid var(--border)', marginBottom:4 }}>
+                  {['Cliente','Última visita','Frecuencia media','Próxima estimada'].map(h => (
+                    <span key={h} style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{h}</span>
+                  ))}
+                </div>
+                {proximasVisitas.map((c, i) => (
+                  <div key={i} className="vip-row">
+                    <div style={{ flex:2, fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.nombre}</div>
+                    <div style={{ flex:1, fontSize:12, color:'var(--text2)' }}>{c.ultimaVisita}</div>
+                    <div style={{ flex:1, fontSize:12, color:'var(--muted)' }}>cada {c.frecuenciaMedia}d</div>
+                    <div style={{ flex:1 }}>
+                      <span style={{ fontSize:12, fontWeight:700, color:K.blueDark, background:`${K.blue}50`, padding:'2px 8px', borderRadius:100 }}>{c.proximaEstimada}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Clientes en riesgo ── */}
+          {clientesEnRiesgo.length > 0 && (
+            <div className="an-section">
+              <div className="an-section-title">⚠️ Clientes en riesgo de perder</div>
+              <div className="an-card">
+                <div style={{ fontSize:12, color:'var(--text2)', marginBottom:14, padding:'8px 12px', background:`${K.yellow}40`, borderRadius:10 }}>
+                  Clientes que no regresan según su patrón habitual. Considera enviarles un recordatorio o descuento.
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, padding:'0 0 10px', borderBottom:'1px solid var(--border)', marginBottom:4 }}>
+                  {['Cliente','Última visita','Días sin venir','Estado'].map(h => (
+                    <span key={h} style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{h}</span>
+                  ))}
+                </div>
+                {clientesEnRiesgo.map((c, i) => (
+                  <div key={i} className="vip-row">
+                    <div style={{ flex:2, fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.nombre}</div>
+                    <div style={{ flex:1, fontSize:12, color:'var(--text2)' }}>{c.ultimaVisita}</div>
+                    <div style={{ flex:1, fontSize:12, fontWeight:700, color: c.diasDesde > c.frecuenciaMedia * 2 ? '#DC2626' : '#D97706' }}>{c.diasDesde}d</div>
+                    <div style={{ flex:1 }}>
+                      <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:100, background: c.estado === 'perdido' ? '#FEE2E2' : '#FEF3C7', color: c.estado === 'perdido' ? '#DC2626' : '#D97706' }}>
+                        {c.estado === 'perdido' ? '🔴 Perdido' : '🟡 En riesgo'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Días flojos ── */}
+          {diasFlojos.length > 0 && (
+            <div className="an-section">
+              <div className="an-section-title">📉 Días flojos — Oportunidades de promoción</div>
+              <div className="an-card">
+                <div style={{ fontSize:12, color:'var(--text2)', marginBottom:14, padding:'8px 12px', background:`${K.blue}30`, borderRadius:10 }}>
+                  Estos días tienen significativamente menos reservas. Considera ofrecer descuentos o promociones especiales.
+                </div>
+                <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+                  {diasFlojos.map((d, i) => (
+                    <div key={i} style={{ flex:1, minWidth:140, background:'#F9FAFB', borderRadius:12, padding:'16px', border:'1px solid var(--border)' }}>
+                      <div style={{ fontSize:22, fontWeight:800, color:K.lilaDark, marginBottom:4 }}>{d.dia}</div>
+                      <div style={{ fontSize:13, color:'var(--text2)', marginBottom:8 }}>{d.count} reservas totales ({d.pct}%)</div>
+                      <div style={{ fontSize:12, color:'var(--muted)', background:`${K.lila}40`, padding:'6px 10px', borderRadius:8 }}>
+                        💡 Prueba un descuento del 15-20% los {d.dia.toLowerCase()}s para llenar huecos
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── No-shows ── */}
+          {noShowClientes.length > 0 && (
+            <div className="an-section">
+              <div className="an-section-title">🚫 Clientes con alta tasa de cancelación</div>
+              <div className="an-card">
+                <div style={{ fontSize:12, color:'var(--text2)', marginBottom:14, padding:'8px 12px', background:`${K.pink}40`, borderRadius:10 }}>
+                  Clientes que cancelan el 40% o más de sus reservas. Considera solicitarles prepago o depósito.
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, padding:'0 0 10px', borderBottom:'1px solid var(--border)', marginBottom:4 }}>
+                  {['Cliente','Reservas','Canceladas','Tasa cancelación'].map(h => (
+                    <span key={h} style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{h}</span>
+                  ))}
+                </div>
+                {noShowClientes.map((c, i) => (
+                  <div key={i} className="vip-row">
+                    <div style={{ flex:2, fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.nombre}</div>
+                    <div style={{ flex:1, fontSize:12, color:'var(--text2)' }}>{c.total}</div>
+                    <div style={{ flex:1, fontSize:12, color:'var(--text2)' }}>{c.cancelaciones}</div>
+                    <div style={{ flex:1 }}>
+                      <span style={{ fontSize:12, fontWeight:800, color: c.tasa >= 70 ? '#DC2626' : '#D97706' }}>{c.tasa}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Alerta fiscal trimestral ── */}
+          <div className="an-section">
+            <div className="an-section-title">🧾 Resumen fiscal — T{alertaFiscal.trimestre} {hoy.getFullYear()}</div>
+            <div className="an-card">
+              <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+                <div style={{ flex:1, minWidth:140 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Ingresos este trimestre</div>
+                  <div style={{ fontSize:28, fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px' }}>{fmtEur(alertaFiscal.ingTrimestre)} €</div>
+                  <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>Cierra el {alertaFiscal.finTrim}</div>
+                </div>
+                <div style={{ flex:1, minWidth:140 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Proyección cierre trimestre</div>
+                  <div style={{ fontSize:28, fontWeight:800, color:K.blueDark, letterSpacing:'-0.5px' }}>{fmtEur(alertaFiscal.proyeccion)} €</div>
+                  <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>Según ritmo actual</div>
+                </div>
+                <div style={{ flex:1, minWidth:140 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Días restantes</div>
+                  <div style={{ fontSize:28, fontWeight:800, color: alertaFiscal.diasRestantes <= 15 ? '#DC2626' : alertaFiscal.diasRestantes <= 30 ? '#D97706' : K.greenDark, letterSpacing:'-0.5px' }}>
+                    {alertaFiscal.diasRestantes}d
+                  </div>
+                  <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>
+                    {alertaFiscal.diasRestantes <= 15 ? '⚠️ Cierra pronto — revisa tus impuestos' : alertaFiscal.diasRestantes <= 30 ? '⏰ Mes final del trimestre' : 'En plazo'}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </>
