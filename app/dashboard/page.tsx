@@ -29,6 +29,25 @@ type DonutSlice = { name: string; value: number }
 
 const DIAS = ['L','M','X','J','V','S','D']
 
+type ChecklistT = { logo: boolean; servicios: boolean; horarios: boolean; trabajadores: boolean; enlaceCompartido: boolean }
+
+function calcularAlertaFiscal(): { dias: number; trimestre: string } | null {
+  const hoy = new Date(); hoy.setHours(0,0,0,0)
+  const year = hoy.getFullYear()
+  const venc = [
+    { fecha: new Date(year, 3, 20), t: 'T1 (ene–mar)' },
+    { fecha: new Date(year, 6, 20), t: 'T2 (abr–jun)' },
+    { fecha: new Date(year, 9, 20), t: 'T3 (jul–sep)' },
+    { fecha: new Date(year + 1, 0, 30), t: 'T4 (oct–dic)' },
+  ]
+  for (const v of venc) {
+    v.fecha.setHours(0,0,0,0)
+    const dias = Math.ceil((v.fecha.getTime() - hoy.getTime()) / 86400000)
+    if (dias >= 0 && dias <= 15) return { dias, trimestre: v.t }
+  }
+  return null
+}
+
 function Skeleton({ w = '100%', h = 20, r = 8 }: { w?: string|number; h?: number; r?: number }) {
   return <div style={{ width: w, height: h, borderRadius: r, background: 'linear-gradient(90deg,#F3F4F6 25%,#E5E7EB 50%,#F3F4F6 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite' }} />
 }
@@ -118,6 +137,11 @@ export default function Dashboard() {
 
   // Notificaciones realtime
   const [notifs, setNotifs] = useState<Notif[]>([])
+
+  // Predicciones y alertas
+  const [alertaFiscal] = useState<{ dias: number; trimestre: string } | null>(calcularAlertaFiscal)
+  const [clientesEnRiesgo, setClientesEnRiesgo] = useState(0)
+  const [checklist, setChecklist] = useState<ChecklistT | null>(null)
 
   const hora = mounted ? new Date().getHours() : 12
   const saludo = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
@@ -331,6 +355,48 @@ export default function Dashboard() {
       const trbTop = Object.entries(trbMap).sort((a, b) => b[1] - a[1])[0]
       if (trbTop) setTrabajadorTop(trbTop[0])
 
+      // Clientes VIP/Premium en riesgo (sin visita +30d)
+      try {
+        const { data: histRes } = await db
+          .from('reservas').select('cliente_telefono, fecha')
+          .in('negocio_id', ids).neq('estado', 'cancelada')
+        const hace30ISO = isoLocal(new Date(now.getTime() - 30 * 86400000))
+        const statRiesgo: Record<string, { visitas: number; ultima: string }> = {}
+        for (const r of histRes ?? []) {
+          const tel = r.cliente_telefono
+          if (!tel) continue
+          if (!statRiesgo[tel]) statRiesgo[tel] = { visitas: 0, ultima: '' }
+          statRiesgo[tel].visitas++
+          if (r.fecha > statRiesgo[tel].ultima) statRiesgo[tel].ultima = r.fecha
+        }
+        setClientesEnRiesgo(Object.values(statRiesgo).filter(c => c.visitas >= 6 && c.ultima < hace30ISO).length)
+      } catch { /* ignorar */ }
+
+      // Checklist configuración (solo negocio único)
+      if (!modoTodos) {
+        try {
+          const ya = localStorage.getItem(`checklist_ok_${neg.id}`)
+          if (ya !== 'true') {
+            const [{ data: negLogo }, { count: cSrv }, { count: cHor }, { count: cTrb }] = await Promise.all([
+              db.from('negocios').select('logo_url').eq('id', neg.id).single(),
+              db.from('servicios').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('activo', true),
+              db.from('horarios').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('abierto', true),
+              db.from('trabajadores').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('activo', true),
+            ])
+            const cl: ChecklistT = {
+              logo: !!negLogo?.logo_url,
+              servicios: (cSrv ?? 0) > 0,
+              horarios: (cHor ?? 0) > 0,
+              trabajadores: (cTrb ?? 0) > 0,
+              enlaceCompartido: localStorage.getItem(`enlace_compartido_${neg.id}`) === 'true',
+            }
+            const done = Object.values(cl).filter(Boolean).length
+            if (done >= 5) localStorage.setItem(`checklist_ok_${neg.id}`, 'true')
+            else setChecklist(cl)
+          }
+        } catch { /* ignorar */ }
+      }
+
       } catch (e) {
         console.error('[dashboard] error cargando datos:', e)
       } finally {
@@ -510,6 +576,35 @@ export default function Dashboard() {
         .cr-bar-fill { height: 100%; border-radius: 100px; transition: width 0.6s ease; }
         .cr-bar-warn { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 10px; background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 100px; font-size: 11px; font-weight: 700; color: #92400E; }
         .cr-bar-ok { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 10px; background: #ECFDF5; border: 1px solid #6EE7B7; border-radius: 100px; font-size: 11px; font-weight: 700; color: #065F46; }
+
+        /* ── Alerta fiscal ── */
+        .db-fiscal { display:flex; align-items:center; gap:10px; border-radius:12px; padding:11px 16px; margin-bottom:16px; font-size:13px; font-weight:600; }
+        .db-fiscal-yellow { background:rgba(254,243,199,0.8); border:1px solid #FDE68A; color:#92400E; }
+        .db-fiscal-red { background:rgba(254,226,226,0.8); border:1px solid #FECACA; color:#991B1B; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.8} }
+
+        /* ── Clientes en riesgo ── */
+        .db-riesgo-widget { display:flex; align-items:center; gap:14px; background:linear-gradient(135deg,#FFF1F2,#FFF5F5); border:1px solid #FECACA; border-radius:14px; padding:16px 18px; margin-bottom:16px; }
+        .db-riesgo-count { font-size:32px; font-weight:900; color:#DC2626; letter-spacing:-1px; line-height:1; }
+        .db-riesgo-label { font-size:13px; font-weight:700; color:#991B1B; }
+        .db-riesgo-sub { font-size:12px; color:#EF4444; margin-top:2px; }
+
+        /* ── Checklist configuración ── */
+        .db-checklist { background:white; border:1px solid #E8ECF0; border-radius:18px; padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:16px; }
+        .db-cl-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+        .db-cl-title { font-family:'Syne',sans-serif; font-size:14px; font-weight:800; color:#111827; }
+        .db-cl-progress { height:7px; background:#F3F4F6; border-radius:100px; overflow:hidden; margin-bottom:14px; }
+        .db-cl-fill { height:100%; border-radius:100px; transition:width 0.6s ease; background:linear-gradient(90deg,#34D399,#10B981); }
+        .db-cl-items { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
+        .db-cl-item { display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:10px; font-size:12.5px; font-weight:600; text-decoration:none; border:1.5px solid transparent; transition:all .15s; cursor:pointer; background:none; font-family:inherit; }
+        .db-cl-item-done { color:#065F46; background:rgba(52,211,153,0.1); border-color:rgba(52,211,153,0.3); }
+        .db-cl-item-todo { color:#4B5563; background:#F9FAFB; border-color:#E5E7EB; }
+        .db-cl-item-todo:hover { border-color:#4F46E5; color:#4F46E5; background:#EEF2FF; }
+        .db-cl-check { width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
+        .db-cl-check-done { background:#10B981; color:white; }
+        .db-cl-check-todo { background:#E5E7EB; }
+        .db-cl-dismiss { font-size:11px; color:#9CA3AF; background:none; border:none; cursor:pointer; font-family:inherit; font-weight:600; padding:4px 8px; border-radius:6px; transition:color .15s; }
+        .db-cl-dismiss:hover { color:#374151; background:#F3F4F6; }
       `}</style>
 
       {sinNegocio && (
@@ -603,10 +698,22 @@ export default function Dashboard() {
         )}
 
         {/* ── Nota dominio email ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(253,230,138,0.25)', border: '1px solid rgba(253,230,138,0.8)', borderRadius: 12, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400E' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(253,230,138,0.25)', border: '1px solid rgba(253,230,138,0.8)', borderRadius: 12, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#92400E' }}>
           <span style={{ flexShrink: 0 }}>⚠️</span>
           <span>Los emails funcionarán completamente cuando verifiques el dominio <strong>khepria.app</strong> en <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" style={{ color: '#92400E', fontWeight: 700 }}>resend.com/domains</a></span>
         </div>
+
+        {/* ── Alerta fiscal trimestral ── */}
+        {alertaFiscal && mounted && (
+          <div className={`db-fiscal ${alertaFiscal.dias <= 3 ? 'db-fiscal-red' : 'db-fiscal-yellow'}`}>
+            <span>📋</span>
+            <span>
+              <strong>Alerta fiscal:</strong> el plazo del Modelo 303 {alertaFiscal.trimestre} vence{' '}
+              {alertaFiscal.dias === 0 ? <strong>HOY</strong> : <><strong>en {alertaFiscal.dias} día{alertaFiscal.dias !== 1 ? 's' : ''}</strong></>}.
+              {' '}Presenta la declaración trimestral de IVA antes del vencimiento.
+            </span>
+          </div>
+        )}
 
         {/* ── KPIs ── */}
         <div className="db-kpis">
@@ -639,6 +746,91 @@ export default function Dashboard() {
             loading={cargando}
           />
         </div>
+
+        {/* ── Clientes VIP/Premium en riesgo ── */}
+        {!cargando && clientesEnRiesgo > 0 && (
+          <div className="db-riesgo-widget">
+            <div>
+              <div className="db-riesgo-count">{clientesEnRiesgo}</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="db-riesgo-label">
+                Cliente{clientesEnRiesgo > 1 ? 's' : ''} VIP/Premium sin visita en +30 días
+              </div>
+              <div className="db-riesgo-sub">Podrías perderlos — considera reactivarlos con una oferta personalizada</div>
+            </div>
+            <Link
+              href="/dashboard/clientes?filtro=riesgo"
+              style={{ padding: '9px 16px', background: '#EF4444', color: 'white', borderRadius: 10, fontSize: 12.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              Ver clientes →
+            </Link>
+          </div>
+        )}
+
+        {/* ── Checklist configuración ── */}
+        {checklist && (() => {
+          const items: { key: keyof ChecklistT; label: string; href: string | null; icon: string }[] = [
+            { key: 'logo',             label: 'Logo del negocio',    href: '/dashboard/configuracion', icon: '🖼️' },
+            { key: 'servicios',        label: 'Servicios activos',   href: '/dashboard/servicios',     icon: '✂️' },
+            { key: 'horarios',         label: 'Horarios definidos',  href: '/dashboard/horarios',      icon: '🕐' },
+            { key: 'trabajadores',     label: 'Equipo añadido',      href: '/dashboard/trabajadores',  icon: '👥' },
+            { key: 'enlaceCompartido', label: 'Enlace compartido',   href: null,                       icon: '🔗' },
+          ]
+          const done = items.filter(it => checklist[it.key]).length
+          const pct  = Math.round((done / items.length) * 100)
+          return (
+            <div className="db-checklist">
+              <div className="db-cl-head">
+                <div>
+                  <span className="db-cl-title">Configura tu negocio</span>
+                  <span style={{ marginLeft: 10, fontSize: 12, color: '#6B7280', fontWeight: 600 }}>{done}/{items.length} completados</span>
+                </div>
+                <button className="db-cl-dismiss" onClick={() => setChecklist(null)}>Ocultar</button>
+              </div>
+              <div className="db-cl-progress">
+                <div className="db-cl-fill" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="db-cl-items">
+                {items.map(it => {
+                  const ok = checklist[it.key]
+                  if (it.key === 'enlaceCompartido' && !ok) {
+                    return (
+                      <button
+                        key={it.key}
+                        className="db-cl-item db-cl-item-todo"
+                        onClick={() => {
+                          if (!negocio) return
+                          navigator.clipboard?.writeText(`https://khepria.app/negocio/${negocio.id}`).catch(() => {})
+                          localStorage.setItem(`enlace_compartido_${negocio.id}`, 'true')
+                          setChecklist(prev => {
+                            if (!prev) return prev
+                            const next = { ...prev, enlaceCompartido: true }
+                            const allDone = Object.values(next).filter(Boolean).length >= 5
+                            if (allDone && negocio) localStorage.setItem(`checklist_ok_${negocio.id}`, 'true')
+                            return allDone ? null : next
+                          })
+                        }}
+                      >
+                        <span className="db-cl-check db-cl-check-todo">·</span>
+                        {it.icon} {it.label}
+                      </button>
+                    )
+                  }
+                  const El = ok ? 'span' : Link
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const props: any = ok ? {} : { href: it.href ?? '#' }
+                  return (
+                    <El key={it.key} {...props} className={`db-cl-item ${ok ? 'db-cl-item-done' : 'db-cl-item-todo'}`}>
+                      <span className={`db-cl-check ${ok ? 'db-cl-check-done' : 'db-cl-check-todo'}`}>{ok ? '✓' : '·'}</span>
+                      {it.icon} {it.label}
+                    </El>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── Row 1: BarChart + Métricas rápidas ── */}
         <div className="db-row1">

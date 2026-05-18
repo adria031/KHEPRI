@@ -31,6 +31,8 @@ type ClienteAgrupado = {
   ultima_visita: string
   dias_desde_ultima: number
   nivel: 'Nuevo' | 'Habitual' | 'VIP' | 'Premium'
+  media_dias: number | null
+  prediccion: 'pronto' | 'riesgo' | null
 }
 
 type AiResult = {
@@ -43,7 +45,7 @@ type AiResult = {
 type ServicioMin = { id: string; nombre: string; duracion_minutos: number | null; precio: number | null }
 type TrabajadorMin = { id: string; nombre: string }
 
-type Filtro = 'todos' | 'nuevos' | 'habituales' | 'vip' | 'sin_visita'
+type Filtro = 'todos' | 'nuevos' | 'habituales' | 'vip' | 'sin_visita' | 'riesgo'
 type Orden  = 'visitas' | 'reciente' | 'gasto'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,6 +114,24 @@ function agruparClientes(reservas: ReservaRaw[]): ClienteAgrupado[] {
 
     const latest = rs.reduce((a, b) => a.fecha > b.fecha ? a : b, rs[0])
 
+    // Predicción próxima visita basada en media de intervalos entre visitas
+    const visitFechas = noCancel.map(r => r.fecha).filter(Boolean).sort()
+    let media_dias: number | null = null
+    if (visitFechas.length >= 2) {
+      const intervalos: number[] = []
+      for (let i = 1; i < visitFechas.length; i++) {
+        const diff = Math.floor((new Date(visitFechas[i]).getTime() - new Date(visitFechas[i-1]).getTime()) / 86400000)
+        if (diff > 0) intervalos.push(diff)
+      }
+      if (intervalos.length > 0) {
+        media_dias = Math.round(intervalos.reduce((s, x) => s + x, 0) / intervalos.length)
+      }
+    }
+    const diasDesdeUlt = ultima_visita ? diasDesde(ultima_visita) : 999
+    const prediccion: ClienteAgrupado['prediccion'] = (media_dias !== null && media_dias > 0)
+      ? (diasDesdeUlt > 2 * media_dias ? 'riesgo' : diasDesdeUlt > media_dias ? 'pronto' : null)
+      : null
+
     return {
       telefono:         tel,
       nombre:           latest.cliente_nombre,
@@ -123,8 +143,10 @@ function agruparClientes(reservas: ReservaRaw[]): ClienteAgrupado[] {
       servicio_frecuente,
       primera_visita,
       ultima_visita,
-      dias_desde_ultima: ultima_visita ? diasDesde(ultima_visita) : 999,
+      dias_desde_ultima: diasDesdeUlt,
       nivel:            getNivel(visitas),
+      media_dias,
+      prediccion,
     }
   })
 }
@@ -176,6 +198,12 @@ export default function ClientesPage() {
   const [guardandoNueva, setGuardandoNueva] = useState(false)
 
   // ─── Init ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const f = params.get('filtro') as Filtro | null
+    if (f && ['todos','nuevos','habituales','vip','sin_visita','riesgo'].includes(f)) setFiltro(f)
+  }, [])
+
   useEffect(() => {
     ;(async () => {
       const { session } = await getSessionClient()
@@ -263,6 +291,7 @@ export default function ClientesPage() {
       case 'habituales': list = list.filter(c => c.nivel === 'Habitual'); break
       case 'vip':        list = list.filter(c => c.nivel === 'VIP' || c.nivel === 'Premium'); break
       case 'sin_visita': list = list.filter(c => c.dias_desde_ultima >= 30); break
+      case 'riesgo':     list = list.filter(c => (c.nivel === 'VIP' || c.nivel === 'Premium') && c.dias_desde_ultima >= 30); break
     }
 
     switch (orden) {
@@ -533,6 +562,7 @@ Responde con este JSON exacto:
                 ['habituales', '🔵 Habituales'],
                 ['vip', '⭐ VIP+'],
                 ['sin_visita', '⏰ +30 días'],
+                ['riesgo', '🔴 En riesgo'],
               ] as [Filtro, string][]).map(([id, label]) => (
                 <button key={id} className={`cli-filter-btn${filtro === id ? ' active' : ''}`} onClick={() => setFiltro(id)}>{label}</button>
               ))}
@@ -596,6 +626,16 @@ Responde con este JSON exacto:
                         ✅ Fiel
                       </span>
                     )}
+                    {c.prediccion === 'pronto' && (
+                      <span className="cli-badge-alert" style={{ background:'rgba(34,197,94,0.1)', color:'#15803D' }}>
+                        🔮 Vuelve pronto
+                      </span>
+                    )}
+                    {c.prediccion === 'riesgo' && (
+                      <span className="cli-badge-alert" style={{ background:'rgba(239,68,68,0.08)', color:'#DC2626' }}>
+                        ⚠️ En riesgo
+                      </span>
+                    )}
                   </div>
                 </div>
               )
@@ -639,6 +679,16 @@ Responde con este JSON exacto:
                           ✅ Cliente fiel
                         </span>
                       )}
+                      {c.prediccion === 'pronto' && (
+                        <span className="cli-badge" style={{ background:'rgba(34,197,94,0.1)', color:'#15803D', fontSize:'11px' }}>
+                          🔮 Podría volver pronto
+                        </span>
+                      )}
+                      {c.prediccion === 'riesgo' && (
+                        <span className="cli-badge" style={{ background:'rgba(239,68,68,0.08)', color:'#DC2626', fontSize:'11px' }}>
+                          ⚠️ En riesgo de pérdida
+                        </span>
+                      )}
                     </div>
                     <div className="cli-detail-contact">
                       {c.telefono}
@@ -680,6 +730,22 @@ Responde con este JSON exacto:
                         <span className="cli-info-val">{val}</span>
                       </div>
                     ))}
+                    {c.media_dias !== null && (
+                      <div className="cli-info-row">
+                        <span className="cli-info-label">Frecuencia media de visita</span>
+                        <span className="cli-info-val">cada {c.media_dias} día{c.media_dias !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
+                    {c.prediccion && (
+                      <div className="cli-info-row">
+                        <span className="cli-info-label">Predicción próxima visita</span>
+                        <span className="cli-info-val" style={{ color: c.prediccion === 'riesgo' ? '#DC2626' : '#15803D', fontWeight: 700 }}>
+                          {c.prediccion === 'riesgo'
+                            ? `⚠️ En riesgo — lleva ${c.dias_desde_ultima}d (2× su media)`
+                            : `🔮 Podría volver pronto (media: ${c.media_dias}d)`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
