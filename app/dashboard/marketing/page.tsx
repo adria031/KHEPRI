@@ -1,1162 +1,844 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
-import { QRCodeSVG } from 'qrcode.react'
 import { supabase, getSessionClient } from '../../lib/supabase'
-import { descontarCreditos } from '../../lib/creditos'
+import { descontarCreditos, obtenerCreditos } from '../../lib/creditos'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { DashboardShell } from '../DashboardShell'
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 
+type Resena = {
+  id: string
+  valoracion: number
+  comentario: string | null
+  autor_nombre: string | null
+  created_at: string
+  respuesta?: string | null
+}
 
-const tips = [
-  { icon: '📸', titulo: 'Añade fotos de calidad', desc: 'Los negocios con 5+ fotos reciben un 80% más de visitas. Sube imágenes del local, el equipo y los trabajos realizados.', color: 'rgba(184,216,248,0.2)', border: 'rgba(184,216,248,0.5)' },
-  { icon: '⭐', titulo: 'Responde a las reseñas', desc: 'Responder a reseñas (positivas y negativas) genera confianza y mejora tu posicionamiento en búsquedas.', color: 'rgba(253,233,162,0.3)', border: 'rgba(253,233,162,0.7)' },
-  { icon: '🕐', titulo: 'Mantén los horarios actualizados', desc: 'El 60% de los clientes comprueban el horario antes de reservar. Indica festivos y vacaciones con antelación.', color: 'rgba(184,237,212,0.2)', border: 'rgba(184,237,212,0.5)' },
-  { icon: '💬', titulo: 'Activa el WhatsApp', desc: 'Los negocios con WhatsApp visible reciben hasta 3 veces más contactos directos de nuevos clientes.', color: 'rgba(184,237,212,0.2)', border: 'rgba(184,237,212,0.5)' },
-  { icon: '🔧', titulo: 'Completa todos los servicios', desc: 'Añade duración y precio a cada servicio. Los clientes que ven precios claros reservan un 40% más.', color: 'rgba(212,197,249,0.2)', border: 'rgba(212,197,249,0.5)' },
-  { icon: '📱', titulo: 'Comparte tu enlace en redes', desc: 'Pega tu enlace de reserva en la bio de Instagram y Facebook para convertir seguidores en clientes.', color: 'rgba(251,207,232,0.2)', border: 'rgba(251,207,232,0.5)' },
-]
+type CalSlot = {
+  fecha: string
+  tipo: string
+  tema: string
+  caption: string
+}
 
-export default function Marketing() {
+// ─── Template renderers ───────────────────────────────────────────────────────
+
+function TemplateDarkPublicacion({ contenido, negocioNombre }: {
+  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
+  negocioNombre: string
+}) {
+  return (
+    <div style={{
+      width: 540, height: 540, background: '#080810', position: 'relative', overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+      fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '48px',
+    }}>
+      {/* Blobs */}
+      <div style={{ position:'absolute', top:-80, left:-80, width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle,rgba(107,79,216,0.45) 0%,transparent 70%)', filter:'blur(30px)' }} />
+      <div style={{ position:'absolute', bottom:-60, right:-60, width:240, height:240, borderRadius:'50%', background:'radial-gradient(circle,rgba(59,130,246,0.35) 0%,transparent 70%)', filter:'blur(25px)' }} />
+      <div style={{ position:'absolute', top:'40%', right:-40, width:160, height:160, borderRadius:'50%', background:'radial-gradient(circle,rgba(52,211,153,0.25) 0%,transparent 70%)', filter:'blur(20px)' }} />
+      {/* Content */}
+      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+        {contenido.dato && (
+          <div style={{ fontSize:72, fontWeight:900, color:'#FFFFFF', lineHeight:1, marginBottom:8, letterSpacing:'-2px',
+            background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            {contenido.dato}
+          </div>
+        )}
+        <div style={{ fontSize: contenido.dato ? 28 : 36, fontWeight:800, color:'#FFFFFF', lineHeight:1.2, marginBottom:12, letterSpacing:'-0.5px' }}>
+          {contenido.titulo}
+        </div>
+        <div style={{ fontSize:16, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:32 }}>
+          {contenido.subtitulo}
+        </div>
+        <div style={{ display:'inline-block', padding:'12px 28px', background:'linear-gradient(135deg,#6B4FD8,#4F46E5)', borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
+          {contenido.cta}
+        </div>
+      </div>
+      {/* Negocio name */}
+      <div style={{ position:'absolute', bottom:20, left:0, right:0, textAlign:'center', fontSize:12, color:'rgba(255,255,255,0.35)', letterSpacing:1, textTransform:'uppercase' }}>
+        {negocioNombre}
+      </div>
+    </div>
+  )
+}
+
+function TemplateClaroPublicacion({ contenido, negocioNombre }: {
+  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
+  negocioNombre: string
+}) {
+  return (
+    <div style={{
+      width: 540, height: 540, background: '#F7F9FC', position: 'relative', overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+      fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '48px',
+    }}>
+      <div style={{ position:'absolute', top:-60, right:-60, width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle,rgba(184,216,248,0.7) 0%,transparent 70%)', filter:'blur(20px)' }} />
+      <div style={{ position:'absolute', bottom:-50, left:-50, width:180, height:180, borderRadius:'50%', background:'radial-gradient(circle,rgba(212,197,249,0.6) 0%,transparent 70%)', filter:'blur(20px)' }} />
+      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+        {contenido.dato && (
+          <div style={{ fontSize:72, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-2px',
+            background:'linear-gradient(135deg,#4F46E5,#7C3AED)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            {contenido.dato}
+          </div>
+        )}
+        <div style={{ fontSize: contenido.dato ? 28 : 36, fontWeight:800, color:'#111827', lineHeight:1.2, marginBottom:12, letterSpacing:'-0.5px' }}>
+          {contenido.titulo}
+        </div>
+        <div style={{ fontSize:16, color:'#6B7280', lineHeight:1.5, marginBottom:32 }}>
+          {contenido.subtitulo}
+        </div>
+        <div style={{ display:'inline-block', padding:'12px 28px', background:'linear-gradient(135deg,#4F46E5,#7C3AED)', borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
+          {contenido.cta}
+        </div>
+      </div>
+      <div style={{ position:'absolute', bottom:20, left:0, right:0, textAlign:'center', fontSize:12, color:'#9CA3AF', letterSpacing:1, textTransform:'uppercase' }}>
+        {negocioNombre}
+      </div>
+    </div>
+  )
+}
+
+function TemplateDarkHistoria({ contenido, negocioNombre }: {
+  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
+  negocioNombre: string
+}) {
+  return (
+    <div style={{
+      width: 540, height: 960, background: '#080810', position: 'relative', overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+      fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '60px 48px',
+    }}>
+      <div style={{ position:'absolute', top:-100, left:-80, width:320, height:320, borderRadius:'50%', background:'radial-gradient(circle,rgba(107,79,216,0.5) 0%,transparent 70%)', filter:'blur(40px)' }} />
+      <div style={{ position:'absolute', bottom:-80, right:-60, width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle,rgba(59,130,246,0.4) 0%,transparent 70%)', filter:'blur(30px)' }} />
+      <div style={{ position:'absolute', top:'30%', right:-60, width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle,rgba(52,211,153,0.3) 0%,transparent 70%)', filter:'blur(25px)' }} />
+      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+        {contenido.dato && (
+          <div style={{ fontSize:96, fontWeight:900, color:'#FFFFFF', lineHeight:1, marginBottom:12, letterSpacing:'-3px',
+            background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            {contenido.dato}
+          </div>
+        )}
+        <div style={{ fontSize: contenido.dato ? 36 : 48, fontWeight:800, color:'#FFFFFF', lineHeight:1.2, marginBottom:16, letterSpacing:'-0.5px' }}>
+          {contenido.titulo}
+        </div>
+        <div style={{ fontSize:20, color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:48 }}>
+          {contenido.subtitulo}
+        </div>
+        <div style={{ display:'inline-block', padding:'16px 40px', background:'linear-gradient(135deg,#6B4FD8,#4F46E5)', borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
+          {contenido.cta}
+        </div>
+      </div>
+      <div style={{ position:'absolute', bottom:32, left:0, right:0, textAlign:'center', fontSize:14, color:'rgba(255,255,255,0.35)', letterSpacing:1.5, textTransform:'uppercase' }}>
+        {negocioNombre}
+      </div>
+    </div>
+  )
+}
+
+function TemplateClaroHistoria({ contenido, negocioNombre }: {
+  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
+  negocioNombre: string
+}) {
+  return (
+    <div style={{
+      width: 540, height: 960, background: '#F7F9FC', position: 'relative', overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+      fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '60px 48px',
+    }}>
+      <div style={{ position:'absolute', top:-80, right:-60, width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle,rgba(184,216,248,0.8) 0%,transparent 70%)', filter:'blur(30px)' }} />
+      <div style={{ position:'absolute', bottom:-60, left:-40, width:240, height:240, borderRadius:'50%', background:'radial-gradient(circle,rgba(212,197,249,0.7) 0%,transparent 70%)', filter:'blur(25px)' }} />
+      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+        {contenido.dato && (
+          <div style={{ fontSize:96, fontWeight:900, lineHeight:1, marginBottom:12, letterSpacing:'-3px',
+            background:'linear-gradient(135deg,#4F46E5,#7C3AED)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            {contenido.dato}
+          </div>
+        )}
+        <div style={{ fontSize: contenido.dato ? 36 : 48, fontWeight:800, color:'#111827', lineHeight:1.2, marginBottom:16, letterSpacing:'-0.5px' }}>
+          {contenido.titulo}
+        </div>
+        <div style={{ fontSize:20, color:'#6B7280', lineHeight:1.6, marginBottom:48 }}>
+          {contenido.subtitulo}
+        </div>
+        <div style={{ display:'inline-block', padding:'16px 40px', background:'linear-gradient(135deg,#4F46E5,#7C3AED)', borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
+          {contenido.cta}
+        </div>
+      </div>
+      <div style={{ position:'absolute', bottom:32, left:0, right:0, textAlign:'center', fontSize:14, color:'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase' }}>
+        {negocioNombre}
+      </div>
+    </div>
+  )
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function MarketingPage() {
   const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
-  const [negocio, setNegocio] = useState<NegMin | null>(null)
-  const [negocioId, setNegocioId] = useState<string | null>(null)
+  const [negocio, setNegocio]             = useState<NegMin | null>(null)
   const [negocioNombre, setNegocioNombre] = useState('')
-  const [negocioTipo, setNegocioTipo] = useState('')
-  const [negocioServicios, setNegocioServicios] = useState<{nombre:string; precio:number}[]>([])
-  const [negocioValoracion, setNegocioValoracion] = useState<number|null>(null)
-  const [copiado, setCopiado] = useState(false)
-  const [qrDescargando, setQrDescargando] = useState(false)
+  const [negocioId, setNegocioId]         = useState<string | null>(null)
+  const [negServicios, setNegServicios]   = useState<string[]>([])
+  const [cargando, setCargando]           = useState(true)
 
-  // IA Marketing state
-  const [iaTab, setIaTab] = useState<'posts'|'resenas'|'estrategia'|'ofertas'>('posts')
-  const [generando, setGenerando] = useState(false)
-  const [iaError, setIaError] = useState('')
-
-  // Tab: Posts Instagram
-  const [postTema, setPostTema] = useState('promocion')
-  const [postContexto, setPostContexto] = useState('')
-  const [postResultado, setPostResultado] = useState('')
-  const [postCopiado, setPostCopiado] = useState(false)
-
-  // Tab: Respuestas a reseñas
-  const [reseñaTexto, setReseñaTexto] = useState('')
-  const [reseñaEstrellas, setReseñaEstrellas] = useState(5)
-  const [reseñaTono, setReseñaTono] = useState('profesional')
-  const [reseñaResultado, setReseñaResultado] = useState('')
-  const [reseñaCopiado, setReseñaCopiado] = useState(false)
-
-  // Tab: Estrategia mensual
-  const hoy = new Date()
-  const [estrategiaMes, setEstrategiaMes] = useState(hoy.getMonth())
-  const [estrategiaAnio, setEstrategiaAnio] = useState(hoy.getFullYear())
-  const [estrategiaObjetivo, setEstrategiaObjetivo] = useState('nuevos_clientes')
-  const [estrategiaResultado, setEstrategiaResultado] = useState('')
-  const [estrategiaCopiado, setEstrategiaCopiado] = useState(false)
-
-  // Tab: Ofertas y promociones
-  const [ofertaTemporada, setOfertaTemporada] = useState('actual')
-  const [ofertaNotas, setOfertaNotas] = useState('')
-  const [ofertaResultado, setOfertaResultado] = useState('')
-  const [ofertaCopiado, setOfertaCopiado] = useState(false)
-
-  // Posts IG — tono + partes separadas
-  const [postTono, setPostTono] = useState<'profesional'|'cercano'|'divertido'>('cercano')
-  const [postPartes, setPostPartes] = useState<{texto:string;hashtags:string;imagen:string}|null>(null)
-  const [textoCopy, setTextoCopy] = useState(false)
-  const [tagsCopy, setTagsCopy] = useState(false)
-
-  // Post con imagen
-  const [imgTipo, setImgTipo] = useState<'promocion'|'nuevo_servicio'|'consejo'|'equipo'|'fecha_especial'>('promocion')
-  const [imgTono, setImgTono] = useState<'profesional'|'cercano'|'divertido'>('profesional')
-  const [imgServicio, setImgServicio] = useState('')
-  const [imgColor, setImgColor] = useState<'oscuro'|'claro'|'pastel'>('oscuro')
-  const [imgContenido, setImgContenido] = useState<{titulo:string;subtitulo:string;dato:string;cta:string;hashtags:string[]}|null>(null)
-  const [imgGenerando, setImgGenerando] = useState(false)
-  const [imgError, setImgError] = useState('')
+  // ── Sección 1: Crear contenido ────────────────────────────────────────────
+  const [formato, setFormato]         = useState<'publicacion' | 'historia'>('publicacion')
+  const [paso, setPaso]               = useState<1 | 2 | 3>(1)
+  const [tipoContenido, setTipoContenido] = useState<'promocion' | 'nuevo_servicio' | 'consejo' | 'oferta' | 'presentacion'>('promocion')
+  const [tono, setTono]               = useState<'profesional' | 'cercano' | 'divertido'>('cercano')
+  const [servicio, setServicio]       = useState('')
+  const [estilo, setEstilo]           = useState<'oscuro' | 'claro'>('oscuro')
+  const [imgContenido, setImgContenido] = useState<{
+    titulo: string; subtitulo: string; dato: string | null; cta: string
+    descripcion?: string; hashtags?: string[]
+  } | null>(null)
+  const [generandoImg, setGenerandoImg] = useState(false)
+  const [imgError, setImgError]       = useState('')
   const [imgDescargando, setImgDescargando] = useState(false)
-  const [imgCopy, setImgCopy] = useState(false)
-  const postImgRef = useRef<HTMLDivElement>(null)
+  const [descCopiado, setDescCopiado] = useState(false)
+  const [hashCopiado, setHashCopiado] = useState(false)
+  const pubRef    = useRef<HTMLDivElement>(null)
+  const historiaRef = useRef<HTMLDivElement>(null)
 
-  // Reseñas BD + editable
-  const [resenasDB, setResenasDB] = useState<{id:string;valoracion:number;texto:string;autor_nombre:string|null;created_at:string}[]>([])
-  const [reseñaEditable, setReseñaEditable] = useState('')
-  const [reseñaEditCopy, setReseñaEditCopy] = useState(false)
+  // ── Sección 2: Responder reseñas ─────────────────────────────────────────
+  const [resenas, setResenas]             = useState<Resena[]>([])
+  const [respuestas, setRespuestas]       = useState<Record<string, string>>({})
+  const [generandoResp, setGenerandoResp] = useState<string | null>(null)
+  const [respCopiada, setRespCopiada]     = useState<string | null>(null)
 
+  // ── Sección 3: Calendario mensual ────────────────────────────────────────
+  const hoyDate                           = new Date()
+  const [calMes, setCalMes]               = useState(hoyDate.getMonth())
+  const [calAnio, setCalAnio]             = useState(hoyDate.getFullYear())
+  const [calSlots, setCalSlots]           = useState<CalSlot[]>([])
+  const [generandoCal, setGenerandoCal]   = useState(false)
+  const [calError, setCalError]           = useState('')
+
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+  // ─── Init ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       const { session, db } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
-      const user = session.user
-      const { activo: data, todos: todosNegs } = await getNegocioActivo(user.id, session.access_token)
-      if (!data) { window.location.href = '/onboarding'; return }
-      setTodosNegocios(todosNegs)
-      setNegocio(data)
-      setNegocioId(data.id)
-      setNegocioNombre(data.nombre)
+      const { activo, todos } = await getNegocioActivo(session.user.id, session.access_token)
+      if (!activo) { window.location.href = '/onboarding'; return }
+      setTodosNegocios(todos)
+      setNegocio(activo)
+      setNegocioNombre(activo.nombre)
+      setNegocioId(activo.id)
 
-      const [{ data: neg }, { data: svcs }, { data: resenas }, { data: resenasTexto }] = await Promise.all([
-        db.from('negocios').select('tipo, descripcion').eq('id', data.id).single(),
-        db.from('servicios').select('nombre, precio').eq('negocio_id', data.id).eq('activo', true).limit(8),
-        db.from('resenas').select('valoracion').eq('negocio_id', data.id),
-        db.from('resenas').select('id, valoracion, texto, autor_nombre, created_at').eq('negocio_id', data.id).not('texto', 'is', null).order('created_at', { ascending: false }).limit(20),
+      const [{ data: svcs }, { data: res }] = await Promise.all([
+        db.from('servicios').select('nombre').eq('negocio_id', activo.id).eq('activo', true).order('nombre'),
+        db.from('resenas').select('id, valoracion, comentario, autor_nombre, created_at, respuesta')
+          .eq('negocio_id', activo.id).is('respuesta', null).order('created_at', { ascending: false }).limit(20),
       ])
-      if (neg) setNegocioTipo(neg.tipo || '')
-      if (svcs) setNegocioServicios(svcs as {nombre:string; precio:number}[])
-      if (resenas && resenas.length > 0) {
-        const avg = (resenas as any[]).reduce((s, r) => s + (r.valoracion || 0), 0) / resenas.length
-        setNegocioValoracion(Math.round(avg * 10) / 10)
-      }
-      if (resenasTexto) setResenasDB(resenasTexto as any)
+      if (svcs) setNegServicios(svcs.map((s: { nombre: string }) => s.nombre))
+      if (res)  setResenas(res as Resena[])
+      setCargando(false)
     })()
   }, [])
 
-  const qrRef = useRef<SVGSVGElement>(null)
-  const urlPublica = negocioId ? `${typeof window !== 'undefined' ? window.location.origin : 'https://khepri.app'}/negocio/${negocioId}` : ''
+  // ─── Generar imagen ──────────────────────────────────────────────────────
+  async function generarImagen() {
+    if (!negocioId) return
+    setImgError('')
+    setGenerandoImg(true)
 
-  async function copiarEnlace() {
-    if (!urlPublica) return
-    await navigator.clipboard.writeText(urlPublica)
-    setCopiado(true)
-    setTimeout(() => setCopiado(false), 2000)
-  }
-
-  function compartirWhatsApp() {
-    const msg = encodeURIComponent(`¡Reserva en ${negocioNombre} fácil y rápido! 📅\n${urlPublica}`)
-    window.open(`https://wa.me/?text=${msg}`, '_blank')
-  }
-
-  function descargarQR() {
-    if (!qrRef.current || !urlPublica) return
-    setQrDescargando(true)
-    const svg = qrRef.current
-    const svgData = new XMLSerializer().serializeToString(svg)
-    const canvas = document.createElement('canvas')
-    canvas.width = 400; canvas.height = 400
-    const ctx = canvas.getContext('2d')!
-    const img = new Image()
-    img.onload = () => {
-      ctx.fillStyle = 'white'
-      ctx.fillRect(0, 0, 400, 400)
-      ctx.drawImage(img, 0, 0, 400, 400)
-      const a = document.createElement('a')
-      a.download = `qr-${negocioNombre.toLowerCase().replace(/\s+/g, '-')}.png`
-      a.href = canvas.toDataURL('image/png')
-      a.click()
-      setQrDescargando(false)
+    const creditos = await obtenerCreditos(negocioId)
+    if (!creditos || creditos.disponibles < 10) {
+      setImgError('Necesitas al menos 10 créditos para generar contenido.')
+      setGenerandoImg(false)
+      return
     }
-    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`
-  }
 
-  function imprimirQR() {
-    if (!qrRef.current || !urlPublica) return
-    const svg = qrRef.current.outerHTML
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(`
-      <!DOCTYPE html><html><head><title>QR ${negocioNombre}</title>
-      <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
-        svg { width: 280px; height: 280px; }
-        h2 { font-size: 22px; font-weight: bold; margin: 16px 0 6px; text-align: center; }
-        p { font-size: 13px; color: #6B7280; text-align: center; word-break: break-all; max-width: 320px; }
-      </style></head>
-      <body onload="window.print()">${svg}<h2>${negocioNombre}</h2><p>${urlPublica}</p></body></html>
-    `)
-    win.document.close()
-  }
-
-  function imprimirCalendario(contenido: string) {
-    const win = window.open('', '_blank')
-    if (!win) return
-    const mesNom = MESES_NOMBRE[estrategiaMes]?.charAt(0).toUpperCase() + MESES_NOMBRE[estrategiaMes]?.slice(1)
-    win.document.write(`<!DOCTYPE html><html><head><title>Calendario ${mesNom} — ${negocioNombre}</title>
-      <style>
-        body{font-family:'Segoe UI',sans-serif;max-width:720px;margin:0 auto;padding:28px 32px;color:#111827;}
-        h1{font-size:20px;font-weight:800;margin-bottom:4px;}
-        p.sub{font-size:13px;color:#6B7280;margin-bottom:24px;}
-        pre{white-space:pre-wrap;font-size:13px;line-height:1.7;color:#374151;}
-        hr{border:none;border-top:1px solid #E5E7EB;margin:20px 0;}
-        .footer{font-size:11px;color:#9CA3AF;text-align:center;margin-top:24px;}
-        @media print{@page{margin:20mm}}
-      </style></head>
-      <body onload="window.print()">
-        <h1>📅 Calendario de contenido — ${mesNom} ${estrategiaAnio}</h1>
-        <p class="sub">Generado con IA para ${negocioNombre} · Khepria</p>
-        <hr/>
-        <pre>${contenido.replace(/</g,'&lt;')}</pre>
-        <div class="footer">Khepria — Marketing IA</div>
-      </body></html>`)
-    win.document.close()
-  }
-
-  // ── Gemini ────────────────────────────────────────────────────────────────
-  const MESES_NOMBRE = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-
-  function buildContexto(): string {
-    const svcs = negocioServicios.length > 0
-      ? negocioServicios.map(s => `${s.nombre}${s.precio ? ` (${s.precio}€)` : ''}`).join(', ')
-      : 'no especificados'
-    return `Negocio: "${negocioNombre}"
-Tipo: ${negocioTipo || 'no especificado'}
-Servicios principales: ${svcs}${negocioValoracion ? `\nValoración media de clientes: ${negocioValoracion}/5 ⭐` : ''}`
-  }
-
-  async function llamarGemini(prompt: string): Promise<string> {
-    const response = await fetch(
-      '/api/gemini',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 900, temperature: 0.85 },
-        }),
-      }
-    )
-    if (!response.ok) {
-      const e = await response.json().catch(() => ({}))
-      console.error('[marketing] Gemini error:', e)
-      throw new Error(e?.error?.message || `HTTP ${response.status}`)
+    const tipoLabel: Record<string, string> = {
+      promocion: 'una promoción especial', nuevo_servicio: 'un nuevo servicio',
+      consejo: 'un consejo profesional', oferta: 'una oferta de temporada',
+      presentacion: 'la presentación del negocio',
     }
-    const data = await response.json()
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-    if (!text) console.error('[marketing] Gemini sin texto en respuesta:', data)
-    return text?.trim() ?? ''
-  }
+    const esHistoria = formato === 'historia'
 
-  async function generarPost() {
-    if (!negocioNombre) return
-    setGenerando(true); setIaError(''); setPostResultado(''); setPostPartes(null)
-    const temaLabels: Record<string,string> = {
-      promocion: 'Promoción u oferta especial',
-      nuevo_servicio: 'Presentación de un nuevo servicio',
-      festivo: 'Mensaje festivo o de celebración',
-      consejo: 'Consejo o tip útil para los clientes',
-      agradecimiento: 'Agradecimiento y conexión con la comunidad',
-      detras: 'Behind the scenes — día a día del negocio',
-    }
-    const tonoDesc: Record<string,string> = {
-      profesional: 'profesional y experto, transmitiendo autoridad y confianza',
-      cercano: 'cercano y cálido, como si hablaras con un amigo',
-      divertido: 'divertido y desenfadado, con humor y personalidad',
-    }
-    const prompt = `Eres un experto en marketing digital para negocios locales en España.
-${buildContexto()}
+    const prompt = `Eres experto en marketing para negocios de servicios en España. Crea contenido para ${tipoLabel[tipoContenido]} del negocio "${negocioNombre}"${servicio ? `, destacando "${servicio}"` : ''}. Tono: ${tono}. Formato: ${esHistoria ? 'historia vertical Instagram' : 'publicación cuadrada Instagram'}.
 
-Genera un post para Instagram sobre: ${temaLabels[postTema] || postTema}.
-Tono: ${tonoDesc[postTono] || postTono}
-${postContexto ? `Contexto adicional: ${postContexto}` : ''}
-
-Responde con este formato EXACTO (incluye las etiquetas en mayúsculas con dos puntos):
-
-TEXTO:
-[texto del post entre 150-200 palabras, con emojis, SIN hashtags, con llamada a la acción]
-
-HASHTAGS:
-[exactamente 20-25 hashtags en una sola línea separados por espacios, mezcla español/inglés, incluye hashtags de nicho, ciudad y populares]
-
-IMAGEN:
-[descripción en 1-2 frases de la foto o vídeo ideal para este post]`
-
-    try {
-      const raw = await llamarGemini(prompt)
-      setPostResultado(raw)
-      // Parse sections
-      const sec = { texto: '', hashtags: '', imagen: '' }
-      let current: keyof typeof sec | '' = ''
-      for (const line of raw.split('\n')) {
-        const t = line.trim()
-        if (t === 'TEXTO:') { current = 'texto'; continue }
-        if (t === 'HASHTAGS:') { current = 'hashtags'; continue }
-        if (t === 'IMAGEN:') { current = 'imagen'; continue }
-        if (current) sec[current] += (sec[current] ? '\n' : '') + line
-      }
-      setPostPartes({ texto: sec.texto.trim(), hashtags: sec.hashtags.trim(), imagen: sec.imagen.trim() })
-      // Descontar 5 créditos por post de marketing
-      if (negocioId) descontarCreditos(negocioId, 5, 'post_marketing').catch(() => {})
-    } catch (e: any) { setIaError(e.message) }
-    finally { setGenerando(false) }
-  }
-
-  async function generarRespuestaResena() {
-    if (!reseñaTexto.trim()) { setIaError('Escribe el texto de la reseña'); return }
-    setGenerando(true); setIaError(''); setReseñaResultado('')
-    const tono = reseñaTono === 'formal' ? 'formal y corporativo' : reseñaTono === 'amigable' ? 'cálido y cercano' : 'profesional y natural'
-    const tipo = reseñaEstrellas <= 2 ? 'negativa' : reseñaEstrellas === 3 ? 'neutra' : 'positiva'
-    const prompt = `Eres un experto en gestión de reputación online para negocios locales.
-${buildContexto()}
-
-El negocio ha recibido la siguiente reseña de ${reseñaEstrellas} estrella${reseñaEstrellas !== 1 ? 's' : ''} (reseña ${tipo}):
-"${reseñaTexto.trim()}"
-
-Genera 2 respuestas diferentes en tono ${tono}. Cada respuesta debe:
-- Ser personalizada (no genérica ni robótica)
-- Mencionar algún detalle concreto de la reseña
-- Agradecer el tiempo dedicado a escribirla
-${reseñaEstrellas <= 3 ? '- Pedir disculpas de forma sincera sin excusas\n- Ofrecer solución o invitar a contactar directamente\n- Mostrar que se tomará acción' : '- Celebrar la experiencia positiva\n- Invitar a volver o recomendar'}
-- Máximo 80-100 palabras por respuesta
-- Firma con el nombre del negocio
-
-Formato de respuesta:
-OPCIÓN 1:
-[respuesta]
-
-OPCIÓN 2:
-[respuesta]`
-
-    try {
-      const res = await llamarGemini(prompt)
-      setReseñaResultado(res)
-      setReseñaEditable(res)
-      // Descontar 3 créditos por análisis/respuesta de reseña
-      if (negocioId) descontarCreditos(negocioId, 3, 'analisis_resena').catch(() => {})
-    } catch (e: any) { setIaError(e.message) }
-    finally { setGenerando(false) }
-  }
-
-  async function generarEstrategia() {
-    if (!negocioNombre) return
-    setGenerando(true); setIaError(''); setEstrategiaResultado('')
-    const objetivoLabels: Record<string,string> = {
-      nuevos_clientes: 'Atraer nuevos clientes',
-      fidelizacion: 'Fidelizar clientes actuales',
-      ventas: 'Aumentar ventas y ticket medio',
-      visibilidad: 'Aumentar visibilidad y seguidores',
-    }
-    const mesNombre = MESES_NOMBRE[estrategiaMes]
-    const prompt = `Eres un experto en marketing de contenidos para negocios locales en España.
-${buildContexto()}
-
-Crea un calendario de contenido detallado para redes sociales del mes de ${mesNombre} de ${estrategiaAnio}.
-Objetivo principal: ${objetivoLabels[estrategiaObjetivo] || estrategiaObjetivo}
-
-El calendario debe incluir:
-- 3-4 publicaciones por semana (lunes, miércoles y viernes mínimo)
-- Para cada publicación: día exacto, red social (Instagram/Stories/Reels), tema concreto y descripción breve (1-2 frases sobre el contenido)
-- Mezcla de contenidos: educativo (30%), promocional (25%), behind-the-scenes (20%), testimonios/social proof (15%), entretenimiento (10%)
-- Aprovechar festivos y fechas señaladas de ${mesNombre}
-- Ideas específicas y accionables, NO genéricas
-
-Estructura por semanas. Sé específico con los temas, adaptados al tipo de negocio y sus servicios.`
-
-    try {
-      setEstrategiaResultado(await llamarGemini(prompt))
-    } catch (e: any) { setIaError(e.message) }
-    finally { setGenerando(false) }
-  }
-
-  async function generarOfertas() {
-    if (!negocioNombre) return
-    setGenerando(true); setIaError(''); setOfertaResultado('')
-    const temporadaLabels: Record<string,string> = {
-      actual: `temporada actual (${MESES_NOMBRE[hoy.getMonth()]} ${hoy.getFullYear()})`,
-      primavera: 'primavera (marzo-mayo)',
-      verano: 'verano (junio-agosto)',
-      otono: 'otoño (septiembre-noviembre)',
-      invierno: 'invierno (diciembre-febrero)',
-      navidad: 'Navidad y Año Nuevo',
-      san_valentin: 'San Valentín',
-      black_friday: 'Black Friday / Cyber Monday',
-      vuelta_cole: 'Vuelta al cole / septiembre',
-      dia_madre: 'Día de la Madre',
-      personalizado: ofertaNotas || 'ocasión personalizada',
-    }
-    const prompt = `Eres un experto en estrategia de marketing y promociones para negocios locales en España.
-${buildContexto()}
-
-Genera 4 ideas de ofertas y promociones para la ${temporadaLabels[ofertaTemporada]}.
-${ofertaNotas ? `Notas del negocio: ${ofertaNotas}` : ''}
-
-Para cada promoción incluye:
-1. 🏷️ Nombre atractivo de la oferta
-2. 📝 Descripción clara (qué incluye, cuánto descuento o qué valor añadido)
-3. ⏰ Duración recomendada
-4. 📣 Texto listo para publicar en Instagram y WhatsApp (conciso, con emojis)
-5. 💡 Consejo de implementación
-
-Las ofertas deben ser:
-- Viables para un negocio pequeño/mediano sin grandes presupuestos
-- Específicas para el tipo de negocio y sus servicios
-- Variadas en mecanismo (descuento %, precio especial, pack, regalo, bono, etc.)
-- Diseñadas para generar urgencia o exclusividad`
-
-    try {
-      setOfertaResultado(await llamarGemini(prompt))
-    } catch (e: any) { setIaError(e.message) }
-    finally { setGenerando(false) }
-  }
-
-  function copiarIA(texto: string, setter: (v: boolean) => void) {
-    navigator.clipboard.writeText(texto).then(() => {
-      setter(true); setTimeout(() => setter(false), 2200)
-    })
-  }
-
-  async function generarPostImagen() {
-    if (!negocioNombre) return
-    setImgGenerando(true); setImgError(''); setImgContenido(null)
-    const tipoLabels: Record<string, string> = {
-      promocion: 'Promoción', nuevo_servicio: 'Nuevo servicio', consejo: 'Consejo',
-      equipo: 'Presentación de equipo', fecha_especial: 'Fecha especial',
-    }
-    const servicioSeleccionado = imgServicio || negocioServicios[0]?.nombre || negocioTipo
-    const prompt = `Genera contenido para un post de Instagram para ${negocioNombre}, un negocio de ${negocioTipo} en España.
-Tipo: ${tipoLabels[imgTipo]}
-Tono: ${imgTono}
-Servicio: ${servicioSeleccionado}
 Devuelve SOLO JSON sin markdown:
 {
-  "titulo": "título impactante máximo 5 palabras",
-  "subtitulo": "frase corta máximo 10 palabras",
-  "dato": "dato o cifra impactante si aplica, o cadena vacía",
-  "cta": "llamada a la acción máximo 5 palabras",
-  "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"]
+  "titulo": "máximo 4 palabras impactantes",
+  "subtitulo": "máximo 8 palabras descriptivas",
+  "dato": "cifra o dato impactante o null",
+  "cta": "llamada a la acción máximo 4 palabras",
+  "descripcion": "texto completo para caption Instagram máximo 120 palabras en español",
+  "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7","#tag8"]
 }`
+
     try {
-      const raw = await llamarGemini(prompt)
-      const jsonStr = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      const parsed = JSON.parse(jsonStr)
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      const { text } = await res.json()
+      const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
       setImgContenido(parsed)
-      if (negocioId) descontarCreditos(negocioId, 10, 'post_imagen').catch(() => {})
+      await descontarCreditos(negocioId, 10, 'crear_contenido_marketing')
+      setPaso(3)
     } catch {
-      setImgError('No se pudo generar el contenido. Inténtalo de nuevo.')
-    } finally {
-      setImgGenerando(false)
+      setImgError('Error al generar el contenido. Inténtalo de nuevo.')
     }
+    setGenerandoImg(false)
   }
 
-  async function descargarPostImagen() {
-    if (!postImgRef.current || !imgContenido) return
+  // ─── Descargar imagen ────────────────────────────────────────────────────
+  async function descargarImagen() {
+    const ref = formato === 'historia' ? historiaRef : pubRef
+    if (!ref.current || !imgContenido) return
     setImgDescargando(true)
     try {
       const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(postImgRef.current, {
-        width: 540, height: 540, scale: 2,
-        useCORS: true, backgroundColor: null, logging: false,
-      })
-      const a = document.createElement('a')
-      a.download = `post-${negocioNombre.toLowerCase().replace(/\s+/g, '-')}.png`
-      a.href = canvas.toDataURL('image/png')
-      a.click()
-    } catch (e) {
-      console.error('[post-imagen] html2canvas error:', e)
-    } finally {
-      setImgDescargando(false)
+      const [w, h] = formato === 'historia' ? [540, 960] : [540, 540]
+      const canvas = await html2canvas(ref.current, { width: w, height: h, scale: 2, useCORS: true, backgroundColor: null })
+      const link = document.createElement('a')
+      link.download = `marketing_${formato}_${Date.now()}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    } catch {
+      /* ignorar */
     }
+    setImgDescargando(false)
   }
 
-  function renderTemplateDark() {
-    return (
-      <div style={{width:'540px',height:'540px',background:'#080810',position:'relative',overflow:'hidden',fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",flexShrink:0}}>
-        <div style={{position:'absolute',width:'320px',height:'320px',borderRadius:'50%',background:'rgba(139,92,246,0.28)',filter:'blur(80px)',top:'-80px',right:'-60px'}} />
-        <div style={{position:'absolute',width:'240px',height:'240px',borderRadius:'50%',background:'rgba(59,130,246,0.22)',filter:'blur(60px)',bottom:'60px',left:'-50px'}} />
-        <div style={{position:'absolute',width:'200px',height:'200px',borderRadius:'50%',background:'rgba(236,72,153,0.18)',filter:'blur(50px)',bottom:'-20px',right:'80px'}} />
-        <div style={{position:'absolute',inset:0,backgroundImage:'radial-gradient(rgba(255,255,255,0.15) 1px,transparent 1px)',backgroundSize:'28px 28px'}} />
-        <div style={{position:'relative',zIndex:1,padding:'48px',display:'flex',flexDirection:'column',height:'100%',boxSizing:'border-box'}}>
-          <div style={{fontSize:'11px',fontWeight:700,color:'rgba(255,255,255,0.4)',letterSpacing:'2.5px',textTransform:'uppercase'}}>{negocioNombre}</div>
-          <div style={{display:'flex',flexDirection:'column',gap:'14px',marginTop:'32px',flex:1,justifyContent:'center'}}>
-            {imgContenido?.dato && (
-              <div style={{display:'inline-flex',alignItems:'center',background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:'100px',padding:'6px 16px',width:'fit-content'}}>
-                <span style={{fontSize:'13px',fontWeight:700,color:'rgba(255,255,255,0.7)'}}>{imgContenido.dato}</span>
-              </div>
-            )}
-            <div style={{fontSize:'48px',fontWeight:900,color:'#FFFFFF',lineHeight:1.05,letterSpacing:'-1.5px'}}>{imgContenido?.titulo}</div>
-            <div style={{fontSize:'18px',color:'rgba(255,255,255,0.6)',lineHeight:1.45}}>{imgContenido?.subtitulo}</div>
-            <div style={{display:'inline-block',padding:'13px 28px',background:'linear-gradient(135deg,#7C3AED,#2563EB)',borderRadius:'100px',fontSize:'15px',fontWeight:700,color:'white',width:'fit-content',marginTop:'4px'}}>{imgContenido?.cta}</div>
-          </div>
-          <div style={{marginTop:'auto',paddingTop:'24px',fontSize:'11px',color:'rgba(255,255,255,0.22)',fontWeight:500}}>{urlPublica}</div>
-        </div>
-      </div>
-    )
+  // ─── Generar respuesta reseña ────────────────────────────────────────────
+  async function generarRespuesta(resena: Resena) {
+    if (!negocioId) return
+    setGenerandoResp(resena.id)
+
+    const ok = await descontarCreditos(negocioId, 3, 'respuesta_resena')
+    if (!ok) { setGenerandoResp(null); return }
+
+    const prompt = `Eres el propietario de "${negocioNombre}", negocio de servicios en España. Responde a esta reseña de forma ${resena.valoracion >= 4 ? 'agradecida y cercana' : 'empática y constructiva'}. Respuesta máximo 3 frases, en español, natural.
+
+Reseña (${resena.valoracion}★): "${resena.comentario ?? 'Sin comentario'}"
+Autor: ${resena.autor_nombre ?? 'cliente'}
+
+Devuelve SOLO el texto de la respuesta, sin comillas ni explicaciones.`
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      const { text } = await res.json()
+      setRespuestas(prev => ({ ...prev, [resena.id]: text.trim() }))
+    } catch { /* ignorar */ }
+    setGenerandoResp(null)
   }
 
-  function renderTemplateClaro() {
-    return (
-      <div style={{width:'540px',height:'540px',background:'#F7F9FC',position:'relative',overflow:'hidden',fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",flexShrink:0}}>
-        <div style={{position:'absolute',width:'300px',height:'300px',borderRadius:'50%',background:'rgba(184,216,248,0.55)',filter:'blur(60px)',top:'-80px',right:'-60px'}} />
-        <div style={{position:'absolute',width:'220px',height:'220px',borderRadius:'50%',background:'rgba(212,197,249,0.45)',filter:'blur(50px)',bottom:'40px',left:'-40px'}} />
-        <div style={{position:'absolute',width:'180px',height:'180px',borderRadius:'50%',background:'rgba(184,237,212,0.4)',filter:'blur(40px)',bottom:'-20px',right:'100px'}} />
-        <div style={{position:'relative',zIndex:1,padding:'48px',display:'flex',flexDirection:'column',height:'100%',boxSizing:'border-box'}}>
-          <div style={{fontSize:'11px',fontWeight:700,color:'#9CA3AF',letterSpacing:'2.5px',textTransform:'uppercase'}}>{negocioNombre}</div>
-          <div style={{display:'flex',flexDirection:'column',gap:'14px',marginTop:'32px',flex:1,justifyContent:'center'}}>
-            {imgContenido?.dato && (
-              <div style={{background:'white',borderRadius:'16px',padding:'14px 20px',boxShadow:'0 4px 24px rgba(0,0,0,0.08)',border:'1px solid rgba(0,0,0,0.05)',width:'fit-content'}}>
-                <span style={{fontSize:'14px',fontWeight:800,color:'#1D4ED8'}}>{imgContenido.dato}</span>
-              </div>
-            )}
-            <div style={{fontSize:'46px',fontWeight:900,color:'#111827',lineHeight:1.05,letterSpacing:'-1.5px'}}>{imgContenido?.titulo}</div>
-            <div style={{fontSize:'18px',color:'#4B5563',lineHeight:1.45}}>{imgContenido?.subtitulo}</div>
-            <div style={{display:'flex',gap:'8px',flexWrap:'wrap' as const,marginTop:'4px',alignItems:'center'}}>
-              <div style={{padding:'12px 24px',background:'#111827',borderRadius:'100px',fontSize:'14px',fontWeight:700,color:'white'}}>{imgContenido?.cta}</div>
-              {imgContenido?.hashtags?.slice(0,2).map((h: string, i: number) => (
-                <div key={i} style={{padding:'10px 16px',background:'rgba(29,78,216,0.08)',borderRadius:'100px',fontSize:'13px',fontWeight:600,color:'#1D4ED8'}}>{h}</div>
-              ))}
-            </div>
-          </div>
-          <div style={{marginTop:'auto',paddingTop:'24px',fontSize:'11px',color:'#9CA3AF',fontWeight:500}}>{urlPublica}</div>
-        </div>
-      </div>
-    )
+  async function guardarRespuesta(resena: Resena) {
+    const texto = respuestas[resena.id]
+    if (!texto?.trim()) return
+    await supabase.from('resenas').update({ respuesta: texto.trim() }).eq('id', resena.id)
+    setResenas(prev => prev.filter(r => r.id !== resena.id))
   }
 
-  function renderTemplatePastel() {
-    return (
-      <div style={{width:'540px',height:'540px',background:'linear-gradient(135deg,#FDE8F3 0%,#E8F3FD 50%,#EDE8FD 100%)',position:'relative',overflow:'hidden',fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif",flexShrink:0}}>
-        <div style={{position:'absolute',width:'280px',height:'280px',borderRadius:'50%',background:'rgba(251,207,232,0.6)',filter:'blur(50px)',top:'-60px',right:'-40px'}} />
-        <div style={{position:'absolute',width:'200px',height:'200px',borderRadius:'50%',background:'rgba(196,181,253,0.5)',filter:'blur(40px)',bottom:'40px',left:'-30px'}} />
-        <div style={{position:'absolute',width:'160px',height:'160px',borderRadius:'50%',background:'rgba(167,243,208,0.4)',filter:'blur(35px)',bottom:'-10px',right:'80px'}} />
-        <div style={{position:'relative',zIndex:1,padding:'48px',display:'flex',flexDirection:'column',height:'100%',boxSizing:'border-box'}}>
-          <div style={{fontSize:'11px',fontWeight:700,color:'rgba(107,33,168,0.5)',letterSpacing:'2.5px',textTransform:'uppercase'}}>{negocioNombre}</div>
-          <div style={{display:'flex',flexDirection:'column',gap:'14px',marginTop:'32px',flex:1,justifyContent:'center'}}>
-            {imgContenido?.dato && (
-              <div style={{background:'white',borderRadius:'16px',padding:'12px 20px',boxShadow:'0 2px 16px rgba(107,33,168,0.12)',width:'fit-content'}}>
-                <span style={{fontSize:'13px',fontWeight:800,color:'#7C3AED'}}>{imgContenido.dato}</span>
-              </div>
-            )}
-            <div style={{fontSize:'46px',fontWeight:900,color:'#3B0764',lineHeight:1.05,letterSpacing:'-1.5px'}}>{imgContenido?.titulo}</div>
-            <div style={{fontSize:'18px',color:'rgba(59,7,100,0.7)',lineHeight:1.45}}>{imgContenido?.subtitulo}</div>
-            <div style={{display:'inline-block',padding:'13px 28px',background:'linear-gradient(135deg,#C026D3,#7C3AED)',borderRadius:'100px',fontSize:'15px',fontWeight:700,color:'white',width:'fit-content',marginTop:'4px'}}>{imgContenido?.cta}</div>
-          </div>
-          <div style={{marginTop:'auto',paddingTop:'24px',fontSize:'11px',color:'rgba(107,33,168,0.35)',fontWeight:500}}>{urlPublica}</div>
-        </div>
-      </div>
-    )
+  // ─── Generar calendario ──────────────────────────────────────────────────
+  async function generarCalendario() {
+    if (!negocioId) return
+    setCalError('')
+    setGenerandoCal(true)
+
+    const ok = await descontarCreditos(negocioId, 15, 'calendario_marketing')
+    if (!ok) {
+      setCalError('Necesitas al menos 15 créditos para generar el calendario.')
+      setGenerandoCal(false)
+      return
+    }
+
+    const serviciosStr = negServicios.slice(0, 5).join(', ') || 'servicios generales'
+    const mesNombre = MESES[calMes]
+
+    const prompt = `Eres experto en marketing para negocios de servicios en España. Crea un plan de contenido para Instagram para "${negocioNombre}" (servicios: ${serviciosStr}) para ${mesNombre} ${calAnio}. 3 publicaciones por semana, 12 en total.
+
+Devuelve SOLO JSON sin markdown:
+{
+  "posts": [
+    {"semana": 1, "dia": "lunes", "tipo": "Educativo|Promocional|Behind the scenes|Testimonio|Oferta", "tema": "tema corto máx 8 palabras", "caption": "ejemplo de caption máx 40 palabras"},
+    ... (12 posts en total, 3 por semana durante 4 semanas)
+  ]
+}`
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+      const { text } = await res.json()
+      const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
+      const posts: CalSlot[] = (parsed.posts ?? []).map((p: {
+        semana: number; dia: string; tipo: string; tema: string; caption: string
+      }) => ({
+        fecha: `Sem. ${p.semana} — ${p.dia}`,
+        tipo: p.tipo,
+        tema: p.tema,
+        caption: p.caption,
+      }))
+      setCalSlots(posts)
+    } catch {
+      setCalError('Error al generar el calendario. Inténtalo de nuevo.')
+    }
+    setGenerandoCal(false)
   }
 
-
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
+      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" rel="stylesheet" />
       <style>{`
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-          --bg: #F7F9FC; --white: #FFFFFF;
-          --blue-dark: #1D4ED8; --blue-soft: rgba(184,216,248,0.2);
-          --green-dark: #2E8A5E;
-          --text: #111827; --text2: #4B5563; --muted: #9CA3AF; --border: rgba(0,0,0,0.08);
+        @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+
+        .mk-wrap { animation: fadeUp .3s ease; max-width: 900px; }
+
+        /* ── Section card ── */
+        .mk-section { background:white; border:1px solid #E8ECF0; border-radius:20px; padding:28px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:20px; }
+        .mk-section-head { display:flex; align-items:center; gap:12px; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #F3F4F6; }
+        .mk-section-icon { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+        .mk-section-title { font-family:'Syne',sans-serif; font-size:17px; font-weight:800; color:#111827; }
+        .mk-section-sub { font-size:13px; color:#9CA3AF; margin-top:2px; }
+
+        /* ── Paso selector ── */
+        .mk-steps { display:flex; gap:0; margin-bottom:24px; border:1px solid #E5E7EB; border-radius:12px; overflow:hidden; }
+        .mk-step { flex:1; padding:10px 14px; font-size:12.5px; font-weight:700; text-align:center; background:#F9FAFB; color:#6B7280; border:none; cursor:pointer; font-family:inherit; transition:all .15s; }
+        .mk-step.active { background:#4F46E5; color:white; }
+        .mk-step:not(:last-child) { border-right:1px solid #E5E7EB; }
+
+        /* ── Format cards ── */
+        .mk-format-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px; }
+        .mk-format-card { border:2px solid #E5E7EB; border-radius:16px; padding:20px; cursor:pointer; transition:all .15s; text-align:center; background:white; }
+        .mk-format-card:hover { border-color:#C7D2FE; }
+        .mk-format-card.selected { border-color:#4F46E5; background:#EEF2FF; }
+        .mk-format-emoji { font-size:36px; display:block; margin-bottom:10px; }
+        .mk-format-name { font-size:15px; font-weight:800; color:#111827; margin-bottom:4px; }
+        .mk-format-dim { font-size:12px; color:#9CA3AF; }
+
+        /* ── Form fields ── */
+        .mk-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+        .mk-field { display:flex; flex-direction:column; gap:5px; }
+        .mk-field-full { grid-column:1/-1; }
+        .mk-label { font-size:11.5px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:0.4px; }
+        .mk-select, .mk-input { width:100%; padding:9px 12px; border:1.5px solid rgba(0,0,0,0.1); border-radius:10px; font-size:13px; font-family:inherit; outline:none; background:white; }
+        .mk-select:focus, .mk-input:focus { border-color:#4F46E5; }
+
+        /* ── Estilo toggle ── */
+        .mk-estilo-row { display:flex; gap:8px; }
+        .mk-estilo-btn { flex:1; padding:9px; border-radius:10px; border:1.5px solid #E5E7EB; background:white; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; text-align:center; }
+        .mk-estilo-btn.selected-dark { background:#080810; color:white; border-color:#080810; }
+        .mk-estilo-btn.selected-light { background:#F7F9FC; color:#111827; border-color:#4F46E5; }
+        .mk-estilo-btn:not([class*=selected]):hover { border-color:#C7D2FE; }
+
+        /* ── Generate button ── */
+        .mk-gen-btn { width:100%; padding:14px; border-radius:14px; border:none; background:linear-gradient(135deg,#4F46E5,#7C3AED); color:white; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit; transition:opacity .15s; display:flex; align-items:center; justify-content:center; gap:10px; }
+        .mk-gen-btn:hover:not(:disabled) { opacity:0.9; }
+        .mk-gen-btn:disabled { opacity:0.6; cursor:not-allowed; }
+        .mk-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin .8s linear infinite; }
+
+        /* ── Error box ── */
+        .mk-error { background:#FEF2F2; border:1px solid #FECACA; border-radius:10px; padding:10px 14px; font-size:13px; color:#B91C1C; margin-bottom:14px; }
+
+        /* ── Preview step ── */
+        .mk-preview-wrap { display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; }
+        .mk-preview-img { flex-shrink:0; border-radius:12px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
+        .mk-preview-info { flex:1; min-width:260px; }
+        .mk-preview-label { font-size:11px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+        .mk-copy-area { background:#F8FAFC; border:1px solid #E5E7EB; border-radius:12px; padding:14px; margin-bottom:12px; font-size:13px; color:#374151; line-height:1.6; white-space:pre-wrap; }
+        .mk-copy-btn { padding:8px 14px; border-radius:9px; border:1.5px solid #E5E7EB; background:white; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .15s; color:#374151; }
+        .mk-copy-btn:hover { border-color:#4F46E5; color:#4F46E5; }
+        .mk-copy-btn.copied { background:#ECFDF5; border-color:#6EE7B7; color:#059669; }
+        .mk-dl-btn { width:100%; padding:12px; border-radius:12px; border:none; background:#111827; color:white; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:opacity .15s; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px; }
+        .mk-dl-btn:hover:not(:disabled) { opacity:0.85; }
+        .mk-dl-btn:disabled { opacity:0.5; cursor:not-allowed; }
+        .mk-restart-btn { width:100%; padding:10px; border-radius:12px; border:1.5px solid #E5E7EB; background:white; font-size:13px; font-weight:700; color:#374151; cursor:pointer; font-family:inherit; transition:all .15s; }
+        .mk-restart-btn:hover { border-color:#4F46E5; color:#4F46E5; }
+
+        /* ── Reseñas ── */
+        .mk-resena-card { border:1px solid #F0F2F5; border-radius:14px; padding:16px; margin-bottom:12px; }
+        .mk-resena-stars { font-size:16px; margin-bottom:6px; }
+        .mk-resena-text { font-size:13px; color:#374151; line-height:1.5; margin-bottom:4px; }
+        .mk-resena-meta { font-size:11px; color:#9CA3AF; margin-bottom:12px; }
+        .mk-resena-resp-area { width:100%; min-height:80px; resize:vertical; border:1.5px solid #E5E7EB; border-radius:10px; padding:10px 12px; font-size:13px; font-family:inherit; outline:none; margin-bottom:8px; }
+        .mk-resena-resp-area:focus { border-color:#4F46E5; }
+        .mk-resena-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .mk-resena-btn { padding:8px 14px; border-radius:9px; border:none; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; transition:opacity .15s; }
+        .mk-resena-btn:hover:not(:disabled) { opacity:0.85; }
+        .mk-resena-btn:disabled { opacity:0.5; cursor:not-allowed; }
+        .mk-empty { text-align:center; padding:40px 20px; color:#9CA3AF; }
+        .mk-empty-icon { font-size:36px; margin-bottom:10px; opacity:0.5; }
+
+        /* ── Calendario ── */
+        .mk-cal-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+        .mk-cal-select { padding:9px 12px; border:1.5px solid #E5E7EB; border-radius:10px; font-size:13px; font-family:inherit; outline:none; background:white; }
+        .mk-cal-select:focus { border-color:#4F46E5; }
+        .mk-cal-gen-btn { padding:10px 20px; border-radius:10px; border:none; background:linear-gradient(135deg,#4F46E5,#7C3AED); color:white; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:8px; transition:opacity .15s; }
+        .mk-cal-gen-btn:hover:not(:disabled) { opacity:0.9; }
+        .mk-cal-gen-btn:disabled { opacity:0.6; cursor:not-allowed; }
+        .mk-cal-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+        .mk-cal-slot { border:1px solid #E8ECF0; border-radius:14px; padding:14px; background:white; }
+        .mk-cal-slot-date { font-size:11px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+        .mk-cal-slot-tipo { display:inline-flex; padding:3px 9px; border-radius:100px; font-size:11px; font-weight:700; margin-bottom:8px; }
+        .mk-cal-slot-tema { font-size:13px; font-weight:700; color:#111827; margin-bottom:6px; }
+        .mk-cal-slot-caption { font-size:12px; color:#6B7280; line-height:1.5; }
+        .mk-cal-sem { font-size:12px; font-weight:700; color:#4F46E5; padding:8px 0 4px; }
+
+        /* Type color badges */
+        .tipo-Educativo { background:rgba(59,130,246,0.1); color:#1D4ED8; }
+        .tipo-Promocional { background:rgba(239,68,68,0.1); color:#B91C1C; }
+        .tipo-Behind { background:rgba(52,211,153,0.1); color:#065F46; }
+        .tipo-Testimonio { background:rgba(196,134,10,0.1); color:#92400E; }
+        .tipo-Oferta { background:rgba(107,79,216,0.1); color:#6B4FD8; }
+
+        @media (max-width:700px) {
+          .mk-format-grid { grid-template-columns:1fr 1fr; }
+          .mk-form-grid { grid-template-columns:1fr; }
+          .mk-preview-wrap { flex-direction:column; }
+          .mk-preview-img { align-self:center; }
+          .mk-cal-grid { grid-template-columns:1fr 1fr; }
         }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); }
-        .layout { display: flex; min-height: 100vh; }
-        .sidebar { width: 240px; background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; transition: transform 0.3s ease; }
-        .sidebar-logo { padding: 20px 18px; border-bottom: 1px solid var(--border); }
-        .sidebar-nav { padding: 12px 10px; flex: 1; overflow-y: auto; }
-        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--text2); text-decoration: none; margin-bottom: 2px; transition: all 0.2s; }
-        .nav-item:hover { background: var(--bg); color: var(--text); }
-        .nav-item.active { background: var(--blue-soft); color: var(--blue-dark); font-weight: 600; }
-        .nav-item-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
-        .sidebar-footer { padding: 16px 10px; border-top: 1px solid var(--border); }
-        .logout-btn { width: 100%; padding: 9px 12px; background: none; border: 1px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        .logout-btn:hover { background: #FEE2E2; color: #DC2626; border-color: #FCA5A5; }
-        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
-        .main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
-        .topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 30; }
-        .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 10px; margin: -10px; }
-        .content { padding: 24px 28px; flex: 1; max-width: 900px; }
-
-        .sec-title { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; margin-bottom: 12px; }
-        .card { background: var(--white); border: 1px solid var(--border); border-radius: 18px; padding: 22px; margin-bottom: 20px; }
-
-        /* Enlace */
-        .enlace-row { display: flex; align-items: center; gap: 10px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; }
-        .enlace-url { flex: 1; font-size: 14px; color: var(--text2); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .btn-copiar { padding: 8px 16px; background: var(--text); color: white; border: none; border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: background 0.15s; }
-        .btn-copiar.ok { background: #2E8A5E; }
-        .btns-row { display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn-outline { padding: 10px 18px; background: white; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; transition: border-color 0.15s; }
-        .btn-outline:hover { border-color: var(--text); }
-        .btn-outline.wa { border-color: rgba(37,211,102,0.4); color: #128C7E; }
-        .btn-outline.wa:hover { background: rgba(37,211,102,0.06); border-color: #25D366; }
-
-        /* QR */
-        .qr-wrap { display: flex; align-items: flex-start; gap: 28px; flex-wrap: wrap; }
-        .qr-img-box { background: white; border: 1.5px solid var(--border); border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .qr-img-box img { display: block; width: 200px; height: 200px; border-radius: 4px; }
-        .qr-placeholder { width: 200px; height: 200px; background: var(--bg); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
-        .qr-info { flex: 1; min-width: 200px; }
-        .qr-desc { font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
-        .qr-btns { display: flex; flex-direction: column; gap: 8px; }
-
-        /* Stats */
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 4px; }
-        .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
-        .stat-box-icon { font-size: 24px; margin-bottom: 10px; }
-        .stat-box-val { font-size: 28px; font-weight: 800; color: var(--text); letter-spacing: -1px; margin-bottom: 3px; }
-        .stat-box-label { font-size: 13px; color: var(--text2); font-weight: 500; margin-bottom: 2px; }
-        .stat-box-sub { font-size: 11px; color: var(--muted); }
-        .mock-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #C4860A; background: rgba(253,233,162,0.4); padding: 3px 8px; border-radius: 100px; margin-top: 12px; }
-
-        /* Tips */
-        .tips-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        .tip-card { border-radius: 14px; padding: 18px; border: 1.5px solid; }
-        .tip-icon { font-size: 24px; margin-bottom: 10px; }
-        .tip-titulo { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
-        .tip-desc { font-size: 13px; color: var(--text2); line-height: 1.55; }
-
-        /* IA Marketing */
-        .ia-tabs { display: flex; gap: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 20px; }
-        .ia-tab { flex: 1; padding: 9px 6px; background: none; border: none; border-radius: 9px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; text-align: center; }
-        .ia-tab:hover { color: var(--text); }
-        .ia-tab.active { background: white; color: #111827; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-        .ia-form-row { margin-bottom: 14px; }
-        .ia-label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
-        .ia-select { width: 100%; padding: 10px 12px; background: white; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 14px; color: var(--text); appearance: none; cursor: pointer; }
-        .ia-select:focus { outline: none; border-color: #111827; }
-        .ia-textarea { width: 100%; padding: 10px 12px; background: white; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 14px; color: var(--text); resize: vertical; min-height: 80px; }
-        .ia-textarea:focus { outline: none; border-color: #111827; }
-        .ia-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-        .ia-chip { padding: 7px 14px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 100px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
-        .ia-chip:hover { border-color: #111827; color: #111827; }
-        .ia-chip.active { background: #111827; border-color: #111827; color: white; }
-        .ia-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-        .btn-ia { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px; background: #111827; color: white; border: none; border-radius: 12px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.15s; }
-        .btn-ia:hover:not(:disabled) { opacity: 0.85; }
-        .btn-ia:disabled { opacity: 0.5; cursor: not-allowed; }
-        .ia-result-wrap { margin-top: 18px; }
-        .ia-result-box { position: relative; background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 16px 48px; white-space: pre-wrap; font-size: 14px; color: var(--text); line-height: 1.65; }
-        .ia-copy-btn { position: absolute; right: 12px; bottom: 10px; padding: 6px 14px; background: white; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
-        .ia-copy-btn:hover { border-color: #111827; }
-        .ia-copy-btn.ok { background: #111827; color: white; border-color: #111827; }
-        .ia-error { margin-top: 10px; padding: 10px 14px; background: #FEE2E2; border-radius: 10px; font-size: 13px; color: #DC2626; }
-        .stars-row { display: flex; gap: 6px; margin-bottom: 4px; }
-        .star-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 2px; transition: transform 0.1s; line-height: 1; }
-        .star-btn:hover { transform: scale(1.15); }
-        .tono-row { display: flex; gap: 8px; }
-        .tono-btn { flex: 1; padding: 8px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 9px; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
-        .tono-btn.active { background: #111827; border-color: #111827; color: white; }
-
-        /* Post parts */
-        .post-section { border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
-        .post-section-head { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; background: var(--bg); border-bottom: 1px solid var(--border); }
-        .post-section-label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
-        .post-section-body { padding: 13px 14px; font-size: 14px; color: var(--text); line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
-        .post-section-body.hashtags { color: #1D4ED8; font-size: 13px; }
-        .post-section-body.imagen { color: var(--text2); font-style: italic; }
-        .btn-copy-sm { padding: 5px 12px; background: white; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
-        .btn-copy-sm:hover { border-color: #111827; }
-        .btn-copy-sm.ok { background: #111827; color: white; border-color: #111827; }
-
-        /* Reseñas DB */
-        .resenas-list { max-height: 220px; overflow-y: auto; border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 14px; }
-        .resena-item { padding: 11px 14px; cursor: pointer; transition: background 0.12s; border-bottom: 1px solid var(--border); }
-        .resena-item:last-child { border-bottom: none; }
-        .resena-item:hover { background: var(--bg); }
-        .resena-item.sel { background: rgba(29,78,216,0.06); border-left: 3px solid #1D4ED8; }
-        .resena-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-        .resena-stars { font-size: 12px; }
-        .resena-autor { font-size: 12px; font-weight: 700; color: var(--text2); }
-        .resena-fecha { font-size: 11px; color: var(--muted); margin-left: auto; }
-        .resena-texto { font-size: 13px; color: var(--text); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .resena-empty { padding: 20px; text-align: center; font-size: 13px; color: var(--muted); }
-        .ia-resp-edit { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-family: inherit; font-size: 13px; color: var(--text); line-height: 1.65; resize: vertical; min-height: 120px; outline: none; }
-        .ia-resp-edit:focus { border-color: #111827; }
-
-        /* PDF btn */
-        .btn-pdf { display: flex; align-items: center; gap: 6px; padding: 7px 14px; background: white; border: 1.5px solid var(--border); border-radius: 9px; font-family: inherit; font-size: 12px; font-weight: 700; color: var(--text2); cursor: pointer; transition: all 0.15s; }
-        .btn-pdf:hover { border-color: #111827; color: #111827; }
-
-        @media (max-width: 768px) {
-          .sidebar { transform: translateX(-100%); } .sidebar.open { transform: translateX(0); }
-          .sidebar-overlay.open { display: block; } .hamburger { display: flex; }
-          .main { margin-left: 0; } .topbar { padding: 12px 16px; } .content { padding: 16px; }
-          .stats-grid { grid-template-columns: 1fr 1fr; }
-          .tips-grid { grid-template-columns: 1fr; }
-          .qr-wrap { flex-direction: column; }
-          .ia-tabs { gap: 2px; }
-          .ia-tab { font-size: 11px; padding: 8px 4px; }
-          .ia-row2 { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 480px) {
-          .stats-grid { grid-template-columns: 1fr; }
+        @media (max-width:480px) {
+          .mk-section { padding:18px; }
+          .mk-format-grid { grid-template-columns:1fr 1fr; gap:8px; }
+          .mk-cal-grid { grid-template-columns:1fr; }
         }
       `}</style>
 
+      {/* Hidden templates for html2canvas */}
+      <div style={{ position: 'fixed', top: -9999, left: -9999, visibility: 'hidden', pointerEvents: 'none' }}>
+        <div ref={pubRef}>
+          {imgContenido && (estilo === 'oscuro'
+            ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
+            : <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
+          )}
+        </div>
+        <div ref={historiaRef}>
+          {imgContenido && (estilo === 'oscuro'
+            ? <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} />
+            : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} />
+          )}
+        </div>
+      </div>
 
-            {/* ── 1. ENLACE DE RESERVA ── */}
-            <div className="sec-title">🔗 Tu enlace de reserva</div>
-            <div className="card">
-              <div style={{fontSize:'13px', color:'var(--muted)', marginBottom:'12px'}}>
-                Comparte este enlace para que tus clientes puedan ver tu perfil y reservar online.
-              </div>
-              <div className="enlace-row">
-                <span className="enlace-url">{urlPublica || 'Cargando...'}</span>
-                <button
-                  className={`btn-copiar ${copiado ? 'ok' : ''}`}
-                  onClick={copiarEnlace}
-                  disabled={!urlPublica}
-                >
-                  {copiado ? '✓ Copiado' : 'Copiar'}
-                </button>
-              </div>
-              <div className="btns-row">
-                <Link href={urlPublica || '#'} target="_blank" className="btn-outline" style={{pointerEvents: urlPublica ? 'auto' : 'none'}}>
-                  👁️ Ver mi perfil
-                </Link>
-                <button className="btn-outline wa" onClick={compartirWhatsApp} disabled={!urlPublica}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.528 5.852L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.008-1.371l-.36-.213-3.732.973.999-3.63-.234-.374A9.818 9.818 0 1112 21.818z"/>
-                  </svg>
-                  Compartir por WhatsApp
-                </button>
-              </div>
+      <div className="mk-wrap">
+
+        {/* ════════════════════════════════════════════════
+            SECCIÓN 1 — Crear contenido
+        ════════════════════════════════════════════════ */}
+        <div className="mk-section">
+          <div className="mk-section-head">
+            <div className="mk-section-icon" style={{ background: 'linear-gradient(135deg,#EEF2FF,#F5F3FF)' }}>🎨</div>
+            <div>
+              <div className="mk-section-title">Crear contenido</div>
+              <div className="mk-section-sub">Genera imágenes para Instagram listas para publicar · 10 créditos</div>
             </div>
+          </div>
 
-            {/* ── 2. CÓDIGO QR ── */}
-            <div className="sec-title">📱 Código QR</div>
-            <div className="card">
-              <div className="qr-wrap">
-                <div className="qr-img-box">
-                  {urlPublica
-                    ? <QRCodeSVG ref={qrRef} value={urlPublica} size={200} bgColor="#ffffff" fgColor="#111827" level="M" />
-                    : <div className="qr-placeholder">Cargando...</div>
-                  }
+          {/* Steps indicator */}
+          <div className="mk-steps">
+            <button className={`mk-step${paso === 1 ? ' active' : ''}`} onClick={() => { setPaso(1); setImgContenido(null) }}>
+              1 · Formato
+            </button>
+            <button className={`mk-step${paso === 2 ? ' active' : ''}`} onClick={() => paso >= 2 && setPaso(2)}>
+              2 · Configurar
+            </button>
+            <button className={`mk-step${paso === 3 ? ' active' : ''}`} onClick={() => paso === 3 && setPaso(3)}>
+              3 · Resultado
+            </button>
+          </div>
+
+          {/* PASO 1: Elegir formato */}
+          {paso === 1 && (
+            <div>
+              <div className="mk-format-grid">
+                <div
+                  className={`mk-format-card${formato === 'publicacion' ? ' selected' : ''}`}
+                  onClick={() => setFormato('publicacion')}
+                >
+                  <span className="mk-format-emoji">📸</span>
+                  <div className="mk-format-name">Publicación</div>
+                  <div className="mk-format-dim">1080 × 1080 px</div>
                 </div>
-                <div className="qr-info">
-                  <p className="qr-desc">
-                    Imprime este código QR y ponlo en la entrada de tu local, en tarjetas de visita o en el mostrador. Tus clientes podrán escanearlo con el móvil y reservar al instante.
-                  </p>
-                  <div className="qr-btns">
-                    <button className="btn-outline" onClick={descargarQR} disabled={!urlPublica || qrDescargando}>
-                      {qrDescargando ? '⏳ Descargando...' : '⬇️ Descargar PNG'}
+                <div
+                  className={`mk-format-card${formato === 'historia' ? ' selected' : ''}`}
+                  onClick={() => setFormato('historia')}
+                >
+                  <span className="mk-format-emoji">📱</span>
+                  <div className="mk-format-name">Historia</div>
+                  <div className="mk-format-dim">1080 × 1920 px</div>
+                </div>
+              </div>
+              <button className="mk-gen-btn" onClick={() => setPaso(2)}>
+                Continuar con {formato === 'publicacion' ? 'Publicación' : 'Historia'} →
+              </button>
+            </div>
+          )}
+
+          {/* PASO 2: Configurar */}
+          {paso === 2 && (
+            <div>
+              {imgError && <div className="mk-error">{imgError}</div>}
+              <div className="mk-form-grid">
+                <div className="mk-field">
+                  <label className="mk-label">Tipo de contenido</label>
+                  <select className="mk-select" value={tipoContenido} onChange={e => setTipoContenido(e.target.value as typeof tipoContenido)}>
+                    <option value="promocion">🎉 Promoción especial</option>
+                    <option value="nuevo_servicio">✨ Nuevo servicio</option>
+                    <option value="consejo">💡 Consejo profesional</option>
+                    <option value="oferta">🏷️ Oferta de temporada</option>
+                    <option value="presentacion">👋 Presentación</option>
+                  </select>
+                </div>
+                <div className="mk-field">
+                  <label className="mk-label">Tono de voz</label>
+                  <select className="mk-select" value={tono} onChange={e => setTono(e.target.value as typeof tono)}>
+                    <option value="cercano">😊 Cercano y amigable</option>
+                    <option value="profesional">💼 Profesional</option>
+                    <option value="divertido">🎈 Divertido</option>
+                  </select>
+                </div>
+                <div className="mk-field mk-field-full">
+                  <label className="mk-label">Servicio destacado (opcional)</label>
+                  {negServicios.length > 0 ? (
+                    <select className="mk-select" value={servicio} onChange={e => setServicio(e.target.value)}>
+                      <option value="">Sin servicio específico</option>
+                      {negServicios.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ) : (
+                    <input className="mk-input" placeholder="Ej: Corte de cabello, Manicura…" value={servicio} onChange={e => setServicio(e.target.value)} />
+                  )}
+                </div>
+                <div className="mk-field mk-field-full">
+                  <label className="mk-label">Estilo visual</label>
+                  <div className="mk-estilo-row">
+                    <button
+                      className={`mk-estilo-btn${estilo === 'oscuro' ? ' selected-dark' : ''}`}
+                      onClick={() => setEstilo('oscuro')}
+                    >
+                      🌙 Oscuro
                     </button>
-                    <button className="btn-outline" onClick={imprimirQR} disabled={!urlPublica}>
-                      🖨️ Imprimir QR
+                    <button
+                      className={`mk-estilo-btn${estilo === 'claro' ? ' selected-light' : ''}`}
+                      onClick={() => setEstilo('claro')}
+                    >
+                      ☀️ Claro
                     </button>
                   </div>
                 </div>
               </div>
+              <button className="mk-gen-btn" onClick={generarImagen} disabled={generandoImg || cargando}>
+                {generandoImg ? <><span className="mk-spinner" /> Generando…</> : '✨ Generar con IA — 10 créditos'}
+              </button>
             </div>
+          )}
 
-            {/* ── 3. ESTADÍSTICAS ── */}
-            <div className="sec-title">📊 Estadísticas del perfil</div>
-            <div className="card">
-              <div className="stats-grid">
-                <div className="stat-box">
-                  <div className="stat-box-icon">👁️</div>
-                  <div className="stat-box-val">—</div>
-                  <div className="stat-box-label">Visitas al perfil</div>
-                  <div className="stat-box-sub">Este mes</div>
-                </div>
-                <div className="stat-box">
-                  <div className="stat-box-icon">📅</div>
-                  <div className="stat-box-val">—</div>
-                  <div className="stat-box-label">Reservas este mes</div>
-                  <div className="stat-box-sub">Desde tu perfil</div>
-                </div>
-                <div className="stat-box">
-                  <div className="stat-box-icon">📈</div>
-                  <div className="stat-box-val">—</div>
-                  <div className="stat-box-label">Tasa de conversión</div>
-                  <div className="stat-box-sub">Visitas → Reservas</div>
-                </div>
+          {/* PASO 3: Resultado */}
+          {paso === 3 && imgContenido && (
+            <div className="mk-preview-wrap">
+              {/* Preview miniatura visible */}
+              <div className="mk-preview-img" style={{ transform: formato === 'historia' ? 'scale(0.42)' : 'scale(0.55)', transformOrigin: 'top left', marginBottom: formato === 'historia' ? -220 : -8 }}>
+                {estilo === 'oscuro'
+                  ? (formato === 'publicacion'
+                    ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
+                    : <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} />)
+                  : (formato === 'publicacion'
+                    ? <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
+                    : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} />)
+                }
               </div>
-              <div className="mock-badge">
-                🚧 Analíticas detalladas próximamente
+
+              {/* Actions + text */}
+              <div className="mk-preview-info">
+                <button className="mk-dl-btn" onClick={descargarImagen} disabled={imgDescargando}>
+                  {imgDescargando ? <><span className="mk-spinner" style={{ borderTopColor:'white' }} /> Exportando…</> : '⬇️ Descargar PNG'}
+                </button>
+
+                {formato === 'publicacion' && imgContenido.descripcion && (
+                  <>
+                    <div className="mk-preview-label">Descripción</div>
+                    <div className="mk-copy-area">{imgContenido.descripcion}</div>
+                    <button
+                      className={`mk-copy-btn${descCopiado ? ' copied' : ''}`}
+                      onClick={() => {
+                        navigator.clipboard?.writeText(imgContenido.descripcion ?? '')
+                        setDescCopiado(true)
+                        setTimeout(() => setDescCopiado(false), 2000)
+                      }}
+                    >
+                      {descCopiado ? '✓ Copiada' : '📋 Copiar descripción'}
+                    </button>
+                  </>
+                )}
+
+                {formato === 'publicacion' && imgContenido.hashtags && imgContenido.hashtags.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div className="mk-preview-label">Hashtags</div>
+                    <div className="mk-copy-area" style={{ fontSize: 12 }}>{imgContenido.hashtags.join(' ')}</div>
+                    <button
+                      className={`mk-copy-btn${hashCopiado ? ' copied' : ''}`}
+                      onClick={() => {
+                        navigator.clipboard?.writeText((imgContenido.hashtags ?? []).join(' '))
+                        setHashCopiado(true)
+                        setTimeout(() => setHashCopiado(false), 2000)
+                      }}
+                    >
+                      {hashCopiado ? '✓ Copiados' : '# Copiar hashtags'}
+                    </button>
+                  </div>
+                )}
+
+                <button className="mk-restart-btn" style={{ marginTop: 14 }} onClick={() => { setPaso(1); setImgContenido(null); setImgError('') }}>
+                  ↩ Crear otro contenido
+                </button>
               </div>
             </div>
+          )}
+        </div>
 
-            {/* ── 4. IA MARKETING ── */}
-            <div className="sec-title" style={{marginTop:'8px'}}>🤖 IA Marketing</div>
-            <div className="card" style={{marginBottom:'20px'}}>
-              <div style={{fontSize:'13px', color:'var(--muted)', marginBottom:'16px'}}>
-                Genera contenido para redes sociales y estrategias de marketing usando inteligencia artificial con los datos reales de tu negocio.
-              </div>
+        {/* ════════════════════════════════════════════════
+            SECCIÓN 2 — Responder reseñas
+        ════════════════════════════════════════════════ */}
+        <div className="mk-section">
+          <div className="mk-section-head">
+            <div className="mk-section-icon" style={{ background: 'linear-gradient(135deg,#FFFBEB,#FEF3C7)' }}>⭐</div>
+            <div>
+              <div className="mk-section-title">Responder reseñas</div>
+              <div className="mk-section-sub">Genera respuestas profesionales para reseñas sin contestar · 3 créditos por reseña</div>
+            </div>
+          </div>
 
-              {/* Tabs */}
-              <div className="ia-tabs">
-                {([
-                  {key:'posts',    label:'📸 Posts IG'},
-                  {key:'resenas',  label:'⭐ Reseñas'},
-                  {key:'estrategia', label:'📅 Estrategia'},
-                  {key:'ofertas',  label:'🏷️ Ofertas'},
-                ] as const).map(t => (
-                  <button key={t.key} className={`ia-tab ${iaTab === t.key ? 'active' : ''}`} onClick={() => { setIaTab(t.key); setIaError('') }}>
-                    {t.label}
+          {cargando ? (
+            <div className="mk-empty"><div className="mk-empty-icon">⏳</div><div>Cargando reseñas…</div></div>
+          ) : resenas.length === 0 ? (
+            <div className="mk-empty">
+              <div className="mk-empty-icon">✅</div>
+              <div style={{ fontWeight: 700, color: '#374151', marginBottom: 4 }}>¡Al día!</div>
+              <div style={{ fontSize: 13 }}>No hay reseñas pendientes de respuesta.</div>
+            </div>
+          ) : resenas.map(r => {
+            const estrellas = '★'.repeat(r.valoracion) + '☆'.repeat(5 - r.valoracion)
+            const resp = respuestas[r.id] ?? ''
+            return (
+              <div key={r.id} className="mk-resena-card">
+                <div className="mk-resena-stars" style={{ color: r.valoracion >= 4 ? '#F59E0B' : '#9CA3AF' }}>{estrellas}</div>
+                <div className="mk-resena-text">"{r.comentario ?? 'Sin comentario'}"</div>
+                <div className="mk-resena-meta">{r.autor_nombre ?? 'Anónimo'} · {new Date(r.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                <textarea
+                  className="mk-resena-resp-area"
+                  placeholder="Genera una respuesta con IA o escríbela manualmente…"
+                  value={resp}
+                  onChange={e => setRespuestas(prev => ({ ...prev, [r.id]: e.target.value }))}
+                />
+                <div className="mk-resena-actions">
+                  <button
+                    className="mk-resena-btn"
+                    style={{ background: 'linear-gradient(135deg,#B8D8F8,#D4C5F9)', color: '#1E3A5F' }}
+                    onClick={() => generarRespuesta(r)}
+                    disabled={generandoResp === r.id}
+                  >
+                    {generandoResp === r.id ? '⏳ Generando…' : '🤖 Generar respuesta (3 créditos)'}
                   </button>
+                  {resp && (
+                    <>
+                      <button
+                        className="mk-resena-btn"
+                        style={{ background: respCopiada === r.id ? '#ECFDF5' : 'white', color: respCopiada === r.id ? '#059669' : '#374151', border: '1.5px solid #E5E7EB' }}
+                        onClick={() => {
+                          navigator.clipboard?.writeText(resp)
+                          setRespCopiada(r.id)
+                          setTimeout(() => setRespCopiada(null), 2000)
+                        }}
+                      >
+                        {respCopiada === r.id ? '✓ Copiada' : '📋 Copiar'}
+                      </button>
+                      <button
+                        className="mk-resena-btn"
+                        style={{ background: '#059669', color: 'white' }}
+                        onClick={() => guardarRespuesta(r)}
+                      >
+                        ✓ Guardar respuesta
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* ════════════════════════════════════════════════
+            SECCIÓN 3 — Calendario mensual
+        ════════════════════════════════════════════════ */}
+        <div className="mk-section">
+          <div className="mk-section-head">
+            <div className="mk-section-icon" style={{ background: 'linear-gradient(135deg,#ECFDF5,#D1FAE5)' }}>📅</div>
+            <div>
+              <div className="mk-section-title">Calendario mensual</div>
+              <div className="mk-section-sub">Plan de contenido para Instagram — 12 posts, 3 por semana · 15 créditos</div>
+            </div>
+          </div>
+
+          <div className="mk-cal-controls">
+            <select className="mk-cal-select" value={calMes} onChange={e => setCalMes(Number(e.target.value))}>
+              {MESES.map((m, i) => <option key={i} value={i}>{m}</option>)}
+            </select>
+            <select className="mk-cal-select" value={calAnio} onChange={e => setCalAnio(Number(e.target.value))}>
+              {[calAnio - 1, calAnio, calAnio + 1].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <button className="mk-cal-gen-btn" onClick={generarCalendario} disabled={generandoCal || cargando}>
+              {generandoCal ? <><span className="mk-spinner" style={{ borderColor:'rgba(255,255,255,0.3)', borderTopColor:'white' }} /> Generando…</> : '✨ Generar plan del mes — 15 créditos'}
+            </button>
+          </div>
+
+          {calError && <div className="mk-error">{calError}</div>}
+
+          {calSlots.length > 0 && (() => {
+            const TIPO_CLASS: Record<string, string> = {
+              'Educativo': 'tipo-Educativo', 'Promocional': 'tipo-Promocional',
+              'Behind the scenes': 'tipo-Behind', 'Testimonio': 'tipo-Testimonio', 'Oferta': 'tipo-Oferta',
+            }
+            const semanas: CalSlot[][] = [[], [], [], []]
+            calSlots.forEach((s, i) => semanas[Math.floor(i / 3)].push(s))
+            return (
+              <div>
+                {semanas.map((sem, si) => sem.length > 0 && (
+                  <div key={si}>
+                    <div className="mk-cal-sem">Semana {si + 1} — {MESES[calMes]} {calAnio}</div>
+                    <div className="mk-cal-grid">
+                      {sem.map((slot, idx) => (
+                        <div key={idx} className="mk-cal-slot">
+                          <div className="mk-cal-slot-date">{slot.fecha}</div>
+                          <span className={`mk-cal-slot-tipo ${TIPO_CLASS[slot.tipo] ?? 'tipo-Educativo'}`}>{slot.tipo}</span>
+                          <div className="mk-cal-slot-tema">{slot.tema}</div>
+                          <div className="mk-cal-slot-caption">"{slot.caption}"</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
+            )
+          })()}
 
-              {/* ── Tab: Posts Instagram ── */}
-              {iaTab === 'posts' && (
-                <div>
-                  <div className="ia-form-row">
-                    <label className="ia-label">Tema del post</label>
-                    <div className="ia-chip-row">
-                      {([
-                        {key:'promocion',      label:'🏷️ Promoción'},
-                        {key:'nuevo_servicio', label:'✨ Nuevo servicio'},
-                        {key:'festivo',        label:'🎉 Festivo'},
-                        {key:'consejo',        label:'💡 Consejo útil'},
-                        {key:'agradecimiento', label:'🙏 Agradecimiento'},
-                        {key:'detras',         label:'🎬 Behind the scenes'},
-                      ] as const).map(c => (
-                        <button key={c.key} className={`ia-chip ${postTema === c.key ? 'active' : ''}`} onClick={() => setPostTema(c.key)}>
-                          {c.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="ia-form-row">
-                    <label className="ia-label">Tono</label>
-                    <div className="tono-row">
-                      {([
-                        {key:'profesional', label:'💼 Profesional'},
-                        {key:'cercano',     label:'😊 Cercano'},
-                        {key:'divertido',   label:'🎉 Divertido'},
-                      ] as const).map(t => (
-                        <button key={t.key} className={`tono-btn ${postTono === t.key ? 'active' : ''}`} onClick={() => setPostTono(t.key)}>
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="ia-form-row">
-                    <label className="ia-label">Contexto adicional <span style={{fontWeight:400, color:'var(--muted)'}}>(opcional)</span></label>
-                    <textarea
-                      className="ia-textarea"
-                      placeholder="Ej: Tenemos un 20% de descuento este fin de semana, nueva máquina de tratamiento facial..."
-                      value={postContexto}
-                      onChange={e => setPostContexto(e.target.value)}
-                      rows={2}
-                    />
-                  </div>
-                  <button className="btn-ia" onClick={generarPost} disabled={generando || !negocioNombre}>
-                    {generando ? '⏳ Generando post...' : '✨ Generar post para Instagram'}
-                  </button>
-                  {iaError && <div className="ia-error">⚠️ {iaError}</div>}
-                  {postPartes && (
-                    <div className="ia-result-wrap">
-                      {/* Texto del post */}
-                      <div className="post-section">
-                        <div className="post-section-head">
-                          <span className="post-section-label">📝 Texto del post</span>
-                          <button className={`btn-copy-sm ${textoCopy ? 'ok' : ''}`} onClick={() => copiarIA(postPartes.texto, setTextoCopy)}>
-                            {textoCopy ? '✓ Copiado' : 'Copiar texto'}
-                          </button>
-                        </div>
-                        <div className="post-section-body">{postPartes.texto}</div>
-                      </div>
-                      {/* Hashtags */}
-                      {postPartes.hashtags && (
-                        <div className="post-section">
-                          <div className="post-section-head">
-                            <span className="post-section-label"># Hashtags</span>
-                            <button className={`btn-copy-sm ${tagsCopy ? 'ok' : ''}`} onClick={() => copiarIA(postPartes.hashtags, setTagsCopy)}>
-                              {tagsCopy ? '✓ Copiado' : 'Copiar hashtags'}
-                            </button>
-                          </div>
-                          <div className="post-section-body hashtags">{postPartes.hashtags}</div>
-                        </div>
-                      )}
-                      {/* Sugerencia imagen */}
-                      {postPartes.imagen && (
-                        <div className="post-section">
-                          <div className="post-section-head">
-                            <span className="post-section-label">📸 Sugerencia de imagen</span>
-                          </div>
-                          <div className="post-section-body imagen">{postPartes.imagen}</div>
-                        </div>
-                      )}
-                      <div style={{display:'flex', justifyContent:'flex-end', marginTop:'6px'}}>
-                        <button className={`btn-copy-sm ${postCopiado ? 'ok' : ''}`} onClick={() => copiarIA(postResultado, setPostCopiado)} style={{fontSize:'12px', padding:'6px 14px'}}>
-                          {postCopiado ? '✓ Copiado todo' : '📋 Copiar todo'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── Tab: Respuestas a reseñas ── */}
-              {iaTab === 'resenas' && (
-                <div>
-                  {/* Reseñas desde BD */}
-                  <div className="ia-form-row">
-                    <label className="ia-label">
-                      Reseñas de clientes
-                      {resenasDB.length > 0 && <span style={{fontWeight:400, color:'var(--muted)', marginLeft:'6px'}}>— selecciona una para responder</span>}
-                    </label>
-                    <div className="resenas-list">
-                      {resenasDB.length === 0
-                        ? <div className="resena-empty">No hay reseñas con texto aún</div>
-                        : resenasDB.map(r => (
-                          <div
-                            key={r.id}
-                            className={`resena-item ${reseñaTexto === r.texto && reseñaEstrellas === r.valoracion ? 'sel' : ''}`}
-                            onClick={() => { setReseñaTexto(r.texto); setReseñaEstrellas(r.valoracion); setReseñaResultado(''); setReseñaEditable('') }}
-                          >
-                            <div className="resena-item-head">
-                              <span className="resena-stars">{'⭐'.repeat(r.valoracion)}{'☆'.repeat(5 - r.valoracion)}</span>
-                              <span className="resena-autor">{r.autor_nombre || 'Cliente'}</span>
-                              <span className="resena-fecha">{new Date(r.created_at).toLocaleDateString('es-ES', {day:'numeric', month:'short'})}</span>
-                            </div>
-                            <div className="resena-texto">{r.texto}</div>
-                          </div>
-                        ))
-                      }
-                    </div>
-                  </div>
-
-                  <div className="ia-form-row">
-                    <label className="ia-label">Tono de la respuesta</label>
-                    <div className="tono-row">
-                      {([
-                        {key:'profesional', label:'💼 Profesional'},
-                        {key:'amigable',    label:'😊 Amigable'},
-                        {key:'formal',      label:'🎩 Formal'},
-                      ] as const).map(t => (
-                        <button key={t.key} className={`tono-btn ${reseñaTono === t.key ? 'active' : ''}`} onClick={() => setReseñaTono(t.key)}>
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="ia-form-row">
-                    <label className="ia-label">Texto de la reseña <span style={{fontWeight:400, color:'var(--muted)'}}>(o escribe directamente)</span></label>
-                    <textarea
-                      className="ia-textarea"
-                      placeholder="Selecciona una reseña arriba o escribe aquí el texto..."
-                      value={reseñaTexto}
-                      onChange={e => setReseñaTexto(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <button className="btn-ia" onClick={generarRespuestaResena} disabled={generando || !reseñaTexto.trim()}>
-                    {generando ? '⏳ Generando respuestas...' : '💬 Generar 2 opciones de respuesta'}
-                  </button>
-                  {iaError && <div className="ia-error">⚠️ {iaError}</div>}
-                  {reseñaEditable && (
-                    <div className="ia-result-wrap">
-                      <label className="ia-label" style={{marginBottom:'8px', display:'block'}}>
-                        ✏️ Respuesta generada — edita antes de publicar
-                      </label>
-                      <textarea
-                        className="ia-resp-edit"
-                        value={reseñaEditable}
-                        onChange={e => setReseñaEditable(e.target.value)}
-                        rows={8}
-                      />
-                      <div style={{display:'flex', justifyContent:'flex-end', marginTop:'8px'}}>
-                        <button className={`btn-copy-sm ${reseñaEditCopy ? 'ok' : ''}`} onClick={() => copiarIA(reseñaEditable, setReseñaEditCopy)} style={{padding:'7px 16px', fontSize:'13px'}}>
-                          {reseñaEditCopy ? '✓ Copiado' : '📋 Copiar respuesta'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── Tab: Estrategia mensual ── */}
-              {iaTab === 'estrategia' && (
-                <div>
-                  <div className="ia-row2">
-                    <div className="ia-form-row" style={{marginBottom:0}}>
-                      <label className="ia-label">Mes</label>
-                      <select className="ia-select" value={estrategiaMes} onChange={e => setEstrategiaMes(Number(e.target.value))}>
-                        {MESES_NOMBRE.map((m, i) => <option key={i} value={i}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>)}
-                      </select>
-                    </div>
-                    <div className="ia-form-row" style={{marginBottom:0}}>
-                      <label className="ia-label">Año</label>
-                      <select className="ia-select" value={estrategiaAnio} onChange={e => setEstrategiaAnio(Number(e.target.value))}>
-                        {[hoy.getFullYear(), hoy.getFullYear()+1].map(y => <option key={y} value={y}>{y}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="ia-form-row">
-                    <label className="ia-label">Objetivo principal</label>
-                    <select className="ia-select" value={estrategiaObjetivo} onChange={e => setEstrategiaObjetivo(e.target.value)}>
-                      <option value="nuevos_clientes">Atraer nuevos clientes</option>
-                      <option value="fidelizacion">Fidelizar clientes actuales</option>
-                      <option value="ventas">Aumentar ventas y ticket medio</option>
-                      <option value="visibilidad">Aumentar visibilidad y seguidores</option>
-                    </select>
-                  </div>
-                  <button className="btn-ia" onClick={generarEstrategia} disabled={generando || !negocioNombre}>
-                    {generando ? '⏳ Generando calendario...' : '📅 Generar estrategia mensual'}
-                  </button>
-                  {iaError && <div className="ia-error">⚠️ {iaError}</div>}
-                  {estrategiaResultado && (
-                    <div className="ia-result-wrap">
-                      <div className="ia-result-box">
-                        {estrategiaResultado}
-                        <button className={`ia-copy-btn ${estrategiaCopiado ? 'ok' : ''}`} onClick={() => copiarIA(estrategiaResultado, setEstrategiaCopiado)}>
-                          {estrategiaCopiado ? '✓ Copiado' : 'Copiar'}
-                        </button>
-                      </div>
-                      <div style={{display:'flex', justifyContent:'flex-end', marginTop:'8px'}}>
-                        <button className="btn-pdf" onClick={() => imprimirCalendario(estrategiaResultado)}>
-                          🖨️ Exportar / Imprimir PDF
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── Tab: Ofertas y promociones ── */}
-              {iaTab === 'ofertas' && (
-                <div>
-                  <div className="ia-form-row">
-                    <label className="ia-label">Temporada u ocasión</label>
-                    <div className="ia-chip-row">
-                      {([
-                        {key:'actual',      label:'📆 Temporada actual'},
-                        {key:'primavera',   label:'🌸 Primavera'},
-                        {key:'verano',      label:'☀️ Verano'},
-                        {key:'otono',       label:'🍂 Otoño'},
-                        {key:'invierno',    label:'❄️ Invierno'},
-                        {key:'navidad',     label:'🎄 Navidad'},
-                        {key:'san_valentin',label:'💝 San Valentín'},
-                        {key:'black_friday',label:'🛍️ Black Friday'},
-                        {key:'vuelta_cole', label:'🎒 Vuelta al cole'},
-                        {key:'dia_madre',   label:'💐 Día de la Madre'},
-                        {key:'personalizado',label:'✏️ Personalizado'},
-                      ] as const).map(c => (
-                        <button key={c.key} className={`ia-chip ${ofertaTemporada === c.key ? 'active' : ''}`} onClick={() => setOfertaTemporada(c.key)}>
-                          {c.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="ia-form-row">
-                    <label className="ia-label">Notas o restricciones <span style={{fontWeight:400, color:'var(--muted)'}}>(opcional)</span></label>
-                    <textarea
-                      className="ia-textarea"
-                      placeholder="Ej: Solo para clientes nuevos, máximo 10% descuento, queremos dar de regalo un producto..."
-                      value={ofertaNotas}
-                      onChange={e => setOfertaNotas(e.target.value)}
-                      rows={2}
-                    />
-                  </div>
-                  <button className="btn-ia" onClick={generarOfertas} disabled={generando || !negocioNombre}>
-                    {generando ? '⏳ Generando ofertas...' : '🏷️ Generar 4 ideas de promociones'}
-                  </button>
-                  {iaError && <div className="ia-error">⚠️ {iaError}</div>}
-                  {ofertaResultado && (
-                    <div className="ia-result-wrap">
-                      <div className="ia-result-box">
-                        {ofertaResultado}
-                        <button className={`ia-copy-btn ${ofertaCopiado ? 'ok' : ''}`} onClick={() => copiarIA(ofertaResultado, setOfertaCopiado)}>
-                          {ofertaCopiado ? '✓ Copiado' : 'Copiar'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
+          {calSlots.length === 0 && !generandoCal && (
+            <div className="mk-empty">
+              <div className="mk-empty-icon">📋</div>
+              <div>Genera tu plan de contenido para {MESES[calMes]} {calAnio}</div>
             </div>
+          )}
+        </div>
 
-            {/* ── 5. POST CON IMAGEN ── */}
-            <div className="sec-title" style={{marginTop:'8px'}}>🖼️ Crear post con imagen</div>
-            <div className="card" style={{marginBottom:'20px'}}>
-              <div style={{fontSize:'13px',color:'var(--muted)',marginBottom:'16px',display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                Genera una imagen lista para publicar en Instagram (1080×1080 px) con contenido creado por IA.
-                <span style={{display:'inline-flex',alignItems:'center',gap:'4px',fontSize:'11px',fontWeight:700,color:'#C4860A',background:'rgba(253,233,162,0.4)',padding:'3px 8px',borderRadius:'100px',flexShrink:0}}>10 créditos</span>
-              </div>
-
-              <div className="ia-row2">
-                <div className="ia-form-row" style={{marginBottom:0}}>
-                  <label className="ia-label">Tipo de post</label>
-                  <select className="ia-select" value={imgTipo} onChange={e => setImgTipo(e.target.value as typeof imgTipo)}>
-                    <option value="promocion">🏷️ Promoción</option>
-                    <option value="nuevo_servicio">✨ Nuevo servicio</option>
-                    <option value="consejo">💡 Consejo</option>
-                    <option value="equipo">👥 Presentación equipo</option>
-                    <option value="fecha_especial">🎉 Fecha especial</option>
-                  </select>
-                </div>
-                <div className="ia-form-row" style={{marginBottom:0}}>
-                  <label className="ia-label">Tono</label>
-                  <select className="ia-select" value={imgTono} onChange={e => setImgTono(e.target.value as typeof imgTono)}>
-                    <option value="profesional">💼 Profesional</option>
-                    <option value="cercano">😊 Cercano</option>
-                    <option value="divertido">🎉 Divertido</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="ia-row2" style={{marginTop:'12px'}}>
-                <div className="ia-form-row" style={{marginBottom:0}}>
-                  <label className="ia-label">Servicio destacado</label>
-                  <select className="ia-select" value={imgServicio} onChange={e => setImgServicio(e.target.value)}>
-                    <option value="">— Seleccionar servicio —</option>
-                    {negocioServicios.map((s, i) => <option key={i} value={s.nombre}>{s.nombre}</option>)}
-                  </select>
-                </div>
-                <div className="ia-form-row" style={{marginBottom:0}}>
-                  <label className="ia-label">Color del fondo</label>
-                  <select className="ia-select" value={imgColor} onChange={e => setImgColor(e.target.value as typeof imgColor)}>
-                    <option value="oscuro">🌑 Oscuro</option>
-                    <option value="claro">☀️ Claro</option>
-                    <option value="pastel">🌸 Pastel</option>
-                  </select>
-                </div>
-              </div>
-
-              <button className="btn-ia" style={{marginTop:'16px'}} onClick={generarPostImagen} disabled={imgGenerando || !negocioNombre}>
-                {imgGenerando ? '⏳ Generando contenido...' : '✨ Generar post con imagen'}
-              </button>
-              {imgError && <div className="ia-error">⚠️ {imgError}</div>}
-
-              {imgContenido && (
-                <div style={{marginTop:'20px'}}>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px',flexWrap:'wrap',gap:'8px'}}>
-                    <span style={{fontSize:'13px',fontWeight:700,color:'var(--text2)'}}>Vista previa · 1080×1080 px</span>
-                    <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-                      <button
-                        className={`btn-copy-sm ${imgCopy ? 'ok' : ''}`}
-                        onClick={() => copiarIA((imgContenido.hashtags || []).join(' '), setImgCopy)}
-                        style={{padding:'7px 14px'}}
-                      >
-                        {imgCopy ? '✓ Copiado' : '# Copiar hashtags'}
-                      </button>
-                      <button
-                        className="btn-ia"
-                        style={{width:'auto',padding:'8px 18px',fontSize:'13px'}}
-                        onClick={descargarPostImagen}
-                        disabled={imgDescargando}
-                      >
-                        {imgDescargando ? '⏳ Procesando...' : '⬇️ Descargar PNG'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Preview (visible) + Capture target */}
-                  <div style={{overflow:'auto',borderRadius:'16px',border:'1.5px solid var(--border)',background:'#f0f0f0'}}>
-                    <div ref={postImgRef}>
-                      {imgColor === 'oscuro' && renderTemplateDark()}
-                      {imgColor === 'claro' && renderTemplateClaro()}
-                      {imgColor === 'pastel' && renderTemplatePastel()}
-                    </div>
-                  </div>
-
-                  {/* Hashtags */}
-                  {imgContenido.hashtags && imgContenido.hashtags.length > 0 && (
-                    <div style={{marginTop:'12px',display:'flex',gap:'6px',flexWrap:'wrap'}}>
-                      {imgContenido.hashtags.map((h: string, i: number) => (
-                        <span key={i} style={{fontSize:'13px',color:'#1D4ED8',fontWeight:600}}>{h}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* ── 6. CONSEJOS ── */}
-            <div className="sec-title">💡 Consejos para mejorar tu perfil</div>
-            <div className="tips-grid">
-              {tips.map((tip, i) => (
-                <div key={i} className="tip-card" style={{background: tip.color, borderColor: tip.border}}>
-                  <div className="tip-icon">{tip.icon}</div>
-                  <div className="tip-titulo">{tip.titulo}</div>
-                  <div className="tip-desc">{tip.desc}</div>
-                </div>
-              ))}
-            </div>
-
+      </div>
     </DashboardShell>
   )
 }
