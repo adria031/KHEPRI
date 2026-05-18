@@ -414,6 +414,8 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
           user_id:          userId,
           grupo_id:         grupoId,
           precio_total:     precioTotal,
+          servicios_ids:    serviciosSeleccionados.map(s => s.id),
+          duracion_total:   duracionTotal,
         })
         .select('id')
         .single()

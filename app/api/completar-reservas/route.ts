@@ -43,14 +43,14 @@ export async function GET(req: NextRequest) {
   // Reservas confirmadas de días anteriores
   const { data: pasadas } = await sb
     .from('reservas')
-    .select('id, hora, servicios(duracion)')
+    .select('id, hora, user_id, negocio_id, servicios(duracion, precio)')
     .eq('estado', 'confirmada')
     .lt('fecha', hoy)
 
   // Reservas confirmadas de hoy
   const { data: hoyData } = await sb
     .from('reservas')
-    .select('id, hora, servicios(duracion)')
+    .select('id, hora, user_id, negocio_id, servicios(duracion, precio)')
     .eq('estado', 'confirmada')
     .eq('fecha', hoy)
 
@@ -76,6 +76,40 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  console.log(`[completar-reservas] ${ids.length} reservas completadas`)
-  return NextResponse.json({ ok: true, completadas: ids.length })
+  // Otorgar puntos de fidelización
+  const todasReservas = [...(pasadas ?? []), ...hoyFinalizadas]
+  let puntosOtorgados = 0
+
+  for (const r of todasReservas) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userId = (r as any).user_id as string | null
+    if (!userId) continue
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const precio = (Array.isArray(r.servicios) ? r.servicios[0] : r.servicios as any)?.precio ?? 0
+    const puntos = Math.floor(precio)
+    if (puntos <= 0) continue
+
+    // Incrementar puntos en profiles (sin race conditions)
+    await sb.rpc('increment_puntos', { p_user_id: userId, p_puntos: puntos })
+
+    // Insertar historial
+    await sb.from('historial_puntos').insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      user_id: userId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      negocio_id: (r as any).negocio_id ?? null,
+      reserva_id: r.id,
+      puntos,
+      concepto: 'Reserva completada',
+    })
+
+    // Actualizar puntos_ganados en la reserva
+    await sb.from('reservas').update({ puntos_ganados: puntos }).eq('id', r.id)
+
+    puntosOtorgados += puntos
+  }
+
+  console.log(`[completar-reservas] ${ids.length} reservas completadas, ${puntosOtorgados} puntos otorgados`)
+  return NextResponse.json({ ok: true, completadas: ids.length, puntosOtorgados })
 }

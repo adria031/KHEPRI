@@ -52,7 +52,7 @@ const TABS = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type Negocio      = {id:string;nombre:string;tipo:string;ciudad:string;direccion:string|null;logo_url:string|null;fotos:string[]|null;lat?:number|null;lng?:number|null;descripcion:string|null;visible:boolean|null}
+type Negocio      = {id:string;nombre:string;tipo:string;ciudad:string;direccion:string|null;logo_url:string|null;fotos:string[]|null;lat?:number|null;lng?:number|null;descripcion:string|null;visible:boolean|null;created_at?:string}
 type ReservaCliente = {id:string;fecha:string;hora:string;estado:string;negocio_id:string;negocio_nombre:string;servicio_nombre:string;negocio_tipo:string}
 type HorarioDB    = {negocio_id:string;dia:string;abierto:boolean;hora_apertura:string;hora_cierre:string;hora_apertura2:string|null;hora_cierre2:string|null}
 type Filtro       = 'ninguno'|'abierto'|'valorados'|'cercanos'
@@ -124,8 +124,8 @@ function Skeleton(){
   )
 }
 
-interface NegCardProps{n:Negocio;abierto:boolean;rating?:number;dist?:number|null;fav:boolean;onFav:()=>void;horsTiene:boolean}
-function NegCard({n,abierto,rating,dist,fav,onFav,horsTiene}:NegCardProps){
+interface NegCardProps{n:Negocio;abierto:boolean;rating?:number;dist?:number|null;fav:boolean;onFav:()=>void;horsTiene:boolean;onReservar?:(id:string)=>void}
+function NegCard({n,abierto,rating,dist,fav,onFav,horsTiene,onReservar}:NegCardProps){
   const cfg=TIPO_CFG[normTipo(n.tipo||'')]||TIPO_DEF
   const portada=(n.fotos&&n.fotos[0])||null
   const tipoLimpio=n.tipo?.replace(/^[\p{Emoji}\s]*/u,'').replace(/\s*\/\s*.*/,'').trim()||n.tipo
@@ -161,7 +161,7 @@ function NegCard({n,abierto,rating,dist,fav,onFav,horsTiene}:NegCardProps){
             {rating!=null&&<span className="ncard-rating">⭐ {rating}</span>}
             {dist!=null&&<span className="ncard-dist">{dist<1?`${Math.round(dist*1000)}m`:`${dist.toFixed(1)}km`}</span>}
           </div>
-          <Link href={`/negocio/${n.id}`} className="btn-reservar" onClick={e=>e.stopPropagation()}>Reservar →</Link>
+          <button className="btn-reservar" onClick={e=>{e.preventDefault();e.stopPropagation();onReservar?onReservar(n.id):(window.location.href=`/negocio/${n.id}`)}}>Reservar →</button>
         </div>
       </div>
     </Link>
@@ -192,6 +192,7 @@ function ClienteContent(){
   const[vals,setVals]=useState<Record<string,number>>({})
   const[reservas,setReservas]=useState<ReservaCliente[]>([])
   const[cancelando,setCancelando]=useState<string|null>(null)
+  const[modalReservarNeg,setModalReservarNeg]=useState<string|null>(null)
 
   // ── Geocodificación en background para negocios sin lat/lng ──────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -288,7 +289,7 @@ function ClienteContent(){
       setReservas(allRows)
     })
     Promise.all([
-      supabase.from('negocios').select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible'),
+      supabase.from('negocios').select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,created_at'),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
     ]).then(([{data:ns},{data:hs},{data:rs}])=>{
@@ -343,6 +344,11 @@ function ClienteContent(){
     }
   }
 
+  function handleReservar(negId:string){
+    if(!userId){setModalReservarNeg(negId);return}
+    window.location.href=`/negocio/${negId}`
+  }
+
   function toggleCat(id:string){
     setCats(prev=>prev.includes(id)?prev.filter(c=>c!==id):[...prev,id])
   }
@@ -368,6 +374,7 @@ function ClienteContent(){
 
   const negValTop=[...negocios].filter(n=>vals[n.id]!=null).sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0)).slice(0,8)
   const hoyISO=new Date().toISOString().slice(0,10)
+  const negRecientes=[...negocios].sort((a,b)=>(b.created_at??'').localeCompare(a.created_at??'')).slice(0,8)
   const proximasReservas=reservas.filter(r=>r.estado==='confirmada'&&r.fecha>=hoyISO).sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora))
   const historialReservas=reservas.filter(r=>r.estado==='cancelada'||r.estado==='completada'||r.fecha<hoyISO)
 
@@ -736,6 +743,38 @@ function ClienteContent(){
               </div>
             )}
 
+            {/* RECIÉN LLEGADOS */}
+            {negRecientes.length>0&&!q&&cats.length===0&&filtro==='ninguno'&&(
+              <div className="sec">
+                <div className="sec-h">
+                  <span className="sec-t">🆕 Recién llegados</span>
+                </div>
+                <div className="hscroll">
+                  {negRecientes.map(n=>{
+                    const cfg=TIPO_CFG[normTipo(n.tipo||'')]||TIPO_DEF
+                    const portada=(n.fotos&&n.fotos[0])||null
+                    return(
+                      <div key={n.id} className="hn-card" style={{cursor:'pointer'}} onClick={()=>window.location.href=`/negocio/${n.id}`}>
+                        {portada
+                          ?<img src={portada} alt={n.nombre} className="hn-cover"/>
+                          :<div className="hn-ph" style={{background:cfg.grad}}>{cfg.emoji}</div>
+                        }
+                        <div className="hn-body">
+                          <div style={{fontSize:'13px',fontWeight:800,color:'#0F172A',marginBottom:'3px'}}>{n.nombre}</div>
+                          <div style={{fontSize:'12px',color:'#94A3B8',marginBottom:'6px'}}>{n.ciudad||''}</div>
+                          <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                            {vals[n.id]&&<span style={{fontSize:'12px',fontWeight:800,color:'#D97706'}}>⭐ {vals[n.id]}</span>}
+                            <span style={{fontSize:'11px',fontWeight:700,padding:'2px 7px',borderRadius:'100px',background:cfg.bg,color:cfg.color}}>{n.tipo?.replace(/^[\p{Emoji}\s]*/u,'').replace(/\s*\/.*/,'').trim()}</span>
+                            <span style={{fontSize:'11px',fontWeight:700,padding:'2px 7px',borderRadius:'100px',background:'rgba(99,102,241,0.08)',color:'#6366F1'}}>Nuevo</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* GRID PRINCIPAL */}
             <div className="sec">
               <div className="sec-h">
@@ -803,6 +842,7 @@ function ClienteContent(){
                       fav={favs.includes(n.id)}
                       onFav={()=>toggleFav(n.id)}
                       horsTiene={(hors[n.id]||[]).length>0}
+                      onReservar={handleReservar}
                     />
                   ))}
                 </div>
@@ -951,6 +991,7 @@ function ClienteContent(){
                   fav={true}
                   onFav={()=>toggleFav(n.id)}
                   horsTiene={(hors[n.id]||[]).length>0}
+                  onReservar={handleReservar}
                 />
               ))}
             </div>
@@ -1013,6 +1054,43 @@ function ClienteContent(){
         </div>
       )}
     </div>
+
+    {/* MODAL RESERVAR SIN SESIÓN */}
+    {modalReservarNeg&&(
+      <div
+        style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}
+        onClick={()=>setModalReservarNeg(null)}
+      >
+        <div
+          style={{background:'white',borderRadius:'24px',padding:'32px 28px',maxWidth:'360px',width:'100%',textAlign:'center',boxShadow:'0 24px 60px rgba(0,0,0,0.2)'}}
+          onClick={e=>e.stopPropagation()}
+        >
+          <div style={{fontSize:'44px',marginBottom:'12px'}}>🔐</div>
+          <div style={{fontSize:'20px',fontWeight:900,color:'#0F172A',letterSpacing:'-0.4px',marginBottom:'8px'}}>Para reservar necesitas cuenta</div>
+          <div style={{fontSize:'14px',color:'#64748B',lineHeight:1.6,marginBottom:'24px'}}>Crea tu cuenta gratuita o inicia sesión para reservar en segundos.</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+            <a
+              href={`/auth?redirect=/negocio/${modalReservarNeg}/reservar`}
+              style={{display:'block',padding:'14px',background:'#0F172A',color:'white',borderRadius:'14px',textDecoration:'none',fontSize:'15px',fontWeight:800}}
+            >
+              Crear cuenta gratis
+            </a>
+            <a
+              href={`/auth?mode=login&redirect=/negocio/${modalReservarNeg}/reservar`}
+              style={{display:'block',padding:'14px',background:'#F1F5F9',color:'#0F172A',borderRadius:'14px',textDecoration:'none',fontSize:'15px',fontWeight:700}}
+            >
+              Iniciar sesión
+            </a>
+          </div>
+          <button
+            onClick={()=>setModalReservarNeg(null)}
+            style={{marginTop:'16px',background:'none',border:'none',color:'#94A3B8',fontSize:'13px',cursor:'pointer',fontFamily:'inherit'}}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    )}
 
     {/* ── BOTTOM NAV ── */}
     <div className="bnav">
