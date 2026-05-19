@@ -204,11 +204,30 @@ function ClienteContent(){
   // ── TEST TEMPORAL DIAGNÓSTICO ────────────────────────────────────────────
   useEffect(() => {
     const test = async () => {
-      const { data, error } = await supabase
-        .from('negocios')
-        .select('id, nombre, visible')
-      alert('Negocios: ' + JSON.stringify(data?.length) + ' Error: ' + JSON.stringify(error))
-      console.log('TEST NEGOCIOS:', data, error)
+      const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+
+      // T1: createBrowserClient (supabase — tiene sesión)
+      const r1 = await supabase.from('negocios').select('id, nombre, visible')
+      console.log('T1 supabase:', r1.data?.length, r1.error)
+
+      // T2: createClient directo (supabasePublic — sin sesión)
+      const r2 = await supabasePublic.from('negocios').select('id, nombre, visible')
+      console.log('T2 public:', r2.data?.length, r2.error)
+
+      // T3: fetch puro sin cliente Supabase
+      const r3res = await fetch(`${URL}/rest/v1/negocios?select=id,nombre,visible`, {
+        headers: { 'apikey': KEY, 'Authorization': `Bearer ${KEY}` }
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r3: any = r3res.ok ? await r3res.json() : { status: r3res.status }
+      console.log('T3 fetch:', r3res.status, r3)
+
+      alert(
+        `T1(browser): ${r1.data?.length ?? 'ERR'} | ${r1.error?.message ?? 'ok'}\n` +
+        `T2(direct):  ${r2.data?.length ?? 'ERR'} | ${r2.error?.message ?? 'ok'}\n` +
+        `T3(fetch):   ${r3res.status} / ${Array.isArray(r3) ? r3.length : JSON.stringify(r3)}`
+      )
     }
     test()
   }, [])
@@ -308,19 +327,20 @@ function ClienteContent(){
       allRows.sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora))
       setReservas(allRows)
     })
-    // Negocios: independiente, no bloqueado por otras queries
-    supabasePublic
-      .from('negocios')
-      .select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,created_at')
-      .eq('visible', true)
-      .then(
-        ({data:ns,error:nsError})=>{
-          console.log('NEGOCIOS:', ns?.length, nsError)
-          if(ns){ setNegocios(ns); geocodificarSinCoordenadas(ns) }
+    // Negocios: fetch puro — evita que la sesión corrompida del cliente Supabase dé 400
+    {
+      const negKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      const negUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/rest/v1/negocios?visible=eq.true&select=id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,created_at`
+      fetch(negUrl, { headers: { 'apikey': negKey, 'Authorization': `Bearer ${negKey}` } })
+        .then(r => r.ok ? r.json() : null)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then((ns: any) => {
+          console.log('NEGOCIOS:', Array.isArray(ns) ? ns.length : ns)
+          if (Array.isArray(ns)) { setNegocios(ns); geocodificarSinCoordenadas(ns) }
           setCargando(false)
-        },
-        ()=>setCargando(false)
-      )
+        })
+        .catch(() => setCargando(false))
+    }
 
     // Horarios y reseñas: secundario, no afecta la carga de negocios
     Promise.all([
