@@ -1,12 +1,19 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { Suspense } from 'react'
 import { useTheme } from '../components/ThemeProvider'
 import { LanguageSelector } from '../components/LanguageSelector'
+
+// Cliente público sin sesión para leer negocios visibles (no requiere auth)
+const supabasePublic = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 const MapaNegocios = dynamic(() => import('./MapaNegocios'), { ssr: false, loading: () => (
   <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#F1F5F9', color:'#94A3B8', fontSize:'14px', fontWeight:600, gap:'8px' }}>
@@ -289,15 +296,18 @@ function ClienteContent(){
       setReservas(allRows)
     })
     Promise.all([
-      supabase.from('negocios').select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,created_at'),
+      supabasePublic
+        .from('negocios')
+        .select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,created_at')
+        .eq('visible', true),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
-    ]).then(([{data:ns},{data:hs},{data:rs}])=>{
+    ]).then(([{data:ns,error:nsError},{data:hs},{data:rs}])=>{
+      console.log('NEGOCIOS:', ns?.length, nsError)
       if(ns){
-        const visibles=ns.filter((n:any)=>n.visible!==false)
-        setNegocios(visibles)
+        setNegocios(ns)
         // Geocodificar negocios sin lat/lng (en background)
-        geocodificarSinCoordenadas(visibles)
+        geocodificarSinCoordenadas(ns)
       }
       if(hs){
         const m:Record<string,HorarioDB[]>={}
