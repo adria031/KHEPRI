@@ -4,16 +4,9 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
-import { createClient } from '@supabase/supabase-js'
 import { Suspense } from 'react'
 import { useTheme } from '../components/ThemeProvider'
 import { LanguageSelector } from '../components/LanguageSelector'
-
-// Cliente público sin sesión para leer negocios visibles (no requiere auth)
-const supabasePublic = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const MapaNegocios = dynamic(() => import('./MapaNegocios'), { ssr: false, loading: () => (
   <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#F1F5F9', color:'#94A3B8', fontSize:'14px', fontWeight:600, gap:'8px' }}>
@@ -59,7 +52,7 @@ const TABS = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type Negocio      = {id:string;nombre:string;tipo:string;ciudad:string;direccion:string|null;logo_url:string|null;fotos:string[]|null;lat?:number|null;lng?:number|null;descripcion:string|null;visible:boolean|null;created_at?:string}
+type Negocio      = {id:string;nombre:string;tipo:string;ciudad:string;direccion:string|null;logo_url:string|null;fotos:string[]|null;lat?:number|null;lng?:number|null;descripcion:string|null;visible:boolean|null;creado_en?:string}
 type ReservaCliente = {id:string;fecha:string;hora:string;estado:string;negocio_id:string;negocio_nombre:string;servicio_nombre:string;negocio_tipo:string}
 type HorarioDB    = {negocio_id:string;dia:string;abierto:boolean;hora_apertura:string;hora_cierre:string;hora_apertura2:string|null;hora_cierre2:string|null}
 type Filtro       = 'ninguno'|'abierto'|'valorados'|'cercanos'
@@ -201,36 +194,6 @@ function ClienteContent(){
   const[cancelando,setCancelando]=useState<string|null>(null)
   const[modalReservarNeg,setModalReservarNeg]=useState<string|null>(null)
 
-  // ── TEST TEMPORAL DIAGNÓSTICO ────────────────────────────────────────────
-  useEffect(() => {
-    const test = async () => {
-      const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-
-      // T1: createBrowserClient (supabase — tiene sesión)
-      const r1 = await supabase.from('negocios').select('id, nombre, visible')
-      console.log('T1 supabase:', r1.data?.length, r1.error)
-
-      // T2: createClient directo (supabasePublic — sin sesión)
-      const r2 = await supabasePublic.from('negocios').select('id, nombre, visible')
-      console.log('T2 public:', r2.data?.length, r2.error)
-
-      // T3: fetch puro sin cliente Supabase
-      const r3res = await fetch(`${URL}/rest/v1/negocios?select=id,nombre,visible`, {
-        headers: { 'apikey': KEY, 'Authorization': `Bearer ${KEY}` }
-      })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const r3: any = r3res.ok ? await r3res.json() : { status: r3res.status }
-      console.log('T3 fetch:', r3res.status, r3)
-
-      alert(
-        `T1(browser): ${r1.data?.length ?? 'ERR'} | ${r1.error?.message ?? 'ok'}\n` +
-        `T2(direct):  ${r2.data?.length ?? 'ERR'} | ${r2.error?.message ?? 'ok'}\n` +
-        `T3(fetch):   ${r3res.status} / ${Array.isArray(r3) ? r3.length : JSON.stringify(r3)}`
-      )
-    }
-    test()
-  }, [])
 
   // ── Geocodificación en background para negocios sin lat/lng ──────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -330,7 +293,7 @@ function ClienteContent(){
     // Negocios: fetch puro — evita que la sesión corrompida del cliente Supabase dé 400
     {
       const negKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      const negUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/rest/v1/negocios?visible=eq.true&select=id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,created_at`
+      const negUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/rest/v1/negocios?visible=eq.true&select=id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,creado_en`
       fetch(negUrl, { headers: { 'apikey': negKey, 'Authorization': `Bearer ${negKey}` } })
         .then(r => r.ok ? r.json() : null)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -421,7 +384,7 @@ function ClienteContent(){
 
   const negValTop=[...negocios].filter(n=>vals[n.id]!=null).sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0)).slice(0,8)
   const hoyISO=new Date().toISOString().slice(0,10)
-  const negRecientes=[...negocios].sort((a,b)=>(b.created_at??'').localeCompare(a.created_at??'')).slice(0,8)
+  const negRecientes=[...negocios].sort((a,b)=>(b.creado_en??'').localeCompare(a.creado_en??'')).slice(0,8)
   const proximasReservas=reservas.filter(r=>r.estado==='confirmada'&&r.fecha>=hoyISO).sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora))
   const historialReservas=reservas.filter(r=>r.estado==='cancelada'||r.estado==='completada'||r.fecha<hoyISO)
 
