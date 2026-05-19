@@ -201,6 +201,18 @@ function ClienteContent(){
   const[cancelando,setCancelando]=useState<string|null>(null)
   const[modalReservarNeg,setModalReservarNeg]=useState<string|null>(null)
 
+  // ── TEST TEMPORAL DIAGNÓSTICO ────────────────────────────────────────────
+  useEffect(() => {
+    const test = async () => {
+      const { data, error } = await supabase
+        .from('negocios')
+        .select('id, nombre, visible')
+      alert('Negocios: ' + JSON.stringify(data?.length) + ' Error: ' + JSON.stringify(error))
+      console.log('TEST NEGOCIOS:', data, error)
+    }
+    test()
+  }, [])
+
   // ── Geocodificación en background para negocios sin lat/lng ──────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function geocodificarSinCoordenadas(lista: any[]) {
