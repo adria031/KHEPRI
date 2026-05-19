@@ -19,7 +19,7 @@ export type NegocioMapa = {
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
-const STYLE  = process.env.NEXT_PUBLIC_MAPBOX_STYLE || 'mapbox://styles/mapbox/light-v11'
+const STYLE  = process.env.NEXT_PUBLIC_MAPBOX_STYLE || 'mapbox://styles/adria031/cmoe4fuap002701sacwpjddnq'
 
 const tipoConfig: Record<string, { emoji: string; color: string; bg: string; border: string }> = {
   peluqueria:  { emoji: '💈', color: '#1D4ED8', bg: '#DBEAFE', border: '#B8D8F8' },
@@ -251,22 +251,13 @@ export default function MapaNegocios({
             // Marcador usuario con pulso
             userMarkerRef.current?.remove()
             const el = document.createElement('div')
-            el.style.cssText = 'position:relative;width:24px;height:24px;'
-            const pulse = document.createElement('div')
-            pulse.style.cssText = `
-              position:absolute;inset:0;border-radius:50%;
-              background:rgba(59,130,246,0.35);
-              animation:khepria-user-pulse 2s ease-out infinite;
+            el.style.cssText = `
+              width:18px;height:18px;
+              background:#3B82F6;border:3px solid white;
+              border-radius:50%;
+              box-shadow:0 0 0 rgba(59,130,246,0.5);
+              animation:pulse-user 2s infinite;
             `
-            el.appendChild(pulse)
-            const dot = document.createElement('div')
-            dot.style.cssText = `
-              position:absolute;inset:5px;border-radius:50%;
-              background:#3B82F6;border:2.5px solid white;
-              box-shadow:0 2px 8px rgba(59,130,246,0.45);
-              animation:pulse 2s infinite;
-            `
-            el.appendChild(dot)
             userMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
               .setLngLat([longitude, latitude])
               .setPopup(new mapboxgl.Popup({ offset: 14 }).setHTML(
@@ -451,19 +442,13 @@ export default function MapaNegocios({
     userMarkerRef.current?.remove()
 
     const el = document.createElement('div')
-    el.style.cssText = 'position:relative;width:24px;height:24px;'
-
-    const pulse = document.createElement('div')
-    pulse.className = 'khepria-user-pulse'
-    el.appendChild(pulse)
-
-    const dot = document.createElement('div')
-    dot.style.cssText = `
-      position:absolute;inset:5px;border-radius:50%;
-      background:#1D4ED8;border:2.5px solid white;
-      box-shadow:0 2px 8px rgba(29,78,216,0.4);
+    el.style.cssText = `
+      width:18px;height:18px;
+      background:#3B82F6;border:3px solid white;
+      border-radius:50%;
+      box-shadow:0 0 0 rgba(59,130,246,0.5);
+      animation:pulse-user 2s infinite;
     `
-    el.appendChild(dot)
 
     userMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
       .setLngLat([userPos.lng, userPos.lat])

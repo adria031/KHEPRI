@@ -228,7 +228,8 @@ function ClienteContent(){
   }
 
   useEffect(()=>{
-    supabase.auth.getUser().then(async({data:{user}})=>{
+    supabase.auth.getSession().then(async({data:{session}})=>{
+      const user = session?.user
       if(!user){window.location.href='/auth';return}
       const userEmail = user.email || ''
       const userId    = user.id
@@ -295,20 +296,25 @@ function ClienteContent(){
       allRows.sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora))
       setReservas(allRows)
     })
+    // Negocios: independiente, no bloqueado por otras queries
+    supabasePublic
+      .from('negocios')
+      .select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,created_at')
+      .eq('visible', true)
+      .then(
+        ({data:ns,error:nsError})=>{
+          console.log('NEGOCIOS:', ns?.length, nsError)
+          if(ns){ setNegocios(ns); geocodificarSinCoordenadas(ns) }
+          setCargando(false)
+        },
+        ()=>setCargando(false)
+      )
+
+    // Horarios y reseñas: secundario, no afecta la carga de negocios
     Promise.all([
-      supabasePublic
-        .from('negocios')
-        .select('id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,created_at')
-        .eq('visible', true),
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
-    ]).then(([{data:ns,error:nsError},{data:hs},{data:rs}])=>{
-      console.log('NEGOCIOS:', ns?.length, nsError)
-      if(ns){
-        setNegocios(ns)
-        // Geocodificar negocios sin lat/lng (en background)
-        geocodificarSinCoordenadas(ns)
-      }
+    ]).then(([{data:hs},{data:rs}])=>{
       if(hs){
         const m:Record<string,HorarioDB[]>={}
         for(const h of hs as HorarioDB[]){if(!m[h.negocio_id])m[h.negocio_id]=[];m[h.negocio_id].push(h)}
@@ -324,8 +330,7 @@ function ClienteContent(){
         for(const[id,s]of Object.entries(sums))avg[id]=Math.round((s.t/s.c)*10)/10
         setVals(avg)
       }
-      setCargando(false)
-    })
+    }).catch(()=>{})
   },[])
 
   async function cancelarReserva(id:string){
