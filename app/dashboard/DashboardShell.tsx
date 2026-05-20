@@ -338,7 +338,6 @@ export function DashboardShell({
           .ds-content { padding: 16px; }
           .content { padding: 16px; }
           /* Topbar: hide non-essential items to avoid overflow at 375px */
-          .ds-negsel-wrap { display: none; }
           .ds-notif-btn { display: none; }
           .ds-user-av { display: none; }
           .ds-page-title { font-size: 14px; }
@@ -454,7 +453,7 @@ export function DashboardShell({
             </div>
             <div className="ds-topbar-right">
               <div className="ds-negsel-wrap">
-                <NegocioSelector negocios={todosNegocios} activoId={negocio?.id ?? ''} />
+                <NegocioSelector negocios={todosNegocios} activoId={esTodos ? 'todos' : (negocio?.id ?? (todosNegocios[0]?.id ?? ''))} />
               </div>
               <button
                 onClick={toggleTheme}

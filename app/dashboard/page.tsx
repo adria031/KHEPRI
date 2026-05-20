@@ -8,6 +8,7 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { type NegMin } from '../lib/negocioActivo'
+import { setNegocioActivo } from '../lib/negocio-activo'
 import { DashboardShell } from './DashboardShell'
 
 function isoLocal(d: Date) {
@@ -20,6 +21,11 @@ type CitaHoy = {
   id: string; hora: string; cliente_nombre: string; estado: string
   servicios: { nombre: string; precio: number } | null
   trabajadores: { nombre: string } | null
+}
+type BizStat = {
+  id: string; nombre: string; plan: string
+  reservasHoy: number; ingresosMes: number; creditosDisp: number; creditosTot: number
+  reservasMes: number
 }
 type Notif = { id: string; tipo: string; mensaje: string; ts: Date }
 type DiaBar  = { dia: string; reservas: number; isHoy: boolean }
@@ -116,7 +122,6 @@ export default function Dashboard() {
   const [tasaExito, setTasaExito]           = useState(0)
   const [reservasEnRiesgo, setReservasEnRiesgo] = useState(0)
   const [sinNegocio, setSinNegocio] = useState(false)
-  const [dbg, setDbg] = useState<string[]>([])
 
   // Charts
   const [barras7, setBarras7]   = useState<DiaBar[]>([])
@@ -138,6 +143,9 @@ export default function Dashboard() {
   // Notificaciones realtime
   const [notifs, setNotifs] = useState<Notif[]>([])
 
+  // Per-business stats (modo todos)
+  const [bizStats, setBizStats] = useState<BizStat[]>([])
+
   // Predicciones y alertas
   const [alertaFiscal] = useState<{ dias: number; trimestre: string } | null>(calcularAlertaFiscal)
   const [clientesEnRiesgo, setClientesEnRiesgo] = useState(0)
@@ -153,20 +161,14 @@ export default function Dashboard() {
     const cargarDatos = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        console.log('[dashboard] session:', session?.user?.id)
-        setDbg(p => [...p, `session: ${session?.user?.id ?? 'NULL — no hay sesión'}`])
         if (!session) { setCargando(false); return }
 
         const negocioId = localStorage.getItem('negocio_activo_id')
-        console.log('[dashboard] negocioId:', negocioId)
-        setDbg(p => [...p, `negocioId localStorage: ${negocioId ?? 'null'}`])
 
-        const { data: negocios, error: negError } = await supabase
+        const { data: negocios } = await supabase
           .from('negocios')
           .select('id, nombre, plan, logo_url, tipo, ciudad, creditos_totales, creditos_usados')
           .eq('user_id', session.user.id)
-        console.log('[dashboard] negocios:', negocios?.length, negError?.message)
-        setDbg(p => [...p, `negocios: ${negocios?.length ?? 0} | error: ${negError?.message ?? 'ok'}`])
 
         if (!negocios?.length) { setSinNegocio(true); setCargando(false); return }
 
@@ -193,20 +195,14 @@ export default function Dashboard() {
         // Todas las reservas (últimos 120 días) + reseñas — en paralelo
         const hace120 = new Date(); hace120.setDate(hace120.getDate() - 120)
         const hace120ISO = isoLocal(hace120)
-        const [{ data: reservas, error: resError }, { data: resenasData, error: resenasError }] = await Promise.all([
+        const [{ data: reservas }, { data: resenasData }] = await Promise.all([
           supabase
             .from('reservas')
-            .select('id, fecha, hora, estado, cliente_nombre, cliente_telefono, precio_total, servicios(nombre, precio), trabajadores(nombre)')
+            .select('id, negocio_id, fecha, hora, estado, cliente_nombre, cliente_telefono, precio_total, servicios(nombre, precio), trabajadores(nombre)')
             .in('negocio_id', ids)
             .gte('fecha', hace120ISO)
             .order('fecha', { ascending: false }),
           supabase.from('resenas').select('valoracion').in('negocio_id', ids),
-        ])
-        console.log('[dashboard] reservas:', reservas?.length, resError?.message)
-        console.log('[dashboard] resenas:', resenasData?.length, resenasError?.message)
-        setDbg(p => [...p,
-          `reservas: ${reservas?.length ?? 0} | error: ${resError?.message ?? 'ok'}`,
-          `resenas: ${resenasData?.length ?? 0} | error: ${resenasError?.message ?? 'ok'}`,
         ])
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -232,9 +228,6 @@ export default function Dashboard() {
         const resMesActual: any[] = allRes.filter((r: any) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const resMesAnt: any[]    = allRes.filter((r: any) => r.fecha >= inicioMesAntISO && r.fecha <= finMesAntISO)
-        console.log('[dashboard] hoyISO:', hoyISO, '| hoy:', hoyData.length, '| mesActual:', resMesActual.length, '| mesAnt:', resMesAnt.length)
-        setDbg(p => [...p, `hoy: ${hoyISO} | hoyData: ${hoyData.length} | mesActual: ${resMesActual.length} | mesAnt: ${resMesAnt.length}`])
-
         // Agenda + KPIs del día
         setAgenda(hoyData as CitaHoy[])
         setReservasHoy(hoyData.length)
@@ -297,6 +290,28 @@ export default function Dashboard() {
         }
         setTotalResenas(resenasData?.length ?? 0)
 
+        // Per-business stats (modo todos)
+        if (modoTodos) {
+          const bs: BizStat[] = todosNegs.map(neg => {
+            const negReservas = allRes.filter((r: { negocio_id: string }) => r.negocio_id === neg.id)
+            const negHoy      = negReservas.filter((r: { fecha: string }) => r.fecha === hoyISO)
+            const negMes      = negReservas.filter((r: { fecha: string; estado: string }) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
+            const negIngMes   = negMes.filter((r: { estado: string }) => r.estado === 'completada').reduce((s: number, r: { precio_total?: number; servicios?: { precio?: number } }) => s + (r.precio_total || r.servicios?.precio || 0), 0)
+            const negData     = negocios?.find((n: { id: string }) => n.id === neg.id)
+            const tot         = negData?.creditos_totales ?? 100
+            const used        = negData?.creditos_usados  ?? 0
+            return {
+              id: neg.id, nombre: neg.nombre, plan: neg.plan ?? 'starter',
+              reservasHoy: negHoy.length,
+              ingresosMes: negIngMes,
+              reservasMes: negMes.length,
+              creditosDisp: Math.max(0, tot - used),
+              creditosTot: tot,
+            }
+          })
+          setBizStats(bs)
+        }
+
         // BarChart 28 días
         const hace27 = new Date(now); hace27.setDate(now.getDate() - 27)
         const hace27ISO = isoLocal(hace27)
@@ -309,7 +324,6 @@ export default function Dashboard() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           dias28.push({ dia: `${d.getDate()}/${d.getMonth()+1}`, reservas: res28.filter((r: any) => r.fecha === dISO).length, isHoy: dISO === hoyISO })
         }
-        console.log('[dashboard] barras28:', dias28.filter(d => d.reservas > 0).map(d => `${d.dia}:${d.reservas}`).join(','))
         setBarras7(dias28)
 
         // AreaChart 4 semanas
@@ -554,6 +568,14 @@ export default function Dashboard() {
           .db-greet-title { font-size: 20px; }
         }
 
+        /* ── Vista consolidada negocios ── */
+        .biz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .biz-card { background: white; border: 1px solid #E8ECF0; border-radius: 16px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: box-shadow 0.2s, transform 0.2s; cursor: pointer; }
+        .biz-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.09); transform: translateY(-2px); }
+        .biz-card-av { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #B8D8F8, #D4C5F9); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #4F46E5; flex-shrink: 0; }
+        .biz-card-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #F3F4F6; }
+        .biz-card-row:last-child { border-bottom: none; padding-bottom: 0; }
+
         /* ── Créditos IA ── */
         .cr-bar-wrap { background: white; border: 1px solid #E8ECF0; border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         .cr-bar-icon { font-size: 22px; flex-shrink: 0; }
@@ -607,14 +629,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* DEBUG TEMPORAL — quitar después */}
-      {dbg.length > 0 && (
-        <div style={{ background: '#0f172a', color: '#86efac', fontFamily: 'monospace', fontSize: 12, padding: '12px 16px', borderRadius: 10, marginBottom: 16, lineHeight: 1.7 }}>
-          <strong style={{ color: '#fbbf24' }}>DEBUG dashboard</strong>
-          {dbg.map((l, i) => <div key={i}>{'→ '}{l}</div>)}
-        </div>
-      )}
-
       {!sinNegocio && <div className="db-wrap">
         {/* Greeting */}
         <div className="db-greet">
@@ -638,6 +652,88 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        {/* ── Resumen por negocio (modo todos) ── */}
+        {negocio === null && bizStats.length > 1 && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span className="db-section-title">Resumen por negocio</span>
+              <span className="db-section-badge">{bizStats.length} activos</span>
+            </div>
+            <div className="biz-grid">
+              {bizStats.map(b => {
+                const ini = b.nombre.split(' ').slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '?'
+                const creditPct = b.creditosTot > 0 ? Math.round((b.creditosDisp / b.creditosTot) * 100) : 0
+                return (
+                  <div
+                    key={b.id}
+                    className="biz-card"
+                    onClick={() => {
+                      const neg = todosNegocios.find(n => n.id === b.id)
+                      if (neg) {
+                        setNegocioActivo(neg.id, neg.plan ?? 'starter', neg.nombre)
+                        window.location.reload()
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                      <div className="biz-card-av">{ini}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.nombre}</div>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 100, background: '#EEF2FF', color: '#4F46E5' }}>
+                          {b.plan === 'pro' ? 'Pro' : b.plan === 'plus' || b.plan === 'agencia' ? 'Plus' : b.plan === 'basico' ? 'Básico' : 'Starter'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="biz-card-row">
+                      <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>📅 Reservas hoy</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: b.reservasHoy > 0 ? '#4F46E5' : '#111827' }}>{b.reservasHoy}</span>
+                    </div>
+                    <div className="biz-card-row">
+                      <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>💶 Ingresos mes</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#111827' }}>€{b.ingresosMes.toLocaleString('es-ES')}</span>
+                    </div>
+                    <div className="biz-card-row">
+                      <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>⚡ Créditos</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: creditPct <= 20 ? '#EF4444' : '#111827' }}>{b.creditosDisp}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Gráfica comparativa */}
+            {mounted && bizStats.some(b => b.reservasMes > 0) && (
+              <div className="db-card" style={{ marginBottom: 20 }}>
+                <div className="db-card-head">
+                  <span className="db-section-title">Comparativa negocios</span>
+                  <span className="db-section-badge">Reservas este mes</span>
+                </div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart
+                    data={bizStats.map(b => ({ nombre: b.nombre.split(' ')[0], reservas: b.reservasMes, ingresos: b.ingresosMes }))}
+                    margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+                    barSize={28}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
+                    <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      formatter={(v: any) => [`${v} reservas`, 'Mes actual']}
+                    />
+                    <Bar dataKey="reservas" radius={[6, 6, 0, 0]}>
+                      {bizStats.map((_, i) => (
+                        <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </>
+        )}
 
         {/* ── Créditos IA ── */}
         {creditos && (
