@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase, getSessionClient } from '../../lib/supabase'
 import { descontarCreditos, obtenerCreditos } from '../../lib/creditos'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
@@ -200,8 +200,6 @@ export default function MarketingPage() {
   const [imgDescargando, setImgDescargando] = useState(false)
   const [descCopiado, setDescCopiado] = useState(false)
   const [hashCopiado, setHashCopiado] = useState(false)
-  const pubRef    = useRef<HTMLDivElement>(null)
-  const historiaRef = useRef<HTMLDivElement>(null)
 
   // ── Sección 2: Responder reseñas ─────────────────────────────────────────
   const [resenas, setResenas]             = useState<Resena[]>([])
@@ -293,13 +291,25 @@ Devuelve SOLO JSON sin markdown:
 
   // ─── Descargar imagen ────────────────────────────────────────────────────
   async function descargarImagen() {
-    const ref = formato === 'historia' ? historiaRef : pubRef
-    if (!ref.current || !imgContenido) return
+    if (!imgContenido) return
     setImgDescargando(true)
     try {
       const html2canvas = (await import('html2canvas')).default
-      const [w, h] = formato === 'historia' ? [540, 960] : [540, 540]
-      const canvas = await html2canvas(ref.current, { width: w, height: h, scale: 2, useCORS: true, backgroundColor: null })
+      await document.fonts.ready
+      await new Promise(r => setTimeout(r, 500))
+      const element = document.getElementById('render-post')
+      if (!element) return
+      const canvas = await html2canvas(element, {
+        scale: 1080 / element.offsetWidth,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+        logging: false,
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+        windowWidth: element.offsetWidth,
+        windowHeight: element.offsetHeight,
+      })
       const link = document.createElement('a')
       link.download = `marketing_${formato}_${Date.now()}.png`
       link.href = canvas.toDataURL('image/png')
@@ -514,21 +524,29 @@ Devuelve SOLO JSON sin markdown:
         }
       `}</style>
 
-      {/* Hidden templates for html2canvas */}
-      <div style={{ position: 'fixed', top: -9999, left: -9999, visibility: 'hidden', pointerEvents: 'none' }}>
-        <div ref={pubRef}>
-          {imgContenido && (estilo === 'oscuro'
-            ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
-            : <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
-          )}
+      {/* Off-screen render target for html2canvas — must NOT be display:none */}
+      {imgContenido && (
+        <div
+          id="render-post"
+          style={{
+            position: 'fixed',
+            left: '-9999px',
+            top: '0px',
+            width: formato === 'publicacion' ? '540px' : '540px',
+            height: formato === 'publicacion' ? '540px' : '960px',
+            zIndex: -1,
+          }}
+        >
+          {estilo === 'oscuro'
+            ? (formato === 'publicacion'
+              ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
+              : <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} />)
+            : (formato === 'publicacion'
+              ? <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
+              : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} />)
+          }
         </div>
-        <div ref={historiaRef}>
-          {imgContenido && (estilo === 'oscuro'
-            ? <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} />
-            : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} />
-          )}
-        </div>
-      </div>
+      )}
 
       <div className="mk-wrap">
 
