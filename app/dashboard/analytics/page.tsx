@@ -398,7 +398,7 @@ export default function Analytics() {
       <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14, padding:'16px 18px', flex:1, minWidth:0 }}>
         <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>{label}</div>
         <div style={{ display:'flex', alignItems:'flex-end', gap:8, marginBottom:4 }}>
-          <span style={{ fontSize:22, fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px' }}>{fmt(val)}{unit === '€' ? ' €' : ''}</span>
+          <span style={{ fontSize:'clamp(16px,4vw,22px)', fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px' }}>{fmt(val)}{unit === '€' ? ' €' : ''}</span>
           {pctChange !== null && (
             <span style={{ fontSize:12, fontWeight:700, color: up ? '#2E8A5E' : dn ? '#DC2626' : '#9CA3AF', marginBottom:3 }}>
               {up ? '▲' : dn ? '▼' : '→'} {Math.abs(pctChange)}%
@@ -415,7 +415,7 @@ export default function Analytics() {
     return (
       <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:16, padding:'18px 20px', flex:1, minWidth:0 }}>
         <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>{label}</div>
-        <div style={{ fontSize:28, fontWeight:800, color, letterSpacing:'-1px', marginBottom:4 }}>{value}</div>
+        <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color, letterSpacing:'-1px', marginBottom:4 }}>{value}</div>
         {sub && <div style={{ fontSize:12, color:'var(--muted)' }}>{sub}</div>}
       </div>
     )
@@ -454,21 +454,34 @@ export default function Analytics() {
         .an-grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
         .an-grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
         .an-section { margin-bottom:28px; }
-        .an-section-title { font-size:15px; font-weight:800; color:var(--text); margin-bottom:12px; }
+        .an-section-title { font-size:clamp(13px,3.5vw,15px); font-weight:800; color:var(--text); margin-bottom:12px; }
         .an-card { background:white; border:1px solid var(--border); border-radius:16px; padding:20px; overflow:hidden; }
-        .an-card-title { font-size:13px; font-weight:700; color:var(--text2); margin-bottom:14px; }
-        .vip-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+        .an-card-title { font-size:clamp(12px,2.5vw,13px); font-weight:700; color:var(--text2); margin-bottom:14px; }
+        /* Scroll wrappers */
+        .an-chart-wrap { overflow-x:auto; width:100%; -webkit-overflow-scrolling:touch; }
+        .an-chart-wrap > div { min-width:300px; }
+        .an-table-wrap { overflow-x:auto; width:100%; -webkit-overflow-scrolling:touch; }
+        .an-table-inner { min-width:480px; }
+        /* Responsive grids */
+        .an-charts-row { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
+        .an-2col-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .an-compar-row { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+        .vip-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); white-space:nowrap; }
         .vip-row:last-child { border-bottom:none; }
         .vip-badge { background:linear-gradient(135deg,#FDE9A2,#FED7AA); color:#92400E; font-size:11px; font-weight:800; padding:2px 8px; border-radius:100px; white-space:nowrap; }
-        .stat-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+        .stat-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:clamp(11px,2.5vw,13px); }
         .stat-row:last-child { border-bottom:none; }
         @media (max-width:768px) {
           .an-grid4 { grid-template-columns:1fr 1fr; }
           .an-grid3 { grid-template-columns:1fr; }
           .an-grid2 { grid-template-columns:1fr; }
+          .an-charts-row { grid-template-columns:1fr; }
+          .an-2col-row { grid-template-columns:1fr; }
+          .an-compar-row { grid-template-columns:1fr; }
+          .an-card { padding:14px 12px; }
         }
         @media (max-width:480px) {
-          .an-grid4 { grid-template-columns:1fr 1fr; }
+          .an-grid4 { grid-template-columns:1fr 1fr; gap:10px; }
           .an-grid3 { grid-template-columns:1fr; }
           .an-grid2 { grid-template-columns:1fr; }
         }
@@ -477,7 +490,7 @@ export default function Analytics() {
       {/* ── Header ── */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontSize:22, fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px' }}>Analytics</div>
+          <div style={{ fontSize:'clamp(18px,4vw,22px)', fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px' }}>Analytics</div>
           <div style={{ fontSize:14, color:'var(--muted)', marginTop:2 }}>Métricas reales · {periodoLabel(periodo)}</div>
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
@@ -519,7 +532,7 @@ export default function Analytics() {
           {/* ── Comparativas ── */}
           <div className="an-section">
             <div className="an-section-title">Comparativas</div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 }}>
+            <div className="an-compar-row">
               <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14, padding:'16px 18px' }}>
                 <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:10 }}>Este mes vs mes anterior</div>
                 <div style={{ display:'flex', gap:10 }}>
@@ -539,10 +552,11 @@ export default function Analytics() {
 
           {/* ── Gráficas: barras + dona ── */}
           <div className="an-section">
-            <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:16 }}>
+            <div className="an-charts-row">
               {/* Reservas + ingresos por día */}
               <div className="an-card">
                 <div className="an-card-title">Reservas e ingresos por día</div>
+                <div className="an-chart-wrap"><div>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={reservasPorDia} margin={{ top:4, right:4, bottom:0, left:0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -554,6 +568,7 @@ export default function Analytics() {
                     <Bar yAxisId="i" dataKey="ingresos" fill={K.lila} radius={[4,4,0,0]} maxBarSize={28} />
                   </BarChart>
                 </ResponsiveContainer>
+                </div></div>
                 <div style={{ display:'flex', gap:16, marginTop:8, justifyContent:'center' }}>
                   <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text2)' }}><span style={{ width:10, height:10, borderRadius:2, background:K.blue, display:'inline-block' }}/>Reservas</span>
                   <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text2)' }}><span style={{ width:10, height:10, borderRadius:2, background:K.lila, display:'inline-block' }}/>Ingresos</span>
@@ -594,6 +609,7 @@ export default function Analytics() {
           <div className="an-section">
             <div className="an-card">
               <div className="an-card-title">Ingresos por semana (últimas 8 semanas)</div>
+              <div className="an-chart-wrap"><div>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={ingresosPorSemana} margin={{ top:4, right:16, bottom:0, left:0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -603,6 +619,7 @@ export default function Analytics() {
                   <Line type="monotone" dataKey="ingresos" stroke={K.greenDark} strokeWidth={2.5} dot={{ fill:K.green, strokeWidth:0, r:4 }} activeDot={{ r:6 }} />
                 </LineChart>
               </ResponsiveContainer>
+              </div></div>
             </div>
           </div>
 
@@ -614,7 +631,7 @@ export default function Analytics() {
                 <div className="an-card-title">⏰ Hora punta del día</div>
                 {horaPunta ? (
                   <>
-                    <div style={{ fontSize:26, fontWeight:800, color:K.blueDark, marginBottom:6 }}>{horaPunta[0]}</div>
+                    <div style={{ fontSize:'clamp(18px,4vw,26px)', fontWeight:800, color:K.blueDark, marginBottom:6 }}>{horaPunta[0]}</div>
                     <div style={{ fontSize:13, color:'var(--text2)' }}>{horaPunta[1]} reservas en esa franja</div>
                   </>
                 ) : <div style={{ color:'var(--muted)', fontSize:13 }}>Sin datos suficientes</div>}
@@ -623,7 +640,7 @@ export default function Analytics() {
                 <div className="an-card-title">📅 Día más ocupado</div>
                 {diaPunta ? (
                   <>
-                    <div style={{ fontSize:26, fontWeight:800, color:K.lilaDark, marginBottom:6 }}>{diaPunta.dia}</div>
+                    <div style={{ fontSize:'clamp(18px,4vw,26px)', fontWeight:800, color:K.lilaDark, marginBottom:6 }}>{diaPunta.dia}</div>
                     <div style={{ fontSize:13, color:'var(--text2)' }}>{diaPunta.count} reservas en el periodo</div>
                   </>
                 ) : <div style={{ color:'var(--muted)', fontSize:13 }}>Sin datos suficientes</div>}
@@ -642,7 +659,7 @@ export default function Analytics() {
 
           {/* ── Servicios top + nuevos vs recurrentes ── */}
           <div className="an-section">
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+            <div className="an-2col-row">
               <div className="an-card">
                 <div className="an-card-title">🔧 Servicios más reservados</div>
                 {topServicios.length === 0
@@ -668,12 +685,12 @@ export default function Analytics() {
                   : (<>
                     <div style={{ display:'flex', gap:10, marginBottom:16 }}>
                       <div style={{ flex:1, background:`${K.green}40`, borderRadius:12, padding:'12px 16px', textAlign:'center' }}>
-                        <div style={{ fontSize:28, fontWeight:800, color:K.greenDark }}>{clientesStats.nuevos}</div>
+                        <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.greenDark }}>{clientesStats.nuevos}</div>
                         <div style={{ fontSize:12, color:K.greenDark, fontWeight:600 }}>Nuevos</div>
                         <div style={{ fontSize:11, color:'var(--muted)' }}>Primera visita</div>
                       </div>
                       <div style={{ flex:1, background:`${K.blue}40`, borderRadius:12, padding:'12px 16px', textAlign:'center' }}>
-                        <div style={{ fontSize:28, fontWeight:800, color:K.blueDark }}>{clientesStats.recurrentes}</div>
+                        <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.blueDark }}>{clientesStats.recurrentes}</div>
                         <div style={{ fontSize:12, color:K.blueDark, fontWeight:600 }}>Recurrentes</div>
                         <div style={{ fontSize:11, color:'var(--muted)' }}>Más de 1 visita</div>
                       </div>
@@ -709,6 +726,7 @@ export default function Analytics() {
                 </div>
               ) : (
                 <>
+                  <div className="an-table-wrap"><div className="an-table-inner">
                   <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, padding:'6px 0 10px', borderBottom:'1px solid var(--border)', marginBottom:4 }}>
                     {['Cliente','Reservas','Gastado','Estado'].map(h => (
                       <span key={h} style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{h}</span>
@@ -728,6 +746,7 @@ export default function Analytics() {
                       </div>
                     </div>
                   ))}
+                  </div></div>
                   <div style={{ marginTop:10, padding:'8px 0 0', fontSize:12, color:'var(--muted)' }}>
                     Criterio VIP: más de 5 reservas completadas <strong>o</strong> más de 200 € gastados (histórico total)
                   </div>
@@ -785,17 +804,17 @@ export default function Analytics() {
             <div className="an-grid3">
               <div className="an-card">
                 <div className="an-card-title">Reservas previstas</div>
-                <div style={{ fontSize:36, fontWeight:800, color:K.blueDark, letterSpacing:'-1px', marginBottom:6 }}>{forecasting.mediaReservas}</div>
+                <div style={{ fontSize:'clamp(24px,6vw,36px)', fontWeight:800, color:K.blueDark, letterSpacing:'-1px', marginBottom:6 }}>{forecasting.mediaReservas}</div>
                 <div style={{ fontSize:12, color:'var(--muted)' }}>Media últimos {forecasting.keys.length} meses</div>
               </div>
               <div className="an-card">
                 <div className="an-card-title">Ingresos previstos</div>
-                <div style={{ fontSize:28, fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px', marginBottom:6 }}>{fmtEur(forecasting.mediaIngresos)} €</div>
+                <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px', marginBottom:6 }}>{fmtEur(forecasting.mediaIngresos)} €</div>
                 <div style={{ fontSize:12, color:'var(--muted)' }}>Media mensual reciente</div>
               </div>
               <div className="an-card">
                 <div className="an-card-title">Tendencia</div>
-                <div style={{ fontSize:24, fontWeight:800, letterSpacing:'-0.5px', marginBottom:6, color: forecasting.tendencia >= 0 ? K.greenDark : '#DC2626' }}>
+                <div style={{ fontSize:'clamp(18px,4vw,24px)', fontWeight:800, letterSpacing:'-0.5px', marginBottom:6, color: forecasting.tendencia >= 0 ? K.greenDark : '#DC2626' }}>
                   {forecasting.tendencia >= 0 ? '▲' : '▼'} {fmtEur(Math.abs(forecasting.tendencia))} €
                 </div>
                 <div style={{ fontSize:12, color:'var(--muted)' }}>Primer al último mes analizado</div>
@@ -804,6 +823,7 @@ export default function Analytics() {
             {forecasting.keys.length > 0 && (
               <div className="an-card" style={{ marginTop:14 }}>
                 <div className="an-card-title">Ingresos por mes (histórico)</div>
+                <div className="an-chart-wrap"><div>
                 <ResponsiveContainer width="100%" height={160}>
                   <BarChart data={Object.entries(forecasting.meses).sort((a,b) => a[0].localeCompare(b[0])).map(([m, v]) => ({ mes: m.slice(5), reservas: v.reservas, ingresos: +v.ingresos.toFixed(2) }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -813,6 +833,7 @@ export default function Analytics() {
                     <Bar dataKey="ingresos" fill={K.green} radius={[4,4,0,0]} maxBarSize={32} />
                   </BarChart>
                 </ResponsiveContainer>
+                </div></div>
               </div>
             )}
           </div>
@@ -822,6 +843,7 @@ export default function Analytics() {
             <div className="an-section">
               <div className="an-section-title">🗓️ Clientes con visita estimada próxima (21 días)</div>
               <div className="an-card">
+                <div className="an-table-wrap"><div className="an-table-inner">
                 <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, padding:'0 0 10px', borderBottom:'1px solid var(--border)', marginBottom:4 }}>
                   {['Cliente','Última visita','Frecuencia media','Próxima estimada'].map(h => (
                     <span key={h} style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{h}</span>
@@ -837,6 +859,7 @@ export default function Analytics() {
                     </div>
                   </div>
                 ))}
+                </div></div>
               </div>
             </div>
           )}
@@ -849,6 +872,7 @@ export default function Analytics() {
                 <div style={{ fontSize:12, color:'var(--text2)', marginBottom:14, padding:'8px 12px', background:`${K.yellow}40`, borderRadius:10 }}>
                   Clientes que no regresan según su patrón habitual. Considera enviarles un recordatorio o descuento.
                 </div>
+                <div className="an-table-wrap"><div className="an-table-inner">
                 <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, padding:'0 0 10px', borderBottom:'1px solid var(--border)', marginBottom:4 }}>
                   {['Cliente','Última visita','Días sin venir','Estado'].map(h => (
                     <span key={h} style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{h}</span>
@@ -866,6 +890,7 @@ export default function Analytics() {
                     </div>
                   </div>
                 ))}
+                </div></div>
               </div>
             </div>
           )}
@@ -881,7 +906,7 @@ export default function Analytics() {
                 <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
                   {diasFlojos.map((d, i) => (
                     <div key={i} style={{ flex:1, minWidth:140, background:'#F9FAFB', borderRadius:12, padding:'16px', border:'1px solid var(--border)' }}>
-                      <div style={{ fontSize:22, fontWeight:800, color:K.lilaDark, marginBottom:4 }}>{d.dia}</div>
+                      <div style={{ fontSize:'clamp(16px,4vw,22px)', fontWeight:800, color:K.lilaDark, marginBottom:4 }}>{d.dia}</div>
                       <div style={{ fontSize:13, color:'var(--text2)', marginBottom:8 }}>{d.count} reservas totales ({d.pct}%)</div>
                       <div style={{ fontSize:12, color:'var(--muted)', background:`${K.lila}40`, padding:'6px 10px', borderRadius:8 }}>
                         💡 Prueba un descuento del 15-20% los {d.dia.toLowerCase()}s para llenar huecos
@@ -901,6 +926,7 @@ export default function Analytics() {
                 <div style={{ fontSize:12, color:'var(--text2)', marginBottom:14, padding:'8px 12px', background:`${K.pink}40`, borderRadius:10 }}>
                   Clientes que cancelan el 40% o más de sus reservas. Considera solicitarles prepago o depósito.
                 </div>
+                <div className="an-table-wrap"><div className="an-table-inner">
                 <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, padding:'0 0 10px', borderBottom:'1px solid var(--border)', marginBottom:4 }}>
                   {['Cliente','Reservas','Canceladas','Tasa cancelación'].map(h => (
                     <span key={h} style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{h}</span>
@@ -916,6 +942,7 @@ export default function Analytics() {
                     </div>
                   </div>
                 ))}
+                </div></div>
               </div>
             </div>
           )}
@@ -927,17 +954,17 @@ export default function Analytics() {
               <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
                 <div style={{ flex:1, minWidth:140 }}>
                   <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Ingresos este trimestre</div>
-                  <div style={{ fontSize:28, fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px' }}>{fmtEur(alertaFiscal.ingTrimestre)} €</div>
+                  <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px' }}>{fmtEur(alertaFiscal.ingTrimestre)} €</div>
                   <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>Cierra el {alertaFiscal.finTrim}</div>
                 </div>
                 <div style={{ flex:1, minWidth:140 }}>
                   <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Proyección cierre trimestre</div>
-                  <div style={{ fontSize:28, fontWeight:800, color:K.blueDark, letterSpacing:'-0.5px' }}>{fmtEur(alertaFiscal.proyeccion)} €</div>
+                  <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.blueDark, letterSpacing:'-0.5px' }}>{fmtEur(alertaFiscal.proyeccion)} €</div>
                   <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>Según ritmo actual</div>
                 </div>
                 <div style={{ flex:1, minWidth:140 }}>
                   <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Días restantes</div>
-                  <div style={{ fontSize:28, fontWeight:800, color: alertaFiscal.diasRestantes <= 15 ? '#DC2626' : alertaFiscal.diasRestantes <= 30 ? '#D97706' : K.greenDark, letterSpacing:'-0.5px' }}>
+                  <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color: alertaFiscal.diasRestantes <= 15 ? '#DC2626' : alertaFiscal.diasRestantes <= 30 ? '#D97706' : K.greenDark, letterSpacing:'-0.5px' }}>
                     {alertaFiscal.diasRestantes}d
                   </div>
                   <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>
