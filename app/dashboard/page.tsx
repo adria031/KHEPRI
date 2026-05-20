@@ -196,7 +196,7 @@ export default function Dashboard() {
         const [{ data: reservas, error: resError }, { data: resenasData, error: resenasError }] = await Promise.all([
           supabase
             .from('reservas')
-            .select('id, fecha, hora, estado, cliente_nombre, cliente_telefono, servicios(nombre, precio), trabajadores(nombre)')
+            .select('id, fecha, hora, estado, cliente_nombre, cliente_telefono, precio_total, servicios(nombre, precio), trabajadores(nombre)')
             .in('negocio_id', ids)
             .gte('fecha', hace120ISO)
             .order('fecha', { ascending: false }),
@@ -245,13 +245,13 @@ export default function Dashboard() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setCanceladasHoy(hoyData.filter((r: any) => r.estado === 'cancelada').length)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setIngresosHoy(hoyData.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0))
+        setIngresosHoy(hoyData.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.precio_total || r.servicios?.precio || 0), 0))
 
         // KPIs mes
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setIngresosMes(resMesActual.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0))
+        setIngresosMes(resMesActual.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.precio_total || r.servicios?.precio || 0), 0))
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setIngresosMesAnt(resMesAnt.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0))
+        setIngresosMesAnt(resMesAnt.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.precio_total || r.servicios?.precio || 0), 0))
         const totalMes = resMesActual.length
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setNoShows(resMesActual.filter((r: any) => r.estado === 'cancelada' || r.estado === 'no_show').length)
@@ -319,9 +319,9 @@ export default function Dashboard() {
           const finA = new Date(finS); finA.setMonth(finA.getMonth() - 1)
           const [iniSISO, finSISO, iniAISO, finAISO] = [isoLocal(iniS), isoLocal(finS), isoLocal(iniA), isoLocal(finA)]
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const ingS = allRes.filter((r: any) => r.fecha >= iniSISO && r.fecha <= finSISO && r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0)
+          const ingS = allRes.filter((r: any) => r.fecha >= iniSISO && r.fecha <= finSISO && r.estado === 'completada').reduce((s: number, r: any) => s + (r.precio_total || r.servicios?.precio || 0), 0)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const ingA = allRes.filter((r: any) => r.fecha >= iniAISO && r.fecha <= finAISO && r.estado === 'completada').reduce((s: number, r: any) => s + (r.servicios?.precio || 0), 0)
+          const ingA = allRes.filter((r: any) => r.fecha >= iniAISO && r.fecha <= finAISO && r.estado === 'completada').reduce((s: number, r: any) => s + (r.precio_total || r.servicios?.precio || 0), 0)
           area.push({ sem: w === 0 ? 'Esta sem.' : `Sem. -${w}`, actual: ingS, anterior: ingA })
         }
         setArea4sem(area)
