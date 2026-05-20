@@ -297,18 +297,20 @@ export default function Dashboard() {
         }
         setTotalResenas(resenasData?.length ?? 0)
 
-        // BarChart 7 días
+        // BarChart 28 días
+        const hace27 = new Date(now); hace27.setDate(now.getDate() - 27)
+        const hace27ISO = isoLocal(hace27)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const res7 = allRes.filter((r: any) => r.fecha >= hace6ISO && r.fecha <= hoyISO)
-        const dias7: DiaBar[] = []
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(hace6); d.setDate(hace6.getDate() + i)
+        const res28 = allRes.filter((r: any) => r.fecha >= hace27ISO && r.fecha <= hoyISO)
+        const dias28: DiaBar[] = []
+        for (let i = 0; i < 28; i++) {
+          const d = new Date(hace27); d.setDate(hace27.getDate() + i)
           const dISO = isoLocal(d)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          dias7.push({ dia: DIAS[d.getDay() === 0 ? 6 : d.getDay() - 1], reservas: res7.filter((r: any) => r.fecha === dISO).length, isHoy: dISO === hoyISO })
+          dias28.push({ dia: `${d.getDate()}/${d.getMonth()+1}`, reservas: res28.filter((r: any) => r.fecha === dISO).length, isHoy: dISO === hoyISO })
         }
-        console.log('[dashboard] barras7:', dias7.map(d => `${d.dia}:${d.reservas}`).join(','))
-        setBarras7(dias7)
+        console.log('[dashboard] barras28:', dias28.filter(d => d.reservas > 0).map(d => `${d.dia}:${d.reservas}`).join(','))
+        setBarras7(dias28)
 
         // AreaChart 4 semanas
         const area: SemArea[] = []
@@ -335,7 +337,7 @@ export default function Dashboard() {
         // Métricas avanzadas
         const horaMap: Record<number, number> = {}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        res7.forEach((r: any) => { const h = parseInt(r.hora?.slice(0, 2) || '0', 10); horaMap[h] = (horaMap[h] || 0) + 1 })
+        res28.forEach((r: any) => { const h = parseInt(r.hora?.slice(0, 2) || '0', 10); horaMap[h] = (horaMap[h] || 0) + 1 })
         const hPunta = Object.entries(horaMap).sort((a, b) => Number(b[1]) - Number(a[1]))[0]
         if (hPunta) setHoraPunta(`${hPunta[0]}:00 h`)
         const srvTop = Object.entries(srvMap).sort((a, b) => b[1] - a[1])[0]
@@ -833,17 +835,17 @@ export default function Dashboard() {
           <div className="db-card">
             <div className="db-card-head">
               <span className="db-section-title">Reservas por día</span>
-              <span className="db-section-badge">Últimos 7 días</span>
+              <span className="db-section-badge">Últimos 28 días</span>
             </div>
             {mounted && barras7.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={barras7} barSize={28} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <BarChart data={barras7} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-                    <XAxis dataKey="dia" tick={{ fontSize: 12, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="dia" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} interval={6} />
                     <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltipBar />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 6 }} />
-                    <Bar dataKey="reservas" radius={[6, 6, 0, 0]}>
+                    <Tooltip content={<CustomTooltipBar />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 4 }} />
+                    <Bar dataKey="reservas" radius={[4, 4, 0, 0]}>
                       {barras7.map((entry, i) => (
                         <Cell key={i} fill={entry.isHoy ? '#4F46E5' : '#C7D2FE'} />
                       ))}
@@ -851,12 +853,12 @@ export default function Dashboard() {
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="db-chart-footer">
-                  <span className="db-chart-footer-label">Total 7 días</span>
+                  <span className="db-chart-footer-label">Total 28 días</span>
                   <span className="db-chart-footer-val">{barras7.reduce((s, d) => s + d.reservas, 0)} reservas</span>
                 </div>
               </>
             ) : (
-              <div className="db-empty-state"><div className="db-empty-icon">📊</div><div className="db-empty-txt">{cargando ? 'Cargando datos…' : 'Sin reservas estos 7 días'}</div></div>
+              <div className="db-empty-state"><div className="db-empty-icon">📊</div><div className="db-empty-txt">{cargando ? 'Cargando datos…' : 'Sin reservas estos 28 días'}</div></div>
             )}
           </div>
 
