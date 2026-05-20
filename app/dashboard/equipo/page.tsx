@@ -8,6 +8,11 @@ import { DashboardShell } from '../DashboardShell'
 /*
   Ejecutar en Supabase SQL Editor (una sola vez):
 
+  ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS salario_anual numeric;
+  ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS num_pagas integer DEFAULT 12;
+  ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS complementos jsonb;
+  ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS tipo_contrato text;
+  ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS fecha_inicio date;
   ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS dni text;
   ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS direccion text;
 
@@ -37,10 +42,16 @@ type Trabajador = {
   id: string; nombre: string; especialidad: string; foto_url: string | null
   email: string | null; telefono: string | null; activo: boolean
   dni: string | null; direccion: string | null
+  salario_anual: number | null; num_pagas: number | null
+  complementos: { plus_transporte?: number; plus_productividad?: number; dietas?: number; otros?: number; otros_descripcion?: string } | null
+  tipo_contrato: string | null; fecha_inicio: string | null
 }
 type FormState = {
   nombre: string; especialidad: string; foto_url: string | null
   email: string; telefono: string; dni: string; direccion: string
+  salario_anual: string; num_pagas: string; num_pagas_custom: string
+  comp_transporte: string; comp_productividad: string; comp_dietas: string; comp_otros: string; comp_otros_desc: string
+  tipo_contrato: string; fecha_inicio: string
 }
 type Contrato = {
   id: string; trabajador_id: string; tipo_contrato: string
@@ -76,7 +87,7 @@ export default function Equipo() {
   // Modal trabajador
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState<Trabajador | null>(null)
-  const [form, setForm] = useState<FormState>({ nombre:'', especialidad:'', foto_url:null, email:'', telefono:'', dni:'', direccion:'' })
+  const [form, setForm] = useState<FormState>({ nombre:'', especialidad:'', foto_url:null, email:'', telefono:'', dni:'', direccion:'', salario_anual:'', num_pagas:'14', num_pagas_custom:'', comp_transporte:'', comp_productividad:'', comp_dietas:'', comp_otros:'', comp_otros_desc:'', tipo_contrato:'', fecha_inicio:'' })
   const [fotoArchivo, setFotoArchivo] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -131,12 +142,25 @@ export default function Equipo() {
   function abrirModal(t?: Trabajador) {
     if (t) {
       setEditando(t)
-      setForm({ nombre:t.nombre, especialidad:t.especialidad||'', foto_url:t.foto_url,
-        email:t.email||'', telefono:t.telefono||'', dni:(t as any).dni||'', direccion:(t as any).direccion||'' })
+      const comp = t.complementos || {}
+      setForm({
+        nombre:t.nombre, especialidad:t.especialidad||'', foto_url:t.foto_url,
+        email:t.email||'', telefono:t.telefono||'', dni:t.dni||'', direccion:t.direccion||'',
+        salario_anual: t.salario_anual != null ? String(t.salario_anual) : '',
+        num_pagas: t.num_pagas != null ? String(t.num_pagas) : '14',
+        num_pagas_custom: '',
+        comp_transporte: comp.plus_transporte ? String(comp.plus_transporte) : '',
+        comp_productividad: comp.plus_productividad ? String(comp.plus_productividad) : '',
+        comp_dietas: comp.dietas ? String(comp.dietas) : '',
+        comp_otros: comp.otros ? String(comp.otros) : '',
+        comp_otros_desc: comp.otros_descripcion || '',
+        tipo_contrato: t.tipo_contrato || '',
+        fecha_inicio: t.fecha_inicio || '',
+      })
       setFotoPreview(t.foto_url)
     } else {
       setEditando(null)
-      setForm({ nombre:'', especialidad:'', foto_url:null, email:'', telefono:'', dni:'', direccion:'' })
+      setForm({ nombre:'', especialidad:'', foto_url:null, email:'', telefono:'', dni:'', direccion:'', salario_anual:'', num_pagas:'14', num_pagas_custom:'', comp_transporte:'', comp_productividad:'', comp_dietas:'', comp_otros:'', comp_otros_desc:'', tipo_contrato:'', fecha_inicio:'' })
       setFotoPreview(null)
     }
     setFotoArchivo(null); setError(''); setModal(true)
@@ -159,10 +183,25 @@ export default function Equipo() {
     setGuardando(true); setError('')
     let foto_url = form.foto_url
     if (fotoArchivo) { const url = await subirFoto(fotoArchivo); if (url) foto_url = url }
+    const numPagasVal = form.num_pagas === 'custom'
+      ? parseInt(form.num_pagas_custom) || 14
+      : parseInt(form.num_pagas) || 14
+    const compObj = {
+      plus_transporte: parseFloat(form.comp_transporte) || 0,
+      plus_productividad: parseFloat(form.comp_productividad) || 0,
+      dietas: parseFloat(form.comp_dietas) || 0,
+      otros: parseFloat(form.comp_otros) || 0,
+      otros_descripcion: form.comp_otros_desc || '',
+    }
     const datos = {
       nombre: form.nombre.trim(), especialidad: form.especialidad.trim(), foto_url,
       email: form.email.trim() || null, telefono: form.telefono.trim() || null,
       dni: form.dni.trim() || null, direccion: form.direccion.trim() || null,
+      salario_anual: parseFloat(form.salario_anual) || null,
+      num_pagas: numPagasVal,
+      complementos: compObj,
+      tipo_contrato: form.tipo_contrato || null,
+      fecha_inicio: form.fecha_inicio || null,
     }
     if (editando) {
       const { error: err } = await dbMutation({ op:'update', table:'trabajadores', id:editando.id, negocioId:negocioId!, data:datos })
@@ -622,6 +661,81 @@ export default function Equipo() {
                   onChange={e => setForm(f => ({...f, direccion:e.target.value}))} />
               </div>
             </div>
+
+            <div className="section-label">Tipo de contrato</div>
+            <div className="grid2">
+              <div className="field">
+                <label>Tipo</label>
+                <select value={form.tipo_contrato} onChange={e => setForm(f => ({...f, tipo_contrato:e.target.value}))}>
+                  <option value="">Sin especificar</option>
+                  <option value="indefinido">Indefinido</option>
+                  <option value="temporal">Temporal</option>
+                  <option value="parcial">Parcial</option>
+                  <option value="formacion">Formación</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Fecha inicio <span style={{fontWeight:400, color:'var(--muted)'}}>· opc.</span></label>
+                <input type="date" value={form.fecha_inicio}
+                  onChange={e => setForm(f => ({...f, fecha_inicio:e.target.value}))} />
+              </div>
+            </div>
+
+            <div className="section-label">Datos salariales</div>
+            <div className="grid2">
+              <div className="field">
+                <label>Salario bruto anual (€) <span style={{fontWeight:400, color:'var(--muted)'}}>· opc.</span></label>
+                <input type="number" step="0.01" placeholder="Ej: 20000" value={form.salario_anual}
+                  onChange={e => setForm(f => ({...f, salario_anual:e.target.value}))} />
+              </div>
+              <div className="field">
+                <label>Número de pagas</label>
+                <select value={form.num_pagas} onChange={e => setForm(f => ({...f, num_pagas:e.target.value}))}>
+                  <option value="12">12 pagas</option>
+                  <option value="14">14 pagas</option>
+                  <option value="16">16 pagas</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </div>
+            </div>
+            {form.num_pagas === 'custom' && (
+              <div className="field">
+                <label>Número personalizado</label>
+                <input type="number" min="1" max="24" placeholder="Ej: 16" value={form.num_pagas_custom}
+                  onChange={e => setForm(f => ({...f, num_pagas_custom:e.target.value}))} />
+              </div>
+            )}
+
+            <div className="section-label">Complementos salariales (€/mes)</div>
+            <div className="grid2">
+              <div className="field">
+                <label>Plus transporte</label>
+                <input type="number" step="0.01" placeholder="0.00" value={form.comp_transporte}
+                  onChange={e => setForm(f => ({...f, comp_transporte:e.target.value}))} />
+              </div>
+              <div className="field">
+                <label>Plus productividad</label>
+                <input type="number" step="0.01" placeholder="0.00" value={form.comp_productividad}
+                  onChange={e => setForm(f => ({...f, comp_productividad:e.target.value}))} />
+              </div>
+              <div className="field">
+                <label>Dietas</label>
+                <input type="number" step="0.01" placeholder="0.00" value={form.comp_dietas}
+                  onChange={e => setForm(f => ({...f, comp_dietas:e.target.value}))} />
+              </div>
+              <div className="field">
+                <label>Otros</label>
+                <input type="number" step="0.01" placeholder="0.00" value={form.comp_otros}
+                  onChange={e => setForm(f => ({...f, comp_otros:e.target.value}))} />
+              </div>
+            </div>
+            {parseFloat(form.comp_otros) > 0 && (
+              <div className="field">
+                <label>Descripción otros complementos</label>
+                <input type="text" placeholder="Describe el complemento..." value={form.comp_otros_desc}
+                  onChange={e => setForm(f => ({...f, comp_otros_desc:e.target.value}))} />
+              </div>
+            )}
 
             <div className="section-label">Foto</div>
             <div className="foto-area">
