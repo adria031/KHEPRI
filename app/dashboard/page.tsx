@@ -116,6 +116,7 @@ export default function Dashboard() {
   const [tasaExito, setTasaExito]           = useState(0)
   const [reservasEnRiesgo, setReservasEnRiesgo] = useState(0)
   const [sinNegocio, setSinNegocio] = useState(false)
+  const [dbg, setDbg] = useState<string[]>([])
 
   // Charts
   const [barras7, setBarras7]   = useState<DiaBar[]>([])
@@ -153,16 +154,19 @@ export default function Dashboard() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         console.log('[dashboard] session:', session?.user?.id)
+        setDbg(p => [...p, `session: ${session?.user?.id ?? 'NULL — no hay sesión'}`])
         if (!session) { setCargando(false); return }
 
         const negocioId = localStorage.getItem('negocio_activo_id')
         console.log('[dashboard] negocioId:', negocioId)
+        setDbg(p => [...p, `negocioId localStorage: ${negocioId ?? 'null'}`])
 
         const { data: negocios, error: negError } = await supabase
           .from('negocios')
           .select('id, nombre, plan, logo_url, tipo, ciudad, creditos_totales, creditos_usados')
           .eq('user_id', session.user.id)
         console.log('[dashboard] negocios:', negocios?.length, negError?.message)
+        setDbg(p => [...p, `negocios: ${negocios?.length ?? 0} | error: ${negError?.message ?? 'ok'}`])
 
         if (!negocios?.length) { setSinNegocio(true); setCargando(false); return }
 
@@ -200,6 +204,10 @@ export default function Dashboard() {
         ])
         console.log('[dashboard] reservas:', reservas?.length, resError?.message)
         console.log('[dashboard] resenas:', resenasData?.length, resenasError?.message)
+        setDbg(p => [...p,
+          `reservas: ${reservas?.length ?? 0} | error: ${resError?.message ?? 'ok'}`,
+          `resenas: ${resenasData?.length ?? 0} | error: ${resenasError?.message ?? 'ok'}`,
+        ])
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allRes: any[] = reservas ?? []
@@ -225,6 +233,7 @@ export default function Dashboard() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const resMesAnt: any[]    = allRes.filter((r: any) => r.fecha >= inicioMesAntISO && r.fecha <= finMesAntISO)
         console.log('[dashboard] hoyISO:', hoyISO, '| hoy:', hoyData.length, '| mesActual:', resMesActual.length, '| mesAnt:', resMesAnt.length)
+        setDbg(p => [...p, `hoy: ${hoyISO} | hoyData: ${hoyData.length} | mesActual: ${resMesActual.length} | mesAnt: ${resMesAnt.length}`])
 
         // Agenda + KPIs del día
         setAgenda(hoyData as CitaHoy[])
@@ -593,6 +602,14 @@ export default function Dashboard() {
           <Link href="/onboarding" style={{ marginTop: 8, padding: '12px 28px', background: '#111827', color: 'white', borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
             Crear mi negocio
           </Link>
+        </div>
+      )}
+
+      {/* DEBUG TEMPORAL — quitar después */}
+      {dbg.length > 0 && (
+        <div style={{ background: '#0f172a', color: '#86efac', fontFamily: 'monospace', fontSize: 12, padding: '12px 16px', borderRadius: 10, marginBottom: 16, lineHeight: 1.7 }}>
+          <strong style={{ color: '#fbbf24' }}>DEBUG dashboard</strong>
+          {dbg.map((l, i) => <div key={i}>{'→ '}{l}</div>)}
         </div>
       )}
 
