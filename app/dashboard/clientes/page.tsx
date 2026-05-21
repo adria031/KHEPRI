@@ -15,6 +15,7 @@ type ReservaRaw = {
   cliente_nombre: string
   cliente_telefono: string
   cliente_email: string | null
+  precio_total: number | null
   servicios: { nombre: string; precio: number | null } | null
 }
 
@@ -33,6 +34,7 @@ type ClienteAgrupado = {
   nivel: 'Nuevo' | 'Habitual' | 'VIP' | 'Premium'
   media_dias: number | null
   prediccion: 'pronto' | 'riesgo' | null
+  proxima_estimada: string | null
 }
 
 type AiResult = {
@@ -46,7 +48,7 @@ type ServicioMin = { id: string; nombre: string; duracion_minutos: number | null
 type TrabajadorMin = { id: string; nombre: string }
 
 type Filtro = 'todos' | 'nuevos' | 'habituales' | 'vip' | 'sin_visita' | 'riesgo'
-type Orden  = 'visitas' | 'reciente' | 'gasto'
+type Orden  = 'visitas' | 'reciente' | 'gasto' | 'sin_visita'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,10 +60,28 @@ function getNivel(visitas: number): ClienteAgrupado['nivel'] {
 }
 
 const NIVEL_CFG: Record<string, { color: string; bg: string; icon: string }> = {
-  Premium: { color: '#C4860A', bg: 'rgba(196,134,10,0.12)',   icon: '👑' },
-  VIP:     { color: '#6B4FD8', bg: 'rgba(107,79,216,0.12)',   icon: '⭐' },
-  Habitual:{ color: '#1D4ED8', bg: 'rgba(29,78,216,0.12)',    icon: '🔵' },
+  Premium: { color: '#C4860A', bg: 'rgba(196,134,10,0.12)',   icon: '⭐⭐⭐' },
+  VIP:     { color: '#6B4FD8', bg: 'rgba(107,79,216,0.12)',   icon: '⭐⭐' },
+  Habitual:{ color: '#1D4ED8', bg: 'rgba(29,78,216,0.12)',    icon: '⭐' },
   Nuevo:   { color: '#2E8A5E', bg: 'rgba(46,138,94,0.12)',    icon: '🌱' },
+}
+
+function avatarColor(key: string): { bg: string; color: string } {
+  const palettes = [
+    { bg: 'rgba(79,70,229,0.18)',  color: '#4F46E5' },
+    { bg: 'rgba(16,185,129,0.18)', color: '#059669' },
+    { bg: 'rgba(245,158,11,0.18)', color: '#D97706' },
+    { bg: 'rgba(239,68,68,0.18)',  color: '#DC2626' },
+    { bg: 'rgba(139,92,246,0.18)', color: '#7C3AED' },
+    { bg: 'rgba(236,72,153,0.18)', color: '#BE185D' },
+    { bg: 'rgba(6,182,212,0.18)',  color: '#0891B2' },
+    { bg: 'rgba(34,197,94,0.18)',  color: '#16A34A' },
+    { bg: 'rgba(249,115,22,0.18)', color: '#EA580C' },
+    { bg: 'rgba(20,184,166,0.18)', color: '#0D9488' },
+  ]
+  let hash = 0
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) & 0xFFFFFFFF
+  return palettes[Math.abs(hash) % palettes.length]
 }
 
 function hoyISO() {
@@ -99,7 +119,7 @@ function agruparClientes(reservas: ReservaRaw[]): ClienteAgrupado[] {
     const cancel   = rs.filter(r => r.estado === 'cancelada')
     const visitas  = noCancel.length
 
-    const gasto_total = noCancel.reduce((sum, r) => sum + (r.servicios?.precio ?? 0), 0)
+    const gasto_total = noCancel.reduce((sum, r) => sum + (r.precio_total ?? r.servicios?.precio ?? 0), 0)
 
     const servicioCount: Record<string, number> = {}
     for (const r of noCancel) {
@@ -132,6 +152,14 @@ function agruparClientes(reservas: ReservaRaw[]): ClienteAgrupado[] {
       ? (diasDesdeUlt > 2 * media_dias ? 'riesgo' : diasDesdeUlt > media_dias ? 'pronto' : null)
       : null
 
+    let proxima_estimada: string | null = null
+    if (media_dias !== null && ultima_visita) {
+      const [uy, um, ud] = ultima_visita.split('-').map(Number)
+      const d = new Date(uy, um - 1, ud)
+      d.setDate(d.getDate() + media_dias)
+      proxima_estimada = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    }
+
     return {
       telefono:         tel,
       nombre:           latest.cliente_nombre,
@@ -147,6 +175,7 @@ function agruparClientes(reservas: ReservaRaw[]): ClienteAgrupado[] {
       nivel:            getNivel(visitas),
       media_dias,
       prediccion,
+      proxima_estimada,
     }
   })
 }
@@ -218,7 +247,7 @@ export default function ClientesPage() {
     setCargando(true)
     const [{ data: reservas }, { data: notasData }] = await Promise.all([
       supabase.from('reservas')
-        .select('id, fecha, hora, estado, cliente_nombre, cliente_telefono, cliente_email, servicios(nombre, precio)')
+        .select('id, fecha, hora, estado, cliente_nombre, cliente_telefono, cliente_email, precio_total, servicios(nombre, precio)')
         .eq('negocio_id', negocioId)
         .order('fecha', { ascending: false }),
       supabase.from('notas_clientes')
@@ -291,17 +320,27 @@ export default function ClientesPage() {
       case 'habituales': list = list.filter(c => c.nivel === 'Habitual'); break
       case 'vip':        list = list.filter(c => c.nivel === 'VIP' || c.nivel === 'Premium'); break
       case 'sin_visita': list = list.filter(c => c.dias_desde_ultima >= 30); break
-      case 'riesgo':     list = list.filter(c => (c.nivel === 'VIP' || c.nivel === 'Premium') && c.dias_desde_ultima >= 30); break
+      case 'riesgo':     list = list.filter(c => c.prediccion === 'riesgo'); break
     }
 
     switch (orden) {
-      case 'visitas':  list.sort((a, b) => b.visitas - a.visitas); break
-      case 'reciente': list.sort((a, b) => b.ultima_visita.localeCompare(a.ultima_visita)); break
-      case 'gasto':    list.sort((a, b) => b.gasto_total - a.gasto_total); break
+      case 'visitas':    list.sort((a, b) => b.visitas - a.visitas); break
+      case 'reciente':   list.sort((a, b) => b.ultima_visita.localeCompare(a.ultima_visita)); break
+      case 'gasto':      list.sort((a, b) => b.gasto_total - a.gasto_total); break
+      case 'sin_visita': list.sort((a, b) => b.dias_desde_ultima - a.dias_desde_ultima); break
     }
 
     return list
   }, [clientes, buscador, filtro, orden])
+
+  const filtroContadores = useMemo(() => ({
+    todos:      clientes.length,
+    nuevos:     clientes.filter(c => c.nivel === 'Nuevo').length,
+    habituales: clientes.filter(c => c.nivel === 'Habitual').length,
+    vip:        clientes.filter(c => c.nivel === 'VIP' || c.nivel === 'Premium').length,
+    sin_visita: clientes.filter(c => c.dias_desde_ultima >= 30).length,
+    riesgo:     clientes.filter(c => c.prediccion === 'riesgo').length,
+  }), [clientes])
 
   // ─── Nota handlers ────────────────────────────────────────────────────────
   async function guardarNota() {
@@ -557,22 +596,25 @@ Responde con este JSON exacto:
             </div>
             <div className="cli-filters">
               {([
-                ['todos', 'Todos'],
-                ['nuevos', '🌱 Nuevos'],
-                ['habituales', '🔵 Habituales'],
-                ['vip', '⭐ VIP+'],
+                ['todos',      'Todos'],
+                ['nuevos',     '🌱 Nuevos'],
+                ['habituales', '⭐ Habituales'],
+                ['vip',        '⭐⭐ VIP+'],
                 ['sin_visita', '⏰ +30 días'],
-                ['riesgo', '🔴 En riesgo'],
+                ['riesgo',     '🔴 En riesgo'],
               ] as [Filtro, string][]).map(([id, label]) => (
-                <button key={id} className={`cli-filter-btn${filtro === id ? ' active' : ''}`} onClick={() => setFiltro(id)}>{label}</button>
+                <button key={id} className={`cli-filter-btn${filtro === id ? ' active' : ''}`} onClick={() => setFiltro(id)}>
+                  {label} <span style={{ opacity: 0.7, fontWeight: 500 }}>({filtroContadores[id]})</span>
+                </button>
               ))}
             </div>
             <div className="cli-sort">
               <span className="cli-sort-label">Orden:</span>
               {([
-                ['visitas', 'Visitas'],
-                ['reciente', 'Reciente'],
-                ['gasto', 'Gasto'],
+                ['visitas',    'Visitas'],
+                ['reciente',   'Reciente'],
+                ['gasto',      'Gasto'],
+                ['sin_visita', 'Sin visita'],
               ] as [Orden, string][]).map(([id, label]) => (
                 <button key={id} className={`cli-sort-btn${orden === id ? ' active' : ''}`} onClick={() => setOrden(id)}>{label}</button>
               ))}
@@ -590,12 +632,13 @@ Responde con este JSON exacto:
               </div>
             ) : clientesFiltrados.map(c => {
               const cfg   = NIVEL_CFG[c.nivel]
+              const ac    = avatarColor(c.telefono || c.nombre)
               const isAct = clienteActivo?.telefono === c.telefono
               const inicial = (c.nombre?.[0] ?? '?').toUpperCase()
               return (
                 <div key={c.telefono} className={`cli-card${isAct ? ' active' : ''}`} onClick={() => abrirCliente(c)}>
                   <div className="cli-card-top">
-                    <div className="cli-avatar" style={{ background: cfg.bg, color: cfg.color }}>
+                    <div className="cli-avatar" style={{ background: ac.bg, color: ac.color }}>
                       {inicial}
                     </div>
                     <div className="cli-card-info">
@@ -611,14 +654,14 @@ Responde con este JSON exacto:
                     <span className="cli-badge" style={{ background: cfg.bg, color: cfg.color }}>
                       {cfg.icon} {c.nivel}
                     </span>
-                    {c.dias_desde_ultima >= 30 && (c.nivel === 'VIP' || c.nivel === 'Premium') && (
-                      <span className="cli-badge-alert" style={{ background:'rgba(239,68,68,0.1)', color:'#DC2626' }}>
-                        🔴 Sin visita {c.dias_desde_ultima}d
+                    {c.prediccion === 'riesgo' && (
+                      <span className="cli-badge-alert" style={{ background:'rgba(239,68,68,0.08)', color:'#DC2626' }}>
+                        ⚠️ En riesgo
                       </span>
                     )}
-                    {c.visitas === 1 && (
-                      <span className="cli-badge-alert" style={{ background:'rgba(234,179,8,0.12)', color:'#B45309' }}>
-                        🆕 Nuevo
+                    {c.dias_desde_ultima >= 30 && c.prediccion !== 'riesgo' && (
+                      <span className="cli-badge-alert" style={{ background:'rgba(239,68,68,0.1)', color:'#DC2626' }}>
+                        🔴 Sin visita {c.dias_desde_ultima}d
                       </span>
                     )}
                     {c.cancelaciones === 0 && c.visitas >= 2 && (
@@ -629,11 +672,6 @@ Responde con este JSON exacto:
                     {c.prediccion === 'pronto' && (
                       <span className="cli-badge-alert" style={{ background:'rgba(34,197,94,0.1)', color:'#15803D' }}>
                         🔮 Vuelve pronto
-                      </span>
-                    )}
-                    {c.prediccion === 'riesgo' && (
-                      <span className="cli-badge-alert" style={{ background:'rgba(239,68,68,0.08)', color:'#DC2626' }}>
-                        ⚠️ En riesgo
                       </span>
                     )}
                   </div>
@@ -654,13 +692,14 @@ Responde con este JSON exacto:
           ) : (() => {
             const c   = clienteActivo
             const cfg = NIVEL_CFG[c.nivel]
+            const ac  = avatarColor(c.telefono || c.nombre)
             const tasa = c.reservas.length > 0 ? Math.round((c.cancelaciones / c.reservas.length) * 100) : 0
             const nota = notas[c.telefono]
             return (
               <div className="cli-detail">
                 {/* Header */}
                 <div className="cli-detail-header">
-                  <div className="cli-detail-avatar" style={{ background: cfg.bg, color: cfg.color }}>
+                  <div className="cli-detail-avatar" style={{ background: ac.bg, color: ac.color }}>
                     {(c.nombre?.[0] ?? '?').toUpperCase()}
                   </div>
                   <div style={{ flex:1 }}>
@@ -669,9 +708,14 @@ Responde con este JSON exacto:
                       <span className="cli-badge" style={{ background: cfg.bg, color: cfg.color }}>
                         {cfg.icon} {c.nivel}
                       </span>
-                      {c.dias_desde_ultima >= 30 && (c.nivel === 'VIP' || c.nivel === 'Premium') && (
+                      {c.prediccion === 'riesgo' && (
+                        <span className="cli-badge" style={{ background:'rgba(239,68,68,0.08)', color:'#DC2626', fontSize:'11px' }}>
+                          ⚠️ En riesgo de pérdida
+                        </span>
+                      )}
+                      {c.dias_desde_ultima >= 30 && c.prediccion !== 'riesgo' && (
                         <span className="cli-badge" style={{ background:'rgba(239,68,68,0.1)', color:'#DC2626', fontSize:'11px' }}>
-                          🔴 Sin visita +30d
+                          🔴 Sin visita +{c.dias_desde_ultima}d
                         </span>
                       )}
                       {c.cancelaciones === 0 && c.visitas >= 2 && (
@@ -682,11 +726,6 @@ Responde con este JSON exacto:
                       {c.prediccion === 'pronto' && (
                         <span className="cli-badge" style={{ background:'rgba(34,197,94,0.1)', color:'#15803D', fontSize:'11px' }}>
                           🔮 Podría volver pronto
-                        </span>
-                      )}
-                      {c.prediccion === 'riesgo' && (
-                        <span className="cli-badge" style={{ background:'rgba(239,68,68,0.08)', color:'#DC2626', fontSize:'11px' }}>
-                          ⚠️ En riesgo de pérdida
                         </span>
                       )}
                     </div>
@@ -736,9 +775,18 @@ Responde con este JSON exacto:
                         <span className="cli-info-val">cada {c.media_dias} día{c.media_dias !== 1 ? 's' : ''}</span>
                       </div>
                     )}
+                    {c.proxima_estimada && (
+                      <div className="cli-info-row">
+                        <span className="cli-info-label">Próxima visita estimada</span>
+                        <span className="cli-info-val" style={{ color: c.prediccion === 'riesgo' ? '#DC2626' : '#15803D', fontWeight: 700 }}>
+                          {formatFechaCorta(c.proxima_estimada)}
+                          {c.prediccion === 'riesgo' ? ' ⚠️' : c.prediccion === 'pronto' ? ' 🔮' : ''}
+                        </span>
+                      </div>
+                    )}
                     {c.prediccion && (
                       <div className="cli-info-row">
-                        <span className="cli-info-label">Predicción próxima visita</span>
+                        <span className="cli-info-label">Estado de retención</span>
                         <span className="cli-info-val" style={{ color: c.prediccion === 'riesgo' ? '#DC2626' : '#15803D', fontWeight: 700 }}>
                           {c.prediccion === 'riesgo'
                             ? `⚠️ En riesgo — lleva ${c.dias_desde_ultima}d (2× su media)`
