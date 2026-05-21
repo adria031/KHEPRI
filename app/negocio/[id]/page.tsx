@@ -100,6 +100,9 @@ export default function FichaNegocio() {
   const [reservaConfirmada, setReservaConfirmada] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const [chatIdioma, setChatIdioma] = useState('es')
+  const [modalLogin,      setModalLogin]      = useState(false)
+  const [modalServicioId, setModalServicioId] = useState<string|null>(null)
+  const [copiado,         setCopiado]         = useState(false)
 
   const hoyDia = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][new Date().getDay()]
 
@@ -167,6 +170,24 @@ export default function FichaNegocio() {
     setFavCargando(false)
   }
 
+  function handleReservar(servicioId?: string) {
+    const path = `/negocio/${id}/reservar${servicioId ? `?servicio=${servicioId}` : ''}`
+    if (!userId) { setModalServicioId(servicioId ?? null); setModalLogin(true); return }
+    window.location.href = path
+  }
+
+  async function compartir() {
+    const url = window.location.href
+    const title = negocio?.nombre ?? ''
+    if (navigator.share) {
+      try { await navigator.share({ title, url }) } catch {}
+    } else {
+      await navigator.clipboard.writeText(url).catch(() => {})
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2200)
+    }
+  }
+
   function detectarIdioma(): string {
     if (typeof navigator === 'undefined') return 'es'
     const lang = (navigator.language ?? 'es').toLowerCase().split('-')[0]
@@ -200,7 +221,7 @@ export default function FichaNegocio() {
       const res = await fetch('/api/chat-negocio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nuevos, negocioId: id, idioma: chatIdioma }),
+        body: JSON.stringify({ messages: nuevos, negocioId: id, idioma: chatIdioma, fecha: new Date().toLocaleDateString('es-ES') }),
       })
       const data = await res.json()
       const respuesta: string = data.respuesta ?? 'Lo siento, hubo un error.'
@@ -331,7 +352,7 @@ export default function FichaNegocio() {
 
         /* ── HERO ── */
         .hero { position:relative; overflow:hidden; background:linear-gradient(135deg,#EEF2FF,#F5F3FF,#EDE9FE); }
-        .hero-tall { height:420px; }
+        .hero-tall { height:400px; }
         .hero-short { height:180px; display:flex; align-items:center; justify-content:center; }
         .hero img { width:100%; height:100%; object-fit:cover; display:block; }
         .hero-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,0.52) 0%,rgba(0,0,0,0.1) 55%,transparent 100%); pointer-events:none; }
@@ -501,7 +522,7 @@ export default function FichaNegocio() {
         @media (max-width: 768px) {
           .nav { padding:0 16px; }
           .btn-nav-cita { display:none; }
-          .hero-tall { height:280px; }
+          .hero-tall { height:300px; }
           .hero-short { height:140px; }
           .hero-bottom { padding:16px 20px 22px; gap:12px; }
           .hero-logo { width:56px; height:56px; border-radius:14px; }
@@ -547,6 +568,41 @@ export default function FichaNegocio() {
         html.dark .chat-opt { background:#1a1a1a; border-color:rgba(99,102,241,0.3); }
         html.dark .chat-opt:hover { background:#242424; }
         html.dark .btn-fav { background:#1a1a1a; border-color:rgba(255,255,255,0.1); }
+
+        /* ── GALLERY THUMBS ── */
+        .gallery-thumbs-wrap { background:#F0F2F8; border-bottom:1px solid rgba(0,0,0,0.06); padding:10px 0; }
+        .gallery-thumbs { display:flex; gap:8px; padding:0 24px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+        .gallery-thumbs::-webkit-scrollbar { display:none; }
+        .gallery-thumb { flex-shrink:0; width:72px; height:54px; border-radius:10px; overflow:hidden; border:2.5px solid transparent; cursor:pointer; padding:0; background:none; transition:border-color .18s,opacity .15s; opacity:0.65; }
+        .gallery-thumb.active { border-color:#6366F1; opacity:1; }
+        .gallery-thumb:hover { opacity:0.9; }
+        .gallery-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+
+        /* ── SHARE BUTTON ── */
+        .btn-share { background:white; border:1.5px solid rgba(0,0,0,0.09); border-radius:100px; width:40px; height:40px; min-height:44px; min-width:44px; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; transition:all 0.15s; font-family:inherit; }
+        .btn-share:hover { border-color:#6366F1; background:#F5F3FF; }
+        html.dark .btn-share { background:#1a1a1a; border-color:rgba(255,255,255,0.1); }
+
+        /* ── SERV RESERVAR BTN ── */
+        .serv-reservar-btn { display:inline-flex; align-items:center; padding:5px 10px; background:rgba(99,102,241,0.08); color:#6366F1; border:1.5px solid rgba(99,102,241,0.18); border-radius:8px; font-size:11px; font-weight:700; text-decoration:none; white-space:nowrap; margin-left:10px; cursor:pointer; transition:all .15s; flex-shrink:0; }
+        .serv-reservar-btn:hover { background:#6366F1; color:white; border-color:#6366F1; }
+
+        /* ── CHAT FAB PULSE ── */
+        .chat-fab-badge { position:absolute; top:-2px; right:-2px; width:13px; height:13px; border-radius:50%; background:#EF4444; border:2px solid white; animation:fabPulse 2s infinite; }
+        @keyframes fabPulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.25);opacity:0.7} }
+
+        /* ── LOGIN MODAL ── */
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:400; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .modal-card { background:white; border-radius:24px; padding:28px 24px; max-width:360px; width:100%; text-align:center; animation:chatIn .22s ease; }
+        .modal-icon { font-size:40px; margin-bottom:12px; }
+        .modal-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#111827; margin-bottom:6px; }
+        .modal-sub { font-size:13px; color:#6B7280; margin-bottom:22px; line-height:1.55; }
+        .modal-btn-primary { display:block; width:100%; padding:13px; border-radius:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; text-decoration:none; text-align:center; margin-bottom:8px; background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border:none; }
+        .modal-btn-secondary { display:block; width:100%; padding:13px; border-radius:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; text-decoration:none; text-align:center; margin-bottom:8px; background:rgba(99,102,241,0.08); color:#6366F1; border:1.5px solid rgba(99,102,241,0.2); }
+        .modal-btn-ghost { display:block; width:100%; padding:10px; background:none; border:none; font-family:inherit; font-size:13px; color:#9CA3AF; cursor:pointer; }
+        .modal-btn-ghost:hover { color:#6B7280; }
+        html.dark .modal-card { background:#1a1a1a; }
+        html.dark .modal-title { color:#f9fafb; }
       `}</style>
 
       {/* ── NAV ── */}
@@ -554,15 +610,16 @@ export default function FichaNegocio() {
         <Link href="/cliente" style={{textDecoration:'none'}}><KhepriLogo /></Link>
         <div className="nav-right">
           <LanguageSelector />
+          <button className="btn-share" onClick={compartir} title="Compartir">{copiado ? '✅' : '📤'}</button>
           <button className={`btn-fav${esFav?' active':''}`} onClick={toggleFav} disabled={favCargando} title={esFav?'Quitar de favoritos':'Guardar'}>
             {esFav ? '❤️' : '🤍'}
           </button>
-          <Link href={`/negocio/${id}/reservar`} className="btn-nav-cita">📅 Pedir cita</Link>
+          <button className="btn-nav-cita" onClick={() => handleReservar()}>📅 Pedir cita</button>
         </div>
       </nav>
 
       {/* ── HERO ── */}
-      {fotos.length > 0 ? (
+      {fotos.length > 0 && (
         <div className="hero hero-tall">
           <img src={fotos[fotoActiva]} alt="Foto del local"/>
           <div className="hero-overlay"/>
@@ -599,16 +656,17 @@ export default function FichaNegocio() {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="hero hero-short">
-          <div className="hero-nofotos-circles">
-            <div className="gc" style={{width:'280px',height:'280px',background:'radial-gradient(circle,rgba(184,216,248,0.45),transparent 70%)',top:'-80px',left:'-60px'}}/>
-            <div className="gc" style={{width:'240px',height:'240px',background:'radial-gradient(circle,rgba(212,197,249,0.45),transparent 70%)',bottom:'-60px',right:'-50px'}}/>
-            <div className="gc" style={{width:'180px',height:'180px',background:'radial-gradient(circle,rgba(184,237,212,0.35),transparent 70%)',top:'20px',right:'120px'}}/>
-          </div>
-          <div style={{position:'relative',textAlign:'center'}}>
-            <div className="hero-nofotos-name">{negocio.nombre}</div>
-            {negocio.tipo && <div style={{display:'flex',justifyContent:'center',marginTop:'10px'}}><div className="hero-nofotos-tipo">{negocio.tipo}</div></div>}
+      )}
+
+      {/* ── GALLERY THUMBNAILS (only when multiple photos) ── */}
+      {fotos.length > 1 && (
+        <div className="gallery-thumbs-wrap">
+          <div className="gallery-thumbs">
+            {fotos.map((f, i) => (
+              <button key={i} className={`gallery-thumb${i === fotoActiva ? ' active' : ''}`} onClick={() => setFotoActiva(i)}>
+                <img src={f} alt={`Foto ${i+1}`}/>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -697,15 +755,22 @@ export default function FichaNegocio() {
                               </div>
                               <div className="serv-dur" style={{fontSize:'12px',color:'#9CA3AF',marginTop:'3px'}}>⏱ {s.duracion} min</div>
                             </div>
-                            <div style={{textAlign:'right',flexShrink:0}}>
-                              {ofertaActiva(s) ? (
-                                <>
-                                  <div className="serv-precio-old">€{s.precio.toFixed(2)}</div>
-                                  <div className="serv-precio-oferta">€{s.precio_descuento!.toFixed(2)}</div>
-                                </>
-                              ) : (
-                                <div className="serv-precio">€{s.precio.toFixed(2)}</div>
-                              )}
+                            <div style={{textAlign:'right',flexShrink:0,display:'flex',alignItems:'center',gap:'8px'}}>
+                              <div>
+                                {ofertaActiva(s) ? (
+                                  <>
+                                    <div className="serv-precio-old">€{s.precio.toFixed(2)}</div>
+                                    <div className="serv-precio-oferta">€{s.precio_descuento!.toFixed(2)}</div>
+                                  </>
+                                ) : (
+                                  <div className="serv-precio">€{s.precio.toFixed(2)}</div>
+                                )}
+                              </div>
+                              <a href={`/negocio/${id}/reservar?servicio=${s.id}`}
+                                 onClick={e=>{e.preventDefault();handleReservar(s.id)}}
+                                 className="serv-reservar-btn">
+                                Reservar →
+                              </a>
                             </div>
                           </div>
                         ))}
@@ -841,7 +906,7 @@ export default function FichaNegocio() {
             <div className="reserve-card">
               <div className="reserve-card-title">Reserva tu cita</div>
               <div className="reserve-card-sub">Elige servicio, día y hora en pocos segundos</div>
-              <Link href={`/negocio/${id}/reservar`} className="btn-reservar">📅 Pedir cita online</Link>
+              <button className="btn-reservar" onClick={() => handleReservar()}>📅 Pedir cita online</button>
               {negocio.whatsapp && (
                 <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" rel="noreferrer" className="btn-wa">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.97 0C5.372 0 0 5.373 0 11.97c0 2.11.552 4.09 1.518 5.814L0 24l6.335-1.652A11.935 11.935 0 0011.97 24c6.598 0 11.97-5.373 11.97-11.97C23.94 5.373 18.568 0 11.97 0zm0 21.818a9.817 9.817 0 01-5.003-1.366l-.36-.213-3.72.97.993-3.62-.235-.374A9.819 9.819 0 012.152 11.97c0-5.42 4.399-9.818 9.818-9.818 5.42 0 9.818 4.399 9.818 9.818 0 5.42-4.398 9.818-9.818 9.818z"/></svg>
@@ -899,7 +964,7 @@ export default function FichaNegocio() {
           <button className={`btn-fav${esFav?' active':''}`} onClick={toggleFav} disabled={favCargando}>
             {esFav ? '❤️' : '🤍'}
           </button>
-          <Link href={`/negocio/${id}/reservar`} className="mobile-cta-reserve">📅 Pedir cita</Link>
+          <button className="mobile-cta-reserve" onClick={() => handleReservar()}>📅 Pedir cita</button>
           {negocio.whatsapp && (
             <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" rel="noreferrer" className="mobile-cta-wa">💬 WA</a>
           )}
@@ -907,8 +972,9 @@ export default function FichaNegocio() {
       </div>
 
       {/* ── CHATBOT FAB ── */}
-      <button className="chat-fab" onClick={() => chatAbierto ? setChatAbierto(false) : abrirChat()} title="Asistente virtual">
+      <button className="chat-fab" style={{position:'relative'}} onClick={() => chatAbierto ? setChatAbierto(false) : abrirChat()} title="Asistente virtual">
         {chatAbierto ? '✕' : '💬'}
+        {!chatAbierto && <span className="chat-fab-badge"/>}
       </button>
 
       {/* ── CHAT PANEL ── */}
@@ -939,6 +1005,11 @@ export default function FichaNegocio() {
               const textoLimpio = m.texto
                 .replace('[MOSTRAR_OPCIONES]', '')
                 .replace(/\[RESERVA:\{[^[\]]*\}\]/g, '')
+                .replace(/\*\*(.*?)\*\*/g, '$1')
+                .replace(/\*(.*?)\*/g, '$1')
+                .replace(/_(.*?)_/g, '$1')
+                .replace(/#{1,6}\s/g, '')
+                .replace(/`(.*?)`/g, '$1')
                 .trim()
               return (
                 <div key={i} className={`chat-wrap ${m.rol}`}>
@@ -976,6 +1047,28 @@ export default function FichaNegocio() {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                 <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
+            </button>
+          </div>
+        </div>
+      )}
+      {/* ── LOGIN MODAL ── */}
+      {modalLogin && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setModalLogin(false) }}>
+          <div className="modal-card">
+            <div className="modal-icon">🔐</div>
+            <div className="modal-title">¿Tienes cuenta?</div>
+            <div className="modal-sub">Inicia sesión para reservar fácilmente y gestionar tus citas</div>
+            <a href={`/auth?redirect=/negocio/${id}/reservar${modalServicioId ? `?servicio=${modalServicioId}` : ''}`} className="modal-btn-primary">
+              Iniciar sesión
+            </a>
+            <a href={`/auth?tab=register&redirect=/negocio/${id}/reservar${modalServicioId ? `?servicio=${modalServicioId}` : ''}`} className="modal-btn-secondary">
+              Registrarse gratis
+            </a>
+            <button className="modal-btn-ghost" onClick={() => {
+              setModalLogin(false)
+              window.location.href = `/negocio/${id}/reservar${modalServicioId ? `?servicio=${modalServicioId}` : ''}`
+            }}>
+              Continuar sin cuenta →
             </button>
           </div>
         </div>
