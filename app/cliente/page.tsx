@@ -43,11 +43,11 @@ const TIPO_CFG: Record<string,{emoji:string;bg:string;grad:string;color:string}>
 const TIPO_DEF = {emoji:'🏪',bg:'#F8FAFC',grad:'linear-gradient(135deg,#E2E8F0,#CBD5E1)',color:'#475569'}
 
 const TABS = [
-  {id:'inicio',   icon:'🏠',  label:'Inicio'},
-  {id:'mapa',     icon:'🗺️',  label:'Mapa'},
-  {id:'reservas', icon:'📅',  label:'Reservas'},
-  {id:'favoritos',icon:'❤️',  label:'Guardados'},
-  {id:'perfil',   icon:'👤',  label:'Perfil'},
+  {id:'inicio',    icon:'🏠', label:'Inicio'},
+  {id:'mapa',      icon:'🗺️', label:'Mapa'},
+  {id:'buscar',    icon:'🔍', label:'Buscar'},
+  {id:'favoritos', icon:'❤️', label:'Guardados'},
+  {id:'perfil',    icon:'👤', label:'Perfil'},
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -221,91 +221,81 @@ function ClienteContent(){
     }
   }
 
+  // Auto-request geolocation on load (quiet — only fires if previously allowed)
   useEffect(()=>{
+    navigator.geolocation?.getCurrentPosition(
+      p=>setPos({lat:p.coords.latitude,lng:p.coords.longitude}),
+      ()=>{},
+      {timeout:5000,maximumAge:300000}
+    )
+  },[])
+
+  useEffect(()=>{
+    // Optional auth — no redirect for guests
     supabase.auth.getSession().then(async({data:{session}})=>{
       const user = session?.user
-      if(!user){window.location.href='/auth';return}
-      const userEmail = user.email || ''
-      const userId    = user.id
-      setNombre(user.user_metadata?.nombre?.split(' ')[0]||userEmail.split('@')[0]||'Usuario')
-      setEmail(userEmail)
-      setUserId(userId)
+      if(user){
+        const userEmail = user.email || ''
+        const uid       = user.id
+        setNombre(user.user_metadata?.nombre?.split(' ')[0]||userEmail.split('@')[0]||'Usuario')
+        setEmail(userEmail)
+        setUserId(uid)
 
-      // Cargar favoritos desde Supabase
-      try {
-        const { data: favsData } = await supabase
-          .from('favoritos')
-          .select('negocio_id')
-          .eq('user_id', userId)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (favsData) setFavs(favsData.map((f: any) => f.negocio_id))
-      } catch {
-        // tabla favoritos no existe — cargar desde localStorage
-        try { const lf = localStorage.getItem('favs'); if (lf) setFavs(JSON.parse(lf)) } catch {}
-      }
-
-      // Fetch por email (siempre funciona) + por user_id si la columna existe
-      // Hacemos dos queries separadas para no romper si user_id no existe aún en la tabla
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      function normalizeRow(r: any): ReservaCliente {
-        return {
-          id:r.id, fecha:r.fecha, hora:r.hora, estado:r.estado,
-          negocio_id:r.negocio_id,
-          negocio_nombre:Array.isArray(r.negocios)?r.negocios[0]?.nombre:r.negocios?.nombre||'Negocio',
-          servicio_nombre:Array.isArray(r.servicios)?r.servicios[0]?.nombre:r.servicios?.nombre||'Servicio',
-          negocio_tipo:Array.isArray(r.negocios)?r.negocios[0]?.tipo:r.negocios?.tipo||'',
+        // Cargar favoritos desde Supabase
+        try {
+          const { data: favsData } = await supabase.from('favoritos').select('negocio_id').eq('user_id', uid)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (favsData) setFavs(favsData.map((f: any) => f.negocio_id))
+        } catch {
+          try { const lf = localStorage.getItem('favs'); if (lf) setFavs(JSON.parse(lf)) } catch {}
         }
-      }
 
-      const seen = new Set<string>()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      function mergeRows(rows: any[]){ rows.forEach(r=>{if(!seen.has(r.id)){seen.add(r.id);allRows.push(normalizeRow(r))}}) }
-      const allRows: ReservaCliente[] = []
-
-      // Query 1: por email
-      if (userEmail) {
-        const { data: byEmail } = await supabase
-          .from('reservas')
-          .select('id,fecha,hora,estado,negocio_id,negocios(nombre,tipo),servicios(nombre)')
-          .eq('cliente_email', userEmail)
-          .order('fecha', { ascending: false })
-          .limit(50)
-        if (byEmail) mergeRows(byEmail)
-      }
-
-      // Query 2: por user_id (solo si la columna existe — no falla el query principal si no)
-      try {
-        const { data: byUid, error: errUid } = await supabase
-          .from('reservas')
-          .select('id,fecha,hora,estado,negocio_id,negocios(nombre,tipo),servicios(nombre)')
-          .eq('user_id', userId)
-          .order('fecha', { ascending: false })
-          .limit(50)
-        if (!errUid && byUid) mergeRows(byUid)
-      } catch {
-        // columna user_id no existe todavía — ignorar
-      }
-
-      // Ordenar por fecha desc
-      allRows.sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora))
-      setReservas(allRows)
-    })
-    // Negocios: fetch puro — evita que la sesión corrompida del cliente Supabase dé 400
-    {
-      const negKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      const negUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/rest/v1/negocios?visible=eq.true&select=id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,creado_en`
-      fetch(negUrl, { headers: { 'apikey': negKey, 'Authorization': `Bearer ${negKey}` } })
-        .then(r => r.ok ? r.json() : null)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then((ns: any) => {
-          console.log('NEGOCIOS:', Array.isArray(ns) ? ns.length : ns)
-          if (Array.isArray(ns)) { setNegocios(ns); geocodificarSinCoordenadas(ns) }
-          setCargando(false)
-        })
-        .catch(() => setCargando(false))
-    }
+        function normalizeRow(r: any): ReservaCliente {
+          return {
+            id:r.id, fecha:r.fecha, hora:r.hora, estado:r.estado,
+            negocio_id:r.negocio_id,
+            negocio_nombre:Array.isArray(r.negocios)?r.negocios[0]?.nombre:r.negocios?.nombre||'Negocio',
+            servicio_nombre:Array.isArray(r.servicios)?r.servicios[0]?.nombre:r.servicios?.nombre||'Servicio',
+            negocio_tipo:Array.isArray(r.negocios)?r.negocios[0]?.tipo:r.negocios?.tipo||'',
+          }
+        }
+        const seen = new Set<string>()
+        const allRows: ReservaCliente[] = []
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        function mergeRows(rows: any[]){ rows.forEach(r=>{if(!seen.has(r.id)){seen.add(r.id);allRows.push(normalizeRow(r))}}) }
 
-    // Horarios y reseñas: secundario, no afecta la carga de negocios
+        if (userEmail) {
+          const { data: byEmail } = await supabase.from('reservas')
+            .select('id,fecha,hora,estado,negocio_id,negocios(nombre,tipo),servicios(nombre)')
+            .eq('cliente_email', userEmail).order('fecha',{ascending:false}).limit(50)
+          if (byEmail) mergeRows(byEmail)
+        }
+        try {
+          const { data: byUid, error: errUid } = await supabase.from('reservas')
+            .select('id,fecha,hora,estado,negocio_id,negocios(nombre,tipo),servicios(nombre)')
+            .eq('user_id', uid).order('fecha',{ascending:false}).limit(50)
+          if (!errUid && byUid) mergeRows(byUid)
+        } catch { /* columna user_id no existe — ignorar */ }
+
+        allRows.sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora))
+        setReservas(allRows)
+      }
+    })
+
+    // Negocios: público, sin auth
+    const negKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    const negUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL||''}/rest/v1/negocios?visible=eq.true&select=id,nombre,tipo,ciudad,direccion,logo_url,fotos,lat,lng,descripcion,visible,creado_en`
+    fetch(negUrl, { headers: { 'apikey': negKey, 'Authorization': `Bearer ${negKey}` } })
+      .then(r => r.ok ? r.json() : null)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((ns: any) => {
+        if (Array.isArray(ns)) { setNegocios(ns); geocodificarSinCoordenadas(ns) }
+        setCargando(false)
+      })
+      .catch(() => setCargando(false))
+
+    // Horarios y reseñas: público
     Promise.all([
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
@@ -356,7 +346,7 @@ function ClienteContent(){
 
   function handleReservar(negId:string){
     if(!userId){setModalReservarNeg(negId);return}
-    window.location.href=`/negocio/${negId}`
+    window.location.href=`/negocio/${negId}/reservar`
   }
 
   function toggleCat(id:string){
@@ -381,6 +371,10 @@ function ClienteContent(){
   if(filtro==='abierto')   negMostrados=negMostrados.filter(n=>estaAbierto(hors[n.id]||[]))
   else if(filtro==='valorados') negMostrados=[...negMostrados].sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0))
   else if(filtro==='cercanos'&&pos) negMostrados=[...negMostrados].filter(n=>n.lat&&n.lng).sort((a,b)=>haversineKm(pos.lat,pos.lng,a.lat!,a.lng!)-haversineKm(pos.lat,pos.lng,b.lat!,b.lng!))
+  else if(filtro==='ninguno'&&pos) negMostrados=[...negMostrados].sort((a,b)=>{
+    if(a.lat&&a.lng&&b.lat&&b.lng) return haversineKm(pos.lat,pos.lng,a.lat,a.lng)-haversineKm(pos.lat,pos.lng,b.lat,b.lng)
+    if(a.lat&&a.lng) return -1; if(b.lat&&b.lng) return 1; return 0
+  })
 
   const negValTop=[...negocios].filter(n=>vals[n.id]!=null).sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0)).slice(0,8)
   const hoyISO=new Date().toISOString().slice(0,10)
@@ -620,7 +614,7 @@ function ClienteContent(){
     <div className="tnav">
       <Link href="/" style={{textDecoration:'none'}}><Logo/></Link>
       <div className="tnav-links">
-        {TABS.slice(0,4).map(t=>(
+        {TABS.filter(t=>!(['favoritos','perfil'].includes(t.id)&&!userId)).slice(0,4).map(t=>(
           <Link key={t.id} href={`/cliente?tab=${t.id}`} className={tab===t.id?'on':''}>{t.label}</Link>
         ))}
       </div>
@@ -644,7 +638,10 @@ function ClienteContent(){
             </svg>
           )}
         </button>
-        <Link href="/cliente?tab=perfil" className="tnav-av">{nombre.charAt(0).toUpperCase()}</Link>
+        {userId
+          ?<Link href="/cliente?tab=perfil" className="tnav-av">{nombre.charAt(0).toUpperCase()}</Link>
+          :<a href="/auth" style={{padding:'8px 16px',borderRadius:'10px',background:'#0F172A',color:'white',textDecoration:'none',fontSize:'13px',fontWeight:700,flexShrink:0}}>Entrar</a>
+        }
       </div>
     </div>
 
@@ -657,9 +654,9 @@ function ClienteContent(){
           <div className="hero">
             <div className="hero-tag">✦ Reserva en segundos</div>
             <div className="hero-title">
-              {saludo}, {nombre}
+              {userId ? `${saludo}, ${nombre}` : '¿Dónde quieres ir hoy?'}
             </div>
-            <div className="hero-sub">¿Qué buscas hoy?</div>
+            <div className="hero-sub">{userId ? '¿Qué buscas hoy?' : 'Descubre negocios cerca de ti y reserva sin esperas'}</div>
             <div className="sbar">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input placeholder="Buscar por nombre o ciudad..." value={q} onChange={e=>setQ(e.target.value)}/>
@@ -898,6 +895,71 @@ function ClienteContent(){
         </div>
       )}
 
+      {/* ══════════ BUSCAR ══════════ */}
+      {tab==='buscar'&&(
+        <div className="fade">
+          <div style={{position:'sticky',top:'60px',zIndex:50,background:'white',borderBottom:'1px solid #F1F5F9',padding:'12px 20px',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+            <div className="sbar" style={{maxWidth:'100%'}}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input placeholder="Buscar negocio, ciudad, servicio..." value={q} onChange={e=>setQ(e.target.value)} autoFocus style={{fontSize:'16px'}}/>
+              {q&&<button onClick={()=>setQ('')} style={{background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:'16px',padding:0}}>✕</button>}
+            </div>
+          </div>
+          <div className="cats-bar" style={{padding:'0 16px'}}>
+            <div className="cats-inner">
+              <button className={`catbtn ${cats.length===0?'on':''}`} onClick={()=>setCats([])}>
+                <span className="ico">✨</span>Todos
+              </button>
+              {CATEGORIAS.map(c=>(
+                <button key={c.id} className={`catbtn ${cats.includes(c.id)?'on':''}`} onClick={()=>toggleCat(c.id)}>
+                  <span className="ico">{c.emoji}</span>{c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="fbar" style={{padding:'8px 16px'}}>
+            <button className={`fchip ${filtro==='abierto'?'on':''}`} onClick={()=>pedirGeo('abierto')}>🟢 Abierto ahora</button>
+            <button className={`fchip ${filtro==='valorados'?'on':''}`} onClick={()=>pedirGeo('valorados')}>⭐ Mejor valorados</button>
+            <button className={`fchip ${filtro==='cercanos'?'on':''}`} onClick={()=>pedirGeo('cercanos')}>📍 Más cercanos</button>
+            {filtro!=='ninguno'&&<button className="fchip" style={{color:'#DC2626',borderColor:'rgba(220,38,38,0.2)'}} onClick={()=>setFiltro('ninguno')}>✕ Limpiar</button>}
+          </div>
+          <div className="content" style={{paddingTop:'16px'}}>
+            {!cargando&&(q||cats.length>0||filtro!=='ninguno')&&(
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px',padding:'10px 14px',background:'white',borderRadius:'12px',border:'1px solid #F1F5F9'}}>
+                <span style={{fontSize:'13px',color:'#64748B',fontWeight:600}}>
+                  {negMostrados.length===0?'Sin resultados':`${negMostrados.length} resultado${negMostrados.length!==1?'s':''}`}
+                </span>
+                <button onClick={()=>{setQ('');setCats([]);setFiltro('ninguno')}} style={{background:'none',border:'none',fontSize:'12px',fontWeight:700,color:'#6366F1',cursor:'pointer'}}>Limpiar ✕</button>
+              </div>
+            )}
+            {cargando?(
+              <Skeleton/>
+            ):negMostrados.length===0&&(q||cats.length>0)?(
+              <div className="empty">
+                <div className="empty-ico" style={{background:'#F1F5F9'}}>🔍</div>
+                <div style={{fontSize:'20px',fontWeight:900,color:'#0F172A',marginBottom:'8px'}}>Sin resultados</div>
+                <div style={{fontSize:'14px',color:'#94A3B8',marginBottom:'20px'}}>{q?`No hay negocios para "${q}"`:'Prueba otra categoría'}</div>
+                <button onClick={()=>{setQ('');setCats([]);setFiltro('ninguno')}} style={{padding:'10px 20px',background:'#F1F5F9',border:'none',borderRadius:'100px',fontSize:'13px',fontWeight:700,color:'#475569',cursor:'pointer'}}>Limpiar filtros</button>
+              </div>
+            ):(
+              <div className="neg-grid">
+                {(q||cats.length>0||filtro!=='ninguno'?negMostrados:negocios.slice(0,20)).map(n=>(
+                  <NegCard key={n.id} n={n}
+                    abierto={estaAbierto(hors[n.id]||[])}
+                    rating={vals[n.id]}
+                    dist={pos&&n.lat&&n.lng?haversineKm(pos.lat,pos.lng,n.lat,n.lng):null}
+                    fav={favs.includes(n.id)}
+                    onFav={()=>toggleFav(n.id)}
+                    horsTiene={(hors[n.id]||[]).length>0}
+                    onReservar={handleReservar}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ══════════ RESERVAS ══════════ */}
       {tab==='reservas'&&(
         <div className="content fade">
@@ -981,36 +1043,61 @@ function ClienteContent(){
       {/* ══════════ FAVORITOS ══════════ */}
       {tab==='favoritos'&&(
         <div className="content fade">
-          <div style={{marginBottom:'24px'}}>
-            <div style={{fontSize:'26px',fontWeight:900,color:'#0F172A',letterSpacing:'-0.6px',marginBottom:'4px'}}>Guardados</div>
-            <div style={{fontSize:'14px',color:'#64748B'}}>Tus negocios favoritos</div>
-          </div>
-          {favs.length===0?(
+          {!userId?(
+            <div className="empty" style={{paddingTop:'60px'}}>
+              <div className="empty-ico" style={{background:'linear-gradient(135deg,#FDF2F8,#FCE7F3)',fontSize:'44px'}}>❤️</div>
+              <div style={{fontSize:'22px',fontWeight:900,color:'#0F172A',marginBottom:'8px',letterSpacing:'-0.4px'}}>Guarda tus favoritos</div>
+              <div style={{fontSize:'14px',color:'#64748B',lineHeight:1.6,maxWidth:'260px',margin:'0 auto 28px'}}>Inicia sesión para guardar negocios y acceder desde cualquier dispositivo</div>
+              <div style={{display:'flex',flexDirection:'column',gap:'10px',maxWidth:'240px',margin:'0 auto'}}>
+                <a href="/auth" style={{display:'block',padding:'14px',background:'#0F172A',color:'white',borderRadius:'14px',textDecoration:'none',fontSize:'15px',fontWeight:800,textAlign:'center'}}>Iniciar sesión</a>
+                <a href="/auth?mode=signup" style={{display:'block',padding:'14px',background:'#F1F5F9',color:'#0F172A',borderRadius:'14px',textDecoration:'none',fontSize:'15px',fontWeight:700,textAlign:'center'}}>Registrarse gratis</a>
+              </div>
+            </div>
+          ):favs.length===0?(
             <div className="empty">
               <div className="empty-ico" style={{background:'linear-gradient(135deg,#FDF2F8,#FCE7F3)'}}>❤️</div>
               <div style={{fontSize:'21px',fontWeight:900,color:'#0F172A',marginBottom:'8px'}}>Sin favoritos aún</div>
               <div style={{fontSize:'14px',color:'#94A3B8'}}>Pulsa 🤍 en cualquier negocio para guardarlo</div>
             </div>
           ):(
-            <div className="neg-grid">
-              {negocios.filter(n=>favs.includes(n.id)).map(n=>(
-                <NegCard key={n.id} n={n}
-                  abierto={estaAbierto(hors[n.id]||[])}
-                  rating={vals[n.id]}
-                  dist={null}
-                  fav={true}
-                  onFav={()=>toggleFav(n.id)}
-                  horsTiene={(hors[n.id]||[]).length>0}
-                  onReservar={handleReservar}
-                />
-              ))}
-            </div>
+            <>
+              <div style={{marginBottom:'24px'}}>
+                <div style={{fontSize:'26px',fontWeight:900,color:'#0F172A',letterSpacing:'-0.6px',marginBottom:'4px'}}>Guardados</div>
+                <div style={{fontSize:'14px',color:'#64748B'}}>{favs.length} negocio{favs.length!==1?'s':''} guardado{favs.length!==1?'s':''}</div>
+              </div>
+              <div className="neg-grid">
+                {negocios.filter(n=>favs.includes(n.id)).map(n=>(
+                  <NegCard key={n.id} n={n}
+                    abierto={estaAbierto(hors[n.id]||[])}
+                    rating={vals[n.id]}
+                    dist={pos&&n.lat&&n.lng?haversineKm(pos.lat,pos.lng,n.lat,n.lng):null}
+                    fav={true}
+                    onFav={()=>toggleFav(n.id)}
+                    horsTiene={(hors[n.id]||[]).length>0}
+                    onReservar={handleReservar}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
 
       {/* ══════════ PERFIL ══════════ */}
-      {tab==='perfil'&&(
+      {tab==='perfil'&&!userId&&(
+        <div className="content fade">
+          <div className="empty" style={{paddingTop:'60px'}}>
+            <div className="perf-av" style={{width:'88px',height:'88px',fontSize:'36px',margin:'0 auto 20px',boxShadow:'0 8px 24px rgba(99,102,241,0.2)'}}>?</div>
+            <div style={{fontSize:'22px',fontWeight:900,color:'#0F172A',marginBottom:'8px',letterSpacing:'-0.4px'}}>Tu perfil Khepria</div>
+            <div style={{fontSize:'14px',color:'#64748B',lineHeight:1.6,maxWidth:'260px',margin:'0 auto 28px'}}>Inicia sesión para ver tus reservas, favoritos y mucho más</div>
+            <div style={{display:'flex',flexDirection:'column',gap:'10px',maxWidth:'240px',margin:'0 auto'}}>
+              <a href="/auth" style={{display:'block',padding:'14px',background:'#0F172A',color:'white',borderRadius:'14px',textDecoration:'none',fontSize:'15px',fontWeight:800,textAlign:'center'}}>Iniciar sesión</a>
+              <a href="/auth?mode=signup" style={{display:'block',padding:'14px',background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)',color:'#1D4ED8',borderRadius:'14px',textDecoration:'none',fontSize:'15px',fontWeight:800,textAlign:'center'}}>Crear cuenta gratis</a>
+            </div>
+          </div>
+        </div>
+      )}
+      {tab==='perfil'&&userId&&(
         <div className="content fade">
           <div className="perf-hero">
             <div className="perf-av">{nombre.charAt(0).toUpperCase()}</div>
@@ -1105,13 +1192,19 @@ function ClienteContent(){
     {/* ── BOTTOM NAV ── */}
     <div className="bnav">
       <div className="bnav-inner">
-        {TABS.map(t=>(
-          <Link key={t.id} href={`/cliente?tab=${t.id}`} className={`bnav-item ${tab===t.id?'on':''}`}>
-            <span className="bnav-ico">{t.icon}</span>
-            <span className="bnav-lbl">{t.label}</span>
-            {tab===t.id&&<div className="bnav-dot"/>}
-          </Link>
-        ))}
+        {TABS.map(t=>{
+          const requiresLogin=['favoritos','perfil'].includes(t.id)
+          const locked=requiresLogin&&!userId
+          return(
+            <Link key={t.id} href={`/cliente?tab=${t.id}`} className={`bnav-item ${tab===t.id?'on':''}`}>
+              <span className="bnav-ico">{t.icon}</span>
+              <span className="bnav-lbl" style={{color:locked?'#CBD5E1':undefined}}>
+                {t.label}{locked?' 🔒':''}
+              </span>
+              {tab===t.id&&<div className="bnav-dot"/>}
+            </Link>
+          )
+        })}
       </div>
     </div>
   </div>
