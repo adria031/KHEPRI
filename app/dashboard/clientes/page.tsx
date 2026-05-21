@@ -473,8 +473,11 @@ Responde con este JSON exacto:
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
       <style>{`
         .cli-page { display:flex; gap:0; height:calc(100vh - 60px); overflow:hidden; }
-        .cli-left { flex:0 0 420px; display:flex; flex-direction:column; border-right:1px solid rgba(0,0,0,0.07); overflow:hidden; background:#FAFBFC; }
-        .cli-right { flex:1; overflow-y:auto; background:#fff; }
+        .cli-left { flex:1; display:flex; flex-direction:column; overflow:hidden; background:#FAFBFC; }
+        .cli-left.with-detail { flex:0 0 40%; border-right:1px solid rgba(0,0,0,0.07); }
+        .cli-right { flex:0 0 60%; overflow-y:auto; background:#fff; animation:slideInRight .22s ease; }
+        @keyframes slideInRight { from { transform:translateX(24px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+        .cli-mobile-back { display:none; }
         .cli-header { padding:20px 20px 12px; border-bottom:1px solid rgba(0,0,0,0.07); }
         .cli-search { width:100%; padding:9px 12px 9px 34px; border:1.5px solid rgba(0,0,0,0.1); border-radius:10px; font-size:13px; background:#fff; outline:none; transition:border .15s; font-family:inherit; }
         .cli-search:focus { border-color:#4F46E5; }
@@ -556,9 +559,10 @@ Responde con este JSON exacto:
         .cli-error { background:#FEF2F2; border:1px solid #FECACA; border-radius:8px; padding:9px 12px; font-size:13px; color:#B91C1C; margin-bottom:12px; }
 
         @media (max-width:768px) {
-          .cli-page { flex-direction:column; height:auto; overflow:visible; }
-          .cli-left { flex:none; width:100%; border-right:none; border-bottom:1px solid rgba(0,0,0,0.07); max-height:50vh; }
-          .cli-right { min-height:300px; overflow-y:visible; width:100%; }
+          .cli-left { flex:1; width:100%; border-right:none; }
+          .cli-left.with-detail { display:none; }
+          .cli-right { flex:0 0 100%; width:100%; overflow-y:auto; }
+          .cli-mobile-back { display:flex; align-items:center; gap:6px; padding:10px 0; margin-bottom:8px; background:none; border:none; font-size:14px; font-weight:700; color:#4F46E5; cursor:pointer; font-family:inherit; }
           .cli-stats-grid { grid-template-columns:repeat(2,1fr); }
           .cli-detail { padding:20px 16px; max-width:100%; }
           .cli-ai-label { width:auto; min-width:110px; }
@@ -575,7 +579,7 @@ Responde con este JSON exacto:
 
       <div className="cli-page">
         {/* ── LEFT PANEL: Client list ── */}
-        <div className="cli-left">
+        <div className={`cli-left${clienteActivo ? ' with-detail' : ''}`}>
           <div className="cli-header">
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
               <div style={{ fontSize:'16px', fontWeight:800, color:'#111827' }}>
@@ -681,22 +685,18 @@ Responde con este JSON exacto:
           </div>
         </div>
 
-        {/* ── RIGHT PANEL: Client detail ── */}
-        <div className="cli-right">
-          {!clienteActivo ? (
-            <div className="cli-no-detail">
-              <div style={{ fontSize:'48px' }}>👈</div>
-              <div style={{ fontSize:'16px', fontWeight:700, color:'#374151' }}>Selecciona un cliente</div>
-              <div style={{ fontSize:'13px' }}>Haz clic en cualquier cliente para ver su ficha completa</div>
-            </div>
-          ) : (() => {
+        {/* ── RIGHT PANEL: Client detail (only when selected) ── */}
+        {clienteActivo && (() => {
             const c   = clienteActivo
             const cfg = NIVEL_CFG[c.nivel]
             const ac  = avatarColor(c.telefono || c.nombre)
             const tasa = c.reservas.length > 0 ? Math.round((c.cancelaciones / c.reservas.length) * 100) : 0
             const nota = notas[c.telefono]
             return (
+          <div className="cli-right">
               <div className="cli-detail">
+                {/* Mobile back button */}
+                <button className="cli-mobile-back" onClick={() => setClienteActivo(null)}>← Volver</button>
                 {/* Header */}
                 <div className="cli-detail-header">
                   <div className="cli-detail-avatar" style={{ background: ac.bg, color: ac.color }}>
@@ -900,9 +900,9 @@ Responde con este JSON exacto:
                   </div>
                 </div>
               </div>
+            </div>
             )
-          })()}
-        </div>
+        })()}
       </div>
 
       {/* ── MODAL: Nueva reserva ── */}
