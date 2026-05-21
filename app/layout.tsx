@@ -11,13 +11,27 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Khepria — Gestión inteligente para negocios",
-  description: "Plataforma todo-en-uno con IA para negocios de servicios",
-  manifest: "/manifest.json",
+  title: 'Khepria — Gestión inteligente para negocios de servicios',
+  description: 'Reservas automáticas, chatbot IA 24/7, facturación española y más. Todo en una sola app para peluquerías, spas, clínicas y negocios de servicios.',
+  keywords: 'reservas online, gestión negocio, chatbot IA, facturación España, peluquería, spa, clínica',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Khepria",
+    statusBarStyle: 'default',
+    title: 'Khepria',
+  },
+  openGraph: {
+    title: 'Khepria — Gestión inteligente para negocios de servicios',
+    description: 'Reservas automáticas, chatbot IA 24/7, facturación española y más.',
+    url: 'https://khepria.app',
+    siteName: 'Khepria',
+    locale: 'es_ES',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Khepria — Gestión inteligente para negocios de servicios',
+    description: 'Reservas automáticas, chatbot IA 24/7, facturación española y más.',
   },
 };
 
