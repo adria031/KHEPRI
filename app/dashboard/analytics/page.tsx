@@ -394,18 +394,19 @@ export default function Analytics() {
   }) {
     const up = pctChange !== null && pctChange > 0
     const dn = pctChange !== null && pctChange < 0
+    const suffix = unit === '€' ? ' €' : ''
     return (
-      <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14, padding:'16px 18px', flex:1, minWidth:0 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>{label}</div>
-        <div style={{ display:'flex', alignItems:'flex-end', gap:8, marginBottom:4 }}>
-          <span style={{ fontSize:'clamp(16px,4vw,22px)', fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px' }}>{fmt(val)}{unit === '€' ? ' €' : ''}</span>
+      <div style={{ border:'1px solid var(--border)', borderRadius:12, padding:'12px', flex:1, minWidth:0, overflow:'hidden' }}>
+        <div style={{ fontSize:10, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.4px', marginBottom:5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:5, marginBottom:3, flexWrap:'wrap' }}>
+          <span style={{ fontSize:'clamp(14px,3.5vw,20px)', fontWeight:800, color:'var(--text)', letterSpacing:'-0.5px', whiteSpace:'nowrap' }}>{fmt(val)}{suffix}</span>
           {pctChange !== null && (
-            <span style={{ fontSize:12, fontWeight:700, color: up ? '#2E8A5E' : dn ? '#DC2626' : '#9CA3AF', marginBottom:3 }}>
-              {up ? '▲' : dn ? '▼' : '→'} {Math.abs(pctChange)}%
+            <span style={{ fontSize:11, fontWeight:700, color: up ? '#2E8A5E' : dn ? '#DC2626' : '#9CA3AF', whiteSpace:'nowrap' }}>
+              {up ? '▲' : dn ? '▼' : '→'}{Math.abs(pctChange)}%
             </span>
           )}
         </div>
-        <div style={{ fontSize:12, color:'var(--muted)' }}>Anterior: {fmt(valPrev)}{unit === '€' ? ' €' : ''}</div>
+        <div style={{ fontSize:'clamp(10px,2.5vw,12px)', color:'var(--muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Ant: {fmt(valPrev)}{suffix}</div>
       </div>
     )
   }
@@ -413,10 +414,10 @@ export default function Analytics() {
   // ── KPI card ──────────────────────────────────────────────────────────────
   function KpiCard({ label, value, sub, color = '#111827' }: { label: string; value: string; sub?: string; color?: string }) {
     return (
-      <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:16, padding:'18px 20px', flex:1, minWidth:0 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>{label}</div>
-        <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color, letterSpacing:'-1px', marginBottom:4 }}>{value}</div>
-        {sub && <div style={{ fontSize:12, color:'var(--muted)' }}>{sub}</div>}
+      <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:16, padding:'18px 20px', width:'100%', minWidth:0, overflow:'hidden' }}>
+        <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
+        <div style={{ fontSize:'clamp(18px,4.5vw,28px)', fontWeight:800, color, letterSpacing:'-1px', marginBottom:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</div>
+        {sub && <div style={{ fontSize:'clamp(10px,2.5vw,12px)', color:'var(--muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sub}</div>}
       </div>
     )
   }
@@ -453,6 +454,8 @@ export default function Analytics() {
         .an-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         .an-grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
         .an-grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+        /* KPIs: 4 cols PC, 2×2 mobile */
+        .kpis-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
         .an-section { margin-bottom:28px; }
         .an-section-title { font-size:clamp(13px,3.5vw,15px); font-weight:800; color:var(--text); margin-bottom:12px; }
         .an-card { background:white; border:1px solid var(--border); border-radius:16px; padding:20px; overflow:hidden; }
@@ -465,25 +468,32 @@ export default function Analytics() {
         /* Responsive grids */
         .an-charts-row { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
         .an-2col-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-        .an-compar-row { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+        .an-compar-row { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+        /* Inner ComparCards row */
+        .an-compar-cards { display:flex; gap:10px; }
         .vip-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); white-space:nowrap; }
         .vip-row:last-child { border-bottom:none; }
         .vip-badge { background:linear-gradient(135deg,#FDE9A2,#FED7AA); color:#92400E; font-size:11px; font-weight:800; padding:2px 8px; border-radius:100px; white-space:nowrap; }
         .stat-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:clamp(11px,2.5vw,13px); }
         .stat-row:last-child { border-bottom:none; }
         @media (max-width:768px) {
+          .kpis-grid { grid-template-columns:1fr 1fr; gap:12px; }
           .an-grid4 { grid-template-columns:1fr 1fr; }
           .an-grid3 { grid-template-columns:1fr; }
           .an-grid2 { grid-template-columns:1fr; }
           .an-charts-row { grid-template-columns:1fr; }
           .an-2col-row { grid-template-columns:1fr; }
-          .an-compar-row { grid-template-columns:1fr; }
+          /* an-compar-row stays 2 cols on mobile */
           .an-card { padding:14px 12px; }
         }
         @media (max-width:480px) {
+          .kpis-grid { grid-template-columns:1fr 1fr; gap:10px; }
           .an-grid4 { grid-template-columns:1fr 1fr; gap:10px; }
           .an-grid3 { grid-template-columns:1fr; }
           .an-grid2 { grid-template-columns:1fr; }
+          /* Stack ComparCards vertically on very small screens */
+          .an-compar-cards { flex-direction:column; gap:6px; }
+          .an-compar-row { gap:8px; }
         }
       `}</style>
 
@@ -521,10 +531,10 @@ export default function Analytics() {
         <>
           {/* ── KPIs ── */}
           <div className="an-section">
-            <div className="an-grid4" style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+            <div className="kpis-grid">
               <KpiCard label="Ingresos periodo" value={`${fmtEur(ingresos)} €`} sub={`${completadas.length} servicios completados`} color={K.greenDark} />
-              <KpiCard label="Reservas completadas" value={String(completadas.length)} sub={`${reservas.length} totales · ${canceladas.length} canceladas`} />
-              <KpiCard label="Tasa de ocupación" value={`${tasaOcupacion}%`} sub="Completadas / Total activas" color={tasaOcupacion >= 70 ? K.greenDark : tasaOcupacion >= 40 ? K.yellowDark : '#DC2626'} />
+              <KpiCard label="Reservas completadas" value={String(completadas.length)} sub={`${reservas.length} totales · ${canceladas.length} cancel.`} />
+              <KpiCard label="Tasa ocupación" value={`${tasaOcupacion}%`} sub="Completadas / Total activas" color={tasaOcupacion >= 70 ? K.greenDark : tasaOcupacion >= 40 ? K.yellowDark : '#DC2626'} />
               <KpiCard label="Tasa cancelación" value={`${tasaCancelacion}%`} sub={`${canceladas.length} cancelaciones`} color={tasaCancelacion <= 10 ? K.greenDark : tasaCancelacion <= 25 ? K.yellowDark : '#DC2626'} />
             </div>
           </div>
@@ -533,18 +543,18 @@ export default function Analytics() {
           <div className="an-section">
             <div className="an-section-title">Comparativas</div>
             <div className="an-compar-row">
-              <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14, padding:'16px 18px' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:10 }}>Este mes vs mes anterior</div>
-                <div style={{ display:'flex', gap:10 }}>
+              <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14, padding:'16px 14px' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:10 }}>Este mes vs anterior</div>
+                <div className="an-compar-cards">
                   <ComparCard label="Ingresos mes" val={ingMes} valPrev={ingMesPrev} pctChange={pctMesIngresos} fmt={fmtEur} />
                   <ComparCard label="Reservas mes" val={resMes.length} valPrev={resMesPrev.length} pctChange={pctMesReservas} fmt={n => String(n)} unit="" />
                 </div>
               </div>
-              <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14, padding:'16px 18px' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:10 }}>Esta semana vs semana anterior</div>
-                <div style={{ display:'flex', gap:10 }}>
-                  <ComparCard label="Ingresos semana" val={ingSemana} valPrev={ingSemPrev} pctChange={pctSemIngresos} fmt={fmtEur} />
-                  <ComparCard label="Reservas semana" val={resSemana.length} valPrev={resSemPrev.length} pctChange={pctSemReservas} fmt={n => String(n)} unit="" />
+              <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:14, padding:'16px 14px' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:10 }}>Esta semana vs anterior</div>
+                <div className="an-compar-cards">
+                  <ComparCard label="Ingresos sem." val={ingSemana} valPrev={ingSemPrev} pctChange={pctSemIngresos} fmt={fmtEur} />
+                  <ComparCard label="Reservas sem." val={resSemana.length} valPrev={resSemPrev.length} pctChange={pctSemReservas} fmt={n => String(n)} unit="" />
                 </div>
               </div>
             </div>
