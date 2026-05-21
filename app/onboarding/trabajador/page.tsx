@@ -34,6 +34,7 @@ function TrabajadorOnboardingInner() {
   const [enviando, setEnviando]           = useState(false)
   const [error, setError]                 = useState('')
   const [paso, setPaso]                   = useState<'form' | 'exito'>('form')
+  const [yaRegistrado, setYaRegistrado]   = useState(false)
 
   // Load negocio name
   useEffect(() => {
@@ -56,14 +57,14 @@ function TrabajadorOnboardingInner() {
       // 1. Crear cuenta
       const { data: authData, error: signUpErr } = await supabase.auth.signUp({ email, password })
       if (signUpErr) {
-        // Si ya existe la cuenta, intentar iniciar sesión
-        if (signUpErr.message.toLowerCase().includes('already registered')) {
-          const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password })
-          if (loginErr) { setError('Esta cuenta ya existe. Inicia sesión en /auth.'); setEnviando(false); return }
-        } else {
-          setError(signUpErr.message)
-          setEnviando(false); return
+        const msg = signUpErr.message.toLowerCase()
+        if (msg.includes('already registered') || msg.includes('user already registered') || msg.includes('email address is already')) {
+          setYaRegistrado(true)
+          setEnviando(false)
+          return
         }
+        setError(signUpErr.message)
+        setEnviando(false); return
       }
 
       const userId = authData?.user?.id ?? (await supabase.auth.getUser()).data.user?.id
@@ -89,6 +90,40 @@ function TrabajadorOnboardingInner() {
       setError((e as Error).message ?? 'Error inesperado')
       setEnviando(false)
     }
+  }
+
+  if (yaRegistrado) {
+    return (
+      <>
+        <style>{`
+          *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+          html, body { background:#F7F9FC !important; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#111827; }
+        `}</style>
+        <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#F7F9FC', padding:'24px' }}>
+          <div style={{ background:'#fff', borderRadius:'20px', boxShadow:'0 2px 24px rgba(0,0,0,0.08)', overflow:'hidden', width:'100%', maxWidth:'420px', textAlign:'center' }}>
+            <div style={{ background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', padding:'32px 36px' }}>
+              <KhepriLogo />
+              <div style={{ fontSize:'40px', margin:'16px 0 10px' }}>✅</div>
+              <div style={{ fontSize:'20px', fontWeight:800, color:'#1E3A5F', letterSpacing:'-0.3px' }}>Ya tienes cuenta</div>
+              {nombreNegocio && (
+                <div style={{ fontSize:'14px', color:'rgba(30,58,95,0.7)', marginTop:'6px' }}>
+                  <strong style={{ color:'#1E3A5F' }}>{nombreNegocio}</strong> te ha invitado a su equipo
+                </div>
+              )}
+            </div>
+            <div style={{ padding:'28px 32px' }}>
+              <p style={{ fontSize:'14px', color:'#4B5563', lineHeight:1.65, marginBottom:'24px' }}>
+                El email <strong style={{ color:'#111827' }}>{email}</strong> ya tiene una cuenta en Khepria.<br/>
+                Inicia sesión para acceder a tu agenda.
+              </p>
+              <a href="/auth" style={{ display:'block', width:'100%', padding:'13px', borderRadius:'12px', background:'linear-gradient(135deg,#4F46E5,#7C3AED)', color:'white', fontWeight:700, fontSize:'15px', textDecoration:'none', textAlign:'center' }}>
+                Iniciar sesión →
+              </a>
+            </div>
+          </div>
+        </div>
+      </>
+    )
   }
 
   if (!negocioId || !email) {
