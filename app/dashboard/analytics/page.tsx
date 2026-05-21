@@ -57,6 +57,8 @@ export default function Analytics() {
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
   const [periodo, setPeriodo] = useState<Periodo>('30d')
+  const [descuentoActivado, setDescuentoActivado] = useState<string[]>([])
+  const [activandoDescuento, setActivandoDescuento] = useState<string | null>(null)
 
   // ── Raw data ─────────────────────────────────────────────────────────────
   const [reservas, setReservas] = useState<ReservaRaw[]>([])
@@ -204,12 +206,13 @@ export default function Analytics() {
 
   // Mapa de calor (días × horas, basado en histórico total)
   const HORAS_MAPA = [8,9,10,11,12,13,14,15,16,17,18,19,20]
+  const mapa90Desde = isoDate(addDays(hoy, -90))
   const mapaCalor: Record<number, Record<number, number>> = {}
   for (let d = 0; d < 7; d++) {
     mapaCalor[d] = {}
     HORAS_MAPA.forEach(h => { mapaCalor[d][h] = 0 })
   }
-  reservasAll.filter(r => r.estado !== 'cancelada').forEach(r => {
+  reservasAll.filter(r => r.estado !== 'cancelada' && r.fecha >= mapa90Desde).forEach(r => {
     try {
       const dia = new Date(r.fecha + 'T12:00').getDay()
       if (r.hora) {
@@ -296,7 +299,7 @@ export default function Analytics() {
     const mediaDia = total / 7
     return cntDia.map((count, idx) => ({
       dia: DIAS_FULL[idx], diaCorto: DIAS_ES[idx], count,
-      esFlojo: count < mediaDia * 0.7,
+      esFlojo: count < mediaDia * 0.5,
       pct: Math.round(count / total * 100),
     })).filter(d => d.esFlojo)
   })()
@@ -317,18 +320,67 @@ export default function Analytics() {
       .map(c => ({ ...c, tasa: Math.round(c.cancelaciones / c.total * 100) }))
   })()
 
-  // Alerta fiscal trimestral
+  // Alerta fiscal trimestral — vencimientos AEAT reales
   const alertaFiscal = (() => {
-    const trimestre = Math.floor(hoy.getMonth() / 3) + 1
-    const inicioTrim = new Date(hoy.getFullYear(), (trimestre - 1) * 3, 1)
-    const finTrim = new Date(hoy.getFullYear(), trimestre * 3, 0)
-    const diasRestantes = Math.round((finTrim.getTime() - hoy.getTime()) / 86400000)
-    const diasPasados = Math.max(1, Math.round((hoy.getTime() - inicioTrim.getTime()) / 86400000))
+    const now = new Date()
+    const y = now.getFullYear()
+    const todayMs = new Date(y, now.getMonth(), now.getDate()).getTime()
+    // T1→20 abr, T2→20 jul, T3→20 oct, T4→30 ene (año siguiente)
+    const deadlines = [
+      { t: 4, d: new Date(y,   0, 30), label: '30 enero' },
+      { t: 1, d: new Date(y,   3, 20), label: '20 abril' },
+      { t: 2, d: new Date(y,   6, 20), label: '20 julio' },
+      { t: 3, d: new Date(y,   9, 20), label: '20 octubre' },
+      { t: 4, d: new Date(y+1, 0, 30), label: '30 enero' },
+    ]
+    const proximo = deadlines.find(dl => dl.d.getTime() >= todayMs) ?? deadlines[deadlines.length - 1]
+    const diasHasta = Math.ceil((proximo.d.getTime() - todayMs) / 86400000)
+    const trimActual = Math.floor(now.getMonth() / 3) + 1
+    const inicioTrimActual = new Date(y, (trimActual - 1) * 3, 1)
+    const finTrimActual    = new Date(y, trimActual * 3, 0)
     const ingTrimestre = reservasAll
-      .filter(r => r.estado === 'completada' && r.fecha >= isoDate(inicioTrim) && r.fecha <= isoDate(finTrim))
+      .filter(r => r.estado === 'completada' && r.fecha >= isoDate(inicioTrimActual) && r.fecha <= isoDate(finTrimActual))
       .reduce((s, r) => s + (r.servicios?.precio ?? 0), 0)
-    const proyeccion = Math.round(ingTrimestre / diasPasados * (diasPasados + diasRestantes))
-    return { trimestre, diasRestantes, ingTrimestre, proyeccion, finTrim: isoDate(finTrim) }
+    return {
+      trimestre: proximo.t, diasHasta, ingTrimestre,
+      deadline: isoDate(proximo.d), deadlineLabel: proximo.label,
+      urgente: diasHasta <= 3,
+      aviso:   diasHasta > 3 && diasHasta <= 15,
+    }
+  })()
+
+  // Reservas de hoy con predicción no-show por historial de cancelaciones
+  const reservasHoyConRiesgo = (() => {
+    const hoyStr = isoDate(hoy)
+    const hoyRes = reservasAll
+      .filter(r => r.fecha === hoyStr && r.estado === 'confirmada')
+      .sort((a, b) => (a.hora ?? '').localeCompare(b.hora ?? ''))
+    const clientStats: Record<string, { total: number; cancel: number }> = {}
+    reservasAll.forEach(r => {
+      const k = r.cliente_telefono || r.cliente_nombre
+      if (!clientStats[k]) clientStats[k] = { total: 0, cancel: 0 }
+      clientStats[k].total++
+      if (r.estado === 'cancelada') clientStats[k].cancel++
+    })
+    return hoyRes.map(r => {
+      const k = r.cliente_telefono || r.cliente_nombre
+      const s = clientStats[k] ?? { total: 1, cancel: 0 }
+      const tasa = s.total > 1 ? s.cancel / s.total : 0
+      const riesgo: 'alto' | 'medio' | 'bajo' = tasa > 0.5 ? 'alto' : tasa > 0.25 ? 'medio' : 'bajo'
+      return { ...r, tasa: Math.round(tasa * 100), riesgo, totalHist: s.total }
+    })
+  })()
+
+  // Forecasting vs mes actual
+  const forecastVsMes = (() => {
+    const diasEnMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate()
+    const diaActual = Math.max(1, hoy.getDate())
+    const proyeccionIngMes = Math.round((ingMes / diaActual) * diasEnMes)
+    const proyeccionResMes = Math.round((resMes.length / diaActual) * diasEnMes)
+    const diffIng = forecasting.mediaIngresos - proyeccionIngMes
+    const diffRes = forecasting.mediaReservas - proyeccionResMes
+    const pctIng  = proyeccionIngMes > 0 ? Math.round(diffIng / proyeccionIngMes * 100) : 0
+    return { proyeccionIngMes, proyeccionResMes, diffIng, diffRes, pctIng }
   })()
 
   // ── Data loaders ──────────────────────────────────────────────────────────
@@ -529,6 +581,27 @@ export default function Analytics() {
         </div>
       ) : (
         <>
+          {/* ── Banner alerta fiscal AEAT ── */}
+          {(alertaFiscal.urgente || alertaFiscal.aviso) && (
+            <div style={{
+              display:'flex', alignItems:'flex-start', gap:12, padding:'14px 18px', borderRadius:14, marginBottom:20,
+              background: alertaFiscal.urgente ? '#FEF2F2' : '#FFFBEB',
+              border: `1.5px solid ${alertaFiscal.urgente ? '#FECACA' : '#FDE68A'}`,
+            }}>
+              <span style={{ fontSize:22, flexShrink:0 }}>{alertaFiscal.urgente ? '🚨' : '⚠️'}</span>
+              <div>
+                <div style={{ fontSize:14, fontWeight:800, color: alertaFiscal.urgente ? '#DC2626' : '#92400E', marginBottom:2 }}>
+                  {alertaFiscal.urgente
+                    ? `¡Vence en ${alertaFiscal.diasHasta} día${alertaFiscal.diasHasta !== 1 ? 's' : ''}! Declaración T${alertaFiscal.trimestre} AEAT`
+                    : `Faltan ${alertaFiscal.diasHasta} días — Declaración T${alertaFiscal.trimestre} AEAT`}
+                </div>
+                <div style={{ fontSize:12, color:'var(--text2)' }}>
+                  Vencimiento: {alertaFiscal.deadlineLabel} ({alertaFiscal.deadline}) · Ingresos trimestrales: {fmtEur(alertaFiscal.ingTrimestre)} €
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── KPIs ── */}
           <div className="an-section">
             <div className="kpis-grid">
@@ -538,6 +611,37 @@ export default function Analytics() {
               <KpiCard label="Tasa cancelación" value={`${tasaCancelacion}%`} sub={`${canceladas.length} cancelaciones`} color={tasaCancelacion <= 10 ? K.greenDark : tasaCancelacion <= 25 ? K.yellowDark : '#DC2626'} />
             </div>
           </div>
+
+          {/* ── Reservas de hoy — predicción no-show ── */}
+          {reservasHoyConRiesgo.length > 0 && (
+            <div className="an-section">
+              <div className="an-section-title">📅 Reservas de hoy — Predicción asistencia</div>
+              <div className="an-card">
+                <div style={{ fontSize:12, color:'var(--text2)', marginBottom:12, padding:'8px 12px', background:`${K.blue}20`, borderRadius:10 }}>
+                  Riesgo calculado por historial real de cancelaciones de cada cliente
+                </div>
+                {reservasHoyConRiesgo.map((r, i) => {
+                  const badge = r.riesgo === 'alto'
+                    ? { bg:'#FEE2E2', color:'#DC2626', icon:'🔴', label:'Alto riesgo' }
+                    : r.riesgo === 'medio'
+                    ? { bg:'#FEF3C7', color:'#D97706', icon:'🟡', label:'Riesgo medio' }
+                    : { bg:'rgba(34,197,94,0.1)', color:'#15803D', icon:'🟢', label:'Fiable' }
+                  return (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom: i < reservasHoyConRiesgo.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'var(--muted)', width:42, flexShrink:0 }}>{r.hora?.slice(0,5) ?? '--:--'}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.cliente_nombre}</div>
+                        <div style={{ fontSize:11, color:'var(--muted)' }}>{r.servicios?.nombre ?? 'Servicio'}{r.totalHist > 1 ? ` · ${r.tasa}% cancel.` : ''}</div>
+                      </div>
+                      <span style={{ fontSize:11, fontWeight:800, padding:'3px 9px', borderRadius:100, background:badge.bg, color:badge.color, flexShrink:0, whiteSpace:'nowrap' }}>
+                        {badge.icon} {badge.label}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ── Comparativas ── */}
           <div className="an-section">
@@ -814,13 +918,27 @@ export default function Analytics() {
             <div className="an-grid3">
               <div className="an-card">
                 <div className="an-card-title">Reservas previstas</div>
-                <div style={{ fontSize:'clamp(24px,6vw,36px)', fontWeight:800, color:K.blueDark, letterSpacing:'-1px', marginBottom:6 }}>{forecasting.mediaReservas}</div>
-                <div style={{ fontSize:12, color:'var(--muted)' }}>Media últimos {forecasting.keys.length} meses</div>
+                <div style={{ fontSize:'clamp(24px,6vw,36px)', fontWeight:800, color:K.blueDark, letterSpacing:'-1px', marginBottom:4 }}>{forecasting.mediaReservas}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                  <span style={{ fontSize:12, color:'var(--muted)' }}>Media {forecasting.keys.length} meses</span>
+                  {forecastVsMes.diffRes !== 0 && (
+                    <span style={{ fontSize:12, fontWeight:700, color: forecastVsMes.diffRes >= 0 ? K.greenDark : '#DC2626' }}>
+                      {forecastVsMes.diffRes >= 0 ? '▲' : '▼'} {Math.abs(forecastVsMes.diffRes)} vs mes actual
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="an-card">
                 <div className="an-card-title">Ingresos previstos</div>
-                <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px', marginBottom:6 }}>{fmtEur(forecasting.mediaIngresos)} €</div>
-                <div style={{ fontSize:12, color:'var(--muted)' }}>Media mensual reciente</div>
+                <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px', marginBottom:4 }}>{fmtEur(forecasting.mediaIngresos)} €</div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                  <span style={{ fontSize:12, color:'var(--muted)' }}>Media mensual</span>
+                  {forecastVsMes.diffIng !== 0 && (
+                    <span style={{ fontSize:12, fontWeight:700, color: forecastVsMes.diffIng >= 0 ? K.greenDark : '#DC2626' }}>
+                      {forecastVsMes.diffIng >= 0 ? '▲' : '▼'} {fmtEur(Math.abs(forecastVsMes.diffIng))} € vs mes actual
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="an-card">
                 <div className="an-card-title">Tendencia</div>
@@ -905,24 +1023,51 @@ export default function Analytics() {
             </div>
           )}
 
-          {/* ── Días flojos ── */}
+          {/* ── Días flojos con descuentos automáticos ── */}
           {diasFlojos.length > 0 && (
             <div className="an-section">
-              <div className="an-section-title">📉 Días flojos — Oportunidades de promoción</div>
+              <div className="an-section-title">📉 Días flojos — Activa descuentos automáticos</div>
               <div className="an-card">
                 <div style={{ fontSize:12, color:'var(--text2)', marginBottom:14, padding:'8px 12px', background:`${K.blue}30`, borderRadius:10 }}>
-                  Estos días tienen significativamente menos reservas. Considera ofrecer descuentos o promociones especiales.
+                  Estos días tienen menos del 50% de ocupación respecto a la media. Un descuento puntual puede llenar huecos.
                 </div>
                 <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-                  {diasFlojos.map((d, i) => (
-                    <div key={i} style={{ flex:1, minWidth:140, background:'#F9FAFB', borderRadius:12, padding:'16px', border:'1px solid var(--border)' }}>
-                      <div style={{ fontSize:'clamp(16px,4vw,22px)', fontWeight:800, color:K.lilaDark, marginBottom:4 }}>{d.dia}</div>
-                      <div style={{ fontSize:13, color:'var(--text2)', marginBottom:8 }}>{d.count} reservas totales ({d.pct}%)</div>
-                      <div style={{ fontSize:12, color:'var(--muted)', background:`${K.lila}40`, padding:'6px 10px', borderRadius:8 }}>
-                        💡 Prueba un descuento del 15-20% los {d.dia.toLowerCase()}s para llenar huecos
+                  {diasFlojos.map((d, i) => {
+                    const activado = descuentoActivado.includes(d.dia)
+                    const activando = activandoDescuento === d.dia
+                    return (
+                      <div key={i} style={{ flex:1, minWidth:160, background:'#F9FAFB', borderRadius:12, padding:'16px', border:'1px solid var(--border)' }}>
+                        <div style={{ fontSize:'clamp(16px,4vw,20px)', fontWeight:800, color:K.lilaDark, marginBottom:4 }}>{d.dia}</div>
+                        <div style={{ fontSize:13, color:'var(--text2)', marginBottom:6 }}>{d.count} reservas ({d.pct}% del total)</div>
+                        <div style={{ fontSize:11, color:'var(--muted)', background:`${K.lila}40`, padding:'5px 8px', borderRadius:8, marginBottom:10 }}>
+                          💡 Los {d.dia.toLowerCase()}s tienes poca demanda — considera un descuento
+                        </div>
+                        <button
+                          disabled={activado || activando}
+                          onClick={async () => {
+                            setActivandoDescuento(d.dia)
+                            try {
+                              await supabase.from('descuentos').upsert({
+                                negocio_id: negocioId, dia_semana: d.diaCorto.toLowerCase(),
+                                porcentaje: 15, activo: true, nombre: `Descuento ${d.dia}`,
+                              })
+                            } catch { /* tabla descuentos no existe aún — ignorar */ }
+                            setDescuentoActivado(prev => [...prev, d.dia])
+                            setActivandoDescuento(null)
+                          }}
+                          style={{
+                            width:'100%', padding:'8px 12px', border:'none', borderRadius:9,
+                            fontFamily:'inherit', fontSize:12, fontWeight:700, cursor: activado ? 'default' : 'pointer',
+                            background: activado ? 'rgba(34,197,94,0.15)' : K.green,
+                            color: activado ? '#15803D' : K.greenDark,
+                            transition:'all 0.15s',
+                          }}
+                        >
+                          {activado ? '✅ Descuento activado' : activando ? '⏳ Activando...' : '🏷️ Activar descuento 15%'}
+                        </button>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -957,30 +1102,51 @@ export default function Analytics() {
             </div>
           )}
 
-          {/* ── Alerta fiscal trimestral ── */}
+          {/* ── Alerta fiscal trimestral AEAT ── */}
           <div className="an-section">
-            <div className="an-section-title">🧾 Resumen fiscal — T{alertaFiscal.trimestre} {hoy.getFullYear()}</div>
+            <div className="an-section-title">🧾 Vencimientos fiscales AEAT</div>
             <div className="an-card">
-              <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
-                <div style={{ flex:1, minWidth:140 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Ingresos este trimestre</div>
-                  <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.greenDark, letterSpacing:'-0.5px' }}>{fmtEur(alertaFiscal.ingTrimestre)} €</div>
-                  <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>Cierra el {alertaFiscal.finTrim}</div>
-                </div>
-                <div style={{ flex:1, minWidth:140 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Proyección cierre trimestre</div>
-                  <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color:K.blueDark, letterSpacing:'-0.5px' }}>{fmtEur(alertaFiscal.proyeccion)} €</div>
-                  <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>Según ritmo actual</div>
-                </div>
-                <div style={{ flex:1, minWidth:140 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6 }}>Días restantes</div>
-                  <div style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:800, color: alertaFiscal.diasRestantes <= 15 ? '#DC2626' : alertaFiscal.diasRestantes <= 30 ? '#D97706' : K.greenDark, letterSpacing:'-0.5px' }}>
-                    {alertaFiscal.diasRestantes}d
+              {/* Próximo vencimiento */}
+              <div style={{
+                display:'flex', alignItems:'center', gap:14, padding:'14px 16px', borderRadius:12, marginBottom:16,
+                background: alertaFiscal.urgente ? '#FEF2F2' : alertaFiscal.aviso ? '#FFFBEB' : '#F0FDF4',
+                border: `1px solid ${alertaFiscal.urgente ? '#FECACA' : alertaFiscal.aviso ? '#FDE68A' : '#BBF7D0'}`,
+              }}>
+                <span style={{ fontSize:28, flexShrink:0 }}>{alertaFiscal.urgente ? '🚨' : alertaFiscal.aviso ? '⚠️' : '✅'}</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:14, fontWeight:800, color: alertaFiscal.urgente ? '#DC2626' : alertaFiscal.aviso ? '#92400E' : '#15803D', marginBottom:2 }}>
+                    T{alertaFiscal.trimestre} — Vence el {alertaFiscal.deadlineLabel}
                   </div>
-                  <div style={{ fontSize:12, color:'var(--muted)', marginTop:4 }}>
-                    {alertaFiscal.diasRestantes <= 15 ? '⚠️ Cierra pronto — revisa tus impuestos' : alertaFiscal.diasRestantes <= 30 ? '⏰ Mes final del trimestre' : 'En plazo'}
+                  <div style={{ fontSize:12, color:'var(--text2)' }}>
+                    {alertaFiscal.urgente
+                      ? `¡Solo faltan ${alertaFiscal.diasHasta} días! Presenta tu declaración`
+                      : alertaFiscal.aviso
+                      ? `Faltan ${alertaFiscal.diasHasta} días — Revisa tus cuentas`
+                      : `Faltan ${alertaFiscal.diasHasta} días — En plazo`}
                   </div>
                 </div>
+                <div style={{ textAlign:'right', flexShrink:0 }}>
+                  <div style={{ fontSize:18, fontWeight:800, color:K.greenDark }}>{fmtEur(alertaFiscal.ingTrimestre)} €</div>
+                  <div style={{ fontSize:11, color:'var(--muted)' }}>Ingresos trimestre</div>
+                </div>
+              </div>
+              {/* Calendario de vencimientos */}
+              <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:10 }}>Calendario AEAT {hoy.getFullYear()}</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
+                {[
+                  { t: 1, label: 'T1', fecha: '20 abril',   desc: 'Ene–Mar' },
+                  { t: 2, label: 'T2', fecha: '20 julio',   desc: 'Abr–Jun' },
+                  { t: 3, label: 'T3', fecha: '20 octubre', desc: 'Jul–Sep' },
+                  { t: 4, label: 'T4', fecha: '30 enero',   desc: 'Oct–Dic' },
+                ].map(item => {
+                  const esSiguiente = item.t === alertaFiscal.trimestre
+                  return (
+                    <div key={item.t} style={{ padding:'10px 12px', borderRadius:10, border:`1px solid ${esSiguiente ? '#6366F1' : 'var(--border)'}`, background: esSiguiente ? '#F5F3FF' : 'transparent' }}>
+                      <div style={{ fontSize:13, fontWeight:800, color: esSiguiente ? K.lilaDark : 'var(--text)' }}>{item.label} — {item.fecha}</div>
+                      <div style={{ fontSize:11, color:'var(--muted)' }}>{item.desc}{esSiguiente ? ' ← próximo' : ''}</div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
