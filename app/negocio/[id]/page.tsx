@@ -33,7 +33,8 @@ type Negocio = {
   id:string; nombre:string; tipo:string; descripcion:string;
   telefono:string; direccion:string; ciudad:string; codigo_postal:string;
   instagram:string; whatsapp:string; facebook:string;
-  logo_url:string; fotos:string[]; metodos_pago:string[]|null
+  logo_url:string; fotos:string[]; metodos_pago:string[]|null;
+  color_principal:string|null; color_secundario:string|null
 }
 type Horario = { dia:string; abierto:boolean; hora_apertura:string; hora_cierre:string; hora_apertura2:string|null; hora_cierre2:string|null }
 type Servicio = { id:string; nombre:string; duracion:number; precio:number; precio_descuento:number|null; descuento_inicio:string|null; descuento_fin:string|null; categoria?:string|null }
@@ -310,6 +311,8 @@ export default function FichaNegocio() {
   const mapSrc      = coordenadas && mapToken
     ? `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/pin-s+6366F1(${coordenadas[0]},${coordenadas[1]})/${coordenadas[0]},${coordenadas[1]},15,0/400x180@2x?access_token=${mapToken}`
     : null
+  const colorPpal   = negocio?.color_principal ?? '#B8D8F8'
+  const colorSec    = negocio?.color_secundario ?? '#D4C5F9'
 
   // ─── Loading / Not found ───────────────────────────────────────────────────
   if (cargando) return (
@@ -673,6 +676,11 @@ export default function FichaNegocio() {
 
       {/* ── PROFILE STRIP (for no-photo layout) ── */}
       {fotos.length === 0 && (
+        <>
+          <div style={{height:'120px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`}} />
+        </>
+      )}
+      {fotos.length === 0 && (
         <div className="wrap">
           <div className="profile-strip">
             {negocio.logo_url && (
@@ -903,10 +911,10 @@ export default function FichaNegocio() {
           <div className="sticky-col">
 
             {/* RESERVAR */}
-            <div className="reserve-card">
+            <div className="reserve-card" style={{background:`linear-gradient(135deg,${colorPpal},${colorSec})`}}>
               <div className="reserve-card-title">Reserva tu cita</div>
               <div className="reserve-card-sub">Elige servicio, día y hora en pocos segundos</div>
-              <button className="btn-reservar" onClick={() => handleReservar()}>📅 Pedir cita online</button>
+              <button className="btn-reservar" style={{color:colorPpal}} onClick={() => handleReservar()}>📅 Pedir cita online</button>
               {negocio.whatsapp && (
                 <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" rel="noreferrer" className="btn-wa">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.97 0C5.372 0 0 5.373 0 11.97c0 2.11.552 4.09 1.518 5.814L0 24l6.335-1.652A11.935 11.935 0 0011.97 24c6.598 0 11.97-5.373 11.97-11.97C23.94 5.373 18.568 0 11.97 0zm0 21.818a9.817 9.817 0 01-5.003-1.366l-.36-.213-3.72.97.993-3.62-.235-.374A9.819 9.819 0 012.152 11.97c0-5.42 4.399-9.818 9.818-9.818 5.42 0 9.818 4.399 9.818 9.818 0 5.42-4.398 9.818-9.818 9.818z"/></svg>
@@ -964,7 +972,7 @@ export default function FichaNegocio() {
           <button className={`btn-fav${esFav?' active':''}`} onClick={toggleFav} disabled={favCargando}>
             {esFav ? '❤️' : '🤍'}
           </button>
-          <button className="mobile-cta-reserve" onClick={() => handleReservar()}>📅 Pedir cita</button>
+          <button className="mobile-cta-reserve" style={{background:`linear-gradient(135deg,${colorPpal},${colorSec})`}} onClick={() => handleReservar()}>📅 Pedir cita</button>
           {negocio.whatsapp && (
             <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" rel="noreferrer" className="mobile-cta-wa">💬 WA</a>
           )}

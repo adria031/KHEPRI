@@ -25,9 +25,20 @@ type CalSlot = {
 
 // ─── Template renderers ───────────────────────────────────────────────────────
 
-function TemplateDarkPublicacion({ contenido, negocioNombre }: {
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return `rgba(184,216,248,${alpha})`
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+function TemplateDarkPublicacion({ contenido, negocioNombre, colorPpal, colorSec }: {
   contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
   negocioNombre: string
+  colorPpal: string
+  colorSec: string
 }) {
   return (
     <div style={{
@@ -36,14 +47,14 @@ function TemplateDarkPublicacion({ contenido, negocioNombre }: {
       fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '48px',
     }}>
       {/* Blobs */}
-      <div style={{ position:'absolute', top:-80, left:-80, width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle,rgba(107,79,216,0.45) 0%,transparent 70%)', filter:'blur(30px)' }} />
-      <div style={{ position:'absolute', bottom:-60, right:-60, width:240, height:240, borderRadius:'50%', background:'radial-gradient(circle,rgba(59,130,246,0.35) 0%,transparent 70%)', filter:'blur(25px)' }} />
-      <div style={{ position:'absolute', top:'40%', right:-40, width:160, height:160, borderRadius:'50%', background:'radial-gradient(circle,rgba(52,211,153,0.25) 0%,transparent 70%)', filter:'blur(20px)' }} />
+      <div style={{ position:'absolute', top:-80, left:-80, width:280, height:280, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.45)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
+      <div style={{ position:'absolute', bottom:-60, right:-60, width:240, height:240, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorPpal,0.35)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
+      <div style={{ position:'absolute', top:'40%', right:-40, width:160, height:160, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.25)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
       {/* Content */}
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
           <div style={{ fontSize:72, fontWeight:900, color:'#FFFFFF', lineHeight:1, marginBottom:8, letterSpacing:'-2px',
-            background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
             {contenido.dato}
           </div>
         )}
@@ -53,7 +64,7 @@ function TemplateDarkPublicacion({ contenido, negocioNombre }: {
         <div style={{ fontSize:16, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:32 }}>
           {contenido.subtitulo}
         </div>
-        <div style={{ display:'inline-block', padding:'12px 28px', background:'linear-gradient(135deg,#6B4FD8,#4F46E5)', borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
+        <div style={{ display:'inline-block', padding:'12px 28px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
           {contenido.cta}
         </div>
       </div>
@@ -65,9 +76,11 @@ function TemplateDarkPublicacion({ contenido, negocioNombre }: {
   )
 }
 
-function TemplateClaroPublicacion({ contenido, negocioNombre }: {
+function TemplateClaroPublicacion({ contenido, negocioNombre, colorPpal, colorSec }: {
   contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
   negocioNombre: string
+  colorPpal: string
+  colorSec: string
 }) {
   return (
     <div style={{
@@ -75,12 +88,12 @@ function TemplateClaroPublicacion({ contenido, negocioNombre }: {
       display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
       fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '48px',
     }}>
-      <div style={{ position:'absolute', top:-60, right:-60, width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle,rgba(184,216,248,0.7) 0%,transparent 70%)', filter:'blur(20px)' }} />
-      <div style={{ position:'absolute', bottom:-50, left:-50, width:180, height:180, borderRadius:'50%', background:'radial-gradient(circle,rgba(212,197,249,0.6) 0%,transparent 70%)', filter:'blur(20px)' }} />
+      <div style={{ position:'absolute', top:-60, right:-60, width:200, height:200, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorPpal,0.7)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
+      <div style={{ position:'absolute', bottom:-50, left:-50, width:180, height:180, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.6)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
           <div style={{ fontSize:72, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-2px',
-            background:'linear-gradient(135deg,#4F46E5,#7C3AED)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
             {contenido.dato}
           </div>
         )}
@@ -90,7 +103,7 @@ function TemplateClaroPublicacion({ contenido, negocioNombre }: {
         <div style={{ fontSize:16, color:'#6B7280', lineHeight:1.5, marginBottom:32 }}>
           {contenido.subtitulo}
         </div>
-        <div style={{ display:'inline-block', padding:'12px 28px', background:'linear-gradient(135deg,#4F46E5,#7C3AED)', borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
+        <div style={{ display:'inline-block', padding:'12px 28px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
           {contenido.cta}
         </div>
       </div>
@@ -101,9 +114,11 @@ function TemplateClaroPublicacion({ contenido, negocioNombre }: {
   )
 }
 
-function TemplateDarkHistoria({ contenido, negocioNombre }: {
+function TemplateDarkHistoria({ contenido, negocioNombre, colorPpal, colorSec }: {
   contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
   negocioNombre: string
+  colorPpal: string
+  colorSec: string
 }) {
   return (
     <div style={{
@@ -111,13 +126,13 @@ function TemplateDarkHistoria({ contenido, negocioNombre }: {
       display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
       fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '60px 48px',
     }}>
-      <div style={{ position:'absolute', top:-100, left:-80, width:320, height:320, borderRadius:'50%', background:'radial-gradient(circle,rgba(107,79,216,0.5) 0%,transparent 70%)', filter:'blur(40px)' }} />
-      <div style={{ position:'absolute', bottom:-80, right:-60, width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle,rgba(59,130,246,0.4) 0%,transparent 70%)', filter:'blur(30px)' }} />
-      <div style={{ position:'absolute', top:'30%', right:-60, width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle,rgba(52,211,153,0.3) 0%,transparent 70%)', filter:'blur(25px)' }} />
+      <div style={{ position:'absolute', top:-100, left:-80, width:320, height:320, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.5)} 0%,transparent 70%)`, filter:'blur(40px)' }} />
+      <div style={{ position:'absolute', bottom:-80, right:-60, width:280, height:280, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorPpal,0.4)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
+      <div style={{ position:'absolute', top:'30%', right:-60, width:200, height:200, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.3)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
           <div style={{ fontSize:96, fontWeight:900, color:'#FFFFFF', lineHeight:1, marginBottom:12, letterSpacing:'-3px',
-            background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
             {contenido.dato}
           </div>
         )}
@@ -127,7 +142,7 @@ function TemplateDarkHistoria({ contenido, negocioNombre }: {
         <div style={{ fontSize:20, color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:48 }}>
           {contenido.subtitulo}
         </div>
-        <div style={{ display:'inline-block', padding:'16px 40px', background:'linear-gradient(135deg,#6B4FD8,#4F46E5)', borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
+        <div style={{ display:'inline-block', padding:'16px 40px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
           {contenido.cta}
         </div>
       </div>
@@ -138,9 +153,11 @@ function TemplateDarkHistoria({ contenido, negocioNombre }: {
   )
 }
 
-function TemplateClaroHistoria({ contenido, negocioNombre }: {
+function TemplateClaroHistoria({ contenido, negocioNombre, colorPpal, colorSec }: {
   contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
   negocioNombre: string
+  colorPpal: string
+  colorSec: string
 }) {
   return (
     <div style={{
@@ -148,12 +165,12 @@ function TemplateClaroHistoria({ contenido, negocioNombre }: {
       display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
       fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '60px 48px',
     }}>
-      <div style={{ position:'absolute', top:-80, right:-60, width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle,rgba(184,216,248,0.8) 0%,transparent 70%)', filter:'blur(30px)' }} />
-      <div style={{ position:'absolute', bottom:-60, left:-40, width:240, height:240, borderRadius:'50%', background:'radial-gradient(circle,rgba(212,197,249,0.7) 0%,transparent 70%)', filter:'blur(25px)' }} />
+      <div style={{ position:'absolute', top:-80, right:-60, width:280, height:280, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorPpal,0.8)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
+      <div style={{ position:'absolute', bottom:-60, left:-40, width:240, height:240, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.7)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
           <div style={{ fontSize:96, fontWeight:900, lineHeight:1, marginBottom:12, letterSpacing:'-3px',
-            background:'linear-gradient(135deg,#4F46E5,#7C3AED)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
             {contenido.dato}
           </div>
         )}
@@ -163,7 +180,7 @@ function TemplateClaroHistoria({ contenido, negocioNombre }: {
         <div style={{ fontSize:20, color:'#6B7280', lineHeight:1.6, marginBottom:48 }}>
           {contenido.subtitulo}
         </div>
-        <div style={{ display:'inline-block', padding:'16px 40px', background:'linear-gradient(135deg,#4F46E5,#7C3AED)', borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
+        <div style={{ display:'inline-block', padding:'16px 40px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
           {contenido.cta}
         </div>
       </div>
@@ -182,6 +199,8 @@ export default function MarketingPage() {
   const [negocioNombre, setNegocioNombre] = useState('')
   const [negocioId, setNegocioId]         = useState<string | null>(null)
   const [negServicios, setNegServicios]   = useState<string[]>([])
+  const [colorPpal, setColorPpal]         = useState('#B8D8F8')
+  const [colorSec, setColorSec]           = useState('#D4C5F9')
   const [cargando, setCargando]           = useState(true)
 
   // ── Sección 1: Crear contenido ────────────────────────────────────────────
@@ -229,13 +248,19 @@ export default function MarketingPage() {
       setNegocioNombre(activo.nombre)
       setNegocioId(activo.id)
 
-      const [{ data: svcs }, { data: res }] = await Promise.all([
+      const [{ data: svcs }, { data: res }, { data: colores }] = await Promise.all([
         db.from('servicios').select('nombre').eq('negocio_id', activo.id).eq('activo', true).order('nombre'),
         db.from('resenas').select('id, valoracion, comentario, autor_nombre, created_at, respuesta')
           .eq('negocio_id', activo.id).is('respuesta', null).order('created_at', { ascending: false }).limit(20),
+        db.from('negocios').select('color_principal, color_secundario').eq('id', activo.id).single(),
       ])
       if (svcs) setNegServicios(svcs.map((s: { nombre: string }) => s.nombre))
       if (res)  setResenas(res as Resena[])
+      if (colores) {
+        const c = colores as { color_principal: string | null; color_secundario: string | null }
+        if (c.color_principal)  setColorPpal(c.color_principal)
+        if (c.color_secundario) setColorSec(c.color_secundario)
+      }
       setCargando(false)
     })()
   }, [])
@@ -539,11 +564,11 @@ Devuelve SOLO JSON sin markdown:
         >
           {estilo === 'oscuro'
             ? (formato === 'publicacion'
-              ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
-              : <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} />)
+              ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />
+              : <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />)
             : (formato === 'publicacion'
-              ? <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
-              : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} />)
+              ? <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />
+              : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />)
           }
         </div>
       )}
@@ -667,11 +692,11 @@ Devuelve SOLO JSON sin markdown:
               <div className="mk-preview-img" style={{ transform: formato === 'historia' ? 'scale(0.42)' : 'scale(0.55)', transformOrigin: 'top left', marginBottom: formato === 'historia' ? -220 : -8 }}>
                 {estilo === 'oscuro'
                   ? (formato === 'publicacion'
-                    ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
-                    : <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} />)
+                    ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />
+                    : <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />)
                   : (formato === 'publicacion'
-                    ? <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} />
-                    : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} />)
+                    ? <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />
+                    : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />)
                 }
               </div>
 

@@ -50,6 +50,8 @@ export default function MiNegocio() {
     max_reservas_simultaneas: 1 as number,
     antelacion_minima: 60 as number,
     antelacion_maxima: 43200 as number,
+    color_principal: '#B8D8F8',
+    color_secundario: '#D4C5F9',
   })
 
   const fileRef = useRef<HTMLInputElement>(null)
@@ -90,6 +92,8 @@ export default function MiNegocio() {
           max_reservas_simultaneas: data.max_reservas_simultaneas ?? 1,
           antelacion_minima: data.antelacion_minima ?? 60,
           antelacion_maxima: data.antelacion_maxima ?? 43200,
+          color_principal: data.color_principal || '#B8D8F8',
+          color_secundario: data.color_secundario || '#D4C5F9',
         })
       }
       setCargando(false)
@@ -147,6 +151,8 @@ export default function MiNegocio() {
         max_reservas_simultaneas: form.max_reservas_simultaneas,
         antelacion_minima: form.antelacion_minima,
         antelacion_maxima: form.antelacion_maxima,
+        color_principal: form.color_principal,
+        color_secundario: form.color_secundario,
         ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
       })
       .eq('id', negocioId)
@@ -612,6 +618,60 @@ export default function MiNegocio() {
                     </div>
                   </div>
                   <input ref={logoRef} type="file" accept="image/*" style={{display:'none'}} onChange={subirLogo} />
+                </div>
+
+                {/* PERSONALIZACIÓN DE MARCA */}
+                <div className="section">
+                  <div className="section-title">🎨 Personalización de marca</div>
+                  <p style={{fontSize:'13px', color:'var(--muted)', marginBottom:'20px', lineHeight:1.6}}>
+                    Elige los colores de tu negocio. Aparecerán en tu ficha pública y en los materiales de marketing.
+                  </p>
+                  <div className="grid2" style={{marginBottom:'20px'}}>
+                    <div className="field">
+                      <label>Color principal</label>
+                      <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                        <input
+                          type="color"
+                          value={form.color_principal}
+                          onChange={e => setForm({...form, color_principal: e.target.value})}
+                          style={{width:'48px', height:'42px', padding:'2px 4px', borderRadius:'8px', border:'1.5px solid var(--border)', cursor:'pointer', background:'none'}}
+                        />
+                        <input
+                          type="text"
+                          value={form.color_principal}
+                          onChange={e => setForm({...form, color_principal: e.target.value})}
+                          style={{flex:1}}
+                        />
+                      </div>
+                    </div>
+                    <div className="field">
+                      <label>Color secundario</label>
+                      <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                        <input
+                          type="color"
+                          value={form.color_secundario}
+                          onChange={e => setForm({...form, color_secundario: e.target.value})}
+                          style={{width:'48px', height:'42px', padding:'2px 4px', borderRadius:'8px', border:'1.5px solid var(--border)', cursor:'pointer', background:'none'}}
+                        />
+                        <input
+                          type="text"
+                          value={form.color_secundario}
+                          onChange={e => setForm({...form, color_secundario: e.target.value})}
+                          style={{flex:1}}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{borderRadius:'14px', overflow:'hidden', boxShadow:'0 4px 16px rgba(0,0,0,0.08)'}}>
+                    <div style={{background:`linear-gradient(135deg,${form.color_principal},${form.color_secundario})`, padding:'20px 24px', textAlign:'center'}}>
+                      <div style={{fontSize:'16px', fontWeight:800, color:'white', textShadow:'0 1px 4px rgba(0,0,0,0.2)', marginBottom:'10px'}}>
+                        {form.nombre || 'Tu negocio'}
+                      </div>
+                      <div style={{display:'inline-block', background:'white', color:form.color_principal, padding:'9px 22px', borderRadius:'100px', fontSize:'13px', fontWeight:700}}>
+                        Reservar cita
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* FOTOS */}
