@@ -11,9 +11,6 @@ import { type NegMin } from '../lib/negocioActivo'
 import { setNegocioActivo } from '../lib/negocio-activo'
 import { DashboardShell } from './DashboardShell'
 
-function isoLocal(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-}
 
 const DONUT_COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
 
@@ -163,8 +160,8 @@ export default function Dashboard() {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) { setCargando(false); return }
 
+        // ── Negocio activo ────────────────────────────────────────
         const negocioId = localStorage.getItem('negocio_activo_id')
-
         const { data: negocios } = await supabase
           .from('negocios')
           .select('id, nombre, plan, logo_url, tipo, ciudad, creditos_totales, creditos_usados')
@@ -175,60 +172,49 @@ export default function Dashboard() {
         const todosNegs: NegMin[] = negocios.map((n: { id: string; nombre: string; plan?: string; logo_url?: string; tipo?: string; ciudad?: string }) => ({ ...n, plan: n.plan ?? 'starter' }))
         setTodosNegocios(todosNegs)
 
-        const modoTodos = (!negocioId || negocioId === 'todos') && todosNegs.length > 1
-        const neg = negocioId && negocioId !== 'todos'
+        const neg = (negocioId && negocioId !== 'todos')
           ? (todosNegs.find(n => n.id === negocioId) ?? todosNegs[0])
           : todosNegs[0]
-        setNegocio(modoTodos ? null : neg)
-        const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
+        setNegocio(neg)
+        localStorage.setItem('negocio_activo_id', neg.id)
+        localStorage.setItem('negocio_activo_plan', neg.plan ?? 'starter')
 
-        // Créditos (derivados de la query de negocios)
-        const credNegocios = modoTodos ? negocios : negocios.filter((n: { id: string }) => n.id === neg.id)
-        const totales    = credNegocios.reduce((s: number, n: { creditos_totales?: number }) => s + (n.creditos_totales ?? 100), 0)
-        const usados     = credNegocios.reduce((s: number, n: { creditos_usados?: number })  => s + (n.creditos_usados  ?? 0),   0)
+        // Créditos
+        const negData = negocios.find((n: { id: string }) => n.id === neg.id) ?? negocios[0]
+        const totales    = negData?.creditos_totales ?? 100
+        const usados     = negData?.creditos_usados  ?? 0
         const disponibles = Math.max(0, totales - usados)
         const pct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
         setCreditos({ totales, usados, disponibles, pct })
-        const planRef = negocios.find((n: { id: string }) => n.id === neg.id) ?? negocios[0]
-        setPlanActual(planRef?.plan ?? 'starter')
+        setPlanActual(negData?.plan ?? 'starter')
 
-        // Todas las reservas (últimos 120 días) + reseñas — en paralelo
-        const hace120 = new Date(); hace120.setDate(hace120.getDate() - 120)
-        const hace120ISO = isoLocal(hace120)
-        const [{ data: reservas }, { data: resenasData }] = await Promise.all([
-          supabase
-            .from('reservas')
-            .select('id, negocio_id, fecha, hora, estado, cliente_nombre, cliente_telefono, precio_total, servicios(nombre, precio), trabajadores(nombre)')
-            .in('negocio_id', ids)
-            .gte('fecha', hace120ISO)
-            .order('fecha', { ascending: false }),
-          supabase.from('resenas').select('valoracion').in('negocio_id', ids),
-        ])
+        // ── Todas las reservas (sin límite de fecha) ─────────────
+        const { data: reservas } = await supabase
+          .from('reservas')
+          .select('*, servicios(nombre, precio), trabajadores(nombre)')
+          .eq('negocio_id', neg.id)
+          .order('fecha', { ascending: false })
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allRes: any[] = reservas ?? []
-        const now = new Date()
-        const hoyISO          = isoLocal(now)
-        const inicioMes       = new Date(now.getFullYear(), now.getMonth(), 1)
-        const inicioMesISO    = isoLocal(inicioMes)
-        const inicioMesAnt    = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-        const inicioMesAntISO = isoLocal(inicioMesAnt)
-        const finMesAnt       = new Date(now.getFullYear(), now.getMonth(), 0)
-        const finMesAntISO    = isoLocal(finMesAnt)
-        const hace6           = new Date(now); hace6.setDate(now.getDate() - 6)
-        const hace6ISO        = isoLocal(hace6)
-        const inicioSem       = new Date(now); inicioSem.setDate(now.getDate() - ((now.getDay() + 6) % 7))
-        const inicioSemISO    = isoLocal(inicioSem)
-        const inicioSemAnt    = new Date(inicioSem); inicioSemAnt.setDate(inicioSem.getDate() - 7)
-        const inicioSemAntISO = isoLocal(inicioSemAnt)
 
+        // ── Fechas de referencia (UTC, igual que la BD) ───────────
+        const hoy         = new Date()
+        const hoyISO      = hoy.toISOString().split('T')[0]
+        const d = (offsetDays: number) => new Date(Date.now() + offsetDays * 86400000).toISOString().split('T')[0]
+        const inicioMesISO    = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
+        const inicioMesAntISO = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().split('T')[0]
+        const finMesAntISO    = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split('T')[0]
+        const diaSem          = (hoy.getDay() + 6) % 7
+        const inicioSemISO    = d(-diaSem)
+        const inicioSemAntISO = d(-diaSem - 7)
+
+        // ── Agenda y KPIs del día ─────────────────────────────────
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const hoyData: any[]      = allRes.filter((r: any) => r.fecha === hoyISO).sort((a: any, b: any) => (a.hora ?? '').localeCompare(b.hora ?? ''))
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const resMesActual: any[] = allRes.filter((r: any) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const resMesAnt: any[]    = allRes.filter((r: any) => r.fecha >= inicioMesAntISO && r.fecha <= finMesAntISO)
-        // Agenda + KPIs del día
+        const hoyData: any[] = allRes
+          .filter((r: any) => r.fecha === hoyISO)
+          .sort((a: any, b: any) => (a.hora ?? '').localeCompare(b.hora ?? ''))
+
         setAgenda(hoyData as CitaHoy[])
         setReservasHoy(hoyData.length)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -240,7 +226,11 @@ export default function Dashboard() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setIngresosHoy(hoyData.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.precio_total || r.servicios?.precio || 0), 0))
 
-        // KPIs mes
+        // ── KPIs mensuales ────────────────────────────────────────
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const resMesActual: any[] = allRes.filter((r: any) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const resMesAnt: any[]    = allRes.filter((r: any) => r.fecha >= inicioMesAntISO && r.fecha <= finMesAntISO)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setIngresosMes(resMesActual.filter((r: any) => r.estado === 'completada').reduce((s: number, r: any) => s + (r.precio_total || r.servicios?.precio || 0), 0))
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -251,89 +241,35 @@ export default function Dashboard() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setTasaExito(totalMes > 0 ? Math.round(resMesActual.filter((r: any) => r.estado === 'completada').length / totalMes * 100) : 0)
 
-        // Clientes semana
+        // ── Clientes únicos semana ────────────────────────────────
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const resSemActual = allRes.filter((r: any) => r.fecha >= inicioSemISO && r.fecha <= hoyISO)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const resSemAntD   = allRes.filter((r: any) => r.fecha >= inicioSemAntISO && r.fecha < inicioSemISO)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setClientesSem(new Set(resSemActual.map((r: any) => r.cliente_telefono).filter(Boolean)).size)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setClientesSemAnt(new Set(resSemAntD.map((r: any) => r.cliente_telefono).filter(Boolean)).size)
+        const telField = (r: any) => r.telefono_cliente ?? r.cliente_telefono ?? ''
+        setClientesSem(new Set(resSemActual.map(telField).filter(Boolean)).size)
+        setClientesSemAnt(new Set(resSemAntD.map(telField).filter(Boolean)).size)
 
-        // Reservas en riesgo hoy
-        const statsPorTel: Record<string, { total: number; cancelaciones: number }> = {}
-        for (const r of allRes) {
-          const tel: string = r.cliente_telefono
-          if (!tel) continue
-          if (!statsPorTel[tel]) statsPorTel[tel] = { total: 0, cancelaciones: 0 }
-          if (r.estado === 'completada') statsPorTel[tel].total++
-          else if (r.estado === 'cancelada') statsPorTel[tel].cancelaciones++
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const hoyPending = hoyData.filter((r: any) => r.estado === 'confirmada' || r.estado === 'pendiente')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const enRiesgo = hoyPending.filter((r: any) => {
-          const tel: string = r.cliente_telefono
-          if (!tel) return false
-          const s = statsPorTel[tel]
-          if (!s) return false
-          const totalHist = s.total + s.cancelaciones
-          if (totalHist <= 3) return false
-          return s.total > 0 && (s.cancelaciones / s.total * 100) > 50
-        })
-        setReservasEnRiesgo(enRiesgo.length)
-
-        // Reseñas
-        if (resenasData && resenasData.length > 0) {
-          setValoracion(Math.round(resenasData.reduce((s: number, r: { valoracion: number }) => s + (r.valoracion || 0), 0) / resenasData.length * 10) / 10)
-        }
-        setTotalResenas(resenasData?.length ?? 0)
-
-        // Per-business stats (modo todos)
-        if (modoTodos) {
-          const bs: BizStat[] = todosNegs.map(neg => {
-            const negReservas = allRes.filter((r: { negocio_id: string }) => r.negocio_id === neg.id)
-            const negHoy      = negReservas.filter((r: { fecha: string }) => r.fecha === hoyISO)
-            const negMes      = negReservas.filter((r: { fecha: string; estado: string }) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
-            const negIngMes   = negMes.filter((r: { estado: string }) => r.estado === 'completada').reduce((s: number, r: { precio_total?: number; servicios?: { precio?: number } }) => s + (r.precio_total || r.servicios?.precio || 0), 0)
-            const negData     = negocios?.find((n: { id: string }) => n.id === neg.id)
-            const tot         = negData?.creditos_totales ?? 100
-            const used        = negData?.creditos_usados  ?? 0
-            return {
-              id: neg.id, nombre: neg.nombre, plan: neg.plan ?? 'starter',
-              reservasHoy: negHoy.length,
-              ingresosMes: negIngMes,
-              reservasMes: negMes.length,
-              creditosDisp: Math.max(0, tot - used),
-              creditosTot: tot,
-            }
-          })
-          setBizStats(bs)
-        }
-
-        // BarChart 28 días
-        const hace27 = new Date(now); hace27.setDate(now.getDate() - 27)
-        const hace27ISO = isoLocal(hace27)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const res28 = allRes.filter((r: any) => r.fecha >= hace27ISO && r.fecha <= hoyISO)
+        // ── BarChart: últimos 28 días ─────────────────────────────
         const dias28: DiaBar[] = []
-        for (let i = 0; i < 28; i++) {
-          const d = new Date(hace27); d.setDate(hace27.getDate() + i)
-          const dISO = isoLocal(d)
+        for (let i = 27; i >= 0; i--) {
+          const fecha   = new Date(Date.now() - i * 86400000)
+          const fechaISO = fecha.toISOString().split('T')[0]
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          dias28.push({ dia: `${d.getDate()}/${d.getMonth()+1}`, reservas: res28.filter((r: any) => r.fecha === dISO).length, isHoy: dISO === hoyISO })
+          const count   = allRes.filter((r: any) => r.fecha === fechaISO).length
+          dias28.push({ dia: `${fecha.getUTCDate()}/${fecha.getUTCMonth() + 1}`, reservas: count, isHoy: fechaISO === hoyISO })
         }
         setBarras7(dias28)
 
-        // AreaChart 4 semanas
+        // ── AreaChart: ingresos 4 semanas vs mes anterior ─────────
         const area: SemArea[] = []
         for (let w = 3; w >= 0; w--) {
-          const iniS = new Date(now); iniS.setDate(now.getDate() - ((now.getDay() + 6) % 7) - w * 7)
+          const iniS = new Date(hoy); iniS.setDate(hoy.getDate() - diaSem - w * 7)
           const finS = new Date(iniS); finS.setDate(iniS.getDate() + 6)
           const iniA = new Date(iniS); iniA.setMonth(iniA.getMonth() - 1)
           const finA = new Date(finS); finA.setMonth(finA.getMonth() - 1)
-          const [iniSISO, finSISO, iniAISO, finAISO] = [isoLocal(iniS), isoLocal(finS), isoLocal(iniA), isoLocal(finA)]
+          const [iniSISO, finSISO, iniAISO, finAISO] = [iniS, finS, iniA, finA].map(x => x.toISOString().split('T')[0])
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const ingS = allRes.filter((r: any) => r.fecha >= iniSISO && r.fecha <= finSISO && r.estado === 'completada').reduce((s: number, r: any) => s + (r.precio_total || r.servicios?.precio || 0), 0)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -342,16 +278,16 @@ export default function Dashboard() {
         }
         setArea4sem(area)
 
-        // Donut servicios este mes
+        // ── Donut: top servicios del mes ──────────────────────────
         const srvMap: Record<string, number> = {}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         resMesActual.forEach((r: any) => { const n = r.servicios?.nombre; if (n) srvMap[n] = (srvMap[n] || 0) + 1 })
         setDonut(Object.entries(srvMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value })))
 
-        // Métricas avanzadas
+        // ── Métricas avanzadas ────────────────────────────────────
         const horaMap: Record<number, number> = {}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        res28.forEach((r: any) => { const h = parseInt(r.hora?.slice(0, 2) || '0', 10); horaMap[h] = (horaMap[h] || 0) + 1 })
+        allRes.forEach((r: any) => { const h = parseInt(r.hora?.slice(0, 2) || '0', 10); horaMap[h] = (horaMap[h] || 0) + 1 })
         const hPunta = Object.entries(horaMap).sort((a, b) => Number(b[1]) - Number(a[1]))[0]
         if (hPunta) setHoraPunta(`${hPunta[0]}:00 h`)
         const srvTop = Object.entries(srvMap).sort((a, b) => b[1] - a[1])[0]
@@ -362,12 +298,31 @@ export default function Dashboard() {
         const trbTop = Object.entries(trbMap).sort((a, b) => b[1] - a[1])[0]
         if (trbTop) setTrabajadorTop(trbTop[0])
 
-        // Clientes VIP en riesgo (sin visita +30d)
-        const hace30ISO = isoLocal(new Date(now.getTime() - 30 * 86400000))
+        // ── Reservas en riesgo hoy ────────────────────────────────
+        const statsPorTel: Record<string, { total: number; cancelaciones: number }> = {}
+        for (const r of allRes) {
+          const tel = telField(r)
+          if (!tel) continue
+          if (!statsPorTel[tel]) statsPorTel[tel] = { total: 0, cancelaciones: 0 }
+          if (r.estado === 'completada') statsPorTel[tel].total++
+          else if (r.estado === 'cancelada') statsPorTel[tel].cancelaciones++
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const enRiesgo = hoyData.filter((r: any) => r.estado === 'confirmada' || r.estado === 'pendiente').filter((r: any) => {
+          const tel = telField(r)
+          if (!tel) return false
+          const s = statsPorTel[tel]
+          if (!s || s.total + s.cancelaciones <= 3) return false
+          return s.total > 0 && (s.cancelaciones / s.total * 100) > 50
+        })
+        setReservasEnRiesgo(enRiesgo.length)
+
+        // ── Clientes VIP en riesgo (+30d sin visita) ──────────────
+        const hace30ISO = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
         const statRiesgo: Record<string, { visitas: number; ultima: string }> = {}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         for (const r of allRes.filter((x: any) => x.estado !== 'cancelada')) {
-          const tel = r.cliente_telefono
+          const tel = telField(r)
           if (!tel) continue
           if (!statRiesgo[tel]) statRiesgo[tel] = { visitas: 0, ultima: '' }
           statRiesgo[tel].visitas++
@@ -375,30 +330,40 @@ export default function Dashboard() {
         }
         setClientesEnRiesgo(Object.values(statRiesgo).filter(c => c.visitas >= 6 && c.ultima < hace30ISO).length)
 
-        // Checklist configuración
-        if (!modoTodos) {
-          try {
-            const ya = localStorage.getItem(`checklist_ok_${neg.id}`)
-            if (ya !== 'true') {
-              const [{ data: negLogo }, { count: cSrv }, { count: cHor }, { count: cTrb }] = await Promise.all([
-                supabase.from('negocios').select('logo_url').eq('id', neg.id).single(),
-                supabase.from('servicios').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('activo', true),
-                supabase.from('horarios').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('abierto', true),
-                supabase.from('trabajadores').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('activo', true),
-              ])
-              const cl: ChecklistT = {
-                logo: !!negLogo?.logo_url,
-                servicios: (cSrv ?? 0) > 0,
-                horarios: (cHor ?? 0) > 0,
-                trabajadores: (cTrb ?? 0) > 0,
-                enlaceCompartido: localStorage.getItem(`enlace_compartido_${neg.id}`) === 'true',
-              }
-              const done = Object.values(cl).filter(Boolean).length
-              if (done >= 5) localStorage.setItem(`checklist_ok_${neg.id}`, 'true')
-              else setChecklist(cl)
+        // ── Reseñas (query separada para no bloquear lo anterior) ─
+        try {
+          const { data: resenasData } = await supabase.from('resenas').select('valoracion, puntuacion').eq('negocio_id', neg.id)
+          if (resenasData?.length) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const media = resenasData.reduce((s: number, r: any) => s + (r.valoracion ?? r.puntuacion ?? 0), 0) / resenasData.length
+            setValoracion(Math.round(media * 10) / 10)
+          }
+          setTotalResenas(resenasData?.length ?? 0)
+        } catch { /* ignorar si falla resenas */ }
+
+        // ── Checklist configuración ───────────────────────────────
+        try {
+          const ya = localStorage.getItem(`checklist_ok_${neg.id}`)
+          if (ya !== 'true') {
+            const [{ data: negLogo }, { count: cSrv }, { count: cHor }, { count: cTrb }] = await Promise.all([
+              supabase.from('negocios').select('logo_url').eq('id', neg.id).single(),
+              supabase.from('servicios').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('activo', true),
+              supabase.from('horarios').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('abierto', true),
+              supabase.from('trabajadores').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('activo', true),
+            ])
+            const cl: ChecklistT = {
+              logo: !!negLogo?.logo_url,
+              servicios: (cSrv ?? 0) > 0,
+              horarios: (cHor ?? 0) > 0,
+              trabajadores: (cTrb ?? 0) > 0,
+              enlaceCompartido: localStorage.getItem(`enlace_compartido_${neg.id}`) === 'true',
             }
-          } catch { /* ignorar */ }
-        }
+            const done = Object.values(cl).filter(Boolean).length
+            if (done >= 5) localStorage.setItem(`checklist_ok_${neg.id}`, 'true')
+            else setChecklist(cl)
+          }
+        } catch { /* ignorar */ }
+
       } catch (e) {
         console.error('[dashboard] error cargando datos:', e)
       } finally {
