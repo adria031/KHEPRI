@@ -7,6 +7,27 @@ import { DashboardShell } from '../DashboardShell'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type EstiloType = 'marca' | 'oscuro' | 'claro'
+type FuenteType = 'moderna' | 'elegante' | 'bold'
+
+const FONT_MAP: Record<FuenteType, string> = {
+  moderna:  "'Plus Jakarta Sans', sans-serif",
+  elegante: "Georgia, 'Times New Roman', serif",
+  bold:     "'Syne', 'Arial Black', sans-serif",
+}
+
+type TemplateProps = {
+  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
+  negocioNombre: string
+  colorPpal: string
+  colorSec: string
+  mostrarLogo: boolean
+  mostrarUrl: boolean
+  logoUrl: string
+  fuente: FuenteType
+  estilo: EstiloType
+}
+
 type Resena = {
   id: string
   valoracion: number
@@ -34,159 +55,117 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-function TemplateDarkPublicacion({ contenido, negocioNombre, colorPpal, colorSec }: {
-  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
-  negocioNombre: string
-  colorPpal: string
-  colorSec: string
-}) {
+function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo }: TemplateProps) {
+  const isDark  = estilo !== 'claro'
+  const isMarca = estilo === 'marca'
+  const bg         = isMarca ? `linear-gradient(135deg,${colorPpal},${colorSec})` : isDark ? '#080810' : '#F7F9FC'
+  const textColor  = isDark ? '#FFFFFF' : '#111827'
+  const subColor   = isDark ? 'rgba(255,255,255,0.65)' : '#6B7280'
+  const footerColor = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
+  const fontTitulo = FONT_MAP[fuente]
+  const ctaBg      = isMarca ? 'rgba(255,255,255,0.22)' : `linear-gradient(135deg,${colorPpal},${colorSec})`
+  const ctaBorder  = isMarca ? '1.5px solid rgba(255,255,255,0.35)' : 'none'
   return (
-    <div style={{
-      width: 540, height: 540, background: '#080810', position: 'relative', overflow: 'hidden',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-      fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '48px',
-    }}>
+    <div style={{ width:540, height:540, background:bg, position:'relative', overflow:'hidden',
+      display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
+      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'48px' }}>
       {/* Blobs */}
-      <div style={{ position:'absolute', top:-80, left:-80, width:280, height:280, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.45)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
-      <div style={{ position:'absolute', bottom:-60, right:-60, width:240, height:240, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorPpal,0.35)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
-      <div style={{ position:'absolute', top:'40%', right:-40, width:160, height:160, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.25)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
+      <div style={{ position:'absolute', top:-80, left:-80, width:280, height:280, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.15)':hexToRgba(colorSec,isDark?0.45:0.7)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
+      <div style={{ position:'absolute', bottom:-60, right:-60, width:240, height:240, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.1)':hexToRgba(colorPpal,isDark?0.35:0.6)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
+      <div style={{ position:'absolute', top:'40%', right:-40, width:160, height:160, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.12)':hexToRgba(colorSec,isDark?0.25:0.4)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
+      {/* Logo */}
+      {mostrarLogo && logoUrl && (
+        <div style={{ position:'absolute', top:20, left:20, zIndex:10 }}>
+          <img src={logoUrl} alt="" crossOrigin="anonymous"
+            style={{ width:48, height:48, borderRadius:10, objectFit:'cover', border:'2px solid rgba(255,255,255,0.25)', display:'block' }} />
+        </div>
+      )}
       {/* Content */}
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
-          <div style={{ fontSize:72, fontWeight:900, color:'#FFFFFF', lineHeight:1, marginBottom:8, letterSpacing:'-2px',
-            background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+          <div style={{
+            fontSize:72, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-2px',
+            ...(isMarca
+              ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
+              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' })
+          }}>
             {contenido.dato}
           </div>
         )}
-        <div style={{ fontSize: contenido.dato ? 28 : 36, fontWeight:800, color:'#FFFFFF', lineHeight:1.2, marginBottom:12, letterSpacing:'-0.5px' }}>
+        <div style={{ fontSize:contenido.dato?28:36, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:12, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>
           {contenido.titulo}
         </div>
-        <div style={{ fontSize:16, color:'rgba(255,255,255,0.65)', lineHeight:1.5, marginBottom:32 }}>
+        <div style={{ fontSize:16, color:subColor, lineHeight:1.5, marginBottom:32 }}>
           {contenido.subtitulo}
         </div>
-        <div style={{ display:'inline-block', padding:'12px 28px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
+        <div style={{ display:'inline-block', padding:'12px 28px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
           {contenido.cta}
         </div>
       </div>
-      {/* Negocio name */}
-      <div style={{ position:'absolute', bottom:20, left:0, right:0, textAlign:'center', fontSize:12, color:'rgba(255,255,255,0.35)', letterSpacing:1, textTransform:'uppercase' }}>
-        {negocioNombre}
-      </div>
+      {mostrarUrl && (
+        <div style={{ position:'absolute', bottom:20, left:0, right:0, textAlign:'center', fontSize:12, color:footerColor, letterSpacing:1, textTransform:'uppercase' }}>
+          {negocioNombre}
+        </div>
+      )}
     </div>
   )
 }
 
-function TemplateClaroPublicacion({ contenido, negocioNombre, colorPpal, colorSec }: {
-  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
-  negocioNombre: string
-  colorPpal: string
-  colorSec: string
-}) {
+function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo }: TemplateProps) {
+  const isDark  = estilo !== 'claro'
+  const isMarca = estilo === 'marca'
+  const bg         = isMarca ? `linear-gradient(135deg,${colorPpal},${colorSec})` : isDark ? '#080810' : '#F7F9FC'
+  const textColor  = isDark ? '#FFFFFF' : '#111827'
+  const subColor   = isDark ? 'rgba(255,255,255,0.65)' : '#6B7280'
+  const footerColor = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
+  const fontTitulo = FONT_MAP[fuente]
+  const ctaBg      = isMarca ? 'rgba(255,255,255,0.22)' : `linear-gradient(135deg,${colorPpal},${colorSec})`
+  const ctaBorder  = isMarca ? '1.5px solid rgba(255,255,255,0.35)' : 'none'
   return (
-    <div style={{
-      width: 540, height: 540, background: '#F7F9FC', position: 'relative', overflow: 'hidden',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-      fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '48px',
-    }}>
-      <div style={{ position:'absolute', top:-60, right:-60, width:200, height:200, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorPpal,0.7)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
-      <div style={{ position:'absolute', bottom:-50, left:-50, width:180, height:180, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.6)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
+    <div style={{ width:540, height:960, background:bg, position:'relative', overflow:'hidden',
+      display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
+      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'60px 48px' }}>
+      <div style={{ position:'absolute', top:-100, left:-80, width:320, height:320, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.15)':hexToRgba(colorSec,isDark?0.5:0.8)} 0%,transparent 70%)`, filter:'blur(40px)' }} />
+      <div style={{ position:'absolute', bottom:-80, right:-60, width:280, height:280, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.1)':hexToRgba(colorPpal,isDark?0.4:0.7)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
+      <div style={{ position:'absolute', top:'30%', right:-60, width:200, height:200, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.12)':hexToRgba(colorSec,isDark?0.3:0.6)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
+      {mostrarLogo && logoUrl && (
+        <div style={{ position:'absolute', top:32, left:32, zIndex:10 }}>
+          <img src={logoUrl} alt="" crossOrigin="anonymous"
+            style={{ width:56, height:56, borderRadius:12, objectFit:'cover', border:'2px solid rgba(255,255,255,0.25)', display:'block' }} />
+        </div>
+      )}
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
-          <div style={{ fontSize:72, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-2px',
-            background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+          <div style={{
+            fontSize:96, fontWeight:900, lineHeight:1, marginBottom:12, letterSpacing:'-3px',
+            ...(isMarca
+              ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
+              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' })
+          }}>
             {contenido.dato}
           </div>
         )}
-        <div style={{ fontSize: contenido.dato ? 28 : 36, fontWeight:800, color:'#111827', lineHeight:1.2, marginBottom:12, letterSpacing:'-0.5px' }}>
+        <div style={{ fontSize:contenido.dato?36:48, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:16, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>
           {contenido.titulo}
         </div>
-        <div style={{ fontSize:16, color:'#6B7280', lineHeight:1.5, marginBottom:32 }}>
+        <div style={{ fontSize:20, color:subColor, lineHeight:1.6, marginBottom:48 }}>
           {contenido.subtitulo}
         </div>
-        <div style={{ display:'inline-block', padding:'12px 28px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
+        <div style={{ display:'inline-block', padding:'16px 40px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
           {contenido.cta}
         </div>
       </div>
-      <div style={{ position:'absolute', bottom:20, left:0, right:0, textAlign:'center', fontSize:12, color:'#9CA3AF', letterSpacing:1, textTransform:'uppercase' }}>
-        {negocioNombre}
-      </div>
-    </div>
-  )
-}
-
-function TemplateDarkHistoria({ contenido, negocioNombre, colorPpal, colorSec }: {
-  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
-  negocioNombre: string
-  colorPpal: string
-  colorSec: string
-}) {
-  return (
-    <div style={{
-      width: 540, height: 960, background: '#080810', position: 'relative', overflow: 'hidden',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-      fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '60px 48px',
-    }}>
-      <div style={{ position:'absolute', top:-100, left:-80, width:320, height:320, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.5)} 0%,transparent 70%)`, filter:'blur(40px)' }} />
-      <div style={{ position:'absolute', bottom:-80, right:-60, width:280, height:280, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorPpal,0.4)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
-      <div style={{ position:'absolute', top:'30%', right:-60, width:200, height:200, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.3)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
-      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
-        {contenido.dato && (
-          <div style={{ fontSize:96, fontWeight:900, color:'#FFFFFF', lineHeight:1, marginBottom:12, letterSpacing:'-3px',
-            background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-            {contenido.dato}
-          </div>
-        )}
-        <div style={{ fontSize: contenido.dato ? 36 : 48, fontWeight:800, color:'#FFFFFF', lineHeight:1.2, marginBottom:16, letterSpacing:'-0.5px' }}>
-          {contenido.titulo}
+      {mostrarUrl && (
+        <div style={{ position:'absolute', bottom:32, left:0, right:0, textAlign:'center', fontSize:14, color:footerColor, letterSpacing:1.5, textTransform:'uppercase' }}>
+          {negocioNombre}
         </div>
-        <div style={{ fontSize:20, color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:48 }}>
-          {contenido.subtitulo}
-        </div>
-        <div style={{ display:'inline-block', padding:'16px 40px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
-          {contenido.cta}
-        </div>
-      </div>
-      <div style={{ position:'absolute', bottom:32, left:0, right:0, textAlign:'center', fontSize:14, color:'rgba(255,255,255,0.35)', letterSpacing:1.5, textTransform:'uppercase' }}>
-        {negocioNombre}
-      </div>
-    </div>
-  )
-}
-
-function TemplateClaroHistoria({ contenido, negocioNombre, colorPpal, colorSec }: {
-  contenido: { titulo: string; subtitulo: string; dato: string | null; cta: string }
-  negocioNombre: string
-  colorPpal: string
-  colorSec: string
-}) {
-  return (
-    <div style={{
-      width: 540, height: 960, background: '#F7F9FC', position: 'relative', overflow: 'hidden',
-      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-      fontFamily: "'Plus Jakarta Sans', sans-serif", padding: '60px 48px',
-    }}>
-      <div style={{ position:'absolute', top:-80, right:-60, width:280, height:280, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorPpal,0.8)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
-      <div style={{ position:'absolute', bottom:-60, left:-40, width:240, height:240, borderRadius:'50%', background:`radial-gradient(circle,${hexToRgba(colorSec,0.7)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
-      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
-        {contenido.dato && (
-          <div style={{ fontSize:96, fontWeight:900, lineHeight:1, marginBottom:12, letterSpacing:'-3px',
-            background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-            {contenido.dato}
-          </div>
-        )}
-        <div style={{ fontSize: contenido.dato ? 36 : 48, fontWeight:800, color:'#111827', lineHeight:1.2, marginBottom:16, letterSpacing:'-0.5px' }}>
-          {contenido.titulo}
-        </div>
-        <div style={{ fontSize:20, color:'#6B7280', lineHeight:1.6, marginBottom:48 }}>
-          {contenido.subtitulo}
-        </div>
-        <div style={{ display:'inline-block', padding:'16px 40px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
-          {contenido.cta}
-        </div>
-      </div>
-      <div style={{ position:'absolute', bottom:32, left:0, right:0, textAlign:'center', fontSize:14, color:'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase' }}>
-        {negocioNombre}
-      </div>
+      )}
     </div>
   )
 }
@@ -201,7 +180,14 @@ export default function MarketingPage() {
   const [negServicios, setNegServicios]   = useState<string[]>([])
   const [colorPpal, setColorPpal]         = useState('#B8D8F8')
   const [colorSec, setColorSec]           = useState('#D4C5F9')
+  const [logoUrl, setLogoUrl]             = useState('')
   const [cargando, setCargando]           = useState(true)
+
+  // ── Personalización de imagen ─────────────────────────────────────────────
+  const [prefsReady, setPrefsReady]   = useState(false)
+  const [mostrarLogo, setMostrarLogo] = useState(true)
+  const [mostrarUrl, setMostrarUrl]   = useState(true)
+  const [fuente, setFuente]           = useState<FuenteType>('moderna')
 
   // ── Sección 1: Crear contenido ────────────────────────────────────────────
   const [formato, setFormato]         = useState<'publicacion' | 'historia'>('publicacion')
@@ -209,7 +195,7 @@ export default function MarketingPage() {
   const [tipoContenido, setTipoContenido] = useState<'promocion' | 'nuevo_servicio' | 'consejo' | 'oferta' | 'presentacion'>('promocion')
   const [tono, setTono]               = useState<'profesional' | 'cercano' | 'divertido'>('cercano')
   const [servicio, setServicio]       = useState('')
-  const [estilo, setEstilo]           = useState<'oscuro' | 'claro'>('oscuro')
+  const [estilo, setEstilo]           = useState<EstiloType>('oscuro')
   const [imgContenido, setImgContenido] = useState<{
     titulo: string; subtitulo: string; dato: string | null; cta: string
     descripcion?: string; hashtags?: string[]
@@ -236,6 +222,24 @@ export default function MarketingPage() {
 
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
+  // ─── Load localStorage prefs ─────────────────────────────────────────────
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('mk-prefs') || '{}')
+      if (saved.mostrarLogo !== undefined) setMostrarLogo(saved.mostrarLogo)
+      if (saved.mostrarUrl  !== undefined) setMostrarUrl(saved.mostrarUrl)
+      if (['marca','oscuro','claro'].includes(saved.estilo)) setEstilo(saved.estilo as EstiloType)
+      if (['moderna','elegante','bold'].includes(saved.fuente)) setFuente(saved.fuente as FuenteType)
+    } catch {}
+    setPrefsReady(true)
+  }, [])
+
+  // ─── Save localStorage prefs (guarded) ───────────────────────────────────
+  useEffect(() => {
+    if (!prefsReady) return
+    localStorage.setItem('mk-prefs', JSON.stringify({ mostrarLogo, mostrarUrl, estilo, fuente }))
+  }, [prefsReady, mostrarLogo, mostrarUrl, estilo, fuente])
+
   // ─── Init ────────────────────────────────────────────────────────────────
   useEffect(() => {
     ;(async () => {
@@ -248,18 +252,19 @@ export default function MarketingPage() {
       setNegocioNombre(activo.nombre)
       setNegocioId(activo.id)
 
-      const [{ data: svcs }, { data: res }, { data: colores }] = await Promise.all([
+      const [{ data: svcs }, { data: res }, { data: branding }] = await Promise.all([
         db.from('servicios').select('nombre').eq('negocio_id', activo.id).eq('activo', true).order('nombre'),
         db.from('resenas').select('id, valoracion, comentario, autor_nombre, created_at, respuesta')
           .eq('negocio_id', activo.id).is('respuesta', null).order('created_at', { ascending: false }).limit(20),
-        db.from('negocios').select('color_principal, color_secundario').eq('id', activo.id).single(),
+        db.from('negocios').select('color_principal, color_secundario, logo_url').eq('id', activo.id).single(),
       ])
       if (svcs) setNegServicios(svcs.map((s: { nombre: string }) => s.nombre))
       if (res)  setResenas(res as Resena[])
-      if (colores) {
-        const c = colores as { color_principal: string | null; color_secundario: string | null }
-        if (c.color_principal)  setColorPpal(c.color_principal)
-        if (c.color_secundario) setColorSec(c.color_secundario)
+      if (branding) {
+        const b = branding as { color_principal: string | null; color_secundario: string | null; logo_url: string | null }
+        if (b.color_principal)  setColorPpal(b.color_principal)
+        if (b.color_secundario) setColorSec(b.color_secundario)
+        if (b.logo_url) setLogoUrl(b.logo_url)
       }
       setCargando(false)
     })()
@@ -428,6 +433,26 @@ Devuelve SOLO JSON sin markdown:
     setGenerandoCal(false)
   }
 
+  // ─── Shared template props ────────────────────────────────────────────────
+  const tplProps = (c: NonNullable<typeof imgContenido>) => ({
+    contenido: c, negocioNombre, colorPpal, colorSec,
+    mostrarLogo, mostrarUrl, logoUrl, fuente, estilo,
+  })
+
+  // ─── Quick-adjustments pill ───────────────────────────────────────────────
+  function PillBtn({ active, colorOverride, onClick, children }: {
+    active: boolean; colorOverride?: React.CSSProperties; onClick: () => void; children: React.ReactNode
+  }) {
+    const base: React.CSSProperties = { padding:'5px 12px', borderRadius:100, border:'1.5px solid', fontSize:12,
+      fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all .15s' }
+    const inactive: React.CSSProperties = { background:'white', color:'#6B7280', borderColor:'#E5E7EB' }
+    return (
+      <button onClick={onClick} style={{ ...base, ...(active ? (colorOverride ?? { background:'#4F46E5', color:'white', borderColor:'#4F46E5' }) : inactive) }}>
+        {children}
+      </button>
+    )
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
@@ -470,10 +495,8 @@ Devuelve SOLO JSON sin markdown:
 
         /* ── Estilo toggle ── */
         .mk-estilo-row { display:flex; gap:8px; }
-        .mk-estilo-btn { flex:1; padding:9px; border-radius:10px; border:1.5px solid #E5E7EB; background:white; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; text-align:center; }
-        .mk-estilo-btn.selected-dark { background:#080810; color:white; border-color:#080810; }
-        .mk-estilo-btn.selected-light { background:#F7F9FC; color:#111827; border-color:#4F46E5; }
-        .mk-estilo-btn:not([class*=selected]):hover { border-color:#C7D2FE; }
+        .mk-estilo-btn { flex:1; padding:9px; border-radius:10px; border:1.5px solid #E5E7EB; background:white; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; text-align:center; color:#374151; }
+        .mk-estilo-btn:hover { border-color:#C7D2FE; }
 
         /* ── Generate button ── */
         .mk-gen-btn { width:100%; padding:14px; border-radius:14px; border:none; background:linear-gradient(135deg,#4F46E5,#7C3AED); color:white; font-size:15px; font-weight:800; cursor:pointer; font-family:inherit; transition:opacity .15s; display:flex; align-items:center; justify-content:center; gap:10px; }
@@ -549,27 +572,13 @@ Devuelve SOLO JSON sin markdown:
         }
       `}</style>
 
-      {/* Off-screen render target for html2canvas — must NOT be display:none */}
+      {/* Off-screen render target for html2canvas */}
       {imgContenido && (
-        <div
-          id="render-post"
-          style={{
-            position: 'fixed',
-            left: '-9999px',
-            top: '0px',
-            width: formato === 'publicacion' ? '540px' : '540px',
-            height: formato === 'publicacion' ? '540px' : '960px',
-            zIndex: -1,
-          }}
-        >
-          {estilo === 'oscuro'
-            ? (formato === 'publicacion'
-              ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />
-              : <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />)
-            : (formato === 'publicacion'
-              ? <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />
-              : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />)
-          }
+        <div id="render-post" style={{ position:'fixed', left:'-9999px', top:'0px',
+          width:'540px', height: formato === 'publicacion' ? '540px' : '960px', zIndex:-1 }}>
+          {formato === 'publicacion'
+            ? <TemplatePublicacion {...tplProps(imgContenido)} />
+            : <TemplateHistoria   {...tplProps(imgContenido)} />}
         </div>
       )}
 
@@ -580,7 +589,7 @@ Devuelve SOLO JSON sin markdown:
         ════════════════════════════════════════════════ */}
         <div className="mk-section">
           <div className="mk-section-head">
-            <div className="mk-section-icon" style={{ background: 'linear-gradient(135deg,#EEF2FF,#F5F3FF)' }}>🎨</div>
+            <div className="mk-section-icon" style={{ background:'linear-gradient(135deg,#EEF2FF,#F5F3FF)' }}>🎨</div>
             <div>
               <div className="mk-section-title">Crear contenido</div>
               <div className="mk-section-sub">Genera imágenes para Instagram listas para publicar · 10 créditos</div>
@@ -604,18 +613,12 @@ Devuelve SOLO JSON sin markdown:
           {paso === 1 && (
             <div>
               <div className="mk-format-grid">
-                <div
-                  className={`mk-format-card${formato === 'publicacion' ? ' selected' : ''}`}
-                  onClick={() => setFormato('publicacion')}
-                >
+                <div className={`mk-format-card${formato === 'publicacion' ? ' selected' : ''}`} onClick={() => setFormato('publicacion')}>
                   <span className="mk-format-emoji">📸</span>
                   <div className="mk-format-name">Publicación</div>
                   <div className="mk-format-dim">1080 × 1080 px</div>
                 </div>
-                <div
-                  className={`mk-format-card${formato === 'historia' ? ' selected' : ''}`}
-                  onClick={() => setFormato('historia')}
-                >
+                <div className={`mk-format-card${formato === 'historia' ? ' selected' : ''}`} onClick={() => setFormato('historia')}>
                   <span className="mk-format-emoji">📱</span>
                   <div className="mk-format-name">Historia</div>
                   <div className="mk-format-dim">1080 × 1920 px</div>
@@ -661,21 +664,58 @@ Devuelve SOLO JSON sin markdown:
                     <input className="mk-input" placeholder="Ej: Corte de cabello, Manicura…" value={servicio} onChange={e => setServicio(e.target.value)} />
                   )}
                 </div>
+
+                {/* Separator */}
+                <div className="mk-field-full" style={{ borderTop:'1px solid #F3F4F6', paddingTop:16 }}>
+                  <label className="mk-label" style={{ marginBottom:10, display:'block' }}>Opciones de imagen</label>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button
+                      onClick={() => setMostrarLogo(prev => !prev)}
+                      style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid', fontSize:13, fontWeight:700,
+                        cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
+                        ...(mostrarLogo ? { background:'#ECFDF5', color:'#059669', borderColor:'#6EE7B7' } : { background:'white', color:'#6B7280', borderColor:'#E5E7EB' }) }}>
+                      {mostrarLogo ? '✓' : '○'} Logo del negocio
+                    </button>
+                    <button
+                      onClick={() => setMostrarUrl(prev => !prev)}
+                      style={{ padding:'8px 16px', borderRadius:10, border:'1.5px solid', fontSize:13, fontWeight:700,
+                        cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
+                        ...(mostrarUrl ? { background:'#ECFDF5', color:'#059669', borderColor:'#6EE7B7' } : { background:'white', color:'#6B7280', borderColor:'#E5E7EB' }) }}>
+                      {mostrarUrl ? '✓' : '○'} Nombre del negocio
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mk-field mk-field-full">
+                  <label className="mk-label">Fuente del título</label>
+                  <div style={{ display:'flex', gap:8 }}>
+                    {(['moderna','elegante','bold'] as FuenteType[]).map(f => (
+                      <button key={f} onClick={() => setFuente(f)}
+                        style={{ flex:1, padding:'8px', borderRadius:10, border:'1.5px solid', fontSize:13, fontWeight:700,
+                          cursor:'pointer', fontFamily:'inherit', transition:'all .15s',
+                          ...(fuente === f ? { background:'#4F46E5', color:'white', borderColor:'#4F46E5' } : { background:'white', color:'#6B7280', borderColor:'#E5E7EB' }) }}>
+                        {f === 'moderna' ? 'Moderna' : f === 'elegante' ? 'Elegante' : 'Bold'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="mk-field mk-field-full">
                   <label className="mk-label">Estilo visual</label>
                   <div className="mk-estilo-row">
-                    <button
-                      className={`mk-estilo-btn${estilo === 'oscuro' ? ' selected-dark' : ''}`}
-                      onClick={() => setEstilo('oscuro')}
-                    >
-                      🌙 Oscuro
-                    </button>
-                    <button
-                      className={`mk-estilo-btn${estilo === 'claro' ? ' selected-light' : ''}`}
-                      onClick={() => setEstilo('claro')}
-                    >
-                      ☀️ Claro
-                    </button>
+                    {(['marca','oscuro','claro'] as EstiloType[]).map(e => {
+                      const sel = estilo === e
+                      const selStyle = sel ? (
+                        e === 'oscuro' ? { background:'#080810', color:'white', borderColor:'#080810' } :
+                        e === 'claro'  ? { background:'#F7F9FC', color:'#111827', borderColor:'#4F46E5' } :
+                        { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, color:'white', borderColor:'transparent' }
+                      ) : {}
+                      return (
+                        <button key={e} className="mk-estilo-btn" style={selStyle} onClick={() => setEstilo(e)}>
+                          {e === 'marca' ? '🎨 Mi marca' : e === 'oscuro' ? '🌙 Oscuro' : '☀️ Claro'}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -687,62 +727,79 @@ Devuelve SOLO JSON sin markdown:
 
           {/* PASO 3: Resultado */}
           {paso === 3 && imgContenido && (
-            <div className="mk-preview-wrap">
-              {/* Preview miniatura visible */}
-              <div className="mk-preview-img" style={{ transform: formato === 'historia' ? 'scale(0.42)' : 'scale(0.55)', transformOrigin: 'top left', marginBottom: formato === 'historia' ? -220 : -8 }}>
-                {estilo === 'oscuro'
-                  ? (formato === 'publicacion'
-                    ? <TemplateDarkPublicacion contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />
-                    : <TemplateDarkHistoria contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />)
-                  : (formato === 'publicacion'
-                    ? <TemplateClaroPublicacion contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />
-                    : <TemplateClaroHistoria contenido={imgContenido} negocioNombre={negocioNombre} colorPpal={colorPpal} colorSec={colorSec} />)
-                }
+            <div>
+              {/* Quick-adjustments toolbar */}
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:16, padding:'10px 14px',
+                background:'#F8FAFC', borderRadius:12, border:'1px solid #E5E7EB', alignItems:'center' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:0.5, marginRight:2 }}>Ajustar:</span>
+                {(['marca','oscuro','claro'] as EstiloType[]).map(e => {
+                  const sel = estilo === e
+                  const overrd = sel ? (
+                    e === 'oscuro' ? { background:'#080810', color:'white', borderColor:'#080810' } :
+                    e === 'claro'  ? { background:'#F7F9FC', color:'#111827', borderColor:'#4F46E5' } :
+                    { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, color:'white', borderColor:'transparent' }
+                  ) : undefined
+                  return <PillBtn key={e} active={sel} colorOverride={overrd} onClick={() => setEstilo(e)}>
+                    {e === 'marca' ? '🎨' : e === 'oscuro' ? '🌙' : '☀️'} {e === 'marca' ? 'Marca' : e === 'oscuro' ? 'Oscuro' : 'Claro'}
+                  </PillBtn>
+                })}
+                <div style={{ width:1, height:16, background:'#E5E7EB', margin:'0 2px' }} />
+                {(['moderna','elegante','bold'] as FuenteType[]).map(f => (
+                  <PillBtn key={f} active={fuente === f} onClick={() => setFuente(f)}>
+                    {f === 'moderna' ? 'Moderna' : f === 'elegante' ? 'Elegante' : 'Bold'}
+                  </PillBtn>
+                ))}
+                <div style={{ width:1, height:16, background:'#E5E7EB', margin:'0 2px' }} />
+                <PillBtn active={mostrarLogo} colorOverride={mostrarLogo ? { background:'#ECFDF5', color:'#059669', borderColor:'#6EE7B7' } : undefined} onClick={() => setMostrarLogo(prev => !prev)}>
+                  {mostrarLogo ? '✓' : '○'} Logo
+                </PillBtn>
+                <PillBtn active={mostrarUrl} colorOverride={mostrarUrl ? { background:'#ECFDF5', color:'#059669', borderColor:'#6EE7B7' } : undefined} onClick={() => setMostrarUrl(prev => !prev)}>
+                  {mostrarUrl ? '✓' : '○'} Nombre
+                </PillBtn>
               </div>
 
-              {/* Actions + text */}
-              <div className="mk-preview-info">
-                <button className="mk-dl-btn" onClick={descargarImagen} disabled={imgDescargando}>
-                  {imgDescargando ? <><span className="mk-spinner" style={{ borderTopColor:'white' }} /> Exportando…</> : '⬇️ Descargar PNG'}
-                </button>
+              <div className="mk-preview-wrap">
+                {/* Preview miniatura visible */}
+                <div className="mk-preview-img" style={{ transform: formato === 'historia' ? 'scale(0.42)' : 'scale(0.55)', transformOrigin:'top left', marginBottom: formato === 'historia' ? -220 : -8 }}>
+                  {formato === 'publicacion'
+                    ? <TemplatePublicacion {...tplProps(imgContenido)} />
+                    : <TemplateHistoria   {...tplProps(imgContenido)} />}
+                </div>
 
-                {formato === 'publicacion' && imgContenido.descripcion && (
-                  <>
-                    <div className="mk-preview-label">Descripción</div>
-                    <div className="mk-copy-area">{imgContenido.descripcion}</div>
-                    <button
-                      className={`mk-copy-btn${descCopiado ? ' copied' : ''}`}
-                      onClick={() => {
-                        navigator.clipboard?.writeText(imgContenido.descripcion ?? '')
-                        setDescCopiado(true)
-                        setTimeout(() => setDescCopiado(false), 2000)
-                      }}
-                    >
-                      {descCopiado ? '✓ Copiada' : '📋 Copiar descripción'}
-                    </button>
-                  </>
-                )}
+                {/* Actions + text */}
+                <div className="mk-preview-info">
+                  <button className="mk-dl-btn" onClick={descargarImagen} disabled={imgDescargando}>
+                    {imgDescargando ? <><span className="mk-spinner" style={{ borderTopColor:'white' }} /> Exportando…</> : '⬇️ Descargar PNG'}
+                  </button>
 
-                {formato === 'publicacion' && imgContenido.hashtags && imgContenido.hashtags.length > 0 && (
-                  <div style={{ marginTop: 12 }}>
-                    <div className="mk-preview-label">Hashtags</div>
-                    <div className="mk-copy-area" style={{ fontSize: 12 }}>{imgContenido.hashtags.join(' ')}</div>
-                    <button
-                      className={`mk-copy-btn${hashCopiado ? ' copied' : ''}`}
-                      onClick={() => {
-                        navigator.clipboard?.writeText((imgContenido.hashtags ?? []).join(' '))
-                        setHashCopiado(true)
-                        setTimeout(() => setHashCopiado(false), 2000)
-                      }}
-                    >
-                      {hashCopiado ? '✓ Copiados' : '# Copiar hashtags'}
-                    </button>
-                  </div>
-                )}
+                  {formato === 'publicacion' && imgContenido.descripcion && (
+                    <>
+                      <div className="mk-preview-label">Descripción</div>
+                      <div className="mk-copy-area">{imgContenido.descripcion}</div>
+                      <button
+                        className={`mk-copy-btn${descCopiado ? ' copied' : ''}`}
+                        onClick={() => { navigator.clipboard?.writeText(imgContenido.descripcion ?? ''); setDescCopiado(true); setTimeout(() => setDescCopiado(false), 2000) }}>
+                        {descCopiado ? '✓ Copiada' : '📋 Copiar descripción'}
+                      </button>
+                    </>
+                  )}
 
-                <button className="mk-restart-btn" style={{ marginTop: 14 }} onClick={() => { setPaso(1); setImgContenido(null); setImgError('') }}>
-                  ↩ Crear otro contenido
-                </button>
+                  {formato === 'publicacion' && imgContenido.hashtags && imgContenido.hashtags.length > 0 && (
+                    <div style={{ marginTop:12 }}>
+                      <div className="mk-preview-label">Hashtags</div>
+                      <div className="mk-copy-area" style={{ fontSize:12 }}>{imgContenido.hashtags.join(' ')}</div>
+                      <button
+                        className={`mk-copy-btn${hashCopiado ? ' copied' : ''}`}
+                        onClick={() => { navigator.clipboard?.writeText((imgContenido.hashtags ?? []).join(' ')); setHashCopiado(true); setTimeout(() => setHashCopiado(false), 2000) }}>
+                        {hashCopiado ? '✓ Copiados' : '# Copiar hashtags'}
+                      </button>
+                    </div>
+                  )}
+
+                  <button className="mk-restart-btn" style={{ marginTop:14 }} onClick={() => { setPaso(1); setImgContenido(null); setImgError('') }}>
+                    ↩ Crear otro contenido
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -753,7 +810,7 @@ Devuelve SOLO JSON sin markdown:
         ════════════════════════════════════════════════ */}
         <div className="mk-section">
           <div className="mk-section-head">
-            <div className="mk-section-icon" style={{ background: 'linear-gradient(135deg,#FFFBEB,#FEF3C7)' }}>⭐</div>
+            <div className="mk-section-icon" style={{ background:'linear-gradient(135deg,#FFFBEB,#FEF3C7)' }}>⭐</div>
             <div>
               <div className="mk-section-title">Responder reseñas</div>
               <div className="mk-section-sub">Genera respuestas profesionales para reseñas sin contestar · 3 créditos por reseña</div>
@@ -765,8 +822,8 @@ Devuelve SOLO JSON sin markdown:
           ) : resenas.length === 0 ? (
             <div className="mk-empty">
               <div className="mk-empty-icon">✅</div>
-              <div style={{ fontWeight: 700, color: '#374151', marginBottom: 4 }}>¡Al día!</div>
-              <div style={{ fontSize: 13 }}>No hay reseñas pendientes de respuesta.</div>
+              <div style={{ fontWeight:700, color:'#374151', marginBottom:4 }}>¡Al día!</div>
+              <div style={{ fontSize:13 }}>No hay reseñas pendientes de respuesta.</div>
             </div>
           ) : resenas.map(r => {
             const estrellas = '★'.repeat(r.valoracion) + '☆'.repeat(5 - r.valoracion)
@@ -775,7 +832,7 @@ Devuelve SOLO JSON sin markdown:
               <div key={r.id} className="mk-resena-card">
                 <div className="mk-resena-stars" style={{ color: r.valoracion >= 4 ? '#F59E0B' : '#9CA3AF' }}>{estrellas}</div>
                 <div className="mk-resena-text">"{r.comentario ?? 'Sin comentario'}"</div>
-                <div className="mk-resena-meta">{r.autor_nombre ?? 'Anónimo'} · {new Date(r.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                <div className="mk-resena-meta">{r.autor_nombre ?? 'Anónimo'} · {new Date(r.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' })}</div>
                 <textarea
                   className="mk-resena-resp-area"
                   placeholder="Genera una respuesta con IA o escríbela manualmente…"
@@ -785,30 +842,23 @@ Devuelve SOLO JSON sin markdown:
                 <div className="mk-resena-actions">
                   <button
                     className="mk-resena-btn"
-                    style={{ background: 'linear-gradient(135deg,#B8D8F8,#D4C5F9)', color: '#1E3A5F' }}
+                    style={{ background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', color:'#1E3A5F' }}
                     onClick={() => generarRespuesta(r)}
-                    disabled={generandoResp === r.id}
-                  >
+                    disabled={generandoResp === r.id}>
                     {generandoResp === r.id ? '⏳ Generando…' : '🤖 Generar respuesta (3 créditos)'}
                   </button>
                   {resp && (
                     <>
                       <button
                         className="mk-resena-btn"
-                        style={{ background: respCopiada === r.id ? '#ECFDF5' : 'white', color: respCopiada === r.id ? '#059669' : '#374151', border: '1.5px solid #E5E7EB' }}
-                        onClick={() => {
-                          navigator.clipboard?.writeText(resp)
-                          setRespCopiada(r.id)
-                          setTimeout(() => setRespCopiada(null), 2000)
-                        }}
-                      >
+                        style={{ background: respCopiada === r.id ? '#ECFDF5' : 'white', color: respCopiada === r.id ? '#059669' : '#374151', border:'1.5px solid #E5E7EB' }}
+                        onClick={() => { navigator.clipboard?.writeText(resp); setRespCopiada(r.id); setTimeout(() => setRespCopiada(null), 2000) }}>
                         {respCopiada === r.id ? '✓ Copiada' : '📋 Copiar'}
                       </button>
                       <button
                         className="mk-resena-btn"
-                        style={{ background: '#059669', color: 'white' }}
-                        onClick={() => guardarRespuesta(r)}
-                      >
+                        style={{ background:'#059669', color:'white' }}
+                        onClick={() => guardarRespuesta(r)}>
                         ✓ Guardar respuesta
                       </button>
                     </>
@@ -824,7 +874,7 @@ Devuelve SOLO JSON sin markdown:
         ════════════════════════════════════════════════ */}
         <div className="mk-section">
           <div className="mk-section-head">
-            <div className="mk-section-icon" style={{ background: 'linear-gradient(135deg,#ECFDF5,#D1FAE5)' }}>📅</div>
+            <div className="mk-section-icon" style={{ background:'linear-gradient(135deg,#ECFDF5,#D1FAE5)' }}>📅</div>
             <div>
               <div className="mk-section-title">Calendario mensual</div>
               <div className="mk-section-sub">Plan de contenido para Instagram — 12 posts, 3 por semana · 15 créditos</div>
@@ -847,8 +897,8 @@ Devuelve SOLO JSON sin markdown:
 
           {calSlots.length > 0 && (() => {
             const TIPO_CLASS: Record<string, string> = {
-              'Educativo': 'tipo-Educativo', 'Promocional': 'tipo-Promocional',
-              'Behind the scenes': 'tipo-Behind', 'Testimonio': 'tipo-Testimonio', 'Oferta': 'tipo-Oferta',
+              'Educativo':'tipo-Educativo', 'Promocional':'tipo-Promocional',
+              'Behind the scenes':'tipo-Behind', 'Testimonio':'tipo-Testimonio', 'Oferta':'tipo-Oferta',
             }
             const semanas: CalSlot[][] = [[], [], [], []]
             calSlots.forEach((s, i) => semanas[Math.floor(i / 3)].push(s))
