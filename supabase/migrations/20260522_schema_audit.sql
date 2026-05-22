@@ -162,7 +162,33 @@ CREATE TRIGGER trg_negocios_updated_at
 -- ── 7. Columna updated_at en negocios si no existe ──────────
 ALTER TABLE negocios ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
--- ── 8. Índices de rendimiento adicionales ────────────────────
+-- ── 8. TABLA historial_puntos (de 20260515 si no se aplicó) ─
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS servicios_ids   uuid[];
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS duracion_total  integer;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS puntos_ganados  integer DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS puntos          integer DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS historial_puntos (
+  id          uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id     uuid        REFERENCES profiles(id) ON DELETE CASCADE,
+  negocio_id  uuid        REFERENCES negocios(id),
+  reserva_id  uuid        REFERENCES reservas(id),
+  puntos      integer,
+  concepto    text,
+  created_at  timestamptz DEFAULT now()
+);
+ALTER TABLE historial_puntos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "historial_puntos_select_owner"   ON historial_puntos;
+DROP POLICY IF EXISTS "historial_puntos_insert_service" ON historial_puntos;
+CREATE POLICY "historial_puntos_select_owner"   ON historial_puntos FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "historial_puntos_insert_service" ON historial_puntos FOR INSERT WITH CHECK (true);
+
+CREATE OR REPLACE FUNCTION increment_puntos(p_user_id uuid, p_puntos integer)
+RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
+  UPDATE profiles SET puntos = COALESCE(puntos, 0) + p_puntos WHERE id = p_user_id;
+$$;
+
+-- ── 9. Índices de rendimiento adicionales ────────────────────
 CREATE INDEX IF NOT EXISTS idx_reservas_cliente_id   ON reservas (cliente_id);
 CREATE INDEX IF NOT EXISTS idx_reservas_trabajador   ON reservas (trabajador_id, fecha);
 CREATE INDEX IF NOT EXISTS idx_historial_puntos_user ON historial_puntos (user_id);
