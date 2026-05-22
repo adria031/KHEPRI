@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from: process.env.EMAIL_FROM ?? 'Khepria <reservas@khepria.app>',
         to: [reserva.cliente_email as string],
-        subject: `⏰ Recordatorio: tu cita de mañana en ${(reserva.negocios as any)?.nombre ?? 'tu negocio'}`,
+        subject: `⏰ Recuerda tu cita mañana en ${(reserva.negocios as any)?.nombre ?? 'tu negocio'}`,
         html,
       }),
     })
