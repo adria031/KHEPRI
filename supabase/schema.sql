@@ -434,6 +434,15 @@ CREATE TABLE IF NOT EXISTS lista_espera (
   nota             text,
   created_at       timestamptz DEFAULT now()
 );
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS servicio_id      uuid REFERENCES servicios(id) ON DELETE SET NULL;
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS user_id          uuid REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS nombre_cliente   text;
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS telefono_cliente text;
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS email_cliente    text;
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS fecha_preferida  date;
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS hora_preferida   text;
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS estado           text DEFAULT 'esperando';
+ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS nota             text;
 CREATE INDEX IF NOT EXISTS idx_lista_espera_negocio ON lista_espera (negocio_id, fecha_preferida);
 
 ALTER TABLE lista_espera ENABLE ROW LEVEL SECURITY;
