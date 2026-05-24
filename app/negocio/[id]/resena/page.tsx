@@ -2,8 +2,14 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
-import { supabase } from '../../../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { sanitizeField } from '../../../lib/sanitize'
+
+// Public client — no session required, respects permissive RLS SELECT policy
+const db = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+)
 
 const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
 
@@ -41,7 +47,7 @@ function ResenaForm() {
     if (!negocioId) return
     ;(async () => {
       // 1. Cargar nombre del negocio
-      const { data: neg } = await supabase
+      const { data: neg } = await db
         .from('negocios')
         .select('nombre')
         .eq('id', negocioId)
@@ -52,7 +58,7 @@ function ResenaForm() {
       // 2. Si viene reserva_id, validar y pre-rellenar
       if (reservaId) {
         // Comprobar si ya existe una reseña para esta reserva
-        const { data: yaResena } = await supabase
+        const { data: yaResena } = await db
           .from('resenas')
           .select('id')
           .eq('reserva_id', reservaId)
@@ -61,7 +67,7 @@ function ResenaForm() {
         if (yaResena) { setEstado('ya_enviada'); return }
 
         // Cargar datos de la reserva para pre-rellenar nombre
-        const { data: reserva } = await supabase
+        const { data: reserva } = await db
           .from('reservas')
           .select('cliente_nombre, negocio_id, servicios(nombre)')
           .eq('id', reservaId)
@@ -88,7 +94,7 @@ function ResenaForm() {
     const captchaOk = await verifyCaptcha(captchaToken)
     if (!captchaOk) { setError('Verificación de seguridad fallida. Inténtalo de nuevo.'); setEstado('formulario'); captchaRef.current?.resetCaptcha(); setCaptchaToken(''); return }
 
-    const { error: insertErr } = await supabase.from('resenas').insert({
+    const { error: insertErr } = await db.from('resenas').insert({
       negocio_id:     negocioId,
       reserva_id:     reservaId || null,
       cliente_nombre: sanitizeField(nombre, 100),

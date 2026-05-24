@@ -33,7 +33,7 @@ function formatFecha(fecha: string): string {
   })
 }
 
-function buildHtml(r: any, confirmarUrl: string, cancelUrl: string): string {
+function buildHtml(r: any, confirmarUrl: string, cancelUrl: string, resenaUrl: string): string {
   const negocio    = r.negocios    ?? {}
   const servicio   = r.servicios   ?? {}
   const trabajador = r.trabajadores
@@ -105,7 +105,17 @@ function buildHtml(r: any, confirmarUrl: string, cancelUrl: string): string {
       </tr>
 
       <tr>
-        <td style="background:#F7F9FC;padding:18px 36px;text-align:center;border-top:1px solid rgba(0,0,0,0.06);">
+        <td style="background:#F7F9FC;padding:16px 36px;text-align:center;border-top:1px solid rgba(0,0,0,0.06);">
+          <p style="margin:0 0 6px;font-size:12px;color:#9CA3AF;">Después de tu cita, cuéntanos cómo fue:</p>
+          <a href="${resenaUrl}"
+             style="font-size:12px;font-weight:700;color:#6B7280;text-decoration:none;">
+            ⭐ Dejar valoración
+          </a>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="background:#F7F9FC;padding:14px 36px;text-align:center;border-top:1px solid rgba(0,0,0,0.04);">
           <p style="margin:0;font-size:12px;color:#9CA3AF;">Gestionado con <strong style="color:#6B7280;">Khepria</strong></p>
         </td>
       </tr>
@@ -169,7 +179,8 @@ export async function POST(req: NextRequest) {
 
     const confirmarUrl = `${appUrl}/reserva/${reserva.id}/confirmar`
     const cancelUrl    = `${appUrl}/reserva/${reserva.id}/cancelar`
-    const html = buildHtml(reserva, confirmarUrl, cancelUrl)
+    const resenaUrl    = `${appUrl}/negocio/${reserva.negocio_id}/resena?reserva_id=${reserva.id}`
+    const html = buildHtml(reserva, confirmarUrl, cancelUrl, resenaUrl)
 
     console.log('[recordatorios] Enviando email a:', reserva.cliente_email, 'para reserva:', reserva.id)
     const res = await fetch('https://api.resend.com/emails', {
