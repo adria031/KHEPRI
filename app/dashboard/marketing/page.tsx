@@ -183,6 +183,11 @@ export default function MarketingPage() {
   const [logoUrl, setLogoUrl]             = useState('')
   const [cargando, setCargando]           = useState(true)
 
+  // ── ADN del negocio ────────────────────────────────────────────────────────
+  const [negTono, setNegTono]         = useState('cercano')
+  const [negPalabras, setNegPalabras] = useState<string[]>([])
+  const [negFrase, setNegFrase]       = useState('')
+
   // ── Personalización de imagen ─────────────────────────────────────────────
   const [prefsReady, setPrefsReady]   = useState(false)
   const [mostrarLogo, setMostrarLogo] = useState(true)
@@ -193,7 +198,6 @@ export default function MarketingPage() {
   const [formato, setFormato]         = useState<'publicacion' | 'historia'>('publicacion')
   const [paso, setPaso]               = useState<1 | 2 | 3>(1)
   const [tipoContenido, setTipoContenido] = useState<'promocion' | 'nuevo_servicio' | 'consejo' | 'oferta' | 'presentacion'>('promocion')
-  const [tono, setTono]               = useState<'profesional' | 'cercano' | 'divertido'>('cercano')
   const [servicio, setServicio]       = useState('')
   const [estilo, setEstilo]           = useState<EstiloType>('oscuro')
   const [imgContenido, setImgContenido] = useState<{
@@ -256,15 +260,21 @@ export default function MarketingPage() {
         db.from('servicios').select('nombre').eq('negocio_id', activo.id).eq('activo', true).order('nombre'),
         db.from('resenas').select('id, valoracion, comentario, autor_nombre, created_at, respuesta')
           .eq('negocio_id', activo.id).is('respuesta', null).order('created_at', { ascending: false }).limit(20),
-        db.from('negocios').select('color_principal, color_secundario, logo_url').eq('id', activo.id).single(),
+        db.from('negocios').select('color_principal, color_secundario, logo_url, tono_comunicacion, palabras_clave, frase_marca').eq('id', activo.id).single(),
       ])
       if (svcs) setNegServicios(svcs.map((s: { nombre: string }) => s.nombre))
       if (res)  setResenas(res as Resena[])
       if (branding) {
-        const b = branding as { color_principal: string | null; color_secundario: string | null; logo_url: string | null }
-        if (b.color_principal)  setColorPpal(b.color_principal)
-        if (b.color_secundario) setColorSec(b.color_secundario)
-        if (b.logo_url) setLogoUrl(b.logo_url)
+        const b = branding as {
+          color_principal: string | null; color_secundario: string | null; logo_url: string | null
+          tono_comunicacion: string | null; palabras_clave: string[] | null; frase_marca: string | null
+        }
+        if (b.color_principal)    setColorPpal(b.color_principal)
+        if (b.color_secundario)   setColorSec(b.color_secundario)
+        if (b.logo_url)           setLogoUrl(b.logo_url)
+        if (b.tono_comunicacion)  setNegTono(b.tono_comunicacion)
+        if (b.palabras_clave)     setNegPalabras(b.palabras_clave)
+        if (b.frase_marca)        setNegFrase(b.frase_marca)
       }
       setCargando(false)
     })()
@@ -284,13 +294,26 @@ export default function MarketingPage() {
     }
 
     const tipoLabel: Record<string, string> = {
-      promocion: 'una promoción especial', nuevo_servicio: 'un nuevo servicio',
-      consejo: 'un consejo profesional', oferta: 'una oferta de temporada',
-      presentacion: 'la presentación del negocio',
+      promocion: 'promoción especial', nuevo_servicio: 'nuevo servicio',
+      consejo: 'consejo profesional', oferta: 'oferta de temporada',
+      presentacion: 'presentación del negocio',
+    }
+    const tonoLabel: Record<string, string> = {
+      profesional: 'profesional y serio',
+      cercano:     'cercano y amigable',
+      divertido:   'divertido y desenfadado',
+      elegante:    'elegante y exclusivo',
     }
     const esHistoria = formato === 'historia'
+    const serviciosStr = negServicios.slice(0, 8).join(', ') || 'servicios generales'
 
-    const prompt = `Eres experto en marketing para negocios de servicios en España. Crea contenido para ${tipoLabel[tipoContenido]} del negocio "${negocioNombre}"${servicio ? `, destacando "${servicio}"` : ''}. Tono: ${tono}. Formato: ${esHistoria ? 'historia vertical Instagram' : 'publicación cuadrada Instagram'}.
+    const prompt = `Eres el community manager de "${negocioNombre}"${negocio?.tipo ? `, un negocio de ${negocio.tipo}` : ''} en España.
+Tono de comunicación: ${tonoLabel[negTono] ?? negTono}.
+${negPalabras.length ? `Palabras clave de la marca: ${negPalabras.join(', ')}.` : ''}
+${negFrase ? `Frase de marca: "${negFrase}".` : ''}
+Servicios: ${serviciosStr}.
+Formato: ${esHistoria ? 'historia vertical Instagram' : 'publicación cuadrada Instagram'}.
+Genera un post de tipo "${tipoLabel[tipoContenido]}"${servicio ? ` destacando "${servicio}"` : ''}.
 
 Devuelve SOLO JSON sin markdown:
 {
@@ -298,8 +321,8 @@ Devuelve SOLO JSON sin markdown:
   "subtitulo": "máximo 8 palabras descriptivas",
   "dato": "cifra o dato impactante o null",
   "cta": "llamada a la acción máximo 4 palabras",
-  "descripcion": "texto completo para caption Instagram máximo 120 palabras en español",
-  "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6","#tag7","#tag8"]
+  "descripcion": "caption Instagram máximo 150 palabras con el tono indicado",
+  "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5"]
 }`
 
     try {
@@ -647,11 +670,11 @@ Devuelve SOLO JSON sin markdown:
                 </div>
                 <div className="mk-field">
                   <label className="mk-label">Tono de voz</label>
-                  <select className="mk-select" value={tono} onChange={e => setTono(e.target.value as typeof tono)}>
-                    <option value="cercano">😊 Cercano y amigable</option>
-                    <option value="profesional">💼 Profesional</option>
-                    <option value="divertido">🎈 Divertido</option>
-                  </select>
+                  <div style={{padding:'9px 12px', border:'1.5px solid rgba(0,0,0,0.08)', borderRadius:'10px', fontSize:'13px', color:'#6B7280', background:'#F9FAFB', display:'flex', alignItems:'center', gap:'6px'}}>
+                    <span>{{profesional:'💼',cercano:'😊',divertido:'🎉',elegante:'✨'}[negTono] ?? '😊'}</span>
+                    <span style={{fontWeight:600, color:'#374151'}}>{{profesional:'Profesional y serio',cercano:'Cercano y amigable',divertido:'Divertido y desenfadado',elegante:'Elegante y exclusivo'}[negTono] ?? negTono}</span>
+                    <span style={{marginLeft:'auto', fontSize:'11px'}}>desde ADN de marca</span>
+                  </div>
                 </div>
                 <div className="mk-field mk-field-full">
                   <label className="mk-label">Servicio destacado (opcional)</label>

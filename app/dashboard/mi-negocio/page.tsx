@@ -52,7 +52,11 @@ export default function MiNegocio() {
     antelacion_maxima: 43200 as number,
     color_principal: '#B8D8F8',
     color_secundario: '#D4C5F9',
+    tono_comunicacion: 'cercano',
+    palabras_clave: [] as string[],
+    frase_marca: '',
   })
+  const [tagInput, setTagInput] = useState('')
 
   const fileRef = useRef<HTMLInputElement>(null)
   const logoRef = useRef<HTMLInputElement>(null)
@@ -94,6 +98,9 @@ export default function MiNegocio() {
           antelacion_maxima: data.antelacion_maxima ?? 43200,
           color_principal: data.color_principal || '#B8D8F8',
           color_secundario: data.color_secundario || '#D4C5F9',
+          tono_comunicacion: data.tono_comunicacion || 'cercano',
+          palabras_clave: data.palabras_clave || [],
+          frase_marca: data.frase_marca || '',
         })
       }
       setCargando(false)
@@ -153,6 +160,9 @@ export default function MiNegocio() {
         antelacion_maxima: form.antelacion_maxima,
         color_principal: form.color_principal,
         color_secundario: form.color_secundario,
+        tono_comunicacion: form.tono_comunicacion,
+        palabras_clave: form.palabras_clave,
+        frase_marca: form.frase_marca || null,
         ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
       })
       .eq('id', negocioId)
@@ -671,6 +681,104 @@ export default function MiNegocio() {
                         Reservar cita
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* ADN DE MARCA */}
+                <div className="section">
+                  <div className="section-title">🧬 ADN de marca</div>
+                  <p style={{fontSize:'13px', color:'var(--muted)', marginBottom:'20px', lineHeight:1.6}}>
+                    Define el carácter de tu negocio. Se usará automáticamente al generar posts de marketing.
+                  </p>
+
+                  {/* Tono */}
+                  <div className="field">
+                    <label style={{marginBottom:'10px', display:'block'}}>Tono de comunicación</label>
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px'}}>
+                      {([
+                        { v:'profesional', l:'💼 Profesional y serio' },
+                        { v:'cercano',     l:'😊 Cercano y amigable' },
+                        { v:'divertido',   l:'🎉 Divertido y desenfadado' },
+                        { v:'elegante',    l:'✨ Elegante y exclusivo' },
+                      ] as const).map(o => (
+                        <button
+                          key={o.v}
+                          className={`policy-opt${form.tono_comunicacion === o.v ? ' active' : ''}`}
+                          onClick={() => setForm({...form, tono_comunicacion: o.v})}
+                          style={{textAlign:'left', padding:'10px 14px'}}
+                        >
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Palabras clave */}
+                  <div className="field">
+                    <label>Palabras clave <span style={{fontWeight:400, color:'var(--muted)'}}>(máximo 5)</span></label>
+                    {form.palabras_clave.length > 0 && (
+                      <div style={{display:'flex', flexWrap:'wrap', gap:'7px', marginBottom:'10px'}}>
+                        {form.palabras_clave.map(tag => (
+                          <span key={tag} style={{display:'inline-flex', alignItems:'center', gap:'5px', padding:'5px 12px', background:'rgba(184,216,248,0.2)', border:'1px solid rgba(184,216,248,0.5)', borderRadius:'100px', fontSize:'13px', fontWeight:600, color:'#1D4ED8'}}>
+                            {tag}
+                            <button
+                              onClick={() => setForm(prev => ({...prev, palabras_clave: prev.palabras_clave.filter(k => k !== tag)}))}
+                              style={{background:'none', border:'none', cursor:'pointer', padding:0, fontSize:'16px', color:'#9CA3AF', lineHeight:1, display:'flex', alignItems:'center'}}
+                            >×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {form.palabras_clave.length < 5 && (
+                      <div style={{display:'flex', gap:'8px'}}>
+                        <input
+                          type="text"
+                          value={tagInput}
+                          onChange={e => setTagInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const t = tagInput.trim()
+                              if (t && !form.palabras_clave.includes(t)) {
+                                setForm(prev => ({...prev, palabras_clave: [...prev.palabras_clave, t]}))
+                                setTagInput('')
+                              }
+                            }
+                          }}
+                          placeholder="Ej: bienestar, premium, artesanal…"
+                        />
+                        <button
+                          onClick={() => {
+                            const t = tagInput.trim()
+                            if (t && !form.palabras_clave.includes(t)) {
+                              setForm(prev => ({...prev, palabras_clave: [...prev.palabras_clave, t]}))
+                              setTagInput('')
+                            }
+                          }}
+                          style={{padding:'10px 16px', background:'var(--text)', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'13px', fontWeight:600, cursor:'pointer', flexShrink:0}}
+                        >
+                          + Añadir
+                        </button>
+                      </div>
+                    )}
+                    <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'6px'}}>Pulsa Enter o + Añadir. Se usan para personalizar posts de marketing.</p>
+                  </div>
+
+                  {/* Frase de marca */}
+                  <div className="field" style={{marginBottom:0}}>
+                    <label>Frase que define tu negocio <span style={{fontWeight:400, color:'var(--muted)'}}>(máximo 20 palabras)</span></label>
+                    <input
+                      type="text"
+                      value={form.frase_marca}
+                      onChange={e => setForm({...form, frase_marca: e.target.value})}
+                      placeholder="Ej: Tu bienestar es nuestra prioridad cada día"
+                      maxLength={150}
+                    />
+                    <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'4px'}}>
+                      {form.frase_marca
+                        ? `${form.frase_marca.trim().split(/\s+/).filter(Boolean).length}/20 palabras`
+                        : 'Opcional — aparecerá en los posts de marketing'}
+                    </p>
                   </div>
                 </div>
 
