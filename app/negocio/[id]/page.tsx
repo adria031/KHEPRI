@@ -337,8 +337,10 @@ export default function FichaNegocio() {
   )
 
   // ─── Render ────────────────────────────────────────────────────────────────
+  const cssVars = { '--color-primary': colorPpal, '--color-secondary': colorSec } as React.CSSProperties
+
   return (
-    <>
+    <div style={cssVars}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -363,10 +365,10 @@ export default function FichaNegocio() {
         .hero-logo { width:72px; height:72px; border-radius:18px; border:3px solid rgba(255,255,255,0.9); overflow:hidden; flex-shrink:0; background:white; box-shadow:0 4px 20px rgba(0,0,0,0.2); }
         .hero-logo img { width:100%; height:100%; object-fit:cover; }
         .hero-name-block { flex:1; min-width:0; }
-        .hero-tipo-badge { display:inline-flex; align-items:center; background:rgba(255,255,255,0.18); backdrop-filter:blur(8px); color:white; font-size:11px; font-weight:700; padding:3px 11px; border-radius:100px; letter-spacing:0.5px; text-transform:capitalize; margin-bottom:6px; border:1px solid rgba(255,255,255,0.2); }
+        .hero-tipo-badge { display:inline-flex; align-items:center; background:var(--color-secondary); color:white; font-size:11px; font-weight:700; padding:3px 11px; border-radius:100px; letter-spacing:0.5px; text-transform:capitalize; margin-bottom:6px; border:1px solid rgba(255,255,255,0.2); }
         .hero-title { font-family:'Syne',sans-serif; font-size:clamp(24px,4vw,36px); font-weight:800; color:white; line-height:1.1; letter-spacing:-0.5px; text-shadow:0 2px 12px rgba(0,0,0,0.3); }
         .hero-badges { display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap; }
-        .badge-open { background:rgba(16,185,129,0.85); color:white; padding:4px 12px; border-radius:100px; font-size:11px; font-weight:700; backdrop-filter:blur(6px); }
+        .badge-open { background:var(--color-primary); color:white; padding:4px 12px; border-radius:100px; font-size:11px; font-weight:700; backdrop-filter:blur(6px); }
         .badge-closed { background:rgba(0,0,0,0.4); color:rgba(255,255,255,0.7); padding:4px 12px; border-radius:100px; font-size:11px; font-weight:700; backdrop-filter:blur(6px); }
         /* No-photo hero */
         .hero-nofotos-circles { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
@@ -425,10 +427,10 @@ export default function FichaNegocio() {
 
         /* ── SCHEDULE ── */
         .horario-row { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:12px; margin-bottom:3px; }
-        .horario-row.hoy { background:linear-gradient(135deg,rgba(99,102,241,0.07),rgba(139,92,246,0.07)); border:1px solid rgba(99,102,241,0.13); }
+        .horario-row.hoy { background:linear-gradient(135deg,rgba(0,0,0,0.04),rgba(0,0,0,0.04)); border:1px solid rgba(0,0,0,0.09); }
         .horario-dia { font-size:13px; font-weight:600; color:#374151; display:flex; align-items:center; gap:8px; }
-        .horario-row.hoy .horario-dia { color:#6366F1; font-weight:700; }
-        .hoy-pill { font-size:10px; font-weight:700; background:#6366F1; color:white; padding:2px 8px; border-radius:100px; }
+        .horario-row.hoy .horario-dia { color:var(--color-primary); font-weight:700; }
+        .hoy-pill { font-size:10px; font-weight:700; background:var(--color-primary); color:white; padding:2px 8px; border-radius:100px; }
         .horario-hora { font-size:13px; color:#4B5563; font-weight:500; }
         .horario-cerrado { color:#D1D5DB; }
 
@@ -474,12 +476,12 @@ export default function FichaNegocio() {
         .map-body { padding:18px 20px; }
         .map-label { font-size:11px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px; }
         .map-addr { font-size:13px; color:#4B5563; line-height:1.65; margin-bottom:14px; }
-        .btn-gps { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; padding:11px; background:#6366F1; color:white; border:none; border-radius:12px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
+        .btn-gps { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; padding:11px; background:var(--color-primary); color:white; border:none; border-radius:12px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
         .btn-gps:hover { opacity:0.88; }
 
         /* ── PAYMENT ── */
         .pago-chips { display:flex; flex-wrap:wrap; gap:7px; }
-        .pago-chip { display:inline-flex; align-items:center; gap:5px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.14); color:#6366F1; padding:6px 12px; border-radius:100px; font-size:12px; font-weight:600; }
+        .pago-chip { display:inline-flex; align-items:center; gap:5px; background:var(--color-secondary); border:none; color:#111827; padding:6px 12px; border-radius:100px; font-size:12px; font-weight:600; }
 
         /* ── MOBILE CTA ── */
         .mobile-cta { display:none; position:fixed; bottom:0; left:0; right:0; padding:14px 20px; background:rgba(255,255,255,0.97); backdrop-filter:blur(16px); border-top:1px solid rgba(0,0,0,0.07); z-index:90; }
@@ -687,6 +689,11 @@ export default function FichaNegocio() {
               <div className="profile-strip-logo"><img src={negocio.logo_url} alt="Logo"/></div>
             )}
             <div className="profile-strip-info">
+              {negocio.tipo && (
+                <span style={{display:'inline-flex',alignItems:'center',background:colorSec,color:'#111827',fontSize:'11px',fontWeight:700,padding:'3px 11px',borderRadius:'100px',textTransform:'capitalize',letterSpacing:'0.3px',marginBottom:'6px'}}>
+                  {negocio.tipo}
+                </span>
+              )}
               <div className="strip-meta">
                 {negocio.ciudad && <span className="meta-chip">📍 {negocio.ciudad}</span>}
                 {negocio.telefono && <span className="meta-chip">📞 {negocio.telefono}</span>}
@@ -784,9 +791,9 @@ export default function FichaNegocio() {
                         ))}
                       </div>
                     )
-                    if (esUnica) return <div key={grupo}>{lista}</div>
+                    if (esUnica) return <div key={grupo} style={{borderLeft:`3px solid ${colorPpal}`,paddingLeft:'10px',marginLeft:'-2px'}}>{lista}</div>
                     return (
-                      <div key={grupo} className="grupo-wrap" style={{borderColor:pal.border}}>
+                      <div key={grupo} className="grupo-wrap" style={{borderColor:pal.border,borderLeft:`3px solid ${colorPpal}`}}>
                         <div className="grupo-header" style={{background:pal.bg,color:pal.color}} onClick={() => setGrupoAbierto(abierto ? null : grupo)}>
                           <div className="grupo-izq">
                             <span className="grupo-dot" style={{background:pal.dot}}/>
@@ -832,13 +839,11 @@ export default function FichaNegocio() {
               <div className="card">
                 <div className="card-title">Nuestro equipo</div>
                 <div className="workers-grid">
-                  {trabajadores.map((t, i) => {
-                    const colors = ['#6366F1','#8B5CF6','#EC4899','#10B981','#F59E0B','#3B82F6','#EF4444','#14B8A6']
-                    const bg = colors[i % colors.length]
+                  {trabajadores.map((t) => {
                     const initial = t.nombre.charAt(0).toUpperCase()
                     return (
                       <div key={t.id} className="worker-card">
-                        <div className="worker-av" style={{background:t.foto_url ? 'transparent' : `linear-gradient(135deg,${bg},${bg}cc)`}}>
+                        <div className="worker-av" style={{background:t.foto_url ? 'transparent' : `linear-gradient(135deg,${colorPpal},${colorSec})`}}>
                           {t.foto_url ? <img src={t.foto_url} alt={t.nombre}/> : initial}
                         </div>
                         <div>
@@ -861,7 +866,7 @@ export default function FichaNegocio() {
                   <div>
                     <div className="stars-big">
                       {[1,2,3,4,5].map(i => (
-                        <svg key={i} width="22" height="22" viewBox="0 0 24 24" fill={i <= Math.round(mediaVal) ? '#F59E0B' : '#E5E7EB'}>
+                        <svg key={i} width="22" height="22" viewBox="0 0 24 24" fill={i <= Math.round(mediaVal) ? colorPpal : '#E5E7EB'}>
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                         </svg>
                       ))}
@@ -877,7 +882,7 @@ export default function FichaNegocio() {
                     </div>
                     <div style={{display:'flex',gap:'2px',marginBottom:'4px'}}>
                       {[1,2,3,4,5].map(i => (
-                        <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill={i<=r.valoracion?'#F59E0B':'#E5E7EB'}>
+                        <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill={i<=r.valoracion?colorPpal:'#E5E7EB'}>
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                         </svg>
                       ))}
@@ -1081,6 +1086,6 @@ export default function FichaNegocio() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }

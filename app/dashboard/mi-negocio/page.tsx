@@ -672,14 +672,60 @@ export default function MiNegocio() {
                       </div>
                     </div>
                   </div>
-                  <div style={{borderRadius:'14px', overflow:'hidden', boxShadow:'0 4px 16px rgba(0,0,0,0.08)'}}>
-                    <div style={{background:`linear-gradient(135deg,${form.color_principal},${form.color_secundario})`, padding:'20px 24px', textAlign:'center'}}>
-                      <div style={{fontSize:'16px', fontWeight:800, color:'white', textShadow:'0 1px 4px rgba(0,0,0,0.2)', marginBottom:'10px'}}>
+                  <div style={{borderRadius:'14px', overflow:'hidden', boxShadow:'0 4px 16px rgba(0,0,0,0.08)', fontFamily:'inherit'}}>
+                    {/* Hero */}
+                    <div style={{background:`linear-gradient(135deg,${form.color_principal},${form.color_secundario})`, padding:'22px 24px'}}>
+                      {form.tipo && (
+                        <span style={{display:'inline-block', background:form.color_secundario, color:'#111827', fontSize:'10px', fontWeight:700, padding:'2px 10px', borderRadius:'100px', marginBottom:'8px', border:'1px solid rgba(255,255,255,0.3)'}}>
+                          {form.tipo}
+                        </span>
+                      )}
+                      <div style={{fontSize:'17px', fontWeight:800, color:'white', textShadow:'0 1px 4px rgba(0,0,0,0.2)', marginBottom:'12px', letterSpacing:'-0.3px'}}>
                         {form.nombre || 'Tu negocio'}
                       </div>
-                      <div style={{display:'inline-block', background:'white', color:form.color_principal, padding:'9px 22px', borderRadius:'100px', fontSize:'13px', fontWeight:700}}>
-                        Reservar cita
+                      <div style={{display:'inline-flex', alignItems:'center', gap:'7px', background:'white', color:form.color_principal, padding:'9px 20px', borderRadius:'100px', fontSize:'13px', fontWeight:700, boxShadow:'0 2px 8px rgba(0,0,0,0.12)'}}>
+                        📅 Reservar cita
                       </div>
+                    </div>
+                    {/* Body preview */}
+                    <div style={{background:'white', padding:'16px 20px'}}>
+                      {/* Horario hoy */}
+                      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', borderRadius:'10px', background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.09)', marginBottom:'12px'}}>
+                        <span style={{fontSize:'12px', fontWeight:600, color:form.color_principal, display:'flex', alignItems:'center', gap:'7px'}}>
+                          Hoy
+                          <span style={{background:form.color_principal, color:'white', fontSize:'9px', fontWeight:700, padding:'2px 7px', borderRadius:'100px'}}>Hoy</span>
+                        </span>
+                        <span style={{fontSize:'12px', color:'#4B5563', fontWeight:500}}>09:00 – 20:00</span>
+                      </div>
+                      {/* Equipo */}
+                      <div style={{display:'flex', gap:'10px', marginBottom:'12px'}}>
+                        {['A','B','C'].map(l => (
+                          <div key={l} style={{width:'40px', height:'40px', borderRadius:'50%', background:`linear-gradient(135deg,${form.color_principal},${form.color_secundario})`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:'14px', fontWeight:800}}>
+                            {l}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Estrellas */}
+                      <div style={{display:'flex', gap:'3px', marginBottom:'10px'}}>
+                        {[1,2,3,4,5].map(i => (
+                          <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill={i <= 4 ? form.color_principal : '#E5E7EB'}>
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        ))}
+                        <span style={{fontSize:'11px', color:'#6B7280', marginLeft:'4px', fontWeight:500}}>4.0 · 12 reseñas</span>
+                      </div>
+                      {/* Pago */}
+                      <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
+                        {['💵 Efectivo','💳 Datáfono','📱 App'].map(m => (
+                          <span key={m} style={{display:'inline-flex', alignItems:'center', gap:'4px', background:form.color_secundario, padding:'4px 10px', borderRadius:'100px', fontSize:'11px', fontWeight:600, color:'#111827'}}>
+                            {m}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {/* CTA */}
+                    <div style={{background:`linear-gradient(135deg,${form.color_principal},${form.color_secundario})`, padding:'14px 20px', display:'flex', justifyContent:'center'}}>
+                      <span style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontWeight:600}}>🗺️ Cómo llegar · 📅 Pedir cita</span>
                     </div>
                   </div>
                 </div>
