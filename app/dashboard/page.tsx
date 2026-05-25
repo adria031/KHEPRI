@@ -171,20 +171,18 @@ export default function Dashboard() {
       setNegocio(modoTodos ? null : neg)
       const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
 
-      // Créditos
-      const { data: negExtra } = await db
-        .from('negocios')
-        .select('id, creditos_totales, creditos_usados, plan')
-        .in('id', ids)
-      const credNegocios = negExtra ?? []
-      const totales    = credNegocios.reduce((s: number, n: { creditos_totales?: number }) => s + (n.creditos_totales ?? 100), 0)
-      const usados     = credNegocios.reduce((s: number, n: { creditos_usados?: number })  => s + (n.creditos_usados  ?? 0),   0)
+      // Créditos compartidos — se leen del perfil del usuario, no por negocio
+      const { data: profileData } = await db
+        .from('profiles')
+        .select('plan, creditos_totales, creditos_usados')
+        .eq('id', user.id)
+        .single()
+      const totales     = profileData?.creditos_totales ?? 100
+      const usados      = profileData?.creditos_usados  ?? 0
       const disponibles = Math.max(0, totales - usados)
       const pct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
       setCreditos({ totales, usados, disponibles, pct })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const planRef = (negExtra ?? []).find((n: any) => n.id === neg.id) ?? (negExtra ?? [])[0]
-      setPlanActual((planRef as { plan?: string } | undefined)?.plan ?? neg.plan ?? 'starter')
+      setPlanActual(profileData?.plan ?? neg.plan ?? 'starter')
 
       // Fechas de referencia (hora local, igual que el original)
       const now           = new Date()
@@ -337,10 +335,7 @@ export default function Dashboard() {
           const negHoy  = negRes.filter((r: { fecha: string }) => r.fecha === hoyISO)
           const negMes  = negRes.filter((r: { fecha: string }) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
           const negIng  = negMes.filter((r: { estado: string }) => r.estado === 'completada').reduce((s: number, r: { precio_total?: number; servicios?: { precio?: number } }) => s + (r.precio_total || r.servicios?.precio || 0), 0)
-          const nd      = (negExtra ?? []).find((n: { id?: string }) => n.id === tn.id)
-          const tot     = (nd as { creditos_totales?: number } | undefined)?.creditos_totales ?? 100
-          const used    = (nd as { creditos_usados?: number } | undefined)?.creditos_usados   ?? 0
-          return { id: tn.id, nombre: tn.nombre, plan: tn.plan ?? 'starter', reservasHoy: negHoy.length, ingresosMes: negIng, reservasMes: negMes.length, creditosDisp: Math.max(0, tot - used), creditosTot: tot }
+          return { id: tn.id, nombre: tn.nombre, plan: tn.plan ?? 'starter', reservasHoy: negHoy.length, ingresosMes: negIng, reservasMes: negMes.length, creditosDisp: disponibles, creditosTot: totales }
         })
         setBizStats(bs)
       }

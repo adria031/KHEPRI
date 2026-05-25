@@ -23,14 +23,12 @@ export default function NuevoNegocio() {
     getSessionClient().then(({ session }) => {
       if (!session?.user) { window.location.href = '/auth'; return }
       setUserId(session.user.id)
-      // Obtener el plan y conteo de negocios actuales
-      supabase.from('negocios').select('plan').eq('user_id', session.user.id)
-        .then(({ data }) => {
-          if (data?.length) {
-            setPlan(data[0].plan ?? 'basico')
-            setNegocioCount(data.length)
-          }
-        })
+      // Leer plan desde profiles (compartido entre negocios)
+      supabase.from('profiles').select('plan').eq('id', session.user.id).single()
+        .then(({ data }) => { if (data?.plan) setPlan(data.plan) })
+      // Conteo de negocios para verificar límite del plan
+      supabase.from('negocios').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id)
+        .then(({ count }) => { if (count != null) setNegocioCount(count) })
     })
   }, [])
 
@@ -47,6 +45,19 @@ export default function NuevoNegocio() {
     }
 
     setGuardando(true); setError('')
+
+    // Validar nombre único para este usuario
+    const { data: existente } = await supabase
+      .from('negocios')
+      .select('id')
+      .eq('user_id', userId)
+      .ilike('nombre', nombre.trim())
+      .maybeSingle()
+    if (existente) {
+      setError('Ya tienes un negocio con ese nombre. Usa un nombre diferente.')
+      setGuardando(false)
+      return
+    }
 
     const { data, error: err } = await supabase
       .from('negocios')

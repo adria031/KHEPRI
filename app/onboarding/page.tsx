@@ -127,12 +127,13 @@ export default function Onboarding() {
       if (!session?.user) throw new Error('No hay sesión activa. Recarga la página.')
       const user = session.user
 
+      const creditos_totales = CREDITOS_POR_PLAN[planSeleccionado] ?? 100
+
       const { error: profileError } = await supabase.from('profiles').upsert({
-        id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email
+        id: user.id, tipo: 'negocio', nombre: nombreNegocio, email: user.email,
+        plan: planSeleccionado, creditos_totales, creditos_usados: 0,
       })
       if (profileError) throw new Error(`Error al crear el perfil: ${profileError.message}`)
-
-      const creditos_totales = CREDITOS_POR_PLAN[planSeleccionado] ?? 100
       const hoy = new Date().toISOString().split('T')[0]
 
       const { data: negocioData, error: negocioError } = await supabase.from('negocios').insert({

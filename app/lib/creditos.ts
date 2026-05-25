@@ -16,12 +16,8 @@ export const CREDITOS_ACCION = {
 } as const
 
 /**
- * Descuenta créditos de un negocio y registra el historial.
- * @param negocio_id UUID del negocio
- * @param cantidad   Número de créditos a descontar
- * @param concepto   Descripción de la acción (e.g. 'chatbot_respuesta')
- * @param sb         Cliente Supabase (usa el cliente browser por defecto;
- *                   pasa un cliente service-role en API routes)
+ * Descuenta créditos del perfil del usuario propietario del negocio y registra el historial.
+ * Los créditos son compartidos entre todos los negocios de un mismo usuario.
  * @returns true si se descontó correctamente, false si no hay créditos suficientes
  */
 export async function descontarCreditos(
@@ -32,22 +28,30 @@ export async function descontarCreditos(
 ): Promise<boolean> {
   const { data: negocio } = await sb
     .from('negocios')
-    .select('creditos_totales, creditos_usados')
+    .select('user_id')
     .eq('id', negocio_id)
     .single()
 
   if (!negocio) return false
 
-  const totales    = negocio.creditos_totales ?? 100
-  const usados     = negocio.creditos_usados  ?? 0
+  const { data: profile } = await sb
+    .from('profiles')
+    .select('creditos_totales, creditos_usados')
+    .eq('id', negocio.user_id)
+    .single()
+
+  if (!profile) return false
+
+  const totales     = profile.creditos_totales ?? 100
+  const usados      = profile.creditos_usados  ?? 0
   const disponibles = totales - usados
 
   if (disponibles < cantidad) return false
 
   await Promise.all([
-    sb.from('negocios')
+    sb.from('profiles')
       .update({ creditos_usados: usados + cantidad })
-      .eq('id', negocio_id),
+      .eq('id', negocio.user_id),
     sb.from('historial_creditos')
       .insert({ negocio_id, cantidad, concepto }),
   ])
@@ -56,16 +60,24 @@ export async function descontarCreditos(
 }
 
 /**
- * Obtiene el estado de créditos de un negocio.
+ * Obtiene el estado de créditos compartidos del usuario propietario del negocio.
  */
 export async function obtenerCreditos(
   negocio_id: string,
   sb: SupabaseClient = defaultClient,
 ): Promise<{ totales: number; usados: number; disponibles: number; pct: number } | null> {
-  const { data } = await sb
+  const { data: negocio } = await sb
     .from('negocios')
-    .select('creditos_totales, creditos_usados')
+    .select('user_id')
     .eq('id', negocio_id)
+    .single()
+
+  if (!negocio) return null
+
+  const { data } = await sb
+    .from('profiles')
+    .select('creditos_totales, creditos_usados')
+    .eq('id', negocio.user_id)
     .single()
 
   if (!data) return null
