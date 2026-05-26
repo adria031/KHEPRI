@@ -861,26 +861,47 @@ export default function FichaNegocio() {
             {resenas.length > 0 && (
               <div className="card">
                 <div className="card-title">Valoraciones</div>
+                {/* Media grande + distribución */}
                 <div className="val-media-block">
-                  <div className="val-num">{mediaVal.toFixed(1)}</div>
-                  <div>
-                    <div className="stars-big">
+                  <div style={{flexShrink:0,textAlign:'center'}}>
+                    <div className="val-num">{mediaVal.toFixed(1)}</div>
+                    <div className="stars-big" style={{justifyContent:'center'}}>
                       {[1,2,3,4,5].map(i => (
-                        <svg key={i} width="22" height="22" viewBox="0 0 24 24" fill={i <= Math.round(mediaVal) ? colorPpal : '#E5E7EB'}>
+                        <svg key={i} width="20" height="20" viewBox="0 0 24 24" fill={i <= Math.round(mediaVal) ? colorPpal : '#E5E7EB'}>
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                         </svg>
                       ))}
                     </div>
-                    <div style={{fontSize:'13px',color:'#9CA3AF',marginTop:'6px'}}>{resenas.length} valoración{resenas.length!==1?'es':''}</div>
+                    <div style={{fontSize:'12px',color:'#9CA3AF',marginTop:'5px',whiteSpace:'nowrap'}}>{resenas.length} reseña{resenas.length!==1?'s':''}</div>
+                  </div>
+                  {/* Barras de distribución */}
+                  <div style={{flex:1,display:'flex',flexDirection:'column',gap:'6px'}}>
+                    {[5,4,3,2,1].map(stars => {
+                      const count = resenas.filter(r => Math.round(r.valoracion) === stars).length
+                      const pct = resenas.length > 0 ? Math.round(count / resenas.length * 100) : 0
+                      return (
+                        <div key={stars} style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                          <span style={{fontSize:'12px',color:'#6B7280',fontWeight:600,minWidth:'10px',textAlign:'right'}}>{stars}</span>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill={colorPpal} style={{flexShrink:0}}>
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                          <div style={{flex:1,height:'6px',borderRadius:'100px',background:'#F0F2F5',overflow:'hidden'}}>
+                            <div style={{width:`${pct}%`,height:'100%',borderRadius:'100px',background:colorPpal}}/>
+                          </div>
+                          <span style={{fontSize:'11px',color:'#9CA3AF',fontWeight:600,minWidth:'20px',textAlign:'right'}}>{count}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
-                {resenas.slice(0,5).map(r => (
+                {/* Lista de reseñas */}
+                {resenas.map(r => (
                   <div key={r.id} className="resena-item">
                     <div className="resena-autor">
                       <span>{r.autor_nombre || r.cliente_nombre || 'Cliente'}</span>
                       <span className="resena-fecha">{new Date(r.created_at).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})}</span>
                     </div>
-                    <div style={{display:'flex',gap:'2px',marginBottom:'4px'}}>
+                    <div style={{display:'flex',gap:'2px',marginBottom:'6px'}}>
                       {[1,2,3,4,5].map(i => (
                         <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill={i<=r.valoracion?colorPpal:'#E5E7EB'}>
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>

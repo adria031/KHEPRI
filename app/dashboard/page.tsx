@@ -1,15 +1,16 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import {
-  BarChart, Bar, Cell, AreaChart, Area,
-  PieChart, Pie, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid,
-} from 'recharts'
+import dynamic from 'next/dynamic'
 import { supabase, getSessionClient } from '../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
 import { setNegocioActivo } from '../lib/negocio-activo'
 import { DashboardShell } from './DashboardShell'
+
+const BarChartReservas  = dynamic(() => import('./DashboardCharts').then(m => m.BarChartReservas),  { ssr: false })
+const AreaChartIngresos = dynamic(() => import('./DashboardCharts').then(m => m.AreaChartIngresos), { ssr: false })
+const PieChartServicios = dynamic(() => import('./DashboardCharts').then(m => m.PieChartServicios), { ssr: false })
+const BarChartNegocios  = dynamic(() => import('./DashboardCharts').then(m => m.BarChartNegocios),  { ssr: false })
 
 function isoLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -75,30 +76,6 @@ function KpiCard({
   )
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CustomTooltipBar({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, padding: '10px 14px', fontSize: 13, boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
-      <div style={{ color: '#4F46E5' }}>{payload[0].value} reservas</div>
-    </div>
-  )
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CustomTooltipArea({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{ background: 'white', border: '1px solid #E5E7EB', borderRadius: 10, padding: '10px 14px', fontSize: 13, boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>{label}</div>
-      {payload.map((p: { name: string; value: number; color: string }, i: number) => (
-        <div key={i} style={{ color: p.color, marginBottom: 2 }}>
-          {p.name === 'actual' ? 'Este mes' : 'Mes ant.'}: <b>€{p.value}</b>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 export default function Dashboard() {
   const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
@@ -675,33 +652,16 @@ export default function Dashboard() {
             </div>
 
             {/* Gráfica comparativa */}
-            {mounted && bizStats.some(b => b.reservasMes > 0) && (
+            {bizStats.some(b => b.reservasMes > 0) && (
               <div className="db-card" style={{ marginBottom: 20 }}>
                 <div className="db-card-head">
                   <span className="db-section-title">Comparativa negocios</span>
                   <span className="db-section-badge">Reservas este mes</span>
                 </div>
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart
-                    data={bizStats.map(b => ({ nombre: b.nombre.split(' ')[0], reservas: b.reservasMes, ingresos: b.ingresosMes }))}
-                    margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-                    barSize={28}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-                    <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }}
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      formatter={(v: any) => [`${v} reservas`, 'Mes actual']}
-                    />
-                    <Bar dataKey="reservas" radius={[6, 6, 0, 0]}>
-                      {bizStats.map((_, i) => (
-                        <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <BarChartNegocios
+                  data={bizStats.map(b => ({ nombre: b.nombre.split(' ')[0], reservas: b.reservasMes, ingresos: b.ingresosMes }))}
+                  colors={DONUT_COLORS}
+                />
               </div>
             )}
           </>
@@ -905,21 +865,9 @@ export default function Dashboard() {
               <span className="db-section-title">Reservas por día</span>
               <span className="db-section-badge">Últimos 28 días</span>
             </div>
-            {mounted && barras7.length > 0 ? (
+            {barras7.length > 0 ? (
               <>
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={barras7} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-                    <XAxis dataKey="dia" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} interval={6} />
-                    <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltipBar />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 4 }} />
-                    <Bar dataKey="reservas" radius={[4, 4, 0, 0]}>
-                      {barras7.map((entry, i) => (
-                        <Cell key={i} fill={entry.isHoy ? '#4F46E5' : '#C7D2FE'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <BarChartReservas data={barras7} />
                 <div className="db-chart-footer">
                   <span className="db-chart-footer-label">Total 28 días</span>
                   <span className="db-chart-footer-val">{barras7.reduce((s, d) => s + d.reservas, 0)} reservas</span>
@@ -1045,20 +993,9 @@ export default function Dashboard() {
               <span className="db-section-title">Servicios del mes</span>
               <span className="db-section-badge">Top 6</span>
             </div>
-            {mounted && donut.length > 0 ? (
+            {donut.length > 0 ? (
               <>
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie data={donut} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
-                      {donut.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      formatter={(v: any, n: any) => [`${v} reservas`, n]}
-                      contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <PieChartServicios data={donut} />
                 <div style={{ marginTop: 4 }}>
                   {donut.map((item, i) => {
                     const total = donut.reduce((s, d) => s + d.value, 0)
@@ -1085,27 +1022,8 @@ export default function Dashboard() {
               <span className="db-section-title">Ingresos — comparativa mensual</span>
               <span className="db-section-badge">Últimas 4 semanas</span>
             </div>
-            {mounted && area4sem.length > 0 ? (
-              <ResponsiveContainer width="100%" height={170}>
-                <AreaChart data={area4sem} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#818CF8" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gradAnt" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#C4B5FD" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#C4B5FD" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-                  <XAxis dataKey="sem" tick={{ fontSize: 12, fill: '#9CA3AF', fontWeight: 600 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `€${v}`} />
-                  <Tooltip content={<CustomTooltipArea />} />
-                  <Area type="monotone" dataKey="anterior" name="anterior" stroke="#C4B5FD" strokeWidth={2} strokeDasharray="4 3" fill="url(#gradAnt)" dot={false} />
-                  <Area type="monotone" dataKey="actual" name="actual" stroke="#818CF8" strokeWidth={2.5} fill="url(#gradActual)" dot={{ fill: '#818CF8', r: 4, strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 6 }} />
-                </AreaChart>
-              </ResponsiveContainer>
+            {area4sem.length > 0 ? (
+              <AreaChartIngresos data={area4sem} />
             ) : (
               <div className="db-empty-state"><div className="db-empty-icon">📈</div><div className="db-empty-txt">{cargando ? 'Cargando…' : 'Sin datos de ingresos'}</div></div>
             )}
