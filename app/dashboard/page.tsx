@@ -148,18 +148,32 @@ export default function Dashboard() {
       setNegocio(modoTodos ? null : neg)
       const ids = modoTodos ? todosNegs.map(n => n.id) : [neg.id]
 
-      // Créditos compartidos — se leen del perfil del usuario, no por negocio
+      // Créditos y plan — se leen del perfil del usuario
       const { data: profileData } = await db
         .from('profiles')
         .select('plan, creditos_totales, creditos_usados')
         .eq('id', user.id)
         .single()
+
+      let planFinal = profileData?.plan ?? ''
+      if (!planFinal) {
+        // profiles sin columna plan → leer del primer negocio y migrar
+        const { data: negPlan } = await db
+          .from('negocios')
+          .select('plan')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .single()
+        planFinal = negPlan?.plan ?? 'starter'
+        await db.from('profiles').update({ plan: planFinal }).eq('id', user.id)
+      }
+
       const totales     = profileData?.creditos_totales ?? 100
       const usados      = profileData?.creditos_usados  ?? 0
       const disponibles = Math.max(0, totales - usados)
       const pct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
       setCreditos({ totales, usados, disponibles, pct })
-      setPlanActual(profileData?.plan ?? neg.plan ?? 'starter')
+      setPlanActual(planFinal)
 
       // Fechas de referencia (hora local, igual que el original)
       const now           = new Date()
