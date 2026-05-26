@@ -22,6 +22,8 @@ type Reserva = {
   confirmada_cliente: boolean | null
   grupo_id: string | null
   precio_total: number | null
+  duracion_total: number | null
+  servicios_ids: string[] | null
   servicios: { nombre: string } | null
   trabajadores: { nombre: string } | null
 }
@@ -309,7 +311,7 @@ export default function Reservas() {
     const { db } = await getSessionClient()
     const { data } = await db
       .from('reservas')
-      .select('*, servicios(nombre), trabajadores(nombre), confirmada_cliente, cliente_email, grupo_id, precio_total')
+      .select('*, servicios(nombre), trabajadores(nombre), confirmada_cliente, cliente_email, grupo_id, precio_total, duracion_total, servicios_ids')
       .eq('negocio_id', negocio.id)
       .eq('fecha', fecha)
       .order('hora')
@@ -482,6 +484,14 @@ export default function Reservas() {
   }
   for (const srv of serviciosSinReservar) {
     sugerencias.push({ icon: '🔧', msg: `El servicio "${srv}" lleva más de 30 días sin reservarse. Considera destacarlo o ajustar el precio.`, color: '#6B4FD8', bg: 'rgba(212,197,249,0.15)' })
+  }
+
+  function getServicioLabel(r: Reserva): string {
+    if (r.servicios_ids && r.servicios_ids.length > 1) {
+      const nombres = r.servicios_ids.map(id => serviciosList.find(s => s.id === id)?.nombre).filter(Boolean)
+      return nombres.length > 0 ? nombres.join(' + ') : (r.servicios?.nombre ?? '')
+    }
+    return r.servicios?.nombre ?? ''
   }
 
   return (
@@ -812,7 +822,7 @@ export default function Reservas() {
                                 ? <span className="badge-confirmado-cli">✅ Confirmada por cliente</span>
                                 : <span className="badge-pendiente-cli">⏳ Pendiente confirmar</span>)}
                             </div>
-                            {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}{r.precio_total ? <span style={{marginLeft:'6px', fontWeight:700, color:'#1D4ED8'}}>· €{r.precio_total.toFixed(2)}</span> : null}</div>}
+                            {(r.servicios?.nombre || (r.servicios_ids && r.servicios_ids.length > 0)) && <div className="rc-linea">🔧 {getServicioLabel(r)}{r.precio_total ? <span style={{marginLeft:'6px', fontWeight:700, color:'#1D4ED8'}}>· €{r.precio_total.toFixed(2)}</span> : null}</div>}
                             {r.trabajadores?.nombre && <div className="rc-linea">👤 {r.trabajadores.nombre}</div>}
                             {r.cliente_telefono && <div className="rc-linea">📞 {r.cliente_telefono}</div>}
                             {r.estado === 'completada' && r.puntos_ganados ? <div className="rc-linea" style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</div> : null}
@@ -865,7 +875,7 @@ export default function Reservas() {
                                   ? <span className="badge-confirmado-cli">✅ Confirmada por cliente</span>
                                   : <span className="badge-pendiente-cli">⏳ Pendiente confirmar</span>)}
                               </div>
-                              {r.servicios?.nombre && <div className="rc-linea">🔧 {r.servicios.nombre}{r.precio_total ? <span style={{marginLeft:'6px', fontWeight:700, color:'#1D4ED8'}}>· €{r.precio_total.toFixed(2)}</span> : null}</div>}
+                              {(r.servicios?.nombre || (r.servicios_ids && r.servicios_ids.length > 0)) && <div className="rc-linea">🔧 {getServicioLabel(r)}{r.precio_total ? <span style={{marginLeft:'6px', fontWeight:700, color:'#1D4ED8'}}>· €{r.precio_total.toFixed(2)}</span> : null}</div>}
                               {r.trabajadores?.nombre && <div className="rc-linea">👤 {r.trabajadores.nombre}</div>}
                               {r.cliente_telefono && <div className="rc-linea">📞 {r.cliente_telefono}</div>}
                               {r.estado === 'completada' && r.puntos_ganados ? <div className="rc-linea" style={{color:'#92400E',fontWeight:700}}>⭐ +{r.puntos_ganados} pts</div> : null}
