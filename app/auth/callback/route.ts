@@ -51,14 +51,11 @@ export async function GET(request: NextRequest) {
         await supabase.from('trabajadores').update({ email: user.email }).eq('negocio_id', negocioParam).eq('email', user.email)
         redirectTo = `${origin}/empleado`
       } else {
-        // Check if user already has a negocio → go to dashboard
-        const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', user.id).maybeSingle()
-        if (profile?.tipo === 'empleado') {
-          redirectTo = `${origin}/empleado`
-        } else {
-          const { data: neg } = await supabase.from('negocios').select('id').eq('user_id', user.id).maybeSingle()
-          if (neg) redirectTo = `${origin}/dashboard`
-        }
+        const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', user.id).single()
+        if (profile?.tipo === 'empleado') redirectTo = `${origin}/empleado`
+        else if (profile?.tipo === 'negocio') redirectTo = `${origin}/dashboard`
+        else if (profile?.tipo === 'cliente') redirectTo = `${origin}/cliente`
+        else redirectTo = `${origin}/onboarding`
       }
     }
   }

@@ -83,17 +83,14 @@ function AuthForm() {
         window.location.href = window.location.origin + '/onboarding'
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email: emailSanitized, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email: emailSanitized, password })
       if (error) { setMensaje('Email o contraseña incorrectos.'); setEsError(true) }
-      else {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user) {
-          const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
-          if (profile?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
-          else if (profile?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
-          else if (profile?.tipo === 'empleado') window.location.href = window.location.origin + '/empleado'
-          else window.location.href = window.location.origin + '/onboarding'
-        }
+      else if (data.user) {
+        const { data: perfil } = await supabase.from('profiles').select('tipo').eq('id', data.user.id).single()
+        if (perfil?.tipo === 'empleado') window.location.href = window.location.origin + '/empleado'
+        else if (perfil?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
+        else if (perfil?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
+        else window.location.href = window.location.origin + '/onboarding'
       }
     }
     captchaRef.current?.resetCaptcha()
