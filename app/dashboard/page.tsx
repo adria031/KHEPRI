@@ -14,7 +14,7 @@ const BarChartNoSSR = dynamic(
     const { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } = await import('recharts')
     return function C({ data }: { data: { nombre: string; reservas: number }[] }) {
       return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={250} minWidth={0}>
           <BarChart data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
             <XAxis dataKey="nombre" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
@@ -35,7 +35,7 @@ const PieChartNoSSR = dynamic(
     const COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
     return function C({ data }: { data: { name: string; value: number }[] }) {
       return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={250} minWidth={0}>
           <PieChart>
             <Pie data={data} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
               {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -54,7 +54,7 @@ const AreaChartNoSSR = dynamic(
     const { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } = await import('recharts')
     return function C({ data }: { data: { sem: string; actual: number; anterior: number }[] }) {
       return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={250} minWidth={0}>
           <AreaChart data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
             <defs>
               <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
@@ -86,7 +86,7 @@ const BizBarChartNoSSR = dynamic(
     const COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
     return function C({ data }: { data: { nombre: string; reservas: number }[] }) {
       return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={250} minWidth={0}>
           <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
             <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
