@@ -68,12 +68,20 @@
       "principal": "Principal",
       "gestion": "Gestió",
       "herramientas": "Eines",
-      "cuenta": "Compte"
+      "cuenta": "Compte",
+      "inicio": "Inici",
+      "clientes": "Clients",
+      "miNegocio": "El meu negoci",
+      "finanzas": "Finances",
+      "crecimiento": "Creixement",
+      "configuracion": "Configuració"
     },
     "nav": {
       "dashboard": "Tauler",
+      "agenda": "Agenda",
       "myBusiness": "El meu negoci",
       "reservations": "Reserves",
+      "clients": "Clients",
       "services": "Serveis",
       "schedules": "Horaris",
       "products": "Productes",
@@ -86,12 +94,15 @@
       "payroll": "Nòmines",
       "analytics": "Analítica",
       "settings": "Configuració",
-      "integrations": "Integracions"
+      "integrations": "Integracions",
+      "upgrade": "Millora el pla"
     },
     "titles": {
       "dashboard": "Tauler",
+      "agenda": "Agenda",
       "myBusiness": "El meu negoci",
       "reservations": "Reserves",
+      "clients": "Clients",
       "services": "Serveis",
       "schedules": "Horaris",
       "products": "Productes",

@@ -68,12 +68,20 @@
       "principal": "Main",
       "gestion": "Management",
       "herramientas": "Tools",
-      "cuenta": "Account"
+      "cuenta": "Account",
+      "inicio": "Home",
+      "clientes": "Clients",
+      "miNegocio": "My business",
+      "finanzas": "Finance",
+      "crecimiento": "Growth",
+      "configuracion": "Settings"
     },
     "nav": {
       "dashboard": "Dashboard",
+      "agenda": "Schedule",
       "myBusiness": "My business",
       "reservations": "Bookings",
+      "clients": "Clients",
       "services": "Services",
       "schedules": "Schedules",
       "products": "Products",
@@ -86,12 +94,15 @@
       "payroll": "Payroll",
       "analytics": "Analytics",
       "settings": "Settings",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "upgrade": "Upgrade plan"
     },
     "titles": {
       "dashboard": "Dashboard",
+      "agenda": "Schedule",
       "myBusiness": "My business",
       "reservations": "Bookings",
+      "clients": "Clients",
       "services": "Services",
       "schedules": "Schedules",
       "products": "Products",

@@ -13,40 +13,57 @@ import { tieneAcceso, HREF_KEY, PLANES } from '../lib/planes'
 
 const NAV_GROUPS = [
   {
-    label: 'Principal',
+    emoji: '📊',
+    label: 'Inicio',
     items: [
-      { icon: '📊', label: 'Dashboard', href: '/dashboard' },
-      { icon: '🏪', label: 'Mi negocio', href: '/dashboard/mi-negocio' },
-      { icon: '📅', label: 'Reservas', href: '/dashboard/reservas' },
-      { icon: '👥', label: 'Clientes', href: '/dashboard/clientes' },
+      { icon: '🏠', label: 'Dashboard', href: '/dashboard' },
+      { icon: '📅', label: 'Agenda', href: '/dashboard/agenda' },
     ],
   },
   {
-    label: 'Gestión',
+    emoji: '👥',
+    label: 'Clientes',
     items: [
+      { icon: '📋', label: 'Reservas', href: '/dashboard/reservas' },
+      { icon: '👤', label: 'Clientes', href: '/dashboard/clientes' },
+      { icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas' },
+    ],
+  },
+  {
+    emoji: '🏪',
+    label: 'Mi negocio',
+    items: [
+      { icon: '🏪', label: 'Mi negocio', href: '/dashboard/mi-negocio' },
       { icon: '🔧', label: 'Servicios', href: '/dashboard/servicios' },
       { icon: '⏰', label: 'Horarios', href: '/dashboard/horarios' },
-      { icon: '🛍️', label: 'Productos', href: '/dashboard/productos' },
       { icon: '👥', label: 'Equipo', href: '/dashboard/equipo' },
+      { icon: '🛍️', label: 'Productos', href: '/dashboard/productos' },
     ],
   },
   {
-    label: 'Herramientas',
+    emoji: '💰',
+    label: 'Finanzas',
     items: [
-      { icon: '🤖', label: 'Chatbot IA', href: '/dashboard/chatbot' },
-      { icon: '🧾', label: 'Facturación', href: '/dashboard/facturacion' },
-      { icon: '📱', label: 'Marketing', href: '/dashboard/marketing' },
-      { icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas' },
       { icon: '💰', label: 'Caja', href: '/dashboard/caja' },
+      { icon: '🧾', label: 'Facturación', href: '/dashboard/facturacion' },
       { icon: '💸', label: 'Nóminas', href: '/dashboard/nominas' },
-      { icon: '📈', label: 'Analytics', href: '/dashboard/analytics' },
     ],
   },
   {
-    label: 'Cuenta',
+    emoji: '📈',
+    label: 'Crecimiento',
+    items: [
+      { icon: '📱', label: 'Marketing', href: '/dashboard/marketing' },
+      { icon: '📊', label: 'Analytics', href: '/dashboard/analytics' },
+    ],
+  },
+  {
+    emoji: '⚙️',
+    label: 'Configuración',
     items: [
       { icon: '⚙️', label: 'Ajustes', href: '/dashboard/ajustes' },
       { icon: '🔌', label: 'Integraciones', href: '/dashboard/integraciones' },
+      { icon: '⚡', label: 'Upgrade plan', href: '/upgrade' },
     ],
   },
 ]
@@ -69,6 +86,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard/analytics': 'Analytics',
   '/dashboard/ajustes': 'Ajustes',
   '/dashboard/integraciones': 'Integraciones',
+  '/dashboard/agenda': 'Agenda',
 }
 
 const PLAN_CFG: Record<string, { label: string; color: string; bg: string }> = {
@@ -117,48 +135,53 @@ export function DashboardShell({
 
   // Translated nav labels keyed by href
   const NAV_LABELS: Record<string, string> = {
-    '/dashboard':             t('nav.dashboard'),
-    '/dashboard/mi-negocio':  t('nav.myBusiness'),
-    '/dashboard/reservas':    t('nav.reservations'),
-    '/dashboard/servicios':   t('nav.services'),
-    '/dashboard/horarios':    t('nav.schedules'),
-    '/dashboard/productos':   t('nav.products'),
-    '/dashboard/equipo':      t('nav.team'),
-    '/dashboard/chatbot':     t('nav.chatbot'),
-    '/dashboard/facturacion': t('nav.invoicing'),
-    '/dashboard/marketing':   t('nav.marketing'),
-    '/dashboard/resenas':     t('nav.reviews'),
-    '/dashboard/caja':        t('nav.cash'),
-    '/dashboard/nominas':     t('nav.payroll'),
-    '/dashboard/analytics':      t('nav.analytics'),
-    '/dashboard/ajustes':        t('nav.settings'),
-    '/dashboard/integraciones':  t('nav.integrations'),
+    '/dashboard':              t('nav.dashboard'),
+    '/dashboard/agenda':       t('nav.agenda'),
+    '/dashboard/reservas':     t('nav.reservations'),
+    '/dashboard/clientes':     t('nav.clients'),
+    '/dashboard/resenas':      t('nav.reviews'),
+    '/dashboard/mi-negocio':   t('nav.myBusiness'),
+    '/dashboard/servicios':    t('nav.services'),
+    '/dashboard/horarios':     t('nav.schedules'),
+    '/dashboard/equipo':       t('nav.team'),
+    '/dashboard/productos':    t('nav.products'),
+    '/dashboard/caja':         t('nav.cash'),
+    '/dashboard/facturacion':  t('nav.invoicing'),
+    '/dashboard/nominas':      t('nav.payroll'),
+    '/dashboard/marketing':    t('nav.marketing'),
+    '/dashboard/analytics':    t('nav.analytics'),
+    '/dashboard/ajustes':      t('nav.settings'),
+    '/dashboard/integraciones':t('nav.integrations'),
+    '/upgrade':                t('nav.upgrade'),
   }
 
   const GROUP_LABELS: Record<string, string> = {
-    'Principal':    t('groups.principal'),
-    'Gestión':      t('groups.gestion'),
-    'Herramientas': t('groups.herramientas'),
-    'Cuenta':       t('groups.cuenta'),
+    'Inicio':        t('groups.inicio'),
+    'Clientes':      t('groups.clientes'),
+    'Mi negocio':    t('groups.miNegocio'),
+    'Finanzas':      t('groups.finanzas'),
+    'Crecimiento':   t('groups.crecimiento'),
+    'Configuración': t('groups.configuracion'),
   }
 
   const PAGE_TITLES_I18N: Record<string, string> = {
-    '/dashboard':             t('titles.dashboard'),
-    '/dashboard/mi-negocio':  t('titles.myBusiness'),
-    '/dashboard/reservas':    t('titles.reservations'),
-    '/dashboard/servicios':   t('titles.services'),
-    '/dashboard/horarios':    t('titles.schedules'),
-    '/dashboard/productos':   t('titles.products'),
-    '/dashboard/equipo':      t('titles.team'),
-    '/dashboard/chatbot':     t('titles.chatbot'),
-    '/dashboard/facturacion': t('titles.invoicing'),
-    '/dashboard/marketing':   t('titles.marketing'),
-    '/dashboard/resenas':     t('titles.reviews'),
-    '/dashboard/caja':        t('titles.cash'),
-    '/dashboard/nominas':     t('titles.payroll'),
-    '/dashboard/analytics':      t('titles.analytics'),
-    '/dashboard/ajustes':        t('titles.settings'),
-    '/dashboard/integraciones':  t('titles.integrations'),
+    '/dashboard':              t('titles.dashboard'),
+    '/dashboard/agenda':       t('titles.agenda'),
+    '/dashboard/mi-negocio':   t('titles.myBusiness'),
+    '/dashboard/reservas':     t('titles.reservations'),
+    '/dashboard/clientes':     t('titles.clients'),
+    '/dashboard/servicios':    t('titles.services'),
+    '/dashboard/horarios':     t('titles.schedules'),
+    '/dashboard/productos':    t('titles.products'),
+    '/dashboard/equipo':       t('titles.team'),
+    '/dashboard/facturacion':  t('titles.invoicing'),
+    '/dashboard/marketing':    t('titles.marketing'),
+    '/dashboard/resenas':      t('titles.reviews'),
+    '/dashboard/caja':         t('titles.cash'),
+    '/dashboard/nominas':      t('titles.payroll'),
+    '/dashboard/analytics':    t('titles.analytics'),
+    '/dashboard/ajustes':      t('titles.settings'),
+    '/dashboard/integraciones':t('titles.integrations'),
   }
 
   const router = useRouter()
@@ -180,6 +203,11 @@ export function DashboardShell({
   const currentKey = HREF_KEY[pathname]
   const rutaBloqueada = currentKey ? !tieneAcceso(planActual, currentKey) : false
   const pageTitle = PAGE_TITLES_I18N[pathname] ?? PAGE_TITLES[pathname] ?? 'Dashboard'
+
+  // Breadcrumb: find which group the current route belongs to
+  const breadcrumbGroup = pathname !== '/dashboard'
+    ? NAV_GROUPS.find(g => g.items.some(i => i.href === pathname))
+    : null
   const initials = esTodos
     ? '🏢'
     : negocio?.nombre
@@ -328,21 +356,48 @@ export function DashboardShell({
         html.dark .ds-logout:hover { background: rgba(220,38,38,0.15); color: #F87171; border-color: rgba(248,113,113,0.3); }
         html.dark .ds-biz-card:hover { background: rgba(79,70,229,0.1); }
 
+        /* ── BREADCRUMB ── */
+        .ds-breadcrumb { display: flex; align-items: center; gap: 5px; }
+        .ds-bc-link { font-size: 13px; color: var(--ds-text2); text-decoration: none; font-weight: 500; transition: color 0.12s; }
+        .ds-bc-link:hover { color: var(--ds-active); }
+        .ds-bc-sep { font-size: 13px; color: var(--ds-muted); line-height: 1; }
+        .ds-bc-section { font-size: 13px; color: var(--ds-text2); font-weight: 500; }
+        .ds-bc-current { font-size: 13px; color: var(--ds-text); font-weight: 700; }
+
+        /* ── BOTTOM NAV (mobile) ── */
+        .ds-bottom-nav {
+          display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 45;
+          background: var(--ds-white); border-top: 1px solid var(--ds-border);
+          height: 62px; padding: 0 4px;
+          align-items: stretch; justify-content: space-around;
+          box-shadow: 0 -4px 24px rgba(0,0,0,0.07);
+        }
+        .ds-bn-item {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 2px; flex: 1; padding: 6px 2px;
+          text-decoration: none; color: var(--ds-muted);
+          font-family: inherit; background: none; border: none; cursor: pointer;
+          border-radius: 10px; transition: color 0.15s; -webkit-tap-highlight-color: transparent;
+        }
+        .ds-bn-item.ds-bn-active { color: var(--ds-active); }
+        .ds-bn-icon { font-size: 20px; line-height: 1; }
+        .ds-bn-label { font-size: 10px; font-weight: 600; letter-spacing: -0.2px; white-space: nowrap; }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
           .ds-sidebar { transform: translateX(-100%); }
           .ds-sidebar.open { transform: translateX(0); }
           .ds-hamburger { display: flex; }
-          .ds-main { margin-left: 0; }
+          .ds-main { margin-left: 0; padding-bottom: 62px; }
           .ds-topbar { padding: 0 12px; }
           .ds-content { padding: 16px; }
           .content { padding: 16px; }
-          /* Topbar: hide non-essential items to avoid overflow at 375px */
           .ds-notif-btn { display: none; }
           .ds-user-av { display: none; }
           .ds-page-title { font-size: 14px; }
-          /* Prevent horizontal overflow on mobile */
+          .ds-bc-current { font-size: 13px; }
           .ds-main, .ds-content { overflow-x: hidden; max-width: 100vw; }
+          .ds-bottom-nav { display: flex; }
         }
         @media (max-width: 480px) {
           .ds-content { padding: 12px; }
@@ -386,7 +441,7 @@ export function DashboardShell({
           <nav className="ds-nav">
             {NAV_GROUPS.map((group) => (
               <div key={group.label}>
-                <div className="ds-nav-section">{GROUP_LABELS[group.label] ?? group.label}</div>
+                <div className="ds-nav-section">{group.emoji} {GROUP_LABELS[group.label] ?? group.label}</div>
                 {group.items.map((item) => {
                   const isActive = pathname === item.href
                   const key = HREF_KEY[item.href]
@@ -449,7 +504,21 @@ export function DashboardShell({
                   <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
                 </svg>
               </button>
-              <span className="ds-page-title">{pageTitle}</span>
+              {breadcrumbGroup ? (
+                <nav className="ds-breadcrumb" aria-label="Breadcrumb">
+                  <Link href="/dashboard" className="ds-bc-link">Dashboard</Link>
+                  <span className="ds-bc-sep">›</span>
+                  {pageTitle !== breadcrumbGroup.label && (
+                    <>
+                      <span className="ds-bc-section">{breadcrumbGroup.emoji} {breadcrumbGroup.label}</span>
+                      <span className="ds-bc-sep">›</span>
+                    </>
+                  )}
+                  <span className="ds-bc-current">{pageTitle}</span>
+                </nav>
+              ) : (
+                <span className="ds-page-title">{pageTitle}</span>
+              )}
             </div>
             <div className="ds-topbar-right">
               <div className="ds-negsel-wrap">
@@ -520,6 +589,29 @@ export function DashboardShell({
           </main>
         </div>
       </div>
+
+      {/* ── BOTTOM NAV (mobile only) ── */}
+      <nav className="ds-bottom-nav">
+        {[
+          { href: '/dashboard', icon: '🏠', label: 'Inicio' },
+          { href: '/dashboard/reservas', icon: '📋', label: 'Reservas' },
+          { href: '/dashboard/clientes', icon: '👤', label: 'Clientes' },
+          { href: '/dashboard/mi-negocio', icon: '🏪', label: 'Negocio' },
+        ].map(({ href, icon, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`ds-bn-item${pathname === href ? ' ds-bn-active' : ''}`}
+          >
+            <span className="ds-bn-icon">{icon}</span>
+            <span className="ds-bn-label">{label}</span>
+          </Link>
+        ))}
+        <button className="ds-bn-item" onClick={() => setSidebarOpen(true)}>
+          <span className="ds-bn-icon">☰</span>
+          <span className="ds-bn-label">Más</span>
+        </button>
+      </nav>
     </>
   )
 }
