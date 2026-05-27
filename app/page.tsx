@@ -168,10 +168,9 @@ export default function Home() {
 
   // Fetch waitlist count
   useEffect(() => {
-    fetch('/api/waitlist')
-      .then(r => r.json())
-      .then(d => setCount(Math.max(d.count ?? 0, 0) + 47))
-      .catch(() => setCount(47))
+    supabase.from('waitlist').select('*', { count: 'exact', head: true }).then(({ count: c }) => {
+      setCount(c ?? 0)
+    })
   }, [])
 
   // Animate counter
@@ -919,11 +918,13 @@ export default function Home() {
             <button className="kh-btn-p" onClick={() => openAuth('registro')}>Empezar gratis</button>
             <button className="kh-btn-s" onClick={() => scrollTo('funciones')}>Ver funciones ↓</button>
           </div>
-          <div className="kh-counter">
-            <span>🏢</span>
-            <strong>{displayCount}</strong>
-            <span>negocios ya en lista de espera</span>
-          </div>
+          {count > 0 && (
+            <div className="kh-counter">
+              <span>🏢</span>
+              <strong>{displayCount}</strong>
+              <span>negocios ya en lista de espera</span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1168,9 +1169,11 @@ export default function Home() {
             )}
           </div>
 
-          <div className="kh-wl-counter fade-up" style={{ transitionDelay: '0.25s' }}>
-            <span>🏢</span><strong>{displayCount}</strong><span>negocios ya apuntados</span>
-          </div>
+          {count > 0 && (
+            <div className="kh-wl-counter fade-up" style={{ transitionDelay: '0.25s' }}>
+              <span>🏢</span><strong>{displayCount}</strong><span>negocios ya apuntados</span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -1183,10 +1186,22 @@ export default function Home() {
               ¿Eres cliente?
             </h2>
             <p style={{ fontSize: 'clamp(14px,2vw,16px)', color: '#94A3B8', lineHeight: 1.75, marginBottom: 26 }}>
-              Pronto podrás descubrir y reservar en los mejores negocios cerca de ti,
-              con reseñas reales y disponibilidad en tiempo real.
+              Descubre y reserva en los mejores negocios cerca de ti,
+              con disponibilidad en tiempo real.
             </p>
-            <div className="kh-tag kh-tag-green">🔜 Próximamente</div>
+            <a
+              href="/cliente"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '14px 28px', borderRadius: '14px',
+                background: 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
+                color: 'white', fontWeight: 700, fontSize: '15px',
+                textDecoration: 'none', boxShadow: '0 4px 20px rgba(107,79,216,0.4)',
+                transition: 'opacity 0.15s',
+              }}
+            >
+              Descubre negocios →
+            </a>
           </div>
         </div>
       </section>
