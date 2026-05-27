@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { HexColorPicker } from 'react-colorful'
 import { supabase, getSessionClient } from '../../lib/supabase'
 import { descontarCreditos, obtenerCreditos } from '../../lib/creditos'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
@@ -9,6 +10,18 @@ import { DashboardShell } from '../DashboardShell'
 
 type EstiloType = 'marca' | 'oscuro' | 'claro'
 type FuenteType = 'moderna' | 'elegante' | 'bold'
+type LayoutType = 'estatico' | 'diagonal' | 'minimalista' | 'bold' | 'elegante'
+
+const PALETAS = [
+  { name: 'Índigo',    ppal: '#6B4FD8', sec: '#818CF8' },
+  { name: 'Rosa',      ppal: '#EC4899', sec: '#F9A8D4' },
+  { name: 'Esmeralda', ppal: '#10B981', sec: '#6EE7B7' },
+  { name: 'Ámbar',     ppal: '#F59E0B', sec: '#FCD34D' },
+  { name: 'Escarlata', ppal: '#EF4444', sec: '#F87171' },
+  { name: 'Cielo',     ppal: '#0EA5E9', sec: '#7DD3FC' },
+  { name: 'Nude',      ppal: '#C4860A', sec: '#D4C5F9' },
+  { name: 'Noche',     ppal: '#1E293B', sec: '#475569' },
+]
 
 const FONT_MAP: Record<FuenteType, string> = {
   moderna:  "'Plus Jakarta Sans', sans-serif",
@@ -26,6 +39,7 @@ type TemplateProps = {
   logoUrl: string
   fuente: FuenteType
   estilo: EstiloType
+  layout?: LayoutType
 }
 
 type Resena = {
@@ -55,75 +69,338 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo }: TemplateProps) {
-  const isDark  = estilo !== 'claro'
-  const isMarca = estilo === 'marca'
+function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo, layout = 'estatico' }: TemplateProps) {
+  const isDark   = estilo !== 'claro'
+  const isMarca  = estilo === 'marca'
+  const fontTitulo = FONT_MAP[fuente]
+
+  /* ── minimalista ── */
+  if (layout === 'minimalista') {
+    return (
+      <div style={{ width:540, height:540, background:'#FAFAFA', position:'relative', overflow:'hidden',
+        display:'flex', flexDirection:'column', justifyContent:'flex-end', alignItems:'flex-start',
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'48px' }}>
+        <div style={{ position:'absolute', top:48, left:48, width:44, height:3, background:colorPpal, borderRadius:2 }} />
+        {mostrarLogo && logoUrl && (
+          <div style={{ position:'absolute', top:36, right:48, zIndex:10 }}>
+            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:40, height:40, borderRadius:8, objectFit:'cover', display:'block' }} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:2, width:'100%' }}>
+          {contenido.dato && (
+            <div style={{ fontSize:80, fontWeight:900, lineHeight:1, marginBottom:4, letterSpacing:'-3px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              {contenido.dato}
+            </div>
+          )}
+          <div style={{ fontSize:contenido.dato?32:46, fontWeight:800, color:'#0F172A', lineHeight:1.1, marginBottom:10, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>
+            {contenido.titulo}
+          </div>
+          <div style={{ fontSize:15, color:'#64748B', lineHeight:1.5, marginBottom:26 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'10px 24px', background:colorPpal, borderRadius:6, fontSize:13, fontWeight:700, color:'white' }}>
+            {contenido.cta}
+          </div>
+        </div>
+        {mostrarUrl && (
+          <div style={{ position:'absolute', bottom:20, right:48, fontSize:11, color:'#CBD5E1', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+        )}
+      </div>
+    )
+  }
+
+  /* ── bold ── */
+  if (layout === 'bold') {
+    return (
+      <div style={{ width:540, height:540, background:isMarca?`linear-gradient(135deg,${colorPpal},${colorSec})`:colorPpal, position:'relative', overflow:'hidden',
+        display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'52px' }}>
+        <div style={{ position:'absolute', bottom:-80, right:-80, width:420, height:420, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
+        <div style={{ position:'absolute', top:-40, right:40, width:200, height:200, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
+        {mostrarLogo && logoUrl && (
+          <div style={{ position:'absolute', top:32, right:32, zIndex:10 }}>
+            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:48, height:48, borderRadius:10, objectFit:'cover', border:'2px solid rgba(255,255,255,0.3)', display:'block' }} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:2, width:'100%' }}>
+          <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.55)', letterSpacing:3, textTransform:'uppercase', marginBottom:16 }}>{negocioNombre}</div>
+          {contenido.dato && (
+            <div style={{ fontSize:88, fontWeight:900, lineHeight:0.9, marginBottom:8, letterSpacing:'-4px', color:'white' }}>{contenido.dato}</div>
+          )}
+          <div style={{ fontSize:contenido.dato?36:52, fontWeight:900, color:'white', lineHeight:1, marginBottom:14, letterSpacing:'-1px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
+          <div style={{ fontSize:16, color:'rgba(255,255,255,0.72)', lineHeight:1.4, marginBottom:32 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'12px 28px', background:'white', borderRadius:8, fontSize:14, fontWeight:800, color:colorPpal }}>{contenido.cta}</div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ── elegante ── */
+  if (layout === 'elegante') {
+    const bgE = isDark ? '#0F0F14' : '#FDFCFB'
+    const txtE = isDark ? '#FFFFFF' : '#1C1917'
+    const subE = isDark ? 'rgba(255,255,255,0.5)' : '#78716C'
+    return (
+      <div style={{ width:540, height:540, background:bgE, position:'relative', overflow:'hidden',
+        display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'60px' }}>
+        <div style={{ position:'absolute', inset:18, border:`1px solid ${isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)'}`, borderRadius:4, pointerEvents:'none' }} />
+        <div style={{ position:'absolute', top:34, left:'50%', transform:'translateX(-50%)', display:'flex', gap:6 }}>
+          {[colorPpal, colorSec, colorPpal].map((c, i) => (
+            <div key={i} style={{ width:4, height:4, borderRadius:'50%', background:c, opacity:0.5 }} />
+          ))}
+        </div>
+        {mostrarLogo && logoUrl && (
+          <div style={{ marginBottom:20, zIndex:2 }}>
+            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:50, height:50, borderRadius:10, objectFit:'cover', display:'block' }} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+          {contenido.dato && (
+            <div style={{ fontSize:64, fontWeight:300, lineHeight:1, marginBottom:8, letterSpacing:'-1px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              {contenido.dato}
+            </div>
+          )}
+          <div style={{ fontSize:contenido.dato?26:34, fontWeight:700, color:txtE, lineHeight:1.2, marginBottom:12, letterSpacing:'0px',
+            fontFamily: fuente === 'elegante' ? FONT_MAP.elegante : fontTitulo }}>
+            {contenido.titulo}
+          </div>
+          <div style={{ width:36, height:1, background:colorPpal, margin:'0 auto 14px', opacity:0.4 }} />
+          <div style={{ fontSize:14, color:subE, lineHeight:1.6, marginBottom:28 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'10px 28px', border:`1px solid ${colorPpal}`, borderRadius:2, fontSize:13, fontWeight:600, color:isDark?'white':colorPpal }}>
+            {contenido.cta}
+          </div>
+        </div>
+        {mostrarUrl && (
+          <div style={{ position:'absolute', bottom:34, left:0, right:0, textAlign:'center', fontSize:10, color:isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)', letterSpacing:2, textTransform:'uppercase' }}>{negocioNombre}</div>
+        )}
+      </div>
+    )
+  }
+
+  /* ── diagonal ── */
+  if (layout === 'diagonal') {
+    const bgD = isDark ? '#080810' : '#F7F9FC'
+    const txtD = isDark ? '#FFFFFF' : '#111827'
+    return (
+      <div style={{ width:540, height:540, background:bgD, position:'relative', overflow:'hidden',
+        display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'52px' }}>
+        <div style={{ position:'absolute', top:-120, right:-120, width:520, height:720,
+          background:`linear-gradient(135deg,${colorPpal},${colorSec})`,
+          transform:'rotate(-15deg)', opacity: isDark ? 0.16 : 0.1, borderRadius:48 }} />
+        <div style={{ position:'absolute', bottom:70, right:44, width:3, height:160, background:`linear-gradient(180deg,${colorPpal},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
+        <div style={{ position:'absolute', bottom:50, right:74, width:3, height:100, background:`linear-gradient(180deg,${colorSec},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
+        {mostrarLogo && logoUrl && (
+          <div style={{ position:'absolute', top:32, right:32, zIndex:10 }}>
+            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:44, height:44, borderRadius:10, objectFit:'cover', border:'2px solid rgba(255,255,255,0.2)', display:'block' }} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:2, width:'80%' }}>
+          <div style={{ width:36, height:4, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:20 }} />
+          {contenido.dato && (
+            <div style={{ fontSize:80, fontWeight:900, lineHeight:1, marginBottom:6, letterSpacing:'-3px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              {contenido.dato}
+            </div>
+          )}
+          <div style={{ fontSize:contenido.dato?30:42, fontWeight:800, color:txtD, lineHeight:1.15, marginBottom:12, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
+          <div style={{ fontSize:15, color:isDark?'rgba(255,255,255,0.6)':'#6B7280', lineHeight:1.5, marginBottom:28 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'11px 26px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:8, fontSize:13, fontWeight:700, color:'white' }}>{contenido.cta}</div>
+        </div>
+        {mostrarUrl && (
+          <div style={{ position:'absolute', bottom:20, left:52, fontSize:11, color:isDark?'rgba(255,255,255,0.3)':'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+        )}
+      </div>
+    )
+  }
+
+  /* ── estatico (default) ── */
   const bg         = isMarca ? `linear-gradient(135deg,${colorPpal},${colorSec})` : isDark ? '#080810' : '#F7F9FC'
   const textColor  = isDark ? '#FFFFFF' : '#111827'
   const subColor   = isDark ? 'rgba(255,255,255,0.65)' : '#6B7280'
   const footerColor = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
-  const fontTitulo = FONT_MAP[fuente]
   const ctaBg      = isMarca ? 'rgba(255,255,255,0.22)' : `linear-gradient(135deg,${colorPpal},${colorSec})`
   const ctaBorder  = isMarca ? '1.5px solid rgba(255,255,255,0.35)' : 'none'
   return (
     <div style={{ width:540, height:540, background:bg, position:'relative', overflow:'hidden',
       display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
       fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'48px' }}>
-      {/* Blobs */}
       <div style={{ position:'absolute', top:-80, left:-80, width:280, height:280, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.15)':hexToRgba(colorSec,isDark?0.45:0.7)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
       <div style={{ position:'absolute', bottom:-60, right:-60, width:240, height:240, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.1)':hexToRgba(colorPpal,isDark?0.35:0.6)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
       <div style={{ position:'absolute', top:'40%', right:-40, width:160, height:160, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.12)':hexToRgba(colorSec,isDark?0.25:0.4)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
-      {/* Logo */}
       {mostrarLogo && logoUrl && (
         <div style={{ position:'absolute', top:20, left:20, zIndex:10 }}>
           <img src={logoUrl} alt="" crossOrigin="anonymous"
             style={{ width:48, height:48, borderRadius:10, objectFit:'cover', border:'2px solid rgba(255,255,255,0.25)', display:'block' }} />
         </div>
       )}
-      {/* Content */}
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
-          <div style={{
-            fontSize:72, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-2px',
-            ...(isMarca
-              ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
-              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' })
-          }}>
+          <div style={{ fontSize:72, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-2px',
+            ...(isMarca ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
+              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }) }}>
             {contenido.dato}
           </div>
         )}
-        <div style={{ fontSize:contenido.dato?28:36, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:12, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>
-          {contenido.titulo}
-        </div>
-        <div style={{ fontSize:16, color:subColor, lineHeight:1.5, marginBottom:32 }}>
-          {contenido.subtitulo}
-        </div>
-        <div style={{ display:'inline-block', padding:'12px 28px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>
-          {contenido.cta}
-        </div>
+        <div style={{ fontSize:contenido.dato?28:36, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:12, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
+        <div style={{ fontSize:16, color:subColor, lineHeight:1.5, marginBottom:32 }}>{contenido.subtitulo}</div>
+        <div style={{ display:'inline-block', padding:'12px 28px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>{contenido.cta}</div>
       </div>
       {mostrarUrl && (
-        <div style={{ position:'absolute', bottom:20, left:0, right:0, textAlign:'center', fontSize:12, color:footerColor, letterSpacing:1, textTransform:'uppercase' }}>
-          {negocioNombre}
-        </div>
+        <div style={{ position:'absolute', bottom:20, left:0, right:0, textAlign:'center', fontSize:12, color:footerColor, letterSpacing:1, textTransform:'uppercase' }}>{negocioNombre}</div>
       )}
     </div>
   )
 }
 
-function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo }: TemplateProps) {
-  const isDark  = estilo !== 'claro'
-  const isMarca = estilo === 'marca'
-  const bg         = isMarca ? `linear-gradient(135deg,${colorPpal},${colorSec})` : isDark ? '#080810' : '#F7F9FC'
-  const textColor  = isDark ? '#FFFFFF' : '#111827'
-  const subColor   = isDark ? 'rgba(255,255,255,0.65)' : '#6B7280'
-  const footerColor = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
+function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo, layout = 'estatico' }: TemplateProps) {
+  const isDark   = estilo !== 'claro'
+  const isMarca  = estilo === 'marca'
   const fontTitulo = FONT_MAP[fuente]
-  const ctaBg      = isMarca ? 'rgba(255,255,255,0.22)' : `linear-gradient(135deg,${colorPpal},${colorSec})`
-  const ctaBorder  = isMarca ? '1.5px solid rgba(255,255,255,0.35)' : 'none'
+
+  /* ── minimalista ── */
+  if (layout === 'minimalista') {
+    return (
+      <div style={{ width:540, height:960, background:'#FAFAFA', position:'relative', overflow:'hidden',
+        display:'flex', flexDirection:'column', justifyContent:'flex-end', alignItems:'flex-start',
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'64px 52px' }}>
+        <div style={{ position:'absolute', top:64, left:52, width:52, height:3, background:colorPpal, borderRadius:2 }} />
+        {mostrarLogo && logoUrl && (
+          <div style={{ position:'absolute', top:48, right:52, zIndex:10 }}>
+            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:52, height:52, borderRadius:10, objectFit:'cover', display:'block' }} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:2, width:'100%' }}>
+          {contenido.dato && (
+            <div style={{ fontSize:100, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-4px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              {contenido.dato}
+            </div>
+          )}
+          <div style={{ fontSize:contenido.dato?40:56, fontWeight:800, color:'#0F172A', lineHeight:1.1, marginBottom:16, letterSpacing:'-1px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
+          <div style={{ fontSize:18, color:'#64748B', lineHeight:1.6, marginBottom:36 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'14px 32px', background:colorPpal, borderRadius:6, fontSize:16, fontWeight:700, color:'white' }}>{contenido.cta}</div>
+        </div>
+        {mostrarUrl && (
+          <div style={{ position:'absolute', bottom:28, right:52, fontSize:12, color:'#CBD5E1', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+        )}
+      </div>
+    )
+  }
+
+  /* ── bold ── */
+  if (layout === 'bold') {
+    return (
+      <div style={{ width:540, height:960, background:isMarca?`linear-gradient(135deg,${colorPpal},${colorSec})`:colorPpal, position:'relative', overflow:'hidden',
+        display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'64px 52px' }}>
+        <div style={{ position:'absolute', bottom:-120, right:-120, width:560, height:560, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
+        <div style={{ position:'absolute', top:-60, right:60, width:280, height:280, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
+        {mostrarLogo && logoUrl && (
+          <div style={{ position:'absolute', top:48, right:48, zIndex:10 }}>
+            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:60, height:60, borderRadius:12, objectFit:'cover', border:'2px solid rgba(255,255,255,0.3)', display:'block' }} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:2, width:'100%' }}>
+          <div style={{ fontSize:12, fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:4, textTransform:'uppercase', marginBottom:24 }}>{negocioNombre}</div>
+          {contenido.dato && (
+            <div style={{ fontSize:112, fontWeight:900, lineHeight:0.9, marginBottom:12, letterSpacing:'-5px', color:'white' }}>{contenido.dato}</div>
+          )}
+          <div style={{ fontSize:contenido.dato?44:64, fontWeight:900, color:'white', lineHeight:1, marginBottom:20, letterSpacing:'-1.5px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
+          <div style={{ fontSize:20, color:'rgba(255,255,255,0.7)', lineHeight:1.4, marginBottom:48 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'16px 40px', background:'white', borderRadius:10, fontSize:17, fontWeight:800, color:colorPpal }}>{contenido.cta}</div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ── elegante ── */
+  if (layout === 'elegante') {
+    const bgE = isDark ? '#0F0F14' : '#FDFCFB'
+    const txtE = isDark ? '#FFFFFF' : '#1C1917'
+    const subE = isDark ? 'rgba(255,255,255,0.5)' : '#78716C'
+    return (
+      <div style={{ width:540, height:960, background:bgE, position:'relative', overflow:'hidden',
+        display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'80px 60px' }}>
+        <div style={{ position:'absolute', inset:24, border:`1px solid ${isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.05)'}`, borderRadius:4, pointerEvents:'none' }} />
+        <div style={{ position:'absolute', top:44, left:'50%', transform:'translateX(-50%)', display:'flex', gap:8 }}>
+          {[colorPpal, colorSec, colorPpal].map((c, i) => (
+            <div key={i} style={{ width:5, height:5, borderRadius:'50%', background:c, opacity:0.45 }} />
+          ))}
+        </div>
+        {mostrarLogo && logoUrl && (
+          <div style={{ marginBottom:32, zIndex:2 }}>
+            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:64, height:64, borderRadius:12, objectFit:'cover', display:'block' }} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+          {contenido.dato && (
+            <div style={{ fontSize:80, fontWeight:300, lineHeight:1, marginBottom:12, letterSpacing:'-1px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              {contenido.dato}
+            </div>
+          )}
+          <div style={{ fontSize:contenido.dato?32:44, fontWeight:700, color:txtE, lineHeight:1.2, marginBottom:16, fontFamily: fuente === 'elegante' ? FONT_MAP.elegante : fontTitulo }}>{contenido.titulo}</div>
+          <div style={{ width:44, height:1, background:colorPpal, margin:'0 auto 20px', opacity:0.4 }} />
+          <div style={{ fontSize:17, color:subE, lineHeight:1.7, marginBottom:40 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'14px 36px', border:`1px solid ${colorPpal}`, borderRadius:2, fontSize:15, fontWeight:600, color:isDark?'white':colorPpal }}>{contenido.cta}</div>
+        </div>
+        {mostrarUrl && (
+          <div style={{ position:'absolute', bottom:44, left:0, right:0, textAlign:'center', fontSize:11, color:isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)', letterSpacing:2.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+        )}
+      </div>
+    )
+  }
+
+  /* ── diagonal ── */
+  if (layout === 'diagonal') {
+    const bgD = isDark ? '#080810' : '#F7F9FC'
+    const txtD = isDark ? '#FFFFFF' : '#111827'
+    return (
+      <div style={{ width:540, height:960, background:bgD, position:'relative', overflow:'hidden',
+        display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'64px 52px' }}>
+        <div style={{ position:'absolute', top:-150, right:-150, width:640, height:900,
+          background:`linear-gradient(135deg,${colorPpal},${colorSec})`,
+          transform:'rotate(-15deg)', opacity: isDark ? 0.14 : 0.09, borderRadius:60 }} />
+        <div style={{ position:'absolute', bottom:100, right:44, width:3, height:240, background:`linear-gradient(180deg,${colorPpal},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
+        <div style={{ position:'absolute', bottom:80, right:76, width:3, height:160, background:`linear-gradient(180deg,${colorSec},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
+        {mostrarLogo && logoUrl && (
+          <div style={{ position:'absolute', top:48, right:48, zIndex:10 }}>
+            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:56, height:56, borderRadius:12, objectFit:'cover', border:'2px solid rgba(255,255,255,0.2)', display:'block' }} />
+          </div>
+        )}
+        <div style={{ position:'relative', zIndex:2, width:'82%' }}>
+          <div style={{ width:44, height:5, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:28 }} />
+          {contenido.dato && (
+            <div style={{ fontSize:100, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-4px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              {contenido.dato}
+            </div>
+          )}
+          <div style={{ fontSize:contenido.dato?38:52, fontWeight:800, color:txtD, lineHeight:1.1, marginBottom:16, letterSpacing:'-1px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
+          <div style={{ fontSize:18, color:isDark?'rgba(255,255,255,0.6)':'#6B7280', lineHeight:1.5, marginBottom:40 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'14px 32px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:10, fontSize:16, fontWeight:700, color:'white' }}>{contenido.cta}</div>
+        </div>
+        {mostrarUrl && (
+          <div style={{ position:'absolute', bottom:28, left:52, fontSize:12, color:isDark?'rgba(255,255,255,0.3)':'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+        )}
+      </div>
+    )
+  }
+
+  /* ── estatico (default) ── */
+  const bg          = isMarca ? `linear-gradient(135deg,${colorPpal},${colorSec})` : isDark ? '#080810' : '#F7F9FC'
+  const textColor   = isDark ? '#FFFFFF' : '#111827'
+  const subColor    = isDark ? 'rgba(255,255,255,0.65)' : '#6B7280'
+  const footerColor = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
+  const ctaBg       = isMarca ? 'rgba(255,255,255,0.22)' : `linear-gradient(135deg,${colorPpal},${colorSec})`
+  const ctaBorder   = isMarca ? '1.5px solid rgba(255,255,255,0.35)' : 'none'
   return (
     <div style={{ width:540, height:960, background:bg, position:'relative', overflow:'hidden',
       display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
@@ -142,29 +419,18 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
       )}
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
-          <div style={{
-            fontSize:96, fontWeight:900, lineHeight:1, marginBottom:12, letterSpacing:'-3px',
-            ...(isMarca
-              ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
-              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' })
-          }}>
+          <div style={{ fontSize:96, fontWeight:900, lineHeight:1, marginBottom:12, letterSpacing:'-3px',
+            ...(isMarca ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
+              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }) }}>
             {contenido.dato}
           </div>
         )}
-        <div style={{ fontSize:contenido.dato?36:48, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:16, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>
-          {contenido.titulo}
-        </div>
-        <div style={{ fontSize:20, color:subColor, lineHeight:1.6, marginBottom:48 }}>
-          {contenido.subtitulo}
-        </div>
-        <div style={{ display:'inline-block', padding:'16px 40px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>
-          {contenido.cta}
-        </div>
+        <div style={{ fontSize:contenido.dato?36:48, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:16, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
+        <div style={{ fontSize:20, color:subColor, lineHeight:1.6, marginBottom:48 }}>{contenido.subtitulo}</div>
+        <div style={{ display:'inline-block', padding:'16px 40px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>{contenido.cta}</div>
       </div>
       {mostrarUrl && (
-        <div style={{ position:'absolute', bottom:32, left:0, right:0, textAlign:'center', fontSize:14, color:footerColor, letterSpacing:1.5, textTransform:'uppercase' }}>
-          {negocioNombre}
-        </div>
+        <div style={{ position:'absolute', bottom:32, left:0, right:0, textAlign:'center', fontSize:14, color:footerColor, letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
       )}
     </div>
   )
@@ -200,9 +466,10 @@ export default function MarketingPage() {
   const [tipoContenido, setTipoContenido] = useState<'promocion' | 'nuevo_servicio' | 'consejo' | 'oferta' | 'presentacion'>('promocion')
   const [servicio, setServicio]       = useState('')
   const [estilo, setEstilo]           = useState<EstiloType>('oscuro')
+  const [colorPickerOpen, setColorPickerOpen] = useState<'ppal' | 'sec' | null>(null)
   const [imgContenido, setImgContenido] = useState<{
     titulo: string; subtitulo: string; dato: string | null; cta: string
-    descripcion?: string; hashtags?: string[]
+    descripcion?: string; hashtags?: string[]; layout?: string
   } | null>(null)
   const [generandoImg, setGenerandoImg] = useState(false)
   const [imgError, setImgError]       = useState('')
@@ -307,22 +574,38 @@ export default function MarketingPage() {
     const esHistoria = formato === 'historia'
     const serviciosStr = negServicios.slice(0, 8).join(', ') || 'servicios generales'
 
-    const prompt = `Eres el community manager de "${negocioNombre}"${negocio?.tipo ? `, un negocio de ${negocio.tipo}` : ''} en España.
+    const layoutGuide: Record<string, string> = {
+      promocion: 'bold o estatico',
+      nuevo_servicio: 'diagonal o elegante',
+      consejo: 'minimalista',
+      oferta: 'bold o diagonal',
+      presentacion: 'elegante o estatico',
+    }
+
+    const prompt = `Eres el community manager creativo de "${negocioNombre}"${negocio?.tipo ? `, un negocio de ${negocio.tipo}` : ''} en España.
 Tono de comunicación: ${tonoLabel[negTono] ?? negTono}.
 ${negPalabras.length ? `Palabras clave de la marca: ${negPalabras.join(', ')}.` : ''}
 ${negFrase ? `Frase de marca: "${negFrase}".` : ''}
 Servicios: ${serviciosStr}.
 Formato: ${esHistoria ? 'historia vertical Instagram' : 'publicación cuadrada Instagram'}.
-Genera un post de tipo "${tipoLabel[tipoContenido]}"${servicio ? ` destacando "${servicio}"` : ''}.
+Tipo de post: "${tipoLabel[tipoContenido]}"${servicio ? ` — destacando "${servicio}"` : ''}.
+
+INSTRUCCIONES CREATIVAS:
+- El título debe ser sorprendente, directo y con carácter propio. Evita clichés como "Descubre", "Transforma", "Potencia".
+- El subtítulo debe tener ritmo y ser memorable, no genérico.
+- Si hay dato, que sea concreto y creíble (porcentaje, número de clientes, años de experiencia, minutos…).
+- La descripción debe sonar humana, no de plantilla. Usa el tono indicado con personalidad real.
+- Layout sugerido para este tipo de contenido: ${layoutGuide[tipoContenido] ?? 'estatico'}.
 
 Devuelve SOLO JSON sin markdown:
 {
   "titulo": "máximo 4 palabras impactantes",
-  "subtitulo": "máximo 8 palabras descriptivas",
-  "dato": "cifra o dato impactante o null",
+  "subtitulo": "máximo 8 palabras con ritmo",
+  "dato": "cifra concreta o null",
   "cta": "llamada a la acción máximo 4 palabras",
-  "descripcion": "caption Instagram máximo 150 palabras con el tono indicado",
-  "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5"]
+  "descripcion": "caption Instagram máximo 150 palabras, tono ${tonoLabel[negTono] ?? negTono}, con personalidad",
+  "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5"],
+  "layout": "uno de: estatico|diagonal|minimalista|bold|elegante"
 }`
 
     try {
@@ -346,29 +629,35 @@ Devuelve SOLO JSON sin markdown:
   async function descargarImagen() {
     if (!imgContenido) return
     setImgDescargando(true)
-    try {
-      const html2canvas = (await import('html2canvas')).default
-      await document.fonts.ready
-      await new Promise(r => setTimeout(r, 500))
-      const element = document.getElementById('render-post')
-      if (!element) return
-      const canvas = await html2canvas(element, {
-        scale: 1080 / element.offsetWidth,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-        logging: false,
-        width: element.offsetWidth,
-        height: element.offsetHeight,
-        windowWidth: element.offsetWidth,
-        windowHeight: element.offsetHeight,
-      })
-      const link = document.createElement('a')
-      link.download = `marketing_${formato}_${Date.now()}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-    } catch {
-      /* ignorar */
+    setImgError('')
+    const html2canvas = (await import('html2canvas')).default
+    let intentos = 0
+    while (intentos < 3) {
+      try {
+        await document.fonts.ready
+        await new Promise(r => setTimeout(r, 800))
+        const element = document.getElementById('render-post')
+        if (!element) { intentos++; continue }
+        const canvas = await html2canvas(element, {
+          scale: 1080 / element.offsetWidth,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: null,
+          logging: false,
+          width: element.offsetWidth,
+          height: element.offsetHeight,
+          windowWidth: element.offsetWidth,
+          windowHeight: element.offsetHeight,
+        })
+        const link = document.createElement('a')
+        link.download = `marketing_${formato}_${Date.now()}.png`
+        link.href = canvas.toDataURL('image/png')
+        link.click()
+        break
+      } catch {
+        intentos++
+        if (intentos === 3) setImgError('No se pudo generar la imagen. Inténtalo de nuevo.')
+      }
     }
     setImgDescargando(false)
   }
@@ -460,6 +749,7 @@ Devuelve SOLO JSON sin markdown:
   const tplProps = (c: NonNullable<typeof imgContenido>) => ({
     contenido: c, negocioNombre, colorPpal, colorSec,
     mostrarLogo, mostrarUrl, logoUrl, fuente, estilo,
+    layout: (c.layout as LayoutType | undefined) ?? 'estatico',
   })
 
   // ─── Quick-adjustments pill ───────────────────────────────────────────────
@@ -593,6 +883,22 @@ Devuelve SOLO JSON sin markdown:
           .mk-format-grid { grid-template-columns:1fr 1fr; gap:8px; }
           .mk-cal-grid { grid-template-columns:1fr; }
         }
+
+        /* ── Color picker ── */
+        .mk-color-trigger { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border:1.5px solid #E5E7EB; border-radius:10px; background:white; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; color:#374151; transition:all .15s; }
+        .mk-color-trigger:hover { border-color:#C7D2FE; }
+        .mk-color-swatch { width:22px; height:22px; border-radius:5px; border:1.5px solid rgba(0,0,0,0.1); flex-shrink:0; }
+        .mk-color-popup { position:absolute; top:calc(100% + 8px); left:0; z-index:200; background:white; border:1px solid #E5E7EB; border-radius:16px; padding:14px; box-shadow:0 12px 40px rgba(0,0,0,0.15); width:240px; }
+        .mk-color-popup .react-colorful { width:100% !important; height:160px !important; border-radius:10px; margin-bottom:12px; }
+        .mk-color-popup .react-colorful__saturation { border-radius:10px 10px 0 0; }
+        .mk-color-popup .react-colorful__hue { border-radius:0 0 6px 6px; height:14px; }
+        .mk-color-popup .react-colorful__pointer { width:18px; height:18px; }
+        .mk-paletas-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+        .mk-paleta-chip { width:26px; height:26px; border-radius:6px; border:1.5px solid rgba(0,0,0,0.1); cursor:pointer; flex-shrink:0; transition:transform .1s; }
+        .mk-paleta-chip:hover { transform:scale(1.15); border-color:rgba(0,0,0,0.2); }
+        .mk-paleta-chip.sel { border:2px solid #111827; transform:scale(1.1); }
+        .mk-color-hex { width:100%; margin-top:10px; padding:7px 10px; border:1.5px solid #E5E7EB; border-radius:8px; font-size:13px; font-family:inherit; outline:none; text-transform:uppercase; }
+        .mk-color-hex:focus { border-color:#4F46E5; }
       `}</style>
 
       {/* Off-screen render target for html2canvas */}
@@ -742,6 +1048,63 @@ Devuelve SOLO JSON sin markdown:
                   </div>
                 </div>
               </div>
+                <div className="mk-field mk-field-full">
+                  <label className="mk-label">Colores de la imagen</label>
+                  <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'flex-start' }}>
+                    {/* Color principal */}
+                    <div style={{ position:'relative' }}>
+                      <button className="mk-color-trigger" onClick={() => setColorPickerOpen(colorPickerOpen === 'ppal' ? null : 'ppal')}>
+                        <span className="mk-color-swatch" style={{ background:colorPpal }} />
+                        Principal
+                      </button>
+                      {colorPickerOpen === 'ppal' && (
+                        <div className="mk-color-popup">
+                          <HexColorPicker color={colorPpal} onChange={setColorPpal} />
+                          <div className="mk-paletas-grid">
+                            {PALETAS.map(p => (
+                              <button key={p.name} title={`${p.name} — ${p.ppal}`}
+                                className={`mk-paleta-chip${colorPpal === p.ppal ? ' sel' : ''}`}
+                                style={{ background:p.ppal }}
+                                onClick={() => { setColorPpal(p.ppal); setColorSec(p.sec) }} />
+                            ))}
+                          </div>
+                          <input className="mk-color-hex" value={colorPpal} onChange={e => setColorPpal(e.target.value)} placeholder="#6B4FD8" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Color secundario */}
+                    <div style={{ position:'relative' }}>
+                      <button className="mk-color-trigger" onClick={() => setColorPickerOpen(colorPickerOpen === 'sec' ? null : 'sec')}>
+                        <span className="mk-color-swatch" style={{ background:colorSec }} />
+                        Secundario
+                      </button>
+                      {colorPickerOpen === 'sec' && (
+                        <div className="mk-color-popup">
+                          <HexColorPicker color={colorSec} onChange={setColorSec} />
+                          <div className="mk-paletas-grid">
+                            {PALETAS.map(p => (
+                              <button key={p.name} title={`${p.name} — ${p.sec}`}
+                                className={`mk-paleta-chip${colorSec === p.sec ? ' sel' : ''}`}
+                                style={{ background:p.sec }}
+                                onClick={() => setColorSec(p.sec)} />
+                            ))}
+                          </div>
+                          <input className="mk-color-hex" value={colorSec} onChange={e => setColorSec(e.target.value)} placeholder="#818CF8" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Vista previa */}
+                    <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:10, border:'1.5px solid #F3F4F6', background:'#F9FAFB' }}>
+                      <div style={{ width:16, height:32, borderRadius:'3px 0 0 3px', background:colorPpal }} />
+                      <div style={{ width:16, height:32, borderRadius:'0 3px 3px 0', background:colorSec }} />
+                      <span style={{ fontSize:11, color:'#9CA3AF', marginLeft:4 }}>Preview</span>
+                    </div>
+                  </div>
+                </div>
+              {/* Backdrop to close picker */}
+              {colorPickerOpen && (
+                <div style={{ position:'fixed', inset:0, zIndex:100 }} onClick={() => setColorPickerOpen(null)} />
+              )}
               <button className="mk-gen-btn" onClick={generarImagen} disabled={generandoImg || cargando}>
                 {generandoImg ? <><span className="mk-spinner" /> Generando…</> : '✨ Generar con IA — 10 créditos'}
               </button>
