@@ -69,6 +69,24 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+function BrandHeader({ logoUrl, mostrarLogo, negocioNombre, textColor, hasShadow = false }: {
+  logoUrl: string; mostrarLogo: boolean; negocioNombre: string; textColor: string; hasShadow?: boolean
+}) {
+  if (!mostrarLogo) return null
+  return (
+    <div style={{ position:'absolute', top:20, left:20, zIndex:10, display:'flex', alignItems:'center', gap:8, maxWidth:'60%' }}>
+      {logoUrl && (
+        <img src={logoUrl} alt="" crossOrigin="anonymous"
+          style={{ width:40, height:40, borderRadius:8, objectFit:'cover', display:'block', flexShrink:0 }} />
+      )}
+      <span style={{ fontSize:12, fontWeight:700, color:textColor, letterSpacing:'-0.2px', lineHeight:1.2,
+        textShadow:hasShadow ? '0 1px 3px rgba(0,0,0,0.3)' : 'none' }}>
+        {negocioNombre}
+      </span>
+    </div>
+  )
+}
+
 function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo, layout = 'estatico' }: TemplateProps) {
   const isDark   = estilo !== 'claro'
   const isMarca  = estilo === 'marca'
@@ -81,11 +99,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
         display:'flex', flexDirection:'column', justifyContent:'flex-end', alignItems:'flex-start',
         fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'48px' }}>
         <div style={{ position:'absolute', top:48, left:48, width:44, height:3, background:colorPpal, borderRadius:2 }} />
-        {mostrarLogo && logoUrl && (
-          <div style={{ position:'absolute', top:36, right:48, zIndex:10 }}>
-            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:40, height:40, borderRadius:8, objectFit:'cover', display:'block' }} />
-          </div>
-        )}
+        <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="#374151" />
         <div style={{ position:'relative', zIndex:2, width:'100%' }}>
           {contenido.dato && (
             <div style={{ fontSize:80, fontWeight:900, lineHeight:1, marginBottom:4, letterSpacing:'-3px',
@@ -116,11 +130,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
         fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'52px' }}>
         <div style={{ position:'absolute', bottom:-80, right:-80, width:420, height:420, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
         <div style={{ position:'absolute', top:-40, right:40, width:200, height:200, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
-        {mostrarLogo && logoUrl && (
-          <div style={{ position:'absolute', top:32, right:32, zIndex:10 }}>
-            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:48, height:48, borderRadius:10, objectFit:'cover', border:'2px solid rgba(255,255,255,0.3)', display:'block' }} />
-          </div>
-        )}
+        <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="rgba(255,255,255,0.9)" hasShadow />
         <div style={{ position:'relative', zIndex:2, width:'100%' }}>
           <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.55)', letterSpacing:3, textTransform:'uppercase', marginBottom:16 }}>{negocioNombre}</div>
           {contenido.dato && (
@@ -149,11 +159,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
             <div key={i} style={{ width:4, height:4, borderRadius:'50%', background:c, opacity:0.5 }} />
           ))}
         </div>
-        {mostrarLogo && logoUrl && (
-          <div style={{ marginBottom:20, zIndex:2 }}>
-            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:50, height:50, borderRadius:10, objectFit:'cover', display:'block' }} />
-          </div>
-        )}
+        <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} />
         <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
           {contenido.dato && (
             <div style={{ fontSize:64, fontWeight:300, lineHeight:1, marginBottom:8, letterSpacing:'-1px',
@@ -191,11 +197,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
           transform:'rotate(-15deg)', opacity: isDark ? 0.16 : 0.1, borderRadius:48 }} />
         <div style={{ position:'absolute', bottom:70, right:44, width:3, height:160, background:`linear-gradient(180deg,${colorPpal},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
         <div style={{ position:'absolute', bottom:50, right:74, width:3, height:100, background:`linear-gradient(180deg,${colorSec},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
-        {mostrarLogo && logoUrl && (
-          <div style={{ position:'absolute', top:32, right:32, zIndex:10 }}>
-            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:44, height:44, borderRadius:10, objectFit:'cover', border:'2px solid rgba(255,255,255,0.2)', display:'block' }} />
-          </div>
-        )}
+        <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} hasShadow={isDark} />
         <div style={{ position:'relative', zIndex:2, width:'80%' }}>
           <div style={{ width:36, height:4, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:20 }} />
           {contenido.dato && (
@@ -232,12 +234,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.1)':hexToRgba(colorPpal,isDark?0.35:0.6)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
       <div style={{ position:'absolute', top:'40%', right:-40, width:160, height:160, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.12)':hexToRgba(colorSec,isDark?0.25:0.4)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
-      {mostrarLogo && logoUrl && (
-        <div style={{ position:'absolute', top:20, left:20, zIndex:10 }}>
-          <img src={logoUrl} alt="" crossOrigin="anonymous"
-            style={{ width:48, height:48, borderRadius:10, objectFit:'cover', border:'2px solid rgba(255,255,255,0.25)', display:'block' }} />
-        </div>
-      )}
+      <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark||isMarca?'rgba(255,255,255,0.85)':'#374151'} hasShadow={isDark||isMarca} />
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
           <div style={{ fontSize:72, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-2px',
@@ -269,11 +266,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
         display:'flex', flexDirection:'column', justifyContent:'flex-end', alignItems:'flex-start',
         fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'64px 52px' }}>
         <div style={{ position:'absolute', top:64, left:52, width:52, height:3, background:colorPpal, borderRadius:2 }} />
-        {mostrarLogo && logoUrl && (
-          <div style={{ position:'absolute', top:48, right:52, zIndex:10 }}>
-            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:52, height:52, borderRadius:10, objectFit:'cover', display:'block' }} />
-          </div>
-        )}
+        <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="#374151" />
         <div style={{ position:'relative', zIndex:2, width:'100%' }}>
           {contenido.dato && (
             <div style={{ fontSize:100, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-4px',
@@ -300,11 +293,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
         fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'64px 52px' }}>
         <div style={{ position:'absolute', bottom:-120, right:-120, width:560, height:560, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
         <div style={{ position:'absolute', top:-60, right:60, width:280, height:280, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
-        {mostrarLogo && logoUrl && (
-          <div style={{ position:'absolute', top:48, right:48, zIndex:10 }}>
-            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:60, height:60, borderRadius:12, objectFit:'cover', border:'2px solid rgba(255,255,255,0.3)', display:'block' }} />
-          </div>
-        )}
+        <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="rgba(255,255,255,0.9)" hasShadow />
         <div style={{ position:'relative', zIndex:2, width:'100%' }}>
           <div style={{ fontSize:12, fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:4, textTransform:'uppercase', marginBottom:24 }}>{negocioNombre}</div>
           {contenido.dato && (
@@ -333,11 +322,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
             <div key={i} style={{ width:5, height:5, borderRadius:'50%', background:c, opacity:0.45 }} />
           ))}
         </div>
-        {mostrarLogo && logoUrl && (
-          <div style={{ marginBottom:32, zIndex:2 }}>
-            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:64, height:64, borderRadius:12, objectFit:'cover', display:'block' }} />
-          </div>
-        )}
+        <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} />
         <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
           {contenido.dato && (
             <div style={{ fontSize:80, fontWeight:300, lineHeight:1, marginBottom:12, letterSpacing:'-1px',
@@ -370,11 +355,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
           transform:'rotate(-15deg)', opacity: isDark ? 0.14 : 0.09, borderRadius:60 }} />
         <div style={{ position:'absolute', bottom:100, right:44, width:3, height:240, background:`linear-gradient(180deg,${colorPpal},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
         <div style={{ position:'absolute', bottom:80, right:76, width:3, height:160, background:`linear-gradient(180deg,${colorSec},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
-        {mostrarLogo && logoUrl && (
-          <div style={{ position:'absolute', top:48, right:48, zIndex:10 }}>
-            <img src={logoUrl} alt="" crossOrigin="anonymous" style={{ width:56, height:56, borderRadius:12, objectFit:'cover', border:'2px solid rgba(255,255,255,0.2)', display:'block' }} />
-          </div>
-        )}
+        <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} hasShadow={isDark} />
         <div style={{ position:'relative', zIndex:2, width:'82%' }}>
           <div style={{ width:44, height:5, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:28 }} />
           {contenido.dato && (
@@ -411,12 +392,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.1)':hexToRgba(colorPpal,isDark?0.4:0.7)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
       <div style={{ position:'absolute', top:'30%', right:-60, width:200, height:200, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.12)':hexToRgba(colorSec,isDark?0.3:0.6)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
-      {mostrarLogo && logoUrl && (
-        <div style={{ position:'absolute', top:32, left:32, zIndex:10 }}>
-          <img src={logoUrl} alt="" crossOrigin="anonymous"
-            style={{ width:56, height:56, borderRadius:12, objectFit:'cover', border:'2px solid rgba(255,255,255,0.25)', display:'block' }} />
-        </div>
-      )}
+      <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark||isMarca?'rgba(255,255,255,0.85)':'#374151'} hasShadow={isDark||isMarca} />
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
         {contenido.dato && (
           <div style={{ fontSize:96, fontWeight:900, lineHeight:1, marginBottom:12, letterSpacing:'-3px',
@@ -635,7 +611,7 @@ Devuelve SOLO JSON sin markdown:
     while (intentos < 3) {
       try {
         await document.fonts.ready
-        await new Promise(r => setTimeout(r, 800))
+        await new Promise(r => setTimeout(r, 1000))
         const element = document.getElementById('render-post')
         if (!element) { intentos++; continue }
         const canvas = await html2canvas(element, {
