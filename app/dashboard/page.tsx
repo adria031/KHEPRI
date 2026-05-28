@@ -257,16 +257,20 @@ export default function Dashboard() {
         .single()
 
       let planFinal = profileData?.plan ?? ''
-      if (!planFinal) {
-        // profiles sin columna plan → leer del primer negocio y migrar
+      if (!planFinal || planFinal === 'starter') {
+        // profiles.plan vacío o en default → leer del primer negocio y sincronizar
         const { data: negPlan } = await db
           .from('negocios')
           .select('plan')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: true })
+          .order('creado_en', { ascending: true })
           .single()
-        planFinal = negPlan?.plan ?? 'starter'
-        await db.from('profiles').update({ plan: planFinal }).eq('id', user.id)
+        if (negPlan?.plan && negPlan.plan !== 'starter') {
+          planFinal = negPlan.plan
+          await db.from('profiles').update({ plan: planFinal }).eq('id', user.id)
+        } else {
+          planFinal = planFinal || 'starter'
+        }
       }
 
       const totales     = profileData?.creditos_totales ?? 100
