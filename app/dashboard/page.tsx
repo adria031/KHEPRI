@@ -6,6 +6,7 @@ import { supabase, getSessionClient } from '../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
 import { setNegocioActivo } from '../lib/negocio-activo'
 import { DashboardShell } from './DashboardShell'
+import { PLANES } from '../lib/planes'
 
 // Dynamic chart components — ssr:false so recharts never runs on server
 // (static imports inside the factory keep recharts' internal type-checking intact)
@@ -273,10 +274,15 @@ export default function Dashboard() {
         }
       }
 
-      const totales     = profileData?.creditos_totales ?? 100
+      // Corregir creditos_totales si no coincide con el plan
+      const creditosCorrectos = PLANES[planFinal]?.creditos ?? 100
+      const totales     = creditosCorrectos
       const usados      = profileData?.creditos_usados  ?? 0
       const disponibles = Math.max(0, totales - usados)
       const pct = totales > 0 ? Math.round((disponibles / totales) * 100) : 0
+      if ((profileData?.creditos_totales ?? 0) !== creditosCorrectos) {
+        db.from('profiles').update({ creditos_totales: creditosCorrectos }).eq('id', user.id)
+      }
       setCreditos({ totales, usados, disponibles, pct })
       setPlanActual(planFinal)
 
