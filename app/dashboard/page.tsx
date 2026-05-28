@@ -427,7 +427,7 @@ export default function Dashboard() {
           const negHoy  = negRes.filter((r: { fecha: string }) => r.fecha === hoyISO)
           const negMes  = negRes.filter((r: { fecha: string }) => r.fecha >= inicioMesISO && r.fecha <= hoyISO)
           const negIng  = negMes.filter((r: { estado: string }) => r.estado === 'completada').reduce((s: number, r: { precio_total?: number; servicios?: { precio?: number } }) => s + (r.precio_total || r.servicios?.precio || 0), 0)
-          return { id: tn.id, nombre: tn.nombre, plan: tn.plan ?? 'starter', reservasHoy: negHoy.length, ingresosMes: negIng, reservasMes: negMes.length, creditosDisp: disponibles, creditosTot: totales }
+          return { id: tn.id, nombre: tn.nombre, plan: planFinal, reservasHoy: negHoy.length, ingresosMes: negIng, reservasMes: negMes.length, creditosDisp: disponibles, creditosTot: totales }
         })
         setBizStats(bs)
       }
@@ -735,7 +735,7 @@ export default function Dashboard() {
                     onClick={() => {
                       const neg = todosNegocios.find(n => n.id === b.id)
                       if (neg) {
-                        setNegocioActivo(neg.id, neg.plan ?? 'starter', neg.nombre)
+                        setNegocioActivo(neg.id, planActual, neg.nombre)
                         window.location.reload()
                       }
                     }}

@@ -37,8 +37,21 @@ export async function getNegocioActivo(userId: string, _accessToken?: string): P
     data = (d1 as NegMin[]) || []
   }
 
-  const todos = data || []
-  if (todos.length === 0) return { activo: null, todos: [] }
+  const todosRaw = data || []
+  if (todosRaw.length === 0) return { activo: null, todos: [] }
+
+  // Fetch plan from profiles (shared across all user's negocios)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', userId)
+    .maybeSingle()
+  const profilePlan = profile?.plan || null
+
+  const todos = todosRaw.map(n => ({
+    ...n,
+    plan: profilePlan || n.plan || 'starter',
+  }))
 
   const saved = typeof window !== 'undefined'
     ? localStorage.getItem('negocio_activo_id')
