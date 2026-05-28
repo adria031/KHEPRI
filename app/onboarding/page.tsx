@@ -127,6 +127,19 @@ export default function Onboarding() {
       if (!session?.user) throw new Error('No hay sesión activa. Recarga la página.')
       const user = session.user
 
+      // Verificar nombre único entre usuarios distintos
+      const { data: nombreExiste } = await supabase
+        .from('negocios')
+        .select('id, user_id')
+        .eq('nombre', nombreNegocio.trim())
+        .neq('user_id', user.id)
+        .maybeSingle()
+      if (nombreExiste) {
+        setError('Ya existe un negocio con ese nombre. Por favor elige otro.')
+        setCargando(false)
+        return
+      }
+
       const creditos_totales = CREDITOS_POR_PLAN[planSeleccionado] ?? 100
 
       const { error: profileError } = await supabase.from('profiles').upsert({

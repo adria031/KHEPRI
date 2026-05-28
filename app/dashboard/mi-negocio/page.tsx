@@ -126,6 +126,22 @@ export default function MiNegocio() {
 
   async function guardar() {
     if (!negocioId) return
+
+    // Verificar nombre único entre usuarios distintos
+    const { data: { session: sess } } = await supabase.auth.getSession()
+    if (sess?.user) {
+      const { data: existe } = await supabase
+        .from('negocios')
+        .select('id, user_id')
+        .eq('nombre', form.nombre.trim())
+        .neq('user_id', sess.user.id)
+        .maybeSingle()
+      if (existe) {
+        setApiError('Ya existe un negocio con ese nombre. Por favor elige otro.')
+        return
+      }
+    }
+
     setGuardando(true); setApiError('')
 
     // Geocodificar si hay dirección o ciudad

@@ -59,6 +59,19 @@ export default function NuevoNegocio() {
       return
     }
 
+    // Verificar nombre único entre usuarios distintos
+    const { data: existe } = await supabase
+      .from('negocios')
+      .select('id, user_id')
+      .eq('nombre', nombre.trim())
+      .neq('user_id', userId)
+      .maybeSingle()
+    if (existe) {
+      setError('Ya existe un negocio con ese nombre. Por favor elige otro.')
+      setGuardando(false)
+      return
+    }
+
     const { data, error: err } = await supabase
       .from('negocios')
       .insert({ user_id: userId, nombre: nombre.trim(), tipo, plan, visible: true })
