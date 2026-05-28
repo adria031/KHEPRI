@@ -8,7 +8,7 @@ UPDATE profiles p
 SET plan = (
   SELECT n.plan FROM negocios n
   WHERE n.user_id = p.id
-  ORDER BY n.created_at ASC
+  ORDER BY n.creado_en ASC
   LIMIT 1
 )
 WHERE p.plan IS NULL OR p.plan = 'starter';
