@@ -27,7 +27,7 @@ export const PLANES: Record<string, PlanConfig> = {
       'Configuración de agenda',
       'Política de cancelación',
     ],
-    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios', 'resenas', 'ajustes', 'integraciones'],
+    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'servicios', 'horarios', 'resenas', 'chatbot', 'ajustes', 'integraciones'],
   },
   basico: {
     nombre: 'Básico', precio: 29.99, creditos: 300, trabajadores: 3, negocios: 1,
@@ -45,7 +45,7 @@ export const PLANES: Record<string, PlanConfig> = {
       'PWA instalable',
       'Marketing IA básico (posts Instagram)',
     ],
-    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'clientes', 'servicios', 'horarios', 'resenas', 'productos', 'caja', 'marketing', 'ajustes', 'integraciones'],
+    sidebar: ['dashboard', 'mi-negocio', 'reservas', 'clientes', 'servicios', 'horarios', 'resenas', 'chatbot', 'productos', 'caja', 'marketing', 'ajustes', 'integraciones'],
   },
   pro: {
     nombre: 'Pro', precio: 59.99, creditos: 1000, trabajadores: 5, negocios: 2,
@@ -65,7 +65,7 @@ export const PLANES: Record<string, PlanConfig> = {
     ],
     sidebar: [
       'dashboard', 'mi-negocio', 'reservas', 'clientes', 'servicios', 'horarios', 'resenas',
-      'productos', 'caja', 'marketing', 'equipo', 'analytics', 'facturacion', 'nominas', 'chatbot',
+      'chatbot', 'productos', 'caja', 'marketing', 'equipo', 'analytics', 'facturacion', 'nominas',
       'ajustes', 'integraciones',
     ],
   },

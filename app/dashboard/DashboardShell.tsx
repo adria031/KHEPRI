@@ -593,10 +593,10 @@ export function DashboardShell({
       {/* ── BOTTOM NAV (mobile only) ── */}
       <nav className="ds-bottom-nav">
         {[
-          { href: '/dashboard', icon: '🏠', label: 'Inicio' },
-          { href: '/dashboard/reservas', icon: '📋', label: 'Reservas' },
-          { href: '/dashboard/clientes', icon: '👤', label: 'Clientes' },
-          { href: '/dashboard/mi-negocio', icon: '🏪', label: 'Negocio' },
+          { href: '/dashboard/analytics', icon: '📊', label: 'Analytics' },
+          { href: '/dashboard/marketing',  icon: '📸', label: 'Marketing' },
+          { href: '/dashboard',            icon: '🏠', label: 'Inicio' },
+          { href: '/dashboard/clientes',   icon: '👥', label: 'Clientes' },
         ].map(({ href, icon, label }) => (
           <Link
             key={href}
