@@ -88,35 +88,49 @@ function BrandHeader({ logoUrl, mostrarLogo, negocioNombre, textColor, hasShadow
 }
 
 function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo, layout = 'estatico' }: TemplateProps) {
-  const isDark   = estilo !== 'claro'
-  const isMarca  = estilo === 'marca'
+  const isDark     = estilo !== 'claro'
+  const isMarca    = estilo === 'marca'
   const fontTitulo = FONT_MAP[fuente]
+  const hasDato    = !!contenido.dato
+
+  // Font sizes — vw resolves against windowWidth in html2canvas (set to element width)
+  const fzDato  = 'clamp(40px, 10vw, 72px)'
+  const fzTit   = hasDato ? 'clamp(20px, 5vw, 36px)' : 'clamp(26px, 6vw, 42px)'
+  const fzSub   = 'clamp(14px, 3vw, 22px)'
+  const fzCta   = 'clamp(12px, 2.5vw, 16px)'
+  const fzUrl   = 'clamp(10px, 2vw, 13px)'
+  const gap     = '4%'
+
+  // Reusable text-overflow helpers
+  const ell  = { overflow:'hidden' as const, textOverflow:'ellipsis', whiteSpace:'nowrap' as const }
+  const cl2  = { overflow:'hidden' as const, display:'-webkit-box' as const, WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }
+  const cl3  = { overflow:'hidden' as const, display:'-webkit-box' as const, WebkitLineClamp:3, WebkitBoxOrient:'vertical' as const }
 
   /* ── minimalista ── */
   if (layout === 'minimalista') {
     return (
       <div style={{ width:540, height:540, background:'#FAFAFA', position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'flex-end', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'48px' }}>
-        <div style={{ position:'absolute', top:48, left:48, width:44, height:3, background:colorPpal, borderRadius:2 }} />
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        <div style={{ position:'absolute', top:'8%', left:'8%', width:44, height:3, background:colorPpal, borderRadius:2 }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="#374151" />
-        <div style={{ position:'relative', zIndex:2, width:'100%' }}>
+        <div style={{ position:'relative', zIndex:2, width:'100%', overflow:'hidden' }}>
           {contenido.dato && (
-            <div style={{ fontSize:80, fontWeight:900, lineHeight:1, marginBottom:4, letterSpacing:'-3px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            <div style={{ fontSize:fzDato, fontWeight:900, lineHeight:1, marginBottom:gap, letterSpacing:'-3px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', ...ell }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?32:46, fontWeight:800, color:'#0F172A', lineHeight:1.1, marginBottom:10, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>
+          <div style={{ fontSize:fzTit, fontWeight:800, color:'#0F172A', lineHeight:1.2, marginBottom:gap, letterSpacing:'-0.5px', fontFamily:fontTitulo, ...cl3 }}>
             {contenido.titulo}
           </div>
-          <div style={{ fontSize:15, color:'#64748B', lineHeight:1.5, marginBottom:26 }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'10px 24px', background:colorPpal, borderRadius:6, fontSize:13, fontWeight:700, color:'white' }}>
+          <div style={{ fontSize:fzSub, color:'#64748B', lineHeight:1.5, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'10px 24px', background:colorPpal, borderRadius:6, fontSize:fzCta, fontWeight:700, color:'white', maxWidth:'100%', ...ell }}>
             {contenido.cta}
           </div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:20, right:48, fontSize:11, color:'#CBD5E1', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:16, right:'8%', fontSize:fzUrl, color:'#CBD5E1', letterSpacing:1.5, textTransform:'uppercase', ...ell }}>{negocioNombre}</div>
         )}
       </div>
     )
@@ -127,18 +141,18 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
     return (
       <div style={{ width:540, height:540, background:isMarca?`linear-gradient(135deg,${colorPpal},${colorSec})`:colorPpal, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'52px' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
         <div style={{ position:'absolute', bottom:-80, right:-80, width:420, height:420, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
         <div style={{ position:'absolute', top:-40, right:40, width:200, height:200, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="rgba(255,255,255,0.9)" hasShadow />
-        <div style={{ position:'relative', zIndex:2, width:'100%' }}>
-          <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.55)', letterSpacing:3, textTransform:'uppercase', marginBottom:16 }}>{negocioNombre}</div>
+        <div style={{ position:'relative', zIndex:2, width:'100%', overflow:'hidden' }}>
+          <div style={{ fontSize:fzUrl, fontWeight:800, color:'rgba(255,255,255,0.55)', letterSpacing:3, textTransform:'uppercase', marginBottom:gap, ...ell }}>{negocioNombre}</div>
           {contenido.dato && (
-            <div style={{ fontSize:88, fontWeight:900, lineHeight:0.9, marginBottom:8, letterSpacing:'-4px', color:'white' }}>{contenido.dato}</div>
+            <div style={{ fontSize:fzDato, fontWeight:900, lineHeight:0.95, marginBottom:gap, letterSpacing:'-4px', color:'white', ...ell }}>{contenido.dato}</div>
           )}
-          <div style={{ fontSize:contenido.dato?36:52, fontWeight:900, color:'white', lineHeight:1, marginBottom:14, letterSpacing:'-1px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
-          <div style={{ fontSize:16, color:'rgba(255,255,255,0.72)', lineHeight:1.4, marginBottom:32 }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'12px 28px', background:'white', borderRadius:8, fontSize:14, fontWeight:800, color:colorPpal }}>{contenido.cta}</div>
+          <div style={{ fontSize:fzTit, fontWeight:900, color:'white', lineHeight:1.1, marginBottom:gap, letterSpacing:'-1px', fontFamily:fontTitulo, ...cl3 }}>{contenido.titulo}</div>
+          <div style={{ fontSize:fzSub, color:'rgba(255,255,255,0.72)', lineHeight:1.4, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'12px 28px', background:'white', borderRadius:8, fontSize:fzCta, fontWeight:800, color:colorPpal, maxWidth:'100%', ...ell }}>{contenido.cta}</div>
         </div>
       </div>
     )
@@ -152,7 +166,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
     return (
       <div style={{ width:540, height:540, background:bgE, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'60px' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
         <div style={{ position:'absolute', inset:18, border:`1px solid ${isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)'}`, borderRadius:4, pointerEvents:'none' }} />
         <div style={{ position:'absolute', top:34, left:'50%', transform:'translateX(-50%)', display:'flex', gap:6 }}>
           {[colorPpal, colorSec, colorPpal].map((c, i) => (
@@ -160,25 +174,25 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
           ))}
         </div>
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} />
-        <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+        <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%', overflow:'hidden' }}>
           {contenido.dato && (
-            <div style={{ fontSize:64, fontWeight:300, lineHeight:1, marginBottom:8, letterSpacing:'-1px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            <div style={{ fontSize:fzDato, fontWeight:300, lineHeight:1, marginBottom:gap, letterSpacing:'-1px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', ...ell }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?26:34, fontWeight:700, color:txtE, lineHeight:1.2, marginBottom:12, letterSpacing:'0px',
-            fontFamily: fuente === 'elegante' ? FONT_MAP.elegante : fontTitulo }}>
+          <div style={{ fontSize:fzTit, fontWeight:700, color:txtE, lineHeight:1.2, marginBottom:gap, letterSpacing:'0px',
+            fontFamily: fuente === 'elegante' ? FONT_MAP.elegante : fontTitulo, ...cl3 }}>
             {contenido.titulo}
           </div>
-          <div style={{ width:36, height:1, background:colorPpal, margin:'0 auto 14px', opacity:0.4 }} />
-          <div style={{ fontSize:14, color:subE, lineHeight:1.6, marginBottom:28 }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'10px 28px', border:`1px solid ${colorPpal}`, borderRadius:2, fontSize:13, fontWeight:600, color:isDark?'white':colorPpal }}>
+          <div style={{ width:36, height:1, background:colorPpal, margin:`0 auto ${gap}`, opacity:0.4 }} />
+          <div style={{ fontSize:fzSub, color:subE, lineHeight:1.6, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'10px 28px', border:`1px solid ${colorPpal}`, borderRadius:2, fontSize:fzCta, fontWeight:600, color:isDark?'white':colorPpal, maxWidth:'100%', ...ell }}>
             {contenido.cta}
           </div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:34, left:0, right:0, textAlign:'center', fontSize:10, color:isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)', letterSpacing:2, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:28, left:0, right:0, textAlign:'center', fontSize:fzUrl, color:isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)', letterSpacing:2, textTransform:'uppercase', ...ell }}>{negocioNombre}</div>
         )}
       </div>
     )
@@ -191,43 +205,43 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
     return (
       <div style={{ width:540, height:540, background:bgD, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'52px' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
         <div style={{ position:'absolute', top:-120, right:-120, width:520, height:720,
           background:`linear-gradient(135deg,${colorPpal},${colorSec})`,
           transform:'rotate(-15deg)', opacity: isDark ? 0.16 : 0.1, borderRadius:48 }} />
         <div style={{ position:'absolute', bottom:70, right:44, width:3, height:160, background:`linear-gradient(180deg,${colorPpal},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
         <div style={{ position:'absolute', bottom:50, right:74, width:3, height:100, background:`linear-gradient(180deg,${colorSec},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} hasShadow={isDark} />
-        <div style={{ position:'relative', zIndex:2, width:'80%' }}>
-          <div style={{ width:36, height:4, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:20 }} />
+        <div style={{ position:'relative', zIndex:2, width:'80%', overflow:'hidden' }}>
+          <div style={{ width:36, height:4, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:gap }} />
           {contenido.dato && (
-            <div style={{ fontSize:80, fontWeight:900, lineHeight:1, marginBottom:6, letterSpacing:'-3px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            <div style={{ fontSize:fzDato, fontWeight:900, lineHeight:1, marginBottom:gap, letterSpacing:'-3px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', ...ell }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?30:42, fontWeight:800, color:txtD, lineHeight:1.15, marginBottom:12, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
-          <div style={{ fontSize:15, color:isDark?'rgba(255,255,255,0.6)':'#6B7280', lineHeight:1.5, marginBottom:28 }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'11px 26px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:8, fontSize:13, fontWeight:700, color:'white' }}>{contenido.cta}</div>
+          <div style={{ fontSize:fzTit, fontWeight:800, color:txtD, lineHeight:1.15, marginBottom:gap, letterSpacing:'-0.5px', fontFamily:fontTitulo, ...cl3 }}>{contenido.titulo}</div>
+          <div style={{ fontSize:fzSub, color:isDark?'rgba(255,255,255,0.6)':'#6B7280', lineHeight:1.5, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'11px 26px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:8, fontSize:fzCta, fontWeight:700, color:'white', maxWidth:'100%', ...ell }}>{contenido.cta}</div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:20, left:52, fontSize:11, color:isDark?'rgba(255,255,255,0.3)':'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:16, left:'8%', fontSize:fzUrl, color:isDark?'rgba(255,255,255,0.3)':'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase', ...ell }}>{negocioNombre}</div>
         )}
       </div>
     )
   }
 
   /* ── estatico (default) ── */
-  const bg         = isMarca ? `linear-gradient(135deg,${colorPpal},${colorSec})` : isDark ? '#080810' : '#F7F9FC'
-  const textColor  = isDark ? '#FFFFFF' : '#111827'
-  const subColor   = isDark ? 'rgba(255,255,255,0.65)' : '#6B7280'
+  const bg          = isMarca ? `linear-gradient(135deg,${colorPpal},${colorSec})` : isDark ? '#080810' : '#F7F9FC'
+  const textColor   = isDark ? '#FFFFFF' : '#111827'
+  const subColor    = isDark ? 'rgba(255,255,255,0.65)' : '#6B7280'
   const footerColor = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
-  const ctaBg      = isMarca ? 'rgba(255,255,255,0.22)' : `linear-gradient(135deg,${colorPpal},${colorSec})`
-  const ctaBorder  = isMarca ? '1.5px solid rgba(255,255,255,0.35)' : 'none'
+  const ctaBg       = isMarca ? 'rgba(255,255,255,0.22)' : `linear-gradient(135deg,${colorPpal},${colorSec})`
+  const ctaBorder   = isMarca ? '1.5px solid rgba(255,255,255,0.35)' : 'none'
   return (
     <div style={{ width:540, height:540, background:bg, position:'relative', overflow:'hidden',
       display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'48px' }}>
+      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
       <div style={{ position:'absolute', top:-80, left:-80, width:280, height:280, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.15)':hexToRgba(colorSec,isDark?0.45:0.7)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
       <div style={{ position:'absolute', bottom:-60, right:-60, width:240, height:240, borderRadius:'50%',
@@ -235,29 +249,43 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
       <div style={{ position:'absolute', top:'40%', right:-40, width:160, height:160, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.12)':hexToRgba(colorSec,isDark?0.25:0.4)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
       <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark||isMarca?'rgba(255,255,255,0.85)':'#374151'} hasShadow={isDark||isMarca} />
-      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%', overflow:'hidden' }}>
         {contenido.dato && (
-          <div style={{ fontSize:72, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-2px',
+          <div style={{ fontSize:fzDato, fontWeight:900, lineHeight:1, marginBottom:gap, letterSpacing:'-2px',
             ...(isMarca ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
-              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }) }}>
+              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }),
+            ...ell }}>
             {contenido.dato}
           </div>
         )}
-        <div style={{ fontSize:contenido.dato?28:36, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:12, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
-        <div style={{ fontSize:16, color:subColor, lineHeight:1.5, marginBottom:32 }}>{contenido.subtitulo}</div>
-        <div style={{ display:'inline-block', padding:'12px 28px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:14, fontWeight:700, color:'white' }}>{contenido.cta}</div>
+        <div style={{ fontSize:fzTit, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:gap, letterSpacing:'-0.5px', fontFamily:fontTitulo, ...cl3 }}>{contenido.titulo}</div>
+        <div style={{ fontSize:fzSub, color:subColor, lineHeight:1.5, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+        <div style={{ display:'inline-block', padding:'12px 28px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:fzCta, fontWeight:700, color:'white', maxWidth:'100%', ...ell }}>{contenido.cta}</div>
       </div>
       {mostrarUrl && (
-        <div style={{ position:'absolute', bottom:20, left:0, right:0, textAlign:'center', fontSize:12, color:footerColor, letterSpacing:1, textTransform:'uppercase' }}>{negocioNombre}</div>
+        <div style={{ position:'absolute', bottom:16, left:0, right:0, textAlign:'center', fontSize:fzUrl, color:footerColor, letterSpacing:1, textTransform:'uppercase', ...ell }}>{negocioNombre}</div>
       )}
     </div>
   )
 }
 
 function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostrarLogo, mostrarUrl, logoUrl, fuente, estilo, layout = 'estatico' }: TemplateProps) {
-  const isDark   = estilo !== 'claro'
-  const isMarca  = estilo === 'marca'
+  const isDark     = estilo !== 'claro'
+  const isMarca    = estilo === 'marca'
   const fontTitulo = FONT_MAP[fuente]
+  const hasDato    = !!contenido.dato
+
+  // Font sizes — same vw values as Publicacion; at windowWidth=303, clamp min kicks in
+  const fzDato  = 'clamp(40px, 10vw, 72px)'
+  const fzTit   = hasDato ? 'clamp(20px, 5vw, 36px)' : 'clamp(26px, 6vw, 42px)'
+  const fzSub   = 'clamp(14px, 3vw, 22px)'
+  const fzCta   = 'clamp(12px, 2.5vw, 16px)'
+  const fzUrl   = 'clamp(10px, 2vw, 13px)'
+  const gap     = '4%'
+
+  const ell  = { overflow:'hidden' as const, textOverflow:'ellipsis', whiteSpace:'nowrap' as const }
+  const cl2  = { overflow:'hidden' as const, display:'-webkit-box' as const, WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }
+  const cl3  = { overflow:'hidden' as const, display:'-webkit-box' as const, WebkitLineClamp:3, WebkitBoxOrient:'vertical' as const }
 
   /* ── minimalista ── */
   if (layout === 'minimalista') {
@@ -269,18 +297,17 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="#374151" />
         <div style={{ position:'relative', zIndex:2, width:'100%', overflow:'hidden' }}>
           {contenido.dato && (
-            <div style={{ fontSize:'clamp(32px,14cqw,52px)', fontWeight:900, lineHeight:1, marginBottom:4, letterSpacing:'-2px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            <div style={{ fontSize:fzDato, fontWeight:900, lineHeight:1, marginBottom:gap, letterSpacing:'-2px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', ...ell }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?'clamp(14px,5cqw,20px)':'clamp(18px,7cqw,26px)', fontWeight:800, color:'#0F172A', lineHeight:1.1, marginBottom:8, letterSpacing:'-0.5px', fontFamily:fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
-          <div style={{ fontSize:'clamp(10px,3.5cqw,14px)', color:'#64748B', lineHeight:1.5, marginBottom:16, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'8px 18px', background:colorPpal, borderRadius:6, fontSize:'clamp(9px,3cqw,12px)', fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
+          <div style={{ fontSize:fzTit, fontWeight:800, color:'#0F172A', lineHeight:1.2, marginBottom:gap, letterSpacing:'-0.5px', fontFamily:fontTitulo, ...cl3 }}>{contenido.titulo}</div>
+          <div style={{ fontSize:fzSub, color:'#64748B', lineHeight:1.5, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'8px 18px', background:colorPpal, borderRadius:6, fontSize:fzCta, fontWeight:700, color:'white', maxWidth:'100%', ...ell }}>{contenido.cta}</div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:14, right:'8%', fontSize:'clamp(8px,2.5cqw,10px)', color:'#CBD5E1', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:14, right:'8%', fontSize:fzUrl, color:'#CBD5E1', letterSpacing:1.5, textTransform:'uppercase', ...ell }}>{negocioNombre}</div>
         )}
       </div>
     )
@@ -296,13 +323,13 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
         <div style={{ position:'absolute', top:-30, right:30, width:140, height:140, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="rgba(255,255,255,0.9)" hasShadow />
         <div style={{ position:'relative', zIndex:2, width:'100%', overflow:'hidden' }}>
-          <div style={{ fontSize:'clamp(8px,2.5cqw,10px)', fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:3, textTransform:'uppercase', marginBottom:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{negocioNombre}</div>
+          <div style={{ fontSize:fzUrl, fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:3, textTransform:'uppercase', marginBottom:gap, ...ell }}>{negocioNombre}</div>
           {contenido.dato && (
-            <div style={{ fontSize:'clamp(36px,16cqw,58px)', fontWeight:900, lineHeight:0.9, marginBottom:6, letterSpacing:'-3px', color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{contenido.dato}</div>
+            <div style={{ fontSize:fzDato, fontWeight:900, lineHeight:0.95, marginBottom:gap, letterSpacing:'-3px', color:'white', ...ell }}>{contenido.dato}</div>
           )}
-          <div style={{ fontSize:contenido.dato?'clamp(15px,6cqw,22px)':'clamp(20px,8cqw,30px)', fontWeight:900, color:'white', lineHeight:1, marginBottom:10, letterSpacing:'-0.8px', fontFamily:fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
-          <div style={{ fontSize:'clamp(10px,3.5cqw,14px)', color:'rgba(255,255,255,0.7)', lineHeight:1.4, marginBottom:20, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'8px 20px', background:'white', borderRadius:8, fontSize:'clamp(9px,3cqw,12px)', fontWeight:800, color:colorPpal, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
+          <div style={{ fontSize:fzTit, fontWeight:900, color:'white', lineHeight:1.1, marginBottom:gap, letterSpacing:'-0.8px', fontFamily:fontTitulo, ...cl3 }}>{contenido.titulo}</div>
+          <div style={{ fontSize:fzSub, color:'rgba(255,255,255,0.7)', lineHeight:1.4, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'8px 20px', background:'white', borderRadius:8, fontSize:fzCta, fontWeight:800, color:colorPpal, maxWidth:'100%', ...ell }}>{contenido.cta}</div>
         </div>
       </div>
     )
@@ -326,19 +353,19 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} />
         <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%', overflow:'hidden' }}>
           {contenido.dato && (
-            <div style={{ fontSize:'clamp(28px,12cqw,44px)', fontWeight:300, lineHeight:1, marginBottom:6, letterSpacing:'-1px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            <div style={{ fontSize:fzDato, fontWeight:300, lineHeight:1, marginBottom:gap, letterSpacing:'-1px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', ...ell }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?'clamp(13px,5cqw,18px)':'clamp(16px,6cqw,22px)', fontWeight:700, color:txtE, lineHeight:1.2, marginBottom:8, fontFamily: fuente === 'elegante' ? FONT_MAP.elegante : fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
-          <div style={{ width:28, height:1, background:colorPpal, margin:'0 auto 10px', opacity:0.4 }} />
-          <div style={{ fontSize:'clamp(10px,3.5cqw,13px)', color:subE, lineHeight:1.6, marginBottom:18, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'8px 20px', border:`1px solid ${colorPpal}`, borderRadius:2, fontSize:'clamp(9px,3cqw,12px)', fontWeight:600, color:isDark?'white':colorPpal, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
+          <div style={{ fontSize:fzTit, fontWeight:700, color:txtE, lineHeight:1.2, marginBottom:gap,
+            fontFamily: fuente === 'elegante' ? FONT_MAP.elegante : fontTitulo, ...cl3 }}>{contenido.titulo}</div>
+          <div style={{ width:28, height:1, background:colorPpal, margin:`0 auto ${gap}`, opacity:0.4 }} />
+          <div style={{ fontSize:fzSub, color:subE, lineHeight:1.6, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'8px 20px', border:`1px solid ${colorPpal}`, borderRadius:2, fontSize:fzCta, fontWeight:600, color:isDark?'white':colorPpal, maxWidth:'100%', ...ell }}>{contenido.cta}</div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:22, left:0, right:0, textAlign:'center', fontSize:'clamp(8px,2.5cqw,10px)', color:isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)', letterSpacing:2, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:14, left:0, right:0, textAlign:'center', fontSize:fzUrl, color:isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)', letterSpacing:2, textTransform:'uppercase', ...ell }}>{negocioNombre}</div>
         )}
       </div>
     )
@@ -359,20 +386,19 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
         <div style={{ position:'absolute', bottom:40, right:38, width:3, height:80, background:`linear-gradient(180deg,${colorSec},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} hasShadow={isDark} />
         <div style={{ position:'relative', zIndex:2, width:'82%', overflow:'hidden' }}>
-          <div style={{ width:28, height:3, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:14 }} />
+          <div style={{ width:28, height:3, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:gap }} />
           {contenido.dato && (
-            <div style={{ fontSize:'clamp(32px,14cqw,52px)', fontWeight:900, lineHeight:1, marginBottom:4, letterSpacing:'-2px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
-              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            <div style={{ fontSize:fzDato, fontWeight:900, lineHeight:1, marginBottom:gap, letterSpacing:'-2px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', ...ell }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?'clamp(13px,5cqw,18px)':'clamp(17px,7cqw,24px)', fontWeight:800, color:txtD, lineHeight:1.1, marginBottom:8, letterSpacing:'-0.5px', fontFamily:fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
-          <div style={{ fontSize:'clamp(10px,3.5cqw,13px)', color:isDark?'rgba(255,255,255,0.6)':'#6B7280', lineHeight:1.5, marginBottom:18, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'8px 18px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:8, fontSize:'clamp(9px,3cqw,12px)', fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
+          <div style={{ fontSize:fzTit, fontWeight:800, color:txtD, lineHeight:1.15, marginBottom:gap, letterSpacing:'-0.5px', fontFamily:fontTitulo, ...cl3 }}>{contenido.titulo}</div>
+          <div style={{ fontSize:fzSub, color:isDark?'rgba(255,255,255,0.6)':'#6B7280', lineHeight:1.5, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'8px 18px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:8, fontSize:fzCta, fontWeight:700, color:'white', maxWidth:'100%', ...ell }}>{contenido.cta}</div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:14, left:'8%', fontSize:'clamp(8px,2.5cqw,10px)', color:isDark?'rgba(255,255,255,0.3)':'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:14, left:'8%', fontSize:fzUrl, color:isDark?'rgba(255,255,255,0.3)':'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase', ...ell }}>{negocioNombre}</div>
         )}
       </div>
     )
@@ -398,19 +424,19 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
       <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark||isMarca?'rgba(255,255,255,0.85)':'#374151'} hasShadow={isDark||isMarca} />
       <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%', overflow:'hidden' }}>
         {contenido.dato && (
-          <div style={{ fontSize:'clamp(32px,14cqw,52px)', fontWeight:900, lineHeight:1, marginBottom:6, letterSpacing:'-2px',
-            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          <div style={{ fontSize:fzDato, fontWeight:900, lineHeight:1, marginBottom:gap, letterSpacing:'-2px',
             ...(isMarca ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
-              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }) }}>
+              : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }),
+            ...ell }}>
             {contenido.dato}
           </div>
         )}
-        <div style={{ fontSize:contenido.dato?'clamp(14px,5.5cqw,20px)':'clamp(18px,7cqw,26px)', fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:8, letterSpacing:'-0.5px', fontFamily:fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
-        <div style={{ fontSize:'clamp(10px,3.5cqw,13px)', color:subColor, lineHeight:1.5, marginBottom:20, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
-        <div style={{ display:'inline-block', padding:'8px 20px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:'clamp(9px,3cqw,12px)', fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
+        <div style={{ fontSize:fzTit, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:gap, letterSpacing:'-0.5px', fontFamily:fontTitulo, ...cl3 }}>{contenido.titulo}</div>
+        <div style={{ fontSize:fzSub, color:subColor, lineHeight:1.5, marginBottom:gap, ...cl2 }}>{contenido.subtitulo}</div>
+        <div style={{ display:'inline-block', padding:'8px 20px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:fzCta, fontWeight:700, color:'white', maxWidth:'100%', ...ell }}>{contenido.cta}</div>
       </div>
       {mostrarUrl && (
-        <div style={{ position:'absolute', bottom:16, left:0, right:0, textAlign:'center', fontSize:'clamp(8px,2.5cqw,10px)', color:footerColor, letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+        <div style={{ position:'absolute', bottom:14, left:0, right:0, textAlign:'center', fontSize:fzUrl, color:footerColor, letterSpacing:1.5, textTransform:'uppercase', ...ell }}>{negocioNombre}</div>
       )}
     </div>
   )
