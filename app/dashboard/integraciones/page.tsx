@@ -5,6 +5,10 @@ import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { DashboardShell } from '../DashboardShell'
 
+const META_APP_ID  = process.env.NEXT_PUBLIC_META_APP_ID ?? ''
+const APP_URL      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khepria.app'
+const CALLBACK_URI = `${APP_URL}/api/meta/callback`
+
 async function buildQR(url: string, color: string, logoUrl?: string | null): Promise<string> {
   const canvas = document.createElement('canvas')
   await QRCode.toCanvas(canvas, url, {
@@ -65,9 +69,14 @@ export default function Integraciones() {
   // Instagram
   const [igToken,     setIgToken]     = useState('')
   const [igActivo,    setIgActivo]    = useState(false)
+  const [igUsername,  setIgUsername]  = useState('')
   const [igOpen,      setIgOpen]      = useState(false)
   const [guardandoIg, setGuardandoIg] = useState(false)
   const [igOk,        setIgOk]        = useState(false)
+
+  // OAuth meta result
+  const [metaMsg,     setMetaMsg]     = useState('')
+  const [metaErr,     setMetaErr]     = useState('')
 
   useEffect(() => {
     async function init() {
@@ -80,19 +89,35 @@ export default function Integraciones() {
       setNegocio(activo)
       setNegocioId(activo.id)
 
+      // Read post-OAuth URL params
+      const urlParams = new URLSearchParams(window.location.search)
+      const metaOk  = urlParams.get('meta_ok')
+      const metaErrP = urlParams.get('meta_error')
+      if (metaOk === 'instagram') setMetaMsg('✅ Instagram conectado correctamente')
+      if (metaOk === 'whatsapp')  setMetaMsg('✅ WhatsApp conectado correctamente')
+      if (metaErrP === 'cancelled')     setMetaErr('Conexión cancelada por el usuario.')
+      if (metaErrP === 'token_failed')  setMetaErr('Error al obtener el token. Inténtalo de nuevo.')
+      if (metaErrP === 'missing_env')   setMetaErr('Falta configurar NEXT_PUBLIC_META_APP_ID en Vercel.')
+      if (metaOk || metaErrP) {
+        // Clean URL without page reload
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+
       let color = '#1a1a2e'
       const { data: negData } = await supabase
         .from('negocios')
-        .select('color_principal, whatsapp_token, whatsapp_phone_id, whatsapp_activo, instagram_token, instagram_activo')
+        .select('color_principal, whatsapp_token, whatsapp_phone_id, whatsapp_activo, instagram_token, instagram_activo, instagram_user_id, instagram_username')
         .eq('id', activo.id)
         .single()
 
-      if (negData?.color_principal)   { color = negData.color_principal; setColorPpal(color) }
-      if (negData?.whatsapp_token)     setWaToken(negData.whatsapp_token)
-      if (negData?.whatsapp_phone_id)  setWaPhoneId(negData.whatsapp_phone_id)
-      if (negData?.whatsapp_activo)    setWaActivo(true)
-      if (negData?.instagram_token)    setIgToken(negData.instagram_token)
-      if (negData?.instagram_activo)   setIgActivo(true)
+      if (negData?.color_principal)    { color = negData.color_principal; setColorPpal(color) }
+      if (negData?.whatsapp_token)      setWaToken(negData.whatsapp_token)
+      if (negData?.whatsapp_phone_id)   setWaPhoneId(negData.whatsapp_phone_id)
+      if (negData?.whatsapp_activo)     setWaActivo(true)
+      if (negData?.instagram_token)     setIgToken(negData.instagram_token)
+      if (negData?.instagram_activo)    setIgActivo(true)
+      if (negData?.instagram_username)  setIgUsername(negData.instagram_username)
+      else if (negData?.instagram_user_id) setIgUsername(negData.instagram_user_id)
 
       setGenerando(true)
       try {
@@ -132,6 +157,41 @@ export default function Integraciones() {
     setGuardandoIg(false)
     setIgOk(true)
     setTimeout(() => setIgOk(false), 2500)
+  }
+
+  async function desconectarIg() {
+    if (!negocioId) return
+    await supabase.from('negocios').update({
+      instagram_token:    null,
+      instagram_user_id:  null,
+      instagram_username: null,
+      instagram_activo:   false,
+    }).eq('id', negocioId)
+    setIgActivo(false)
+    setIgToken('')
+    setIgUsername('')
+  }
+
+  async function desconectarWa() {
+    if (!negocioId) return
+    await supabase.from('negocios').update({
+      whatsapp_token:    null,
+      whatsapp_phone_id: null,
+      whatsapp_activo:   false,
+    }).eq('id', negocioId)
+    setWaActivo(false)
+    setWaToken('')
+    setWaPhoneId('')
+  }
+
+  function oauthUrlIg() {
+    const scope = 'instagram_basic,pages_show_list,instagram_manage_messages,pages_read_engagement'
+    return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(CALLBACK_URI)}&state=${negocioId}|instagram&scope=${scope}`
+  }
+
+  function oauthUrlWa() {
+    const scope = 'whatsapp_business_management,whatsapp_business_messaging'
+    return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(CALLBACK_URI)}&state=${negocioId}|whatsapp&scope=${scope}`
   }
 
   const urlNegocio   = negocioId ? `https://khepria.app/negocio/${negocioId}` : ''
@@ -224,9 +284,20 @@ export default function Integraciones() {
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
       <div style={{ maxWidth: '680px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--ds-text)', marginBottom: '6px' }}>Integraciones</h1>
-        <p style={{ fontSize: '14px', color: 'var(--ds-text2)', marginBottom: '28px' }}>
+        <p style={{ fontSize: '14px', color: 'var(--ds-text2)', marginBottom: metaMsg || metaErr ? '16px' : '28px' }}>
           Conecta Khepria con tus herramientas favoritas.
         </p>
+
+        {metaMsg && (
+          <div style={{ marginBottom: '20px', padding: '12px 16px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '12px', fontSize: '14px', fontWeight: 600, color: '#15803D' }}>
+            {metaMsg}
+          </div>
+        )}
+        {metaErr && (
+          <div style={{ marginBottom: '20px', padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '12px', fontSize: '14px', fontWeight: 600, color: '#DC2626' }}>
+            ⚠️ {metaErr}
+          </div>
+        )}
 
         {/* ── QR con logo ── */}
         <div style={{
@@ -406,86 +477,96 @@ export default function Integraciones() {
               borderRadius: '12px', padding: '16px', marginBottom: '16px',
               fontSize: '13px', lineHeight: 1.75, color: 'var(--ds-text)',
             }}>
-              <p style={{ fontWeight: 700, marginBottom: '10px', color: '#4F46E5' }}>Pasos para conectar:</p>
+              <p style={{ fontWeight: 700, marginBottom: '10px', color: '#4F46E5' }}>Requisitos para conectar:</p>
               <ol style={{ paddingLeft: '18px', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <li><strong>Cuenta Meta Business</strong> — Crea o accede a tu cuenta en <strong>business.facebook.com</strong> y verifica tu negocio.</li>
-                <li><strong>Número dedicado</strong> — Necesitas un número de teléfono exclusivo para WhatsApp Business (no puede estar en WhatsApp personal ni tener cuenta activa).</li>
-                <li><strong>App en Meta Developers</strong> — Entra en <strong>developers.facebook.com</strong>, crea una app tipo &quot;Business&quot; y activa el producto &quot;WhatsApp&quot;.</li>
-                <li><strong>Credenciales</strong> — En &quot;WhatsApp → Configuración de API&quot; encontrarás el <strong>Token de acceso permanente</strong> y el <strong>Phone Number ID</strong>.</li>
+                <li><strong>Cuenta Meta Business</strong> — Crea o accede en <a href="https://business.facebook.com" target="_blank" rel="noopener" style={{ color: '#4F46E5' }}>business.facebook.com</a> y verifica tu negocio.</li>
+                <li><strong>Número dedicado</strong> — Necesitas un número exclusivo para WhatsApp Business (no puede tener cuenta activa de WhatsApp).</li>
+                <li><strong>App en Meta Developers</strong> — En <a href="https://developers.facebook.com" target="_blank" rel="noopener" style={{ color: '#4F46E5' }}>developers.facebook.com</a>, crea una app tipo &quot;Business&quot; con el producto &quot;WhatsApp&quot; activado.</li>
                 <li>
-                  <strong>Configura el Webhook</strong> — En &quot;WhatsApp → Configuración → Webhooks&quot;:<br />
-                  <span style={{ display: 'inline-block', marginTop: '4px' }}>
-                    URL de callback:{' '}
-                    <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>{WEBHOOK_URL}</code>
-                  </span><br />
-                  <span>
-                    Token de verificación:{' '}
-                    <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>{VERIFY_TOKEN}</code>
-                  </span><br />
-                  <span>Suscríbete al evento: <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>messages</code></span>
+                  <strong>Configura el Webhook</strong> después de conectar — URL:{' '}
+                  <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>{WEBHOOK_URL}</code>{' '}
+                  · Token: <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>{VERIFY_TOKEN}</code>{' '}
+                  · Evento: <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>messages</code>
                 </li>
-                <li><strong>Variable de entorno</strong> — Añade en Vercel: <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>WHATSAPP_VERIFY_TOKEN={VERIFY_TOKEN}</code></li>
-                <li><strong>Aprobación Meta</strong> — Para mensajes a clientes nuevos necesitarás aprobación de Meta (2-4 semanas). En modo prueba puedes usar números verificados manualmente.</li>
+                <li><strong>Aprobación Meta</strong> — Para mensajes a clientes nuevos necesitas aprobación de Meta (2-4 semanas).</li>
               </ol>
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={labelSt}>Token de acceso de WhatsApp Business</label>
-              <input
-                type="password"
-                value={waToken}
-                onChange={e => setWaToken(e.target.value)}
-                placeholder="EAAxxxxxxxxxxxxxxxxxxxxxxxx..."
-                style={inputSt}
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <label style={labelSt}>Phone Number ID</label>
-              <input
-                value={waPhoneId}
-                onChange={e => setWaPhoneId(e.target.value)}
-                placeholder="1234567890123456"
-                style={inputSt}
-              />
-            </div>
-            <div>
-              <label style={labelSt}>URL del Webhook (copia esta URL en Meta Developers)</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  value={WEBHOOK_URL}
-                  readOnly
-                  style={{ ...inputSt, color: '#6B7280', flex: 1 }}
-                />
+          {waActivo ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{
+                background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '12px',
+                padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#15803D' }}>✅ WhatsApp conectado</div>
+                  {waPhoneId && (
+                    <div style={{ fontSize: '12px', color: '#166534', marginTop: '3px' }}>
+                      Phone ID: {waPhoneId}
+                    </div>
+                  )}
+                </div>
                 <button
-                  onClick={() => copiar(WEBHOOK_URL, setCopiadoWh)}
+                  onClick={desconectarWa}
                   style={{
-                    padding: '10px 14px', borderRadius: '10px', border: 'none', flexShrink: 0,
-                    background: copiadoWh ? '#059669' : 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
-                    color: 'white', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                    transition: 'background 0.2s',
+                    padding: '7px 14px', borderRadius: '8px',
+                    border: '1.5px solid #FCA5A5', background: '#FEF2F2',
+                    color: '#DC2626', fontFamily: 'inherit', fontSize: '12px',
+                    fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const,
                   }}
                 >
-                  {copiadoWh ? '✅' : '📋'}
+                  Desconectar
                 </button>
               </div>
+              <div>
+                <label style={labelSt}>URL del Webhook (configúrala en Meta Developers)</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input value={WEBHOOK_URL} readOnly style={{ ...inputSt, color: '#6B7280', flex: 1 }} />
+                  <button
+                    onClick={() => copiar(WEBHOOK_URL, setCopiadoWh)}
+                    style={{
+                      padding: '10px 14px', borderRadius: '10px', border: 'none', flexShrink: 0,
+                      background: copiadoWh ? '#059669' : 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
+                      color: 'white', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    {copiadoWh ? '✅' : '📋'}
+                  </button>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={guardarWa}
-              disabled={guardandoWa || !negocioId}
-              style={{
-                padding: '11px', borderRadius: '10px', border: 'none',
-                background: waOk ? '#059669' : 'linear-gradient(135deg,#25D366,#128C7E)',
-                color: 'white', fontFamily: 'inherit', fontSize: '14px', fontWeight: 700,
-                cursor: guardandoWa || !negocioId ? 'not-allowed' : 'pointer',
-                opacity: guardandoWa || !negocioId ? 0.6 : 1, transition: 'background 0.2s',
-              }}
-            >
-              {waOk ? '✅ Guardado' : guardandoWa ? 'Guardando...' : '💾 Guardar configuración WhatsApp'}
-            </button>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--ds-text2)' }}>
+                Para conectar necesitas una cuenta <strong>Meta Business</strong> con una app configurada.{' '}
+                <a href="https://developers.facebook.com" target="_blank" rel="noopener" style={{ color: '#4F46E5' }}>
+                  developers.facebook.com →
+                </a>
+              </p>
+              <button
+                onClick={() => { if (negocioId && META_APP_ID) window.location.href = oauthUrlWa() }}
+                disabled={!negocioId || !META_APP_ID}
+                style={{
+                  padding: '13px', borderRadius: '12px', border: 'none',
+                  background: negocioId && META_APP_ID ? 'linear-gradient(135deg,#25D366,#128C7E)' : 'var(--ds-bg)',
+                  color: negocioId && META_APP_ID ? 'white' : 'var(--ds-text2)',
+                  fontFamily: 'inherit', fontSize: '14px', fontWeight: 700,
+                  cursor: negocioId && META_APP_ID ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  boxShadow: negocioId && META_APP_ID ? '0 4px 12px rgba(37,211,102,0.3)' : 'none',
+                }}
+              >
+                🔗 Conectar WhatsApp Business
+              </button>
+              {!META_APP_ID && (
+                <p style={{ margin: 0, fontSize: '12px', color: '#DC2626' }}>
+                  Falta configurar <code>NEXT_PUBLIC_META_APP_ID</code> en Vercel.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Instagram Business ── */}
@@ -511,43 +592,73 @@ export default function Integraciones() {
               borderRadius: '12px', padding: '16px', marginBottom: '16px',
               fontSize: '13px', lineHeight: 1.75, color: 'var(--ds-text)',
             }}>
-              <p style={{ fontWeight: 700, marginBottom: '10px', color: '#EC4899' }}>Pasos para conectar:</p>
+              <p style={{ fontWeight: 700, marginBottom: '10px', color: '#EC4899' }}>Requisitos para conectar:</p>
               <ol style={{ paddingLeft: '18px', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <li><strong>Cuenta Business o Creator</strong> — Tu perfil de Instagram debe ser de tipo Business o Creator. Cámbialo en Instagram → Configuración → Tipo de cuenta y herramientas.</li>
-                <li><strong>Vincula a Facebook</strong> — Conecta tu Instagram a una página de Facebook desde <strong>Meta Business Suite</strong>.</li>
-                <li><strong>Meta Developers</strong> — En developers.facebook.com, crea o usa tu app Business y añade el producto &quot;Instagram Graph API&quot;.</li>
-                <li><strong>Genera el Access Token</strong> — En el &quot;Explorador de la API de Graph&quot; genera un token con permisos <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 5px', borderRadius: '4px', fontSize: '12px' }}>instagram_basic</code> y <code style={{ background: 'rgba(0,0,0,0.07)', padding: '1px 5px', borderRadius: '4px', fontSize: '12px' }}>pages_show_list</code>. Convierte el token a larga duración (60 días).</li>
-                <li><strong>Pega el token</strong> — Copia el token generado y pégalo en el campo de abajo. Recuerda renovarlo cada 60 días.</li>
+                <li><strong>Cuenta Business o Creator</strong> — Tu perfil de Instagram debe ser Business o Creator (Instagram → Configuración → Tipo de cuenta).</li>
+                <li><strong>Vincula a Facebook</strong> — Conecta tu Instagram a una página de Facebook desde <a href="https://business.facebook.com" target="_blank" rel="noopener" style={{ color: '#EC4899' }}>Meta Business Suite</a>.</li>
+                <li><strong>Al hacer clic en &quot;Conectar&quot;</strong> — Serás redirigido a Meta para autorizar los permisos. Se guarda automáticamente un token de larga duración (60 días).</li>
+                <li><strong>Renovación</strong> — Deberás volver a conectar cada 60 días.</li>
               </ol>
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={labelSt}>Instagram Access Token</label>
-              <input
-                type="password"
-                value={igToken}
-                onChange={e => setIgToken(e.target.value)}
-                placeholder="IGQxxxxxxxxxxxxxxxxxxxxxxxx..."
-                style={inputSt}
-                autoComplete="off"
-              />
+          {igActivo ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{
+                background: '#FDF2F8', border: '1px solid #F9A8D4', borderRadius: '12px',
+                padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#9D174D' }}>✅ Instagram conectado</div>
+                  {igUsername && (
+                    <div style={{ fontSize: '12px', color: '#831843', marginTop: '3px' }}>
+                      @{igUsername}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={desconectarIg}
+                  style={{
+                    padding: '7px 14px', borderRadius: '8px',
+                    border: '1.5px solid #FCA5A5', background: '#FEF2F2',
+                    color: '#DC2626', fontFamily: 'inherit', fontSize: '12px',
+                    fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const,
+                  }}
+                >
+                  Desconectar
+                </button>
+              </div>
             </div>
-            <button
-              onClick={guardarIg}
-              disabled={guardandoIg || !negocioId}
-              style={{
-                padding: '11px', borderRadius: '10px', border: 'none',
-                background: igOk ? '#059669' : 'linear-gradient(135deg,#E1306C,#833AB4)',
-                color: 'white', fontFamily: 'inherit', fontSize: '14px', fontWeight: 700,
-                cursor: guardandoIg || !negocioId ? 'not-allowed' : 'pointer',
-                opacity: guardandoIg || !negocioId ? 0.6 : 1, transition: 'background 0.2s',
-              }}
-            >
-              {igOk ? '✅ Guardado' : guardandoIg ? 'Guardando...' : '💾 Guardar configuración Instagram'}
-            </button>
-          </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--ds-text2)' }}>
+                Para conectar necesitas una cuenta <strong>Instagram Business o Creator</strong> vinculada a una página de Facebook.{' '}
+                <a href="https://developers.facebook.com" target="_blank" rel="noopener" style={{ color: '#EC4899' }}>
+                  developers.facebook.com →
+                </a>
+              </p>
+              <button
+                onClick={() => { if (negocioId && META_APP_ID) window.location.href = oauthUrlIg() }}
+                disabled={!negocioId || !META_APP_ID}
+                style={{
+                  padding: '13px', borderRadius: '12px', border: 'none',
+                  background: negocioId && META_APP_ID ? 'linear-gradient(135deg,#E1306C,#833AB4)' : 'var(--ds-bg)',
+                  color: negocioId && META_APP_ID ? 'white' : 'var(--ds-text2)',
+                  fontFamily: 'inherit', fontSize: '14px', fontWeight: 700,
+                  cursor: negocioId && META_APP_ID ? 'pointer' : 'not-allowed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  boxShadow: negocioId && META_APP_ID ? '0 4px 12px rgba(225,48,108,0.3)' : 'none',
+                }}
+              >
+                🔗 Conectar con Instagram
+              </button>
+              {!META_APP_ID && (
+                <p style={{ margin: 0, fontSize: '12px', color: '#DC2626' }}>
+                  Falta configurar <code>NEXT_PUBLIC_META_APP_ID</code> en Vercel.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Más integraciones (próximamente) ── */}
