@@ -311,8 +311,8 @@ export default function FichaNegocio() {
   const mapSrc      = coordenadas && mapToken
     ? `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/pin-s+6366F1(${coordenadas[0]},${coordenadas[1]})/${coordenadas[0]},${coordenadas[1]},15,0/400x180@2x?access_token=${mapToken}`
     : null
-  const colorPpal   = negocio?.color_principal ?? '#B8D8F8'
-  const colorSec    = negocio?.color_secundario ?? '#D4C5F9'
+  const colorPpal   = negocio?.color_principal ?? '#7C3AED'
+  const colorSec    = negocio?.color_secundario ?? '#B8D8F8'
 
   // ─── Loading / Not found ───────────────────────────────────────────────────
   if (cargando) return (
@@ -352,8 +352,8 @@ export default function FichaNegocio() {
         .btn-fav { background:white; border:1.5px solid rgba(0,0,0,0.09); border-radius:100px; width:40px; height:40px; min-height:44px; min-width:44px; display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer; transition:all 0.15s; }
         .btn-fav:hover { border-color:rgba(239,68,68,0.3); transform:scale(1.05); }
         .btn-fav.active { background:rgba(239,68,68,0.06); border-color:rgba(239,68,68,0.3); }
-        .btn-nav-cita { background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border:none; padding:10px 22px; border-radius:100px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; box-shadow:0 4px 12px rgba(99,102,241,0.3); transition:transform 0.15s,box-shadow 0.15s; white-space:nowrap; }
-        .btn-nav-cita:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(99,102,241,0.4); }
+        .btn-nav-cita { background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)); color:white; border:none; padding:10px 22px; border-radius:100px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:transform 0.15s,box-shadow 0.15s; white-space:nowrap; }
+        .btn-nav-cita:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,0.28); }
 
         /* ── HERO ── */
         .hero { position:relative; overflow:hidden; background:linear-gradient(135deg,#EEF2FF,#F5F3FF,#EDE9FE); }
@@ -486,7 +486,7 @@ export default function FichaNegocio() {
         /* ── MOBILE CTA ── */
         .mobile-cta { display:none; position:fixed; bottom:0; left:0; right:0; padding:14px 20px; background:rgba(255,255,255,0.97); backdrop-filter:blur(16px); border-top:1px solid rgba(0,0,0,0.07); z-index:90; }
         .mobile-cta-inner { display:flex; gap:10px; align-items:center; }
-        .mobile-cta-reserve { display:flex; align-items:center; justify-content:center; gap:8px; flex:1; padding:15px; background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border-radius:14px; font-family:inherit; font-size:15px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(99,102,241,0.35); min-height:44px; }
+        .mobile-cta-reserve { display:flex; align-items:center; justify-content:center; gap:8px; flex:1; padding:15px; background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)); color:white; border-radius:14px; font-family:inherit; font-size:15px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(0,0,0,0.2); min-height:44px; }
         .mobile-cta-wa { display:flex; align-items:center; justify-content:center; gap:6px; padding:12px 16px; background:#25D366; color:white; border-radius:14px; font-family:inherit; font-size:13px; font-weight:700; text-decoration:none; min-height:44px; white-space:nowrap; }
 
         /* ── CHATBOT ── */
@@ -589,8 +589,8 @@ export default function FichaNegocio() {
         html.dark .btn-share { background:#1a1a1a; border-color:rgba(255,255,255,0.1); }
 
         /* ── SERV RESERVAR BTN ── */
-        .serv-reservar-btn { display:inline-flex; align-items:center; padding:5px 10px; background:rgba(99,102,241,0.08); color:#6366F1; border:1.5px solid rgba(99,102,241,0.18); border-radius:8px; font-size:11px; font-weight:700; text-decoration:none; white-space:nowrap; margin-left:10px; cursor:pointer; transition:all .15s; flex-shrink:0; }
-        .serv-reservar-btn:hover { background:#6366F1; color:white; border-color:#6366F1; }
+        .serv-reservar-btn { display:inline-flex; align-items:center; padding:5px 10px; background:rgba(0,0,0,0.04); color:var(--color-primary); border:1.5px solid var(--color-primary); border-radius:8px; font-size:11px; font-weight:700; text-decoration:none; white-space:nowrap; margin-left:10px; cursor:pointer; transition:all .15s; flex-shrink:0; }
+        .serv-reservar-btn:hover { background:var(--color-primary); color:white; border-color:var(--color-primary); }
 
         /* ── CHAT FAB PULSE ── */
         .chat-fab-badge { position:absolute; top:-2px; right:-2px; width:13px; height:13px; border-radius:50%; background:#EF4444; border:2px solid white; animation:fabPulse 2s infinite; }
@@ -793,11 +793,11 @@ export default function FichaNegocio() {
                     )
                     if (esUnica) return <div key={grupo} style={{borderLeft:`3px solid ${colorPpal}`,paddingLeft:'10px',marginLeft:'-2px'}}>{lista}</div>
                     return (
-                      <div key={grupo} className="grupo-wrap" style={{borderColor:pal.border,borderLeft:`3px solid ${colorPpal}`}}>
-                        <div className="grupo-header" style={{background:pal.bg,color:pal.color}} onClick={() => setGrupoAbierto(abierto ? null : grupo)}>
+                      <div key={grupo} className="grupo-wrap" style={{borderLeft:`3px solid ${colorPpal}`}}>
+                        <div className="grupo-header" style={{background:colorSec,color:colorPpal}} onClick={() => setGrupoAbierto(abierto ? null : grupo)}>
                           <div className="grupo-izq">
-                            <span className="grupo-dot" style={{background:pal.dot}}/>
-                            <span className="grupo-nombre" style={{color:pal.color}}>{grupo}</span>
+                            <span className="grupo-dot" style={{background:colorPpal}}/>
+                            <span className="grupo-nombre" style={{color:colorPpal}}>{grupo}</span>
                             <span className="grupo-count">{items.length}</span>
                           </div>
                           <svg className={`grupo-arrow${abierto?' open':''}`} width="16" height="16" viewBox="0 0 16 16" fill="none">
