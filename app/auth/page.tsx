@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../lib/supabase'
@@ -34,6 +34,7 @@ function KhepriLogo() {
 
 function AuthForm() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const modoInicial = searchParams?.get('modo') === 'registro' ? 'registro' : 'login'
   const emailParam  = searchParams?.get('email') ?? ''
   const negocioParam = searchParams?.get('negocio') ?? ''
@@ -83,14 +84,16 @@ function AuthForm() {
         window.location.href = window.location.origin + '/onboarding'
       }
     } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: emailSanitized, password })
+      const { error } = await supabase.auth.signInWithPassword({ email: emailSanitized, password })
       if (error) { setMensaje('Email o contraseña incorrectos.'); setEsError(true) }
-      else if (data.user) {
-        const { data: perfil } = await supabase.from('profiles').select('tipo').eq('id', data.user.id).single()
-        if (perfil?.tipo === 'empleado') window.location.href = window.location.origin + '/empleado'
-        else if (perfil?.tipo === 'negocio') window.location.href = window.location.origin + '/dashboard'
-        else if (perfil?.tipo === 'cliente') window.location.href = window.location.origin + '/cliente'
-        else window.location.href = window.location.origin + '/onboarding'
+      else {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const { data: perfil } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
+        if (perfil?.tipo === 'empleado') { router.push('/empleado'); return }
+        if (perfil?.tipo === 'negocio') { router.push('/dashboard'); return }
+        if (perfil?.tipo === 'cliente') { router.push('/cliente'); return }
+        router.push('/onboarding')
       }
     }
     captchaRef.current?.resetCaptcha()
