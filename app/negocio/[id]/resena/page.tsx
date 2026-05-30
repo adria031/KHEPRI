@@ -30,12 +30,13 @@ function ResenaForm() {
   const negocioId = params?.id as string
   const reservaId = search.get('reserva_id') ?? ''
 
-  type Estado = 'cargando' | 'formulario' | 'enviando' | 'gracias' | 'ya_enviada' | 'invalida'
+  type Estado = 'cargando' | 'formulario' | 'enviando' | 'gracias' | 'ya_enviada' | 'invalida' | 'no_encontrada'
 
   const [estado,      setEstado]      = useState<Estado>('cargando')
   const [negNombre,   setNegNombre]   = useState('')
   const [svcNombre,   setSvcNombre]   = useState('')
   const [nombre,      setNombre]      = useState('')
+  const [negocioReal, setNegocioReal] = useState(negocioId)
   const [estrellas,   setEstrellas]   = useState(0)
   const [hover,       setHover]       = useState(0)
   const [comentario,  setComentario]  = useState('')
@@ -44,46 +45,33 @@ function ResenaForm() {
   const captchaRef = useRef<HCaptcha>(null)
 
   useEffect(() => {
-    if (!negocioId) return
+    if (!reservaId) { setEstado('invalida'); return }
     ;(async () => {
-      // 1. Cargar nombre del negocio
-      const { data: neg } = await db
-        .from('negocios')
-        .select('nombre')
-        .eq('id', negocioId)
+      // Comprobar si ya existe una reseña para esta reserva
+      const { data: yaResena } = await db
+        .from('resenas')
+        .select('id')
+        .eq('reserva_id', reservaId)
+        .maybeSingle()
+
+      if (yaResena) { setEstado('ya_enviada'); return }
+
+      // Cargar reserva con negocio y servicio via join
+      const { data: reserva, error: reservaErr } = await db
+        .from('reservas')
+        .select('*, negocios(nombre, logo_url), servicios(nombre)')
+        .eq('id', reservaId)
         .single()
-      if (!neg) { setEstado('invalida'); return }
-      setNegNombre(neg.nombre)
 
-      // 2. Si viene reserva_id, validar y pre-rellenar
-      if (reservaId) {
-        // Comprobar si ya existe una reseña para esta reserva
-        const { data: yaResena } = await db
-          .from('resenas')
-          .select('id')
-          .eq('reserva_id', reservaId)
-          .maybeSingle()
+      if (reservaErr || !reserva) { setEstado('no_encontrada'); return }
 
-        if (yaResena) { setEstado('ya_enviada'); return }
-
-        // Cargar datos de la reserva para pre-rellenar nombre
-        const { data: reserva } = await db
-          .from('reservas')
-          .select('cliente_nombre, negocio_id, servicios(nombre)')
-          .eq('id', reservaId)
-          .single()
-
-        if (!reserva || reserva.negocio_id !== negocioId) {
-          setEstado('invalida'); return
-        }
-
-        setNombre(reserva.cliente_nombre ?? '')
-        setSvcNombre((reserva.servicios as any)?.nombre ?? '')
-      }
-
+      setNegNombre((reserva.negocios as any)?.nombre ?? '')
+      setNombre(reserva.cliente_nombre ?? '')
+      setSvcNombre((reserva.servicios as any)?.nombre ?? '')
+      setNegocioReal(reserva.negocio_id ?? negocioId)
       setEstado('formulario')
     })()
-  }, [negocioId, reservaId])
+  }, [reservaId, negocioId])
 
   async function enviar() {
     if (!nombre.trim())    { setError('Escribe tu nombre'); return }
@@ -95,7 +83,7 @@ function ResenaForm() {
     if (!captchaOk) { setError('Verificación de seguridad fallida. Inténtalo de nuevo.'); setEstado('formulario'); captchaRef.current?.resetCaptcha(); setCaptchaToken(''); return }
 
     const { error: insertErr } = await db.from('resenas').insert({
-      negocio_id:     negocioId,
+      negocio_id:     negocioReal,
       reserva_id:     reservaId || null,
       cliente_nombre: sanitizeField(nombre, 100),
       valoracion:     estrellas,
@@ -125,7 +113,14 @@ function ResenaForm() {
 
   if (estado === 'invalida') {
     return (
-      <Pantalla emoji="🔍" titulo="Enlace no válido" sub="Este enlace no corresponde a ninguna cita o negocio."
+      <Pantalla emoji="🔍" titulo="Enlace no válido" sub="Este enlace de reseña no es válido. Comprueba el correo que recibiste."
+        extra={<a href="https://khepria.app" style={{display:'inline-block',marginTop:'8px',fontSize:'13px',color:'#9CA3AF',textDecoration:'none'}}>Ir a khepria.app →</a>} />
+    )
+  }
+
+  if (estado === 'no_encontrada') {
+    return (
+      <Pantalla emoji="📭" titulo="Reseña no disponible" sub="Esta reseña ya no está disponible o ya fue enviada anteriormente."
         extra={<a href="https://khepria.app" style={{display:'inline-block',marginTop:'8px',fontSize:'13px',color:'#9CA3AF',textDecoration:'none'}}>Ir a khepria.app →</a>} />
     )
   }
