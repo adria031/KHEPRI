@@ -1,108 +1,90 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, AreaChart, Area } from 'recharts'
 import { supabase, getSessionClient } from '../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
 import { setNegocioActivo } from '../lib/negocio-activo'
 import { DashboardShell } from './DashboardShell'
 import { PLANES } from '../lib/planes'
 
-// Dynamic chart components — ssr:false so recharts never runs on server
-// (static imports inside the factory keep recharts' internal type-checking intact)
-const BarChartNoSSR = dynamic(
-  async () => {
-    const { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } = await import('recharts')
-    return function C({ data }: { data: { nombre: string; reservas: number }[] }) {
-      return (
-        <ResponsiveContainer width="100%" height={250} minWidth={0}>
-          <BarChart data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-            <XAxis dataKey="nombre" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
-            <Bar dataKey="reservas" fill="#B8D8F8" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      )
-    }
-  },
-  { ssr: false }
-)
+const CHART_COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
 
-const PieChartNoSSR = dynamic(
-  async () => {
-    const { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } = await import('recharts')
-    const COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
-    return function C({ data }: { data: { name: string; value: number }[] }) {
-      return (
-        <ResponsiveContainer width="100%" height={250} minWidth={0}>
-          <PieChart>
-            <Pie data={data} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
-              {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-            </Pie>
-            <Tooltip formatter={(v, n) => [`${v} reservas`, n]} contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
-          </PieChart>
-        </ResponsiveContainer>
-      )
-    }
-  },
-  { ssr: false }
-)
+function BarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] }) {
+  return (
+    <div style={{ width: '100%', height: 250 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
+          <XAxis dataKey="nombre" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
+          <Bar dataKey="reservas" fill="#B8D8F8" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
-const AreaChartNoSSR = dynamic(
-  async () => {
-    const { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } = await import('recharts')
-    return function C({ data }: { data: { sem: string; actual: number; anterior: number }[] }) {
-      return (
-        <ResponsiveContainer width="100%" height={250} minWidth={0}>
-          <AreaChart data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-            <defs>
-              <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#818CF8" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="gradAnt" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#C4B5FD" stopOpacity={0.18} />
-                <stop offset="95%" stopColor="#C4B5FD" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-            <XAxis dataKey="sem" tick={{ fontSize: 12, fill: '#9CA3AF', fontWeight: 600 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `€${v}`} />
-            <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
-            <Area type="monotone" dataKey="anterior" name="Mes ant." stroke="#C4B5FD" strokeWidth={2} strokeDasharray="4 3" fill="url(#gradAnt)" dot={false} />
-            <Area type="monotone" dataKey="actual" name="Este mes" stroke="#818CF8" strokeWidth={2.5} fill="url(#gradActual)" dot={{ fill: '#818CF8', r: 4, strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 6 }} />
-          </AreaChart>
-        </ResponsiveContainer>
-      )
-    }
-  },
-  { ssr: false }
-)
+function PieChartNoSSR({ data }: { data: { name: string; value: number }[] }) {
+  return (
+    <div style={{ width: '100%', height: 250 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={data} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
+            {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+          </Pie>
+          <Tooltip formatter={(v, n) => [`${v} reservas`, n]} contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
-const BizBarChartNoSSR = dynamic(
-  async () => {
-    const { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } = await import('recharts')
-    const COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
-    return function C({ data }: { data: { nombre: string; reservas: number }[] }) {
-      return (
-        <ResponsiveContainer width="100%" height={250} minWidth={0}>
-          <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-            <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} formatter={(v) => [`${v} reservas`, 'Mes actual']} />
-            <Bar dataKey="reservas" radius={[6, 6, 0, 0]}>
-              {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      )
-    }
-  },
-  { ssr: false }
-)
+function AreaChartNoSSR({ data }: { data: { sem: string; actual: number; anterior: number }[] }) {
+  return (
+    <div style={{ width: '100%', height: 250 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+          <defs>
+            <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#818CF8" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gradAnt" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#C4B5FD" stopOpacity={0.18} />
+              <stop offset="95%" stopColor="#C4B5FD" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
+          <XAxis dataKey="sem" tick={{ fontSize: 12, fill: '#9CA3AF', fontWeight: 600 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `€${v}`} />
+          <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
+          <Area type="monotone" dataKey="anterior" name="Mes ant." stroke="#C4B5FD" strokeWidth={2} strokeDasharray="4 3" fill="url(#gradAnt)" dot={false} />
+          <Area type="monotone" dataKey="actual" name="Este mes" stroke="#818CF8" strokeWidth={2.5} fill="url(#gradActual)" dot={{ fill: '#818CF8', r: 4, strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 6 }} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+function BizBarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] }) {
+  return (
+    <div style={{ width: '100%', height: 250 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
+          <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} formatter={(v) => [`${v} reservas`, 'Mes actual']} />
+          <Bar dataKey="reservas" radius={[6, 6, 0, 0]}>
+            {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
 function isoLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -783,9 +765,7 @@ export default function Dashboard() {
                   <span className="db-section-title">Comparativa negocios</span>
                   <span className="db-section-badge">Reservas este mes</span>
                 </div>
-                <div style={{ width: '100%', height: 250 }}>
-                  <BizBarChartNoSSR data={bizStats.map(b => ({ nombre: b.nombre.split(' ')[0], reservas: b.reservasMes }))} />
-                </div>
+                <BizBarChartNoSSR data={bizStats.map(b => ({ nombre: b.nombre.split(' ')[0], reservas: b.reservasMes }))} />
               </div>
             )}
           </>
@@ -995,9 +975,7 @@ export default function Dashboard() {
                 : chartData
               return (
                 <>
-                  <div style={{ width: '100%', height: 250 }}>
-                    <BarChartNoSSR data={display} />
-                  </div>
+                  <BarChartNoSSR data={display} />
                   <div className="db-chart-footer">
                     <span className="db-chart-footer-label">Total 7 días</span>
                     <span className="db-chart-footer-val">
@@ -1130,9 +1108,7 @@ export default function Dashboard() {
                 : chartData.map(d => ({ name: d.nombre, value: d.reservas }))
               return (
                 <>
-                  <div style={{ width: '100%', height: 250 }}>
-                    <PieChartNoSSR data={donutData} />
-                  </div>
+                  <PieChartNoSSR data={donutData} />
                   {donut.length > 0 && (
                     <div style={{ marginTop: 4 }}>
                       {donut.map((item, i) => {
@@ -1165,9 +1141,7 @@ export default function Dashboard() {
                 ? area4sem
                 : chartData.map(d => ({ sem: d.nombre, actual: d.reservas * 10, anterior: Math.round(d.reservas * 8) }))
               return (
-                <div style={{ width: '100%', height: 250 }}>
-                  <AreaChartNoSSR data={areaData} />
-                </div>
+                <AreaChartNoSSR data={areaData} />
               )
             })()}
             {!cargando && (
