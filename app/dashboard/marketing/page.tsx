@@ -262,24 +262,25 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
   /* ── minimalista ── */
   if (layout === 'minimalista') {
     return (
-      <div style={{ width:540, height:960, background:'#FAFAFA', position:'relative', overflow:'hidden',
+      <div style={{ width:303, height:538, background:'#FAFAFA', position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'flex-end', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'64px 52px' }}>
-        <div style={{ position:'absolute', top:64, left:52, width:52, height:3, background:colorPpal, borderRadius:2 }} />
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        <div style={{ position:'absolute', top:'8%', left:'8%', width:30, height:3, background:colorPpal, borderRadius:2 }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="#374151" />
-        <div style={{ position:'relative', zIndex:2, width:'100%' }}>
+        <div style={{ position:'relative', zIndex:2, width:'100%', overflow:'hidden' }}>
           {contenido.dato && (
-            <div style={{ fontSize:100, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-4px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            <div style={{ fontSize:'clamp(32px,14cqw,52px)', fontWeight:900, lineHeight:1, marginBottom:4, letterSpacing:'-2px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?40:56, fontWeight:800, color:'#0F172A', lineHeight:1.1, marginBottom:16, letterSpacing:'-1px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
-          <div style={{ fontSize:18, color:'#64748B', lineHeight:1.6, marginBottom:36 }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'14px 32px', background:colorPpal, borderRadius:6, fontSize:16, fontWeight:700, color:'white' }}>{contenido.cta}</div>
+          <div style={{ fontSize:contenido.dato?'clamp(14px,5cqw,20px)':'clamp(18px,7cqw,26px)', fontWeight:800, color:'#0F172A', lineHeight:1.1, marginBottom:8, letterSpacing:'-0.5px', fontFamily:fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
+          <div style={{ fontSize:'clamp(10px,3.5cqw,14px)', color:'#64748B', lineHeight:1.5, marginBottom:16, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'8px 18px', background:colorPpal, borderRadius:6, fontSize:'clamp(9px,3cqw,12px)', fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:28, right:52, fontSize:12, color:'#CBD5E1', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:14, right:'8%', fontSize:'clamp(8px,2.5cqw,10px)', color:'#CBD5E1', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
         )}
       </div>
     )
@@ -288,20 +289,20 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
   /* ── bold ── */
   if (layout === 'bold') {
     return (
-      <div style={{ width:540, height:960, background:isMarca?`linear-gradient(135deg,${colorPpal},${colorSec})`:colorPpal, position:'relative', overflow:'hidden',
+      <div style={{ width:303, height:538, background:isMarca?`linear-gradient(135deg,${colorPpal},${colorSec})`:colorPpal, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'64px 52px' }}>
-        <div style={{ position:'absolute', bottom:-120, right:-120, width:560, height:560, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
-        <div style={{ position:'absolute', top:-60, right:60, width:280, height:280, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        <div style={{ position:'absolute', bottom:-60, right:-60, width:280, height:280, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
+        <div style={{ position:'absolute', top:-30, right:30, width:140, height:140, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="rgba(255,255,255,0.9)" hasShadow />
-        <div style={{ position:'relative', zIndex:2, width:'100%' }}>
-          <div style={{ fontSize:12, fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:4, textTransform:'uppercase', marginBottom:24 }}>{negocioNombre}</div>
+        <div style={{ position:'relative', zIndex:2, width:'100%', overflow:'hidden' }}>
+          <div style={{ fontSize:'clamp(8px,2.5cqw,10px)', fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:3, textTransform:'uppercase', marginBottom:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{negocioNombre}</div>
           {contenido.dato && (
-            <div style={{ fontSize:112, fontWeight:900, lineHeight:0.9, marginBottom:12, letterSpacing:'-5px', color:'white' }}>{contenido.dato}</div>
+            <div style={{ fontSize:'clamp(36px,16cqw,58px)', fontWeight:900, lineHeight:0.9, marginBottom:6, letterSpacing:'-3px', color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{contenido.dato}</div>
           )}
-          <div style={{ fontSize:contenido.dato?44:64, fontWeight:900, color:'white', lineHeight:1, marginBottom:20, letterSpacing:'-1.5px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
-          <div style={{ fontSize:20, color:'rgba(255,255,255,0.7)', lineHeight:1.4, marginBottom:48 }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'16px 40px', background:'white', borderRadius:10, fontSize:17, fontWeight:800, color:colorPpal }}>{contenido.cta}</div>
+          <div style={{ fontSize:contenido.dato?'clamp(15px,6cqw,22px)':'clamp(20px,8cqw,30px)', fontWeight:900, color:'white', lineHeight:1, marginBottom:10, letterSpacing:'-0.8px', fontFamily:fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
+          <div style={{ fontSize:'clamp(10px,3.5cqw,14px)', color:'rgba(255,255,255,0.7)', lineHeight:1.4, marginBottom:20, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'8px 20px', background:'white', borderRadius:8, fontSize:'clamp(9px,3cqw,12px)', fontWeight:800, color:colorPpal, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
         </div>
       </div>
     )
@@ -313,30 +314,31 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
     const txtE = isDark ? '#FFFFFF' : '#1C1917'
     const subE = isDark ? 'rgba(255,255,255,0.5)' : '#78716C'
     return (
-      <div style={{ width:540, height:960, background:bgE, position:'relative', overflow:'hidden',
+      <div style={{ width:303, height:538, background:bgE, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'80px 60px' }}>
-        <div style={{ position:'absolute', inset:24, border:`1px solid ${isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.05)'}`, borderRadius:4, pointerEvents:'none' }} />
-        <div style={{ position:'absolute', top:44, left:'50%', transform:'translateX(-50%)', display:'flex', gap:8 }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        <div style={{ position:'absolute', inset:12, border:`1px solid ${isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.05)'}`, borderRadius:4, pointerEvents:'none' }} />
+        <div style={{ position:'absolute', top:22, left:'50%', transform:'translateX(-50%)', display:'flex', gap:5 }}>
           {[colorPpal, colorSec, colorPpal].map((c, i) => (
-            <div key={i} style={{ width:5, height:5, borderRadius:'50%', background:c, opacity:0.45 }} />
+            <div key={i} style={{ width:4, height:4, borderRadius:'50%', background:c, opacity:0.45 }} />
           ))}
         </div>
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} />
-        <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+        <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%', overflow:'hidden' }}>
           {contenido.dato && (
-            <div style={{ fontSize:80, fontWeight:300, lineHeight:1, marginBottom:12, letterSpacing:'-1px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            <div style={{ fontSize:'clamp(28px,12cqw,44px)', fontWeight:300, lineHeight:1, marginBottom:6, letterSpacing:'-1px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?32:44, fontWeight:700, color:txtE, lineHeight:1.2, marginBottom:16, fontFamily: fuente === 'elegante' ? FONT_MAP.elegante : fontTitulo }}>{contenido.titulo}</div>
-          <div style={{ width:44, height:1, background:colorPpal, margin:'0 auto 20px', opacity:0.4 }} />
-          <div style={{ fontSize:17, color:subE, lineHeight:1.7, marginBottom:40 }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'14px 36px', border:`1px solid ${colorPpal}`, borderRadius:2, fontSize:15, fontWeight:600, color:isDark?'white':colorPpal }}>{contenido.cta}</div>
+          <div style={{ fontSize:contenido.dato?'clamp(13px,5cqw,18px)':'clamp(16px,6cqw,22px)', fontWeight:700, color:txtE, lineHeight:1.2, marginBottom:8, fontFamily: fuente === 'elegante' ? FONT_MAP.elegante : fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
+          <div style={{ width:28, height:1, background:colorPpal, margin:'0 auto 10px', opacity:0.4 }} />
+          <div style={{ fontSize:'clamp(10px,3.5cqw,13px)', color:subE, lineHeight:1.6, marginBottom:18, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'8px 20px', border:`1px solid ${colorPpal}`, borderRadius:2, fontSize:'clamp(9px,3cqw,12px)', fontWeight:600, color:isDark?'white':colorPpal, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:44, left:0, right:0, textAlign:'center', fontSize:11, color:isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)', letterSpacing:2.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:22, left:0, right:0, textAlign:'center', fontSize:'clamp(8px,2.5cqw,10px)', color:isDark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.2)', letterSpacing:2, textTransform:'uppercase' }}>{negocioNombre}</div>
         )}
       </div>
     )
@@ -347,29 +349,30 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
     const bgD = isDark ? '#080810' : '#F7F9FC'
     const txtD = isDark ? '#FFFFFF' : '#111827'
     return (
-      <div style={{ width:540, height:960, background:bgD, position:'relative', overflow:'hidden',
+      <div style={{ width:303, height:538, background:bgD, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'64px 52px' }}>
-        <div style={{ position:'absolute', top:-150, right:-150, width:640, height:900,
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        <div style={{ position:'absolute', top:-80, right:-80, width:320, height:460,
           background:`linear-gradient(135deg,${colorPpal},${colorSec})`,
-          transform:'rotate(-15deg)', opacity: isDark ? 0.14 : 0.09, borderRadius:60 }} />
-        <div style={{ position:'absolute', bottom:100, right:44, width:3, height:240, background:`linear-gradient(180deg,${colorPpal},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
-        <div style={{ position:'absolute', bottom:80, right:76, width:3, height:160, background:`linear-gradient(180deg,${colorSec},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
+          transform:'rotate(-15deg)', opacity: isDark ? 0.14 : 0.09, borderRadius:30 }} />
+        <div style={{ position:'absolute', bottom:50, right:22, width:3, height:120, background:`linear-gradient(180deg,${colorPpal},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
+        <div style={{ position:'absolute', bottom:40, right:38, width:3, height:80, background:`linear-gradient(180deg,${colorSec},transparent)`, borderRadius:2, transform:'rotate(20deg)' }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark?'rgba(255,255,255,0.8)':'#374151'} hasShadow={isDark} />
-        <div style={{ position:'relative', zIndex:2, width:'82%' }}>
-          <div style={{ width:44, height:5, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:28 }} />
+        <div style={{ position:'relative', zIndex:2, width:'82%', overflow:'hidden' }}>
+          <div style={{ width:28, height:3, background:`linear-gradient(90deg,${colorPpal},${colorSec})`, borderRadius:2, marginBottom:14 }} />
           {contenido.dato && (
-            <div style={{ fontSize:100, fontWeight:900, lineHeight:1, marginBottom:8, letterSpacing:'-4px',
-              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+            <div style={{ fontSize:'clamp(32px,14cqw,52px)', fontWeight:900, lineHeight:1, marginBottom:4, letterSpacing:'-2px',
+              background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {contenido.dato}
             </div>
           )}
-          <div style={{ fontSize:contenido.dato?38:52, fontWeight:800, color:txtD, lineHeight:1.1, marginBottom:16, letterSpacing:'-1px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
-          <div style={{ fontSize:18, color:isDark?'rgba(255,255,255,0.6)':'#6B7280', lineHeight:1.5, marginBottom:40 }}>{contenido.subtitulo}</div>
-          <div style={{ display:'inline-block', padding:'14px 32px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:10, fontSize:16, fontWeight:700, color:'white' }}>{contenido.cta}</div>
+          <div style={{ fontSize:contenido.dato?'clamp(13px,5cqw,18px)':'clamp(17px,7cqw,24px)', fontWeight:800, color:txtD, lineHeight:1.1, marginBottom:8, letterSpacing:'-0.5px', fontFamily:fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
+          <div style={{ fontSize:'clamp(10px,3.5cqw,13px)', color:isDark?'rgba(255,255,255,0.6)':'#6B7280', lineHeight:1.5, marginBottom:18, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
+          <div style={{ display:'inline-block', padding:'8px 18px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`, borderRadius:8, fontSize:'clamp(9px,3cqw,12px)', fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
         </div>
         {mostrarUrl && (
-          <div style={{ position:'absolute', bottom:28, left:52, fontSize:12, color:isDark?'rgba(255,255,255,0.3)':'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+          <div style={{ position:'absolute', bottom:14, left:'8%', fontSize:'clamp(8px,2.5cqw,10px)', color:isDark?'rgba(255,255,255,0.3)':'#9CA3AF', letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
         )}
       </div>
     )
@@ -383,30 +386,31 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
   const ctaBg       = isMarca ? 'rgba(255,255,255,0.22)' : `linear-gradient(135deg,${colorPpal},${colorSec})`
   const ctaBorder   = isMarca ? '1.5px solid rgba(255,255,255,0.35)' : 'none'
   return (
-    <div style={{ width:540, height:960, background:bg, position:'relative', overflow:'hidden',
+    <div style={{ width:303, height:538, background:bg, position:'relative', overflow:'hidden',
       display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'60px 48px' }}>
-      <div style={{ position:'absolute', top:-100, left:-80, width:320, height:320, borderRadius:'50%',
-        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.15)':hexToRgba(colorSec,isDark?0.5:0.8)} 0%,transparent 70%)`, filter:'blur(40px)' }} />
-      <div style={{ position:'absolute', bottom:-80, right:-60, width:280, height:280, borderRadius:'50%',
-        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.1)':hexToRgba(colorPpal,isDark?0.4:0.7)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
-      <div style={{ position:'absolute', top:'30%', right:-60, width:200, height:200, borderRadius:'50%',
-        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.12)':hexToRgba(colorSec,isDark?0.3:0.6)} 0%,transparent 70%)`, filter:'blur(25px)' }} />
+      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+      <div style={{ position:'absolute', top:-50, left:-40, width:160, height:160, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.15)':hexToRgba(colorSec,isDark?0.5:0.8)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
+      <div style={{ position:'absolute', bottom:-40, right:-30, width:140, height:140, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.1)':hexToRgba(colorPpal,isDark?0.4:0.7)} 0%,transparent 70%)`, filter:'blur(15px)' }} />
+      <div style={{ position:'absolute', top:'30%', right:-30, width:100, height:100, borderRadius:'50%',
+        background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.12)':hexToRgba(colorSec,isDark?0.3:0.6)} 0%,transparent 70%)`, filter:'blur(12px)' }} />
       <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor={isDark||isMarca?'rgba(255,255,255,0.85)':'#374151'} hasShadow={isDark||isMarca} />
-      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%' }}>
+      <div style={{ position:'relative', zIndex:2, textAlign:'center', width:'100%', overflow:'hidden' }}>
         {contenido.dato && (
-          <div style={{ fontSize:96, fontWeight:900, lineHeight:1, marginBottom:12, letterSpacing:'-3px',
+          <div style={{ fontSize:'clamp(32px,14cqw,52px)', fontWeight:900, lineHeight:1, marginBottom:6, letterSpacing:'-2px',
+            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
             ...(isMarca ? { color:'white', textShadow:'0 2px 8px rgba(0,0,0,0.15)' }
               : { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }) }}>
             {contenido.dato}
           </div>
         )}
-        <div style={{ fontSize:contenido.dato?36:48, fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:16, letterSpacing:'-0.5px', fontFamily:fontTitulo }}>{contenido.titulo}</div>
-        <div style={{ fontSize:20, color:subColor, lineHeight:1.6, marginBottom:48 }}>{contenido.subtitulo}</div>
-        <div style={{ display:'inline-block', padding:'16px 40px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:18, fontWeight:700, color:'white' }}>{contenido.cta}</div>
+        <div style={{ fontSize:contenido.dato?'clamp(14px,5.5cqw,20px)':'clamp(18px,7cqw,26px)', fontWeight:800, color:textColor, lineHeight:1.2, marginBottom:8, letterSpacing:'-0.5px', fontFamily:fontTitulo, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>{contenido.titulo}</div>
+        <div style={{ fontSize:'clamp(10px,3.5cqw,13px)', color:subColor, lineHeight:1.5, marginBottom:20, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{contenido.subtitulo}</div>
+        <div style={{ display:'inline-block', padding:'8px 20px', background:ctaBg, border:ctaBorder, borderRadius:100, fontSize:'clamp(9px,3cqw,12px)', fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{contenido.cta}</div>
       </div>
       {mostrarUrl && (
-        <div style={{ position:'absolute', bottom:32, left:0, right:0, textAlign:'center', fontSize:14, color:footerColor, letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
+        <div style={{ position:'absolute', bottom:16, left:0, right:0, textAlign:'center', fontSize:'clamp(8px,2.5cqw,10px)', color:footerColor, letterSpacing:1.5, textTransform:'uppercase' }}>{negocioNombre}</div>
       )}
     </div>
   )
@@ -880,7 +884,7 @@ Devuelve SOLO JSON sin markdown:
       {/* Off-screen render target for html2canvas */}
       {imgContenido && (
         <div id="render-post" style={{ position:'fixed', left:'-9999px', top:'0px',
-          width:'540px', height: formato === 'publicacion' ? '540px' : '960px', zIndex:-1 }}>
+          width: formato === 'publicacion' ? '540px' : '303px', height: formato === 'publicacion' ? '540px' : '538px', zIndex:-1 }}>
           {formato === 'publicacion'
             ? <TemplatePublicacion {...tplProps(imgContenido)} />
             : <TemplateHistoria   {...tplProps(imgContenido)} />}
@@ -1122,7 +1126,7 @@ Devuelve SOLO JSON sin markdown:
 
               <div className="mk-preview-wrap">
                 {/* Preview miniatura visible */}
-                <div className="mk-preview-img" style={{ transform: formato === 'historia' ? 'scale(0.42)' : 'scale(0.55)', transformOrigin:'top left', marginBottom: formato === 'historia' ? -220 : -8 }}>
+                <div className="mk-preview-img" style={{ transform: formato === 'historia' ? 'scale(0.6)' : 'scale(0.55)', transformOrigin:'top left', marginBottom: formato === 'historia' ? -215 : -8 }}>
                   {formato === 'publicacion'
                     ? <TemplatePublicacion {...tplProps(imgContenido)} />
                     : <TemplateHistoria   {...tplProps(imgContenido)} />}
