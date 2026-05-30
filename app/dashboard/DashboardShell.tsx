@@ -55,6 +55,7 @@ const NAV_GROUPS = [
     items: [
       { icon: '📱', label: 'Marketing', href: '/dashboard/marketing' },
       { icon: '📊', label: 'Analytics', href: '/dashboard/analytics' },
+      { icon: '🤖', label: 'Chatbot IA', href: '/dashboard/chatbot' },
     ],
   },
   {
