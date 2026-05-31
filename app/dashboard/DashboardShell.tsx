@@ -16,17 +16,17 @@ const NAV_GROUPS = [
     emoji: '📊',
     label: 'Inicio',
     items: [
-      { icon: '🏠', label: 'Dashboard', href: '/dashboard' },
-      { icon: '📅', label: 'Agenda', href: '/dashboard/agenda' },
+      { icon: '🏠', label: 'Dashboard',   href: '/dashboard' },
+      { icon: '📋', label: 'Reservas',    href: '/dashboard/reservas' },
+      { icon: '🤖', label: 'Chatbot IA',  href: '/dashboard/chatbot' },
     ],
   },
   {
     emoji: '👥',
     label: 'Clientes',
     items: [
-      { icon: '📋', label: 'Reservas', href: '/dashboard/reservas' },
       { icon: '👤', label: 'Clientes', href: '/dashboard/clientes' },
-      { icon: '⭐', label: 'Reseñas', href: '/dashboard/resenas' },
+      { icon: '⭐', label: 'Reseñas',  href: '/dashboard/resenas' },
     ],
   },
   {
@@ -34,37 +34,36 @@ const NAV_GROUPS = [
     label: 'Mi negocio',
     items: [
       { icon: '🏪', label: 'Mi negocio', href: '/dashboard/mi-negocio' },
-      { icon: '🔧', label: 'Servicios', href: '/dashboard/servicios' },
-      { icon: '⏰', label: 'Horarios', href: '/dashboard/horarios' },
-      { icon: '👥', label: 'Equipo', href: '/dashboard/equipo' },
-      { icon: '🛍️', label: 'Productos', href: '/dashboard/productos' },
+      { icon: '🔧', label: 'Servicios',  href: '/dashboard/servicios' },
+      { icon: '⏰', label: 'Horarios',   href: '/dashboard/horarios' },
+      { icon: '👥', label: 'Equipo',     href: '/dashboard/equipo' },
+      { icon: '🛍️', label: 'Productos',  href: '/dashboard/productos' },
     ],
   },
   {
     emoji: '💰',
     label: 'Finanzas',
     items: [
-      { icon: '💰', label: 'Caja', href: '/dashboard/caja' },
+      { icon: '💰', label: 'Caja',        href: '/dashboard/caja' },
       { icon: '🧾', label: 'Facturación', href: '/dashboard/facturacion' },
-      { icon: '💸', label: 'Nóminas', href: '/dashboard/nominas' },
+      { icon: '💸', label: 'Nóminas',     href: '/dashboard/nominas' },
     ],
   },
   {
     emoji: '📈',
     label: 'Crecimiento',
     items: [
-      { icon: '📱', label: 'Marketing', href: '/dashboard/marketing' },
+      { icon: '📸', label: 'Marketing', href: '/dashboard/marketing' },
       { icon: '📊', label: 'Analytics', href: '/dashboard/analytics' },
-      { icon: '🤖', label: 'Chatbot IA', href: '/dashboard/chatbot' },
     ],
   },
   {
     emoji: '⚙️',
     label: 'Configuración',
     items: [
-      { icon: '⚙️', label: 'Ajustes', href: '/dashboard/ajustes' },
+      { icon: '⚙️', label: 'Ajustes',       href: '/dashboard/ajustes' },
       { icon: '🔌', label: 'Integraciones', href: '/dashboard/integraciones' },
-      { icon: '⚡', label: 'Upgrade plan', href: '/upgrade' },
+      { icon: '⚡', label: 'Upgrade plan',  href: '/upgrade' },
     ],
   },
 ]
@@ -149,6 +148,7 @@ export function DashboardShell({
     '/dashboard/caja':         t('nav.cash'),
     '/dashboard/facturacion':  t('nav.invoicing'),
     '/dashboard/nominas':      t('nav.payroll'),
+    '/dashboard/chatbot':      t('nav.chatbot'),
     '/dashboard/marketing':    t('nav.marketing'),
     '/dashboard/analytics':    t('nav.analytics'),
     '/dashboard/ajustes':      t('nav.settings'),
@@ -176,6 +176,7 @@ export function DashboardShell({
     '/dashboard/productos':    t('titles.products'),
     '/dashboard/equipo':       t('titles.team'),
     '/dashboard/facturacion':  t('titles.invoicing'),
+    '/dashboard/chatbot':      t('titles.chatbot'),
     '/dashboard/marketing':    t('titles.marketing'),
     '/dashboard/resenas':      t('titles.reviews'),
     '/dashboard/caja':         t('titles.cash'),
@@ -187,6 +188,10 @@ export function DashboardShell({
 
   const router = useRouter()
   const esTodos = negocio === null && todosNegocios.length > 1
+
+  // Brand color for active nav items
+  const navActiveColor = negocio?.color_principal || '#4F46E5'
+  const navActiveBg    = navActiveColor + '1f'  // ~12% opacity via 8-char hex
   // Usar el plan del negocio activo; en modo "todos" usar localStorage para no perder accesos
   const planActual = (negocio?.plan?.toLowerCase()) ?? planFromStorage ?? 'starter'
   const planCfg = PLAN_CFG[planActual] ?? PLAN_CFG.basico
@@ -220,8 +225,13 @@ export function DashboardShell({
     window.location.href = '/'
   }
 
+  const brandVars = {
+    '--ds-active':    navActiveColor,
+    '--ds-active-bg': navActiveBg,
+  } as React.CSSProperties
+
   return (
-    <>
+    <div style={brandVars}>
       <style>{`
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -240,8 +250,8 @@ export function DashboardShell({
 
         /* ── LAYOUT ── */
         .ds-layout { display: flex; min-height: 100vh; }
-        .ds-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 40; backdrop-filter: blur(3px); }
-        .ds-overlay.open { display: block; }
+        .ds-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 40; backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        .ds-overlay.open { opacity: 1; pointer-events: auto; }
 
         /* ── SIDEBAR ── */
         .ds-sidebar {
@@ -287,7 +297,7 @@ export function DashboardShell({
           transition: background 0.12s, color 0.12s;
         }
         .ds-nav-item:hover { background: var(--ds-hover); color: var(--ds-text); }
-        .ds-nav-item.ds-active { background: var(--ds-active-bg); color: var(--ds-active); font-weight: 600; }
+        .ds-nav-item.ds-active { background: var(--ds-active-bg); color: var(--ds-active); font-weight: 700; }
         .ds-nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; opacity: 0.85; }
         .ds-nav-item.ds-active .ds-nav-icon { opacity: 1; }
         .ds-nav-locked { opacity: 0.7; }
@@ -369,27 +379,41 @@ export function DashboardShell({
         .ds-bottom-nav {
           display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 45;
           background: var(--ds-white); border-top: 1px solid var(--ds-border);
-          height: 62px; padding: 0 4px;
-          align-items: stretch; justify-content: space-around;
-          box-shadow: 0 -4px 24px rgba(0,0,0,0.07);
+          height: 64px; padding: 0 4px;
+          align-items: center; justify-content: space-around;
+          box-shadow: 0 -4px 24px rgba(0,0,0,0.08);
         }
         .ds-bn-item {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 2px; flex: 1; padding: 6px 2px;
+          gap: 2px; flex: 1; padding: 4px 2px;
           text-decoration: none; color: var(--ds-muted);
           font-family: inherit; background: none; border: none; cursor: pointer;
           border-radius: 10px; transition: color 0.15s; -webkit-tap-highlight-color: transparent;
+          min-height: 44px;
         }
         .ds-bn-item.ds-bn-active { color: var(--ds-active); }
         .ds-bn-icon { font-size: 20px; line-height: 1; }
         .ds-bn-label { font-size: 10px; font-weight: 600; letter-spacing: -0.2px; white-space: nowrap; }
+        /* Center (home) button */
+        .ds-bn-center { margin-top: -18px; flex: 1.2; }
+        .ds-bn-center-bubble {
+          width: 52px; height: 52px; border-radius: 50%;
+          background: var(--ds-active); color: white;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 22px; box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+          border: 3px solid var(--ds-white); margin: 0 auto 2px;
+          transition: transform 0.15s;
+        }
+        .ds-bn-center:active .ds-bn-center-bubble { transform: scale(0.93); }
+        .ds-bn-center.ds-bn-active .ds-bn-center-bubble { box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .ds-bn-center .ds-bn-label { color: var(--ds-active); font-weight: 700; }
 
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
           .ds-sidebar { transform: translateX(-100%); }
           .ds-sidebar.open { transform: translateX(0); }
           .ds-hamburger { display: flex; }
-          .ds-main { margin-left: 0; padding-bottom: 62px; }
+          .ds-main { margin-left: 0; padding-bottom: 74px; }
           .ds-topbar { padding: 0 12px; }
           .ds-content { padding: 16px; }
           .content { padding: 16px; }
@@ -593,26 +617,27 @@ export function DashboardShell({
 
       {/* ── BOTTOM NAV (mobile only) ── */}
       <nav className="ds-bottom-nav">
-        {[
-          { href: '/dashboard/analytics', icon: '📊', label: 'Analytics' },
-          { href: '/dashboard/marketing',  icon: '📸', label: 'Marketing' },
-          { href: '/dashboard',            icon: '🏠', label: 'Inicio' },
-          { href: '/dashboard/clientes',   icon: '👥', label: 'Clientes' },
-        ].map(({ href, icon, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`ds-bn-item${pathname === href ? ' ds-bn-active' : ''}`}
-          >
-            <span className="ds-bn-icon">{icon}</span>
-            <span className="ds-bn-label">{label}</span>
-          </Link>
-        ))}
+        <Link href="/dashboard/analytics" className={`ds-bn-item${pathname === '/dashboard/analytics' ? ' ds-bn-active' : ''}`}>
+          <span className="ds-bn-icon">📊</span>
+          <span className="ds-bn-label">Analytics</span>
+        </Link>
+        <Link href="/dashboard/marketing" className={`ds-bn-item${pathname === '/dashboard/marketing' ? ' ds-bn-active' : ''}`}>
+          <span className="ds-bn-icon">📸</span>
+          <span className="ds-bn-label">Marketing</span>
+        </Link>
+        <Link href="/dashboard" className={`ds-bn-item ds-bn-center${pathname === '/dashboard' ? ' ds-bn-active' : ''}`}>
+          <div className="ds-bn-center-bubble">🏠</div>
+          <span className="ds-bn-label">Inicio</span>
+        </Link>
+        <Link href="/dashboard/clientes" className={`ds-bn-item${pathname === '/dashboard/clientes' ? ' ds-bn-active' : ''}`}>
+          <span className="ds-bn-icon">👥</span>
+          <span className="ds-bn-label">Clientes</span>
+        </Link>
         <button className="ds-bn-item" onClick={() => setSidebarOpen(true)}>
           <span className="ds-bn-icon">☰</span>
           <span className="ds-bn-label">Más</span>
         </button>
       </nav>
-    </>
+    </div>
   )
 }
