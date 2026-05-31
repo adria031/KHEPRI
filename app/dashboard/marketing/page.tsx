@@ -588,28 +588,27 @@ export default function MarketingPage() {
       presentacion: 'elegante o estatico',
     }
 
-    const prompt = `Eres el community manager creativo de "${negocioNombre}"${negocio?.tipo ? `, un negocio de ${negocio.tipo}` : ''} en España.
-Tono de comunicación: ${tonoLabel[negTono] ?? negTono}.
-${negPalabras.length ? `Palabras clave de la marca: ${negPalabras.join(', ')}.` : ''}
+    const prompt = `Eres el community manager de "${negocioNombre}", un negocio de ${negocio?.tipo ?? 'servicios'} en España.
+Tono: ${tonoLabel[negTono] ?? negTono}.
+${negPalabras.length ? `Palabras clave: ${negPalabras.join(', ')}.` : ''}
 ${negFrase ? `Frase de marca: "${negFrase}".` : ''}
 Servicios: ${serviciosStr}.
 Formato: ${esHistoria ? 'historia vertical Instagram' : 'publicación cuadrada Instagram'}.
 Tipo de post: "${tipoLabel[tipoContenido]}"${servicio ? ` — destacando "${servicio}"` : ''}.
+Layout sugerido: ${layoutGuide[tipoContenido] ?? 'estatico'}.
 
-INSTRUCCIONES CREATIVAS:
-- El título debe ser sorprendente, directo y con carácter propio. Evita clichés como "Descubre", "Transforma", "Potencia".
-- El subtítulo debe tener ritmo y ser memorable, no genérico.
-- Si hay dato, que sea concreto y creíble (porcentaje, número de clientes, años de experiencia, minutos…).
-- La descripción debe sonar humana, no de plantilla. Usa el tono indicado con personalidad real.
-- Layout sugerido para este tipo de contenido: ${layoutGuide[tipoContenido] ?? 'estatico'}.
+Genera un post ${tipoLabel[tipoContenido]} ORIGINAL y con CARÁCTER.
+NUNCA uses frases genéricas como "Descubre", "Transforma", "Potencia", "Eleva" o similares.
+El título debe sorprender. La descripción debe sonar humana, no de plantilla.
+Si hay dato, que sea concreto y creíble (porcentaje, número de clientes, años, minutos…).
 
 Devuelve SOLO JSON sin markdown:
 {
-  "titulo": "máximo 4 palabras impactantes",
-  "subtitulo": "máximo 8 palabras con ritmo",
-  "dato": "cifra concreta o null",
-  "cta": "llamada a la acción máximo 4 palabras",
-  "descripcion": "caption Instagram máximo 150 palabras, tono ${tonoLabel[negTono] ?? negTono}, con personalidad",
+  "titulo": "máximo 5 palabras impactantes",
+  "subtitulo": "frase memorable máximo 10 palabras",
+  "dato": "cifra específica o null",
+  "cta": "llamada acción urgente máximo 5 palabras",
+  "descripcion": "texto Instagram 150 palabras emotivo con personalidad, tono ${tonoLabel[negTono] ?? negTono}",
   "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5"],
   "layout": "uno de: estatico|diagonal|minimalista|bold|elegante"
 }`
