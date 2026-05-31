@@ -871,6 +871,7 @@ export default function Home() {
             <button className="kh-nav-btn" onClick={() => scrollTo('funciones')}>Funciones</button>
             <button className="kh-nav-btn" onClick={() => scrollTo('quien')}>Para quién</button>
             <button className="kh-nav-btn" onClick={() => scrollTo('planes')}>Planes</button>
+            <a href="/cliente" className="kh-nav-btn" style={{ textDecoration: 'none' }}>Para clientes</a>
             <button className="kh-nav-login" onClick={() => openAuth('login')}>Iniciar sesión</button>
             <button className="kh-nav-cta" onClick={() => openAuth('registro')}>Registrarse gratis</button>
           </div>
@@ -886,6 +887,7 @@ export default function Home() {
           <button className="kh-mobile-btn" onClick={() => scrollTo('funciones')}>Funciones</button>
           <button className="kh-mobile-btn" onClick={() => scrollTo('quien')}>Para quién</button>
           <button className="kh-mobile-btn" onClick={() => scrollTo('planes')}>Planes</button>
+          <a href="/cliente" className="kh-mobile-btn" style={{ textDecoration: 'none', display: 'block', textAlign: 'left' }}>Para clientes</a>
           <div className="kh-mobile-row">
             <button className="kh-mobile-login" onClick={() => openAuth('login')}>Entrar</button>
             <button className="kh-mobile-cta" onClick={() => openAuth('registro')}>Registrarse</button>
@@ -917,6 +919,18 @@ export default function Home() {
           <div className="kh-btns">
             <button className="kh-btn-p" onClick={() => openAuth('registro')}>Empezar gratis</button>
             <button className="kh-btn-s" onClick={() => scrollTo('funciones')}>Ver funciones ↓</button>
+          </div>
+          <div style={{ marginTop: 14 }}>
+            <a href="/cliente" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '12px 24px', borderRadius: '12px',
+              background: 'rgba(255,255,255,0.10)', border: '1.5px solid rgba(255,255,255,0.22)',
+              color: 'white', fontWeight: 600, fontSize: '15px',
+              textDecoration: 'none', backdropFilter: 'blur(8px)',
+              transition: 'background 0.15s',
+            }}>
+              🗺️ Explorar negocios
+            </a>
           </div>
           {count > 0 && (
             <div className="kh-counter">
@@ -1192,15 +1206,18 @@ export default function Home() {
             <a
               href="/cliente"
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                padding: '14px 28px', borderRadius: '14px',
+                display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+                padding: '18px 36px', borderRadius: '16px',
                 background: 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
-                color: 'white', fontWeight: 700, fontSize: '15px',
-                textDecoration: 'none', boxShadow: '0 4px 20px rgba(107,79,216,0.4)',
+                color: 'white', fontWeight: 700, fontSize: '18px',
+                textDecoration: 'none', boxShadow: '0 6px 28px rgba(107,79,216,0.45)',
                 transition: 'opacity 0.15s',
               }}
             >
-              Descubre negocios →
+              Descubre negocios cerca de ti →
+              <span style={{ fontSize: '13px', fontWeight: 400, opacity: 0.85, marginTop: 2 }}>
+                Busca, compara y reserva en los mejores negocios de tu zona
+              </span>
             </a>
           </div>
         </div>
@@ -1215,6 +1232,9 @@ export default function Home() {
               <div className="kh-footer-tag">Estamos construyendo algo grande ✨</div>
             </div>
             <div className="kh-footer-links">
+              <a href="/cliente" className="kh-footer-a">
+                🗺️ App para clientes
+              </a>
               <a href="mailto:khepriacontact@gmail.com" className="kh-footer-a">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M20 4H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z" fill="#EA4335" />
