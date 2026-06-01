@@ -726,6 +726,20 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ── TEST CHART (diagnóstico — eliminar cuando funcione) ── */}
+        {mounted && (
+          <div style={{ width: '100%', height: 300, minHeight: 300, background: 'white', border: '2px solid red', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: 'red', fontWeight: 700, marginBottom: 8 }}>TEST CHART — si ves esto pero no la gráfica, el problema es Recharts</div>
+            <ResponsiveContainer width="100%" height="90%">
+              <BarChart data={[{ name: 'Lun', value: 4 }, { name: 'Mar', value: 6 }, { name: 'Mié', value: 3 }]}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Bar dataKey="value" fill="#B8D8F8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
         {/* ── Resumen por negocio (modo todos) ── */}
         {negocio === null && bizStats.length > 1 && (
           <>
