@@ -10,7 +10,18 @@ import { PLANES } from '../lib/planes'
 
 const CHART_COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
 
+// Guard: return false on server, true after hydration — fixes ResponsiveContainer width=-1
+function useMounted() {
+  const [m, setM] = useState(false)
+  useEffect(() => { setM(true) }, [])
+  return m
+}
+
+const CHART_PLACEHOLDER = <div style={{ width: '100%', height: 250 }} />
+
 function BarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] }) {
+  const mounted = useMounted()
+  if (!mounted) return CHART_PLACEHOLDER
   return (
     <div style={{ width: '100%', height: 250 }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -27,6 +38,8 @@ function BarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] 
 }
 
 function PieChartNoSSR({ data }: { data: { name: string; value: number }[] }) {
+  const mounted = useMounted()
+  if (!mounted) return CHART_PLACEHOLDER
   return (
     <div style={{ width: '100%', height: 250 }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -42,6 +55,8 @@ function PieChartNoSSR({ data }: { data: { name: string; value: number }[] }) {
 }
 
 function AreaChartNoSSR({ data }: { data: { sem: string; actual: number; anterior: number }[] }) {
+  const mounted = useMounted()
+  if (!mounted) return CHART_PLACEHOLDER
   return (
     <div style={{ width: '100%', height: 250 }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -69,6 +84,8 @@ function AreaChartNoSSR({ data }: { data: { sem: string; actual: number; anterio
 }
 
 function BizBarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] }) {
+  const mounted = useMounted()
+  if (!mounted) return CHART_PLACEHOLDER
   return (
     <div style={{ width: '100%', height: 250 }}>
       <ResponsiveContainer width="100%" height="100%">
