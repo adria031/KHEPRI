@@ -85,10 +85,10 @@ function TrabajadorOnboardingInner() {
           { id: userId, tipo: 'empleado', nombre: formNombre.trim(), email },
           { onConflict: 'id' }
         )
-        // 3. Vincular con trabajador existente en el negocio
+        // 3. Confirmar email en el registro del trabajador
         if (negocioId) {
           await supabase.from('trabajadores')
-            .update({ email, user_id: userId })
+            .update({ email })
             .eq('negocio_id', negocioId)
             .eq('nombre', nombre)
         }

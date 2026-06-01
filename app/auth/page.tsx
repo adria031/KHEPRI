@@ -93,6 +93,15 @@ function AuthForm() {
         if (perfil?.tipo === 'empleado') { router.push('/empleado'); return }
         if (perfil?.tipo === 'negocio') { router.push('/dashboard'); return }
         if (perfil?.tipo === 'cliente') { router.push('/cliente'); return }
+        // Sin perfil — comprobar si el email está en trabajadores (cuenta creada antes del fix)
+        const userEmail = session.user.email ?? ''
+        if (userEmail) {
+          const { data: trab } = await supabase.from('trabajadores').select('id').eq('email', userEmail).limit(1).maybeSingle()
+          if (trab) {
+            await supabase.from('profiles').upsert({ id: session.user.id, tipo: 'empleado', email: userEmail }, { onConflict: 'id' })
+            router.push('/empleado'); return
+          }
+        }
         router.push('/onboarding')
       }
     }
