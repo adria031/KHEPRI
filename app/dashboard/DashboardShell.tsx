@@ -123,6 +123,7 @@ export function DashboardShell({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [negSheetOpen, setNegSheetOpen] = useState(false)
   const [planFromStorage, setPlanFromStorage] = useState<string>('starter')
   const pathname = usePathname() ?? ''
   const { theme, toggle: toggleTheme } = useTheme()
@@ -219,6 +220,7 @@ export function DashboardShell({
     : negocio?.nombre
       ? negocio.nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
       : '?'
+  const shortName = esTodos ? 'Todos' : (negocio?.nombre ?? 'Negocio').split(' ')[0].slice(0, 14)
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -408,6 +410,72 @@ export function DashboardShell({
         .ds-bn-center.ds-bn-active .ds-bn-center-bubble { box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .ds-bn-center .ds-bn-label { color: var(--ds-active); font-weight: 700; }
 
+        /* ── MOBILE TOPBAR ── */
+        .ds-breadcrumb-wrap { display: flex; align-items: center; }
+        .ds-topbar-title-mobile {
+          display: none; position: absolute; left: 50%; transform: translateX(-50%);
+          font-size: 15px; font-weight: 700; color: var(--ds-text);
+          white-space: nowrap; overflow: hidden; max-width: 42%; text-overflow: ellipsis;
+          pointer-events: none;
+        }
+        .ds-negsel-mobile-btn {
+          display: none; align-items: center; gap: 6px;
+          padding: 5px 9px 5px 5px; border-radius: 10px;
+          border: 1px solid var(--ds-border); background: var(--ds-bg);
+          cursor: pointer; font-family: inherit;
+          -webkit-tap-highlight-color: transparent; transition: background 0.12s;
+        }
+        .ds-negsel-mobile-btn:active { background: var(--ds-hover); }
+        .ds-negsel-mob-av {
+          width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+          background: linear-gradient(135deg,#B8D8F8,#D4C5F9);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 10px; font-weight: 800; color: #4F46E5;
+        }
+        .ds-negsel-mob-name {
+          font-size: 12px; font-weight: 700; color: var(--ds-text);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80px;
+        }
+        /* Bottom sheet negocio selector */
+        .ds-neg-sheet-overlay {
+          position: fixed; inset: 0; z-index: 70;
+          background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+          display: flex; align-items: flex-end;
+        }
+        .ds-neg-sheet {
+          background: var(--ds-white); width: 100%;
+          border-radius: 20px 20px 0 0;
+          padding-bottom: max(16px,env(safe-area-inset-bottom));
+          animation: ds-slide-up 0.22s cubic-bezier(.4,0,.2,1);
+        }
+        @keyframes ds-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .ds-neg-sheet-handle {
+          width: 36px; height: 4px; border-radius: 2px;
+          background: var(--ds-border); margin: 12px auto 16px;
+        }
+        .ds-neg-sheet-title {
+          font-size: 11px; font-weight: 700; color: var(--ds-text2);
+          padding: 0 20px 12px; border-bottom: 1px solid var(--ds-border);
+          text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .ds-neg-sheet-item {
+          display: flex; align-items: center; gap: 12px;
+          width: 100%; padding: 14px 20px; text-align: left;
+          background: none; border: none; border-bottom: 1px solid var(--ds-border);
+          font-family: inherit; cursor: pointer; transition: background 0.12s;
+        }
+        .ds-neg-sheet-item:last-child { border-bottom: none; }
+        .ds-neg-sheet-item:active { background: var(--ds-hover); }
+        .ds-neg-sheet-item-av {
+          width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+          background: linear-gradient(135deg,#B8D8F8,#D4C5F9);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 13px; font-weight: 800; color: #4F46E5;
+        }
+        .ds-neg-sheet-item-name { font-size: 14px; font-weight: 700; color: var(--ds-text); }
+        .ds-neg-sheet-item-badge { font-size: 10px; color: var(--ds-text2); margin-top: 2px; }
+        .ds-neg-sheet-item-check { margin-left: auto; color: var(--ds-active); font-size: 18px; font-weight: 700; }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
           .ds-sidebar { transform: translateX(-100%); }
@@ -423,6 +491,11 @@ export function DashboardShell({
           .ds-bc-current { font-size: 13px; }
           .ds-main, .ds-content { overflow-x: hidden; max-width: 100vw; }
           .ds-bottom-nav { display: flex; }
+          .ds-topbar { position: relative; }
+          .ds-breadcrumb-wrap { display: none; }
+          .ds-topbar-title-mobile { display: block; }
+          .ds-negsel-wrap { display: none; }
+          .ds-negsel-mobile-btn { display: flex; }
         }
         @media (max-width: 480px) {
           .ds-content { padding: 12px; }
@@ -529,23 +602,33 @@ export function DashboardShell({
                   <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
                 </svg>
               </button>
-              {breadcrumbGroup ? (
-                <nav className="ds-breadcrumb" aria-label="Breadcrumb">
-                  <Link href="/dashboard" className="ds-bc-link">Dashboard</Link>
-                  <span className="ds-bc-sep">›</span>
-                  {pageTitle !== breadcrumbGroup.label && (
-                    <>
-                      <span className="ds-bc-section">{breadcrumbGroup.emoji} {breadcrumbGroup.label}</span>
-                      <span className="ds-bc-sep">›</span>
-                    </>
-                  )}
-                  <span className="ds-bc-current">{pageTitle}</span>
-                </nav>
-              ) : (
-                <span className="ds-page-title">{pageTitle}</span>
-              )}
+              <div className="ds-breadcrumb-wrap">
+                {breadcrumbGroup ? (
+                  <nav className="ds-breadcrumb" aria-label="Breadcrumb">
+                    <Link href="/dashboard" className="ds-bc-link">Dashboard</Link>
+                    <span className="ds-bc-sep">›</span>
+                    {pageTitle !== breadcrumbGroup.label && (
+                      <>
+                        <span className="ds-bc-section">{breadcrumbGroup.emoji} {breadcrumbGroup.label}</span>
+                        <span className="ds-bc-sep">›</span>
+                      </>
+                    )}
+                    <span className="ds-bc-current">{pageTitle}</span>
+                  </nav>
+                ) : (
+                  <span className="ds-page-title">{pageTitle}</span>
+                )}
+              </div>
             </div>
+            {/* Mobile: centered page title */}
+            <span className="ds-topbar-title-mobile">{pageTitle}</span>
             <div className="ds-topbar-right">
+              {/* Mobile compact negocio selector */}
+              <button className="ds-negsel-mobile-btn" onClick={() => setNegSheetOpen(true)}>
+                <div className="ds-negsel-mob-av">{initials}</div>
+                <span className="ds-negsel-mob-name">{shortName}</span>
+              </button>
+              {/* Desktop full negocio selector */}
               <div className="ds-negsel-wrap">
                 <NegocioSelector negocios={todosNegocios} activoId={esTodos ? 'todos' : (negocio?.id ?? (todosNegocios[0]?.id ?? ''))} />
               </div>
@@ -638,6 +721,37 @@ export function DashboardShell({
           <span className="ds-bn-label">Reservas</span>
         </Link>
       </nav>
+
+      {/* Mobile negocio bottom sheet */}
+      {negSheetOpen && (
+        <div className="ds-neg-sheet-overlay" onClick={() => setNegSheetOpen(false)}>
+          <div className="ds-neg-sheet" onClick={e => e.stopPropagation()}>
+            <div className="ds-neg-sheet-handle" />
+            <div className="ds-neg-sheet-title">Seleccionar negocio</div>
+            {todosNegocios.map(n => {
+              const nInitials = n.nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+              const isActivo = n.id === negocio?.id
+              return (
+                <button
+                  key={n.id}
+                  className="ds-neg-sheet-item"
+                  onClick={() => {
+                    localStorage.setItem('negocio_activo_id', n.id)
+                    window.location.reload()
+                  }}
+                >
+                  <div className="ds-neg-sheet-item-av">{nInitials}</div>
+                  <div>
+                    <div className="ds-neg-sheet-item-name">{n.nombre}</div>
+                    <div className="ds-neg-sheet-item-badge">{(n.plan ?? 'starter').charAt(0).toUpperCase() + (n.plan ?? 'starter').slice(1)}</div>
+                  </div>
+                  {isActivo && <span className="ds-neg-sheet-item-check">✓</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
