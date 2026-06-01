@@ -17,13 +17,13 @@ function useMounted() {
   return m
 }
 
-const CHART_PLACEHOLDER = <div style={{ width: '100%', height: 250 }} />
+const CHART_PLACEHOLDER = <div style={{ width: '100%', height: 250, minHeight: 250 }} />
 
 function BarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] }) {
   const mounted = useMounted()
   if (!mounted) return CHART_PLACEHOLDER
   return (
-    <div style={{ width: '100%', height: 250 }}>
+    <div style={{ width: '100%', height: 250, minHeight: 250 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
@@ -41,7 +41,7 @@ function PieChartNoSSR({ data }: { data: { name: string; value: number }[] }) {
   const mounted = useMounted()
   if (!mounted) return CHART_PLACEHOLDER
   return (
-    <div style={{ width: '100%', height: 250 }}>
+    <div style={{ width: '100%', height: 250, minHeight: 250 }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie data={data} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
@@ -58,7 +58,7 @@ function AreaChartNoSSR({ data }: { data: { sem: string; actual: number; anterio
   const mounted = useMounted()
   if (!mounted) return CHART_PLACEHOLDER
   return (
-    <div style={{ width: '100%', height: 250 }}>
+    <div style={{ width: '100%', height: 250, minHeight: 250 }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
           <defs>
@@ -87,7 +87,7 @@ function BizBarChartNoSSR({ data }: { data: { nombre: string; reservas: number }
   const mounted = useMounted()
   if (!mounted) return CHART_PLACEHOLDER
   return (
-    <div style={{ width: '100%', height: 250 }}>
+    <div style={{ width: '100%', height: 250, minHeight: 250 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
