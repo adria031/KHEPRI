@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, AreaChart, Area } from 'recharts'
 import { supabase, getSessionClient } from '../lib/supabase'
@@ -10,57 +10,55 @@ import { PLANES } from '../lib/planes'
 
 const CHART_COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
 
-// Guard: return false on server, true after hydration — fixes ResponsiveContainer width=-1
-function useMounted() {
-  const [m, setM] = useState(false)
-  useEffect(() => { setM(true) }, [])
-  return m
+// Mide el ancho real del contenedor DOM — evita ResizeObserver de ResponsiveContainer
+function useChartWidth(): [React.RefObject<HTMLDivElement | null>, number] {
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    if (ref.current) setWidth(ref.current.offsetWidth)
+  }, [])
+  return [ref, width]
 }
 
-const CHART_PLACEHOLDER = <div style={{ width: '100%', height: 250, minHeight: 250 }} />
-
 function BarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] }) {
-  const mounted = useMounted()
-  if (!mounted) return CHART_PLACEHOLDER
+  const [ref, width] = useChartWidth()
   return (
-    <div style={{ width: '100%', height: 250, minHeight: 250 }}>
-      <ResponsiveContainer width="100%" height={250}>
-        <BarChart data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+    <div ref={ref} style={{ width: '100%', height: 250 }}>
+      {width > 0 && (
+        <BarChart width={width} height={250} data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
           <XAxis dataKey="nombre" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
           <Bar dataKey="reservas" fill="#B8D8F8" radius={[4, 4, 0, 0]} />
         </BarChart>
-      </ResponsiveContainer>
+      )}
     </div>
   )
 }
 
 function PieChartNoSSR({ data }: { data: { name: string; value: number }[] }) {
-  const mounted = useMounted()
-  if (!mounted) return CHART_PLACEHOLDER
+  const [ref, width] = useChartWidth()
   return (
-    <div style={{ width: '100%', height: 250, minHeight: 250 }}>
-      <ResponsiveContainer width="100%" height={250}>
-        <PieChart>
+    <div ref={ref} style={{ width: '100%', height: 250 }}>
+      {width > 0 && (
+        <PieChart width={width} height={250}>
           <Pie data={data} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
             {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
           </Pie>
           <Tooltip formatter={(v, n) => [`${v} reservas`, n]} contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
         </PieChart>
-      </ResponsiveContainer>
+      )}
     </div>
   )
 }
 
 function AreaChartNoSSR({ data }: { data: { sem: string; actual: number; anterior: number }[] }) {
-  const mounted = useMounted()
-  if (!mounted) return CHART_PLACEHOLDER
+  const [ref, width] = useChartWidth()
   return (
-    <div style={{ width: '100%', height: 250, minHeight: 250 }}>
-      <ResponsiveContainer width="100%" height={250}>
-        <AreaChart data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+    <div ref={ref} style={{ width: '100%', height: 250 }}>
+      {width > 0 && (
+        <AreaChart width={width} height={250} data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
           <defs>
             <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#818CF8" stopOpacity={0.25} />
@@ -78,18 +76,17 @@ function AreaChartNoSSR({ data }: { data: { sem: string; actual: number; anterio
           <Area type="monotone" dataKey="anterior" name="Mes ant." stroke="#C4B5FD" strokeWidth={2} strokeDasharray="4 3" fill="url(#gradAnt)" dot={false} />
           <Area type="monotone" dataKey="actual" name="Este mes" stroke="#818CF8" strokeWidth={2.5} fill="url(#gradActual)" dot={{ fill: '#818CF8', r: 4, strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 6 }} />
         </AreaChart>
-      </ResponsiveContainer>
+      )}
     </div>
   )
 }
 
 function BizBarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] }) {
-  const mounted = useMounted()
-  if (!mounted) return CHART_PLACEHOLDER
+  const [ref, width] = useChartWidth()
   return (
-    <div style={{ width: '100%', height: 250, minHeight: 250 }}>
-      <ResponsiveContainer width="100%" height={250}>
-        <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
+    <div ref={ref} style={{ width: '100%', height: 250 }}>
+      {width > 0 && (
+        <BarChart width={width} height={250} data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
           <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
@@ -98,7 +95,25 @@ function BizBarChartNoSSR({ data }: { data: { nombre: string; reservas: number }
             {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
           </Bar>
         </BarChart>
-      </ResponsiveContainer>
+      )}
+    </div>
+  )
+}
+
+function TestChart() {
+  const [ref, width] = useChartWidth()
+  return (
+    <div ref={ref} style={{ width: '100%', height: 300, background: 'white', border: '2px solid red', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+      <div style={{ fontSize: 12, color: 'red', fontWeight: 700, marginBottom: 8 }}>
+        TEST CHART — width medido: {width}px {width > 0 ? '✅ gráfica debería aparecer' : '⏳ midiendo…'}
+      </div>
+      {width > 0 && (
+        <BarChart width={width - 32} height={240} data={[{ name: 'Lun', value: 4 }, { name: 'Mar', value: 6 }, { name: 'Mié', value: 3 }]}>
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Bar dataKey="value" fill="#B8D8F8" />
+        </BarChart>
+      )}
     </div>
   )
 }
@@ -727,18 +742,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── TEST CHART (diagnóstico — eliminar cuando funcione) ── */}
-        {mounted && (
-          <div style={{ width: '100%', height: 300, minHeight: 300, background: 'white', border: '2px solid red', borderRadius: 12, padding: 16, marginBottom: 20 }}>
-            <div style={{ fontSize: 12, color: 'red', fontWeight: 700, marginBottom: 8 }}>TEST CHART — si ves esto pero no la gráfica, el problema es Recharts</div>
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={[{ name: 'Lun', value: 4 }, { name: 'Mar', value: 6 }, { name: 'Mié', value: 3 }]}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Bar dataKey="value" fill="#B8D8F8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <TestChart />
 
         {/* ── Resumen por negocio (modo todos) ── */}
         {negocio === null && bizStats.length > 1 && (
