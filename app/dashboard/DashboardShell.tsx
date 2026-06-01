@@ -633,10 +633,10 @@ export function DashboardShell({
           <span className="ds-bn-icon">👥</span>
           <span className="ds-bn-label">Clientes</span>
         </Link>
-        <button className="ds-bn-item" onClick={() => setSidebarOpen(true)}>
-          <span className="ds-bn-icon">☰</span>
-          <span className="ds-bn-label">Más</span>
-        </button>
+        <Link href="/dashboard/reservas" className={`ds-bn-item${pathname === '/dashboard/reservas' ? ' ds-bn-active' : ''}`}>
+          <span className="ds-bn-icon">📅</span>
+          <span className="ds-bn-label">Reservas</span>
+        </Link>
       </nav>
     </div>
   )
