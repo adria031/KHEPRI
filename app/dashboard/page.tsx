@@ -24,7 +24,7 @@ function BarChartNoSSR({ data }: { data: { nombre: string; reservas: number }[] 
   if (!mounted) return CHART_PLACEHOLDER
   return (
     <div style={{ width: '100%', height: 250, minHeight: 250 }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
           <XAxis dataKey="nombre" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
@@ -42,7 +42,7 @@ function PieChartNoSSR({ data }: { data: { name: string; value: number }[] }) {
   if (!mounted) return CHART_PLACEHOLDER
   return (
     <div style={{ width: '100%', height: 250, minHeight: 250 }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={250}>
         <PieChart>
           <Pie data={data} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
             {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
@@ -59,7 +59,7 @@ function AreaChartNoSSR({ data }: { data: { sem: string; actual: number; anterio
   if (!mounted) return CHART_PLACEHOLDER
   return (
     <div style={{ width: '100%', height: 250, minHeight: 250 }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={250}>
         <AreaChart data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
           <defs>
             <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
@@ -88,7 +88,7 @@ function BizBarChartNoSSR({ data }: { data: { nombre: string; reservas: number }
   if (!mounted) return CHART_PLACEHOLDER
   return (
     <div style={{ width: '100%', height: 250, minHeight: 250 }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
           <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
@@ -730,7 +730,7 @@ export default function Dashboard() {
         {mounted && (
           <div style={{ width: '100%', height: 300, minHeight: 300, background: 'white', border: '2px solid red', borderRadius: 12, padding: 16, marginBottom: 20 }}>
             <div style={{ fontSize: 12, color: 'red', fontWeight: 700, marginBottom: 8 }}>TEST CHART — si ves esto pero no la gráfica, el problema es Recharts</div>
-            <ResponsiveContainer width="100%" height="90%">
+            <ResponsiveContainer width="100%" height={240}>
               <BarChart data={[{ name: 'Lun', value: 4 }, { name: 'Mar', value: 6 }, { name: 'Mié', value: 3 }]}>
                 <XAxis dataKey="name" />
                 <YAxis />
