@@ -1,12 +1,20 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { DashboardShell } from '../DashboardShell'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
+
+// ── Chart helper ─────────────────────────────────────────────────────────────
+function ChartBox({ height, children }: { height: number; children: (width: number) => React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  useEffect(() => { if (ref.current) setWidth(ref.current.offsetWidth) }, [])
+  return <div ref={ref} style={{ width: '100%', height }}>{width > 0 && children(width)}</div>
+}
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const K = {
@@ -670,9 +678,9 @@ export default function Analytics() {
               {/* Reservas + ingresos por día */}
               <div className="an-card">
                 <div className="an-card-title">Reservas e ingresos por día</div>
-                <div className="an-chart-wrap"><div>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={reservasPorDia} margin={{ top:4, right:4, bottom:0, left:0 }}>
+                <div className="an-chart-wrap">
+                <ChartBox height={220}>{(w) => (
+                  <BarChart width={w} height={220} data={reservasPorDia} margin={{ top:4, right:4, bottom:0, left:0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                     <XAxis dataKey="fecha" tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                     <YAxis yAxisId="r" orientation="left" tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} width={24} />
@@ -681,8 +689,8 @@ export default function Analytics() {
                     <Bar yAxisId="r" dataKey="reservas" fill={K.blue} radius={[4,4,0,0]} maxBarSize={28} />
                     <Bar yAxisId="i" dataKey="ingresos" fill={K.lila} radius={[4,4,0,0]} maxBarSize={28} />
                   </BarChart>
-                </ResponsiveContainer>
-                </div></div>
+                )}</ChartBox>
+                </div>
                 <div style={{ display:'flex', gap:16, marginTop:8, justifyContent:'center' }}>
                   <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text2)' }}><span style={{ width:10, height:10, borderRadius:2, background:K.blue, display:'inline-block' }}/>Reservas</span>
                   <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text2)' }}><span style={{ width:10, height:10, borderRadius:2, background:K.lila, display:'inline-block' }}/>Ingresos</span>
@@ -696,14 +704,14 @@ export default function Analytics() {
                   <div style={{ textAlign:'center', padding:'40px 0', color:'var(--muted)', fontSize:13 }}>Sin datos</div>
                 ) : (
                   <>
-                    <ResponsiveContainer width="100%" height={160}>
-                      <PieChart>
+                    <ChartBox height={160}>{(w) => (
+                      <PieChart width={w} height={160}>
                         <Pie data={distribServs} cx="50%" cy="50%" innerRadius={45} outerRadius={72} dataKey="value" paddingAngle={2}>
                           {distribServs.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                         </Pie>
                         <Tooltip content={<PieTooltip />} />
                       </PieChart>
-                    </ResponsiveContainer>
+                    )}</ChartBox>
                     <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:4 }}>
                       {distribServs.slice(0, 4).map((s, i) => (
                         <div key={i} style={{ display:'flex', alignItems:'center', gap:6, fontSize:11 }}>
@@ -723,17 +731,17 @@ export default function Analytics() {
           <div className="an-section">
             <div className="an-card">
               <div className="an-card-title">Ingresos por semana (últimas 8 semanas)</div>
-              <div className="an-chart-wrap"><div>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={ingresosPorSemana} margin={{ top:4, right:16, bottom:0, left:0 }}>
+              <div className="an-chart-wrap">
+              <ChartBox height={180}>{(w) => (
+                <LineChart width={w} height={180} data={ingresosPorSemana} margin={{ top:4, right:16, bottom:0, left:0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                   <XAxis dataKey="semana" tick={{ fontSize:11, fill:'#9CA3AF' }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize:11, fill:'#9CA3AF' }} tickLine={false} axisLine={false} width={48} tickFormatter={v => `${v}€`} />
                   <Tooltip formatter={(v: any) => [`${fmtEur(v)} €`, 'Ingresos']} />
                   <Line type="monotone" dataKey="ingresos" stroke={K.greenDark} strokeWidth={2.5} dot={{ fill:K.green, strokeWidth:0, r:4 }} activeDot={{ r:6 }} />
                 </LineChart>
-              </ResponsiveContainer>
-              </div></div>
+              )}</ChartBox>
+              </div>
             </div>
           </div>
 
@@ -951,17 +959,17 @@ export default function Analytics() {
             {forecasting.keys.length > 0 && (
               <div className="an-card" style={{ marginTop:14 }}>
                 <div className="an-card-title">Ingresos por mes (histórico)</div>
-                <div className="an-chart-wrap"><div>
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={Object.entries(forecasting.meses).sort((a,b) => a[0].localeCompare(b[0])).map(([m, v]) => ({ mes: m.slice(5), reservas: v.reservas, ingresos: +v.ingresos.toFixed(2) }))}>
+                <div className="an-chart-wrap">
+                <ChartBox height={160}>{(w) => (
+                  <BarChart width={w} height={160} data={Object.entries(forecasting.meses).sort((a,b) => a[0].localeCompare(b[0])).map(([m, v]) => ({ mes: m.slice(5), reservas: v.reservas, ingresos: +v.ingresos.toFixed(2) }))}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                     <XAxis dataKey="mes" tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} />
                     <YAxis tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} width={42} tickFormatter={v => `${v}€`} />
                     <Tooltip formatter={(v: any, name: any) => [name === 'ingresos' ? `${fmtEur(v)} €` : v, name === 'ingresos' ? 'Ingresos' : 'Reservas']} />
                     <Bar dataKey="ingresos" fill={K.green} radius={[4,4,0,0]} maxBarSize={32} />
                   </BarChart>
-                </ResponsiveContainer>
-                </div></div>
+                )}</ChartBox>
+                </div>
               </div>
             )}
           </div>

@@ -1,8 +1,9 @@
 'use client'
+import { useRef, useEffect, useState } from 'react'
 import {
   BarChart, Bar, Cell, AreaChart, Area,
   PieChart, Pie, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid,
+  CartesianGrid,
 } from 'recharts'
 
 export const DONUT_COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','#38BDF8','#FB923C']
@@ -10,6 +11,13 @@ export const DONUT_COLORS = ['#818CF8','#A78BFA','#34D399','#FBBF24','#F472B6','
 type DiaBar    = { dia: string; reservas: number; isHoy: boolean }
 type SemArea   = { sem: string; actual: number; anterior: number }
 type DonutSlice = { name: string; value: number }
+
+function useChartWidth(): [React.RefObject<HTMLDivElement | null>, number] {
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  useEffect(() => { if (ref.current) setWidth(ref.current.offsetWidth) }, [])
+  return [ref, width]
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CustomTooltipBar({ active, payload, label }: any) {
@@ -37,83 +45,95 @@ function CustomTooltipArea({ active, payload, label }: any) {
 }
 
 export function BarChartReservas({ data }: { data: DiaBar[] }) {
+  const [ref, width] = useChartWidth()
   return (
-    <ResponsiveContainer width="100%" height={160}>
-      <BarChart data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-        <XAxis dataKey="dia" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} interval={6} />
-        <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-        <Tooltip content={<CustomTooltipBar />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 4 }} />
-        <Bar dataKey="reservas" radius={[4, 4, 0, 0]}>
-          {data.map((entry, i) => (
-            <Cell key={i} fill={entry.isHoy ? '#4F46E5' : '#C7D2FE'} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div ref={ref} style={{ width: '100%', height: 160 }}>
+      {width > 0 && (
+        <BarChart width={width} height={160} data={data} barSize={8} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
+          <XAxis dataKey="dia" tick={{ fontSize: 9, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} interval={6} />
+          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltipBar />} cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 4 }} />
+          <Bar dataKey="reservas" radius={[4, 4, 0, 0]}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill={entry.isHoy ? '#4F46E5' : '#C7D2FE'} />
+            ))}
+          </Bar>
+        </BarChart>
+      )}
+    </div>
   )
 }
 
 export function AreaChartIngresos({ data }: { data: SemArea[] }) {
+  const [ref, width] = useChartWidth()
   return (
-    <ResponsiveContainer width="100%" height={170}>
-      <AreaChart data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-        <defs>
-          <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#818CF8" stopOpacity={0.25} />
-            <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="gradAnt" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#C4B5FD" stopOpacity={0.18} />
-            <stop offset="95%" stopColor="#C4B5FD" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-        <XAxis dataKey="sem" tick={{ fontSize: 12, fill: '#9CA3AF', fontWeight: 600 }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `€${v}`} />
-        <Tooltip content={<CustomTooltipArea />} />
-        <Area type="monotone" dataKey="anterior" name="anterior" stroke="#C4B5FD" strokeWidth={2} strokeDasharray="4 3" fill="url(#gradAnt)" dot={false} />
-        <Area type="monotone" dataKey="actual" name="actual" stroke="#818CF8" strokeWidth={2.5} fill="url(#gradActual)" dot={{ fill: '#818CF8', r: 4, strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 6 }} />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div ref={ref} style={{ width: '100%', height: 170 }}>
+      {width > 0 && (
+        <AreaChart width={width} height={170} data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+          <defs>
+            <linearGradient id="dcGradActual" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#818CF8" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="dcGradAnt" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#C4B5FD" stopOpacity={0.18} />
+              <stop offset="95%" stopColor="#C4B5FD" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
+          <XAxis dataKey="sem" tick={{ fontSize: 12, fill: '#9CA3AF', fontWeight: 600 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `€${v}`} />
+          <Tooltip content={<CustomTooltipArea />} />
+          <Area type="monotone" dataKey="anterior" name="anterior" stroke="#C4B5FD" strokeWidth={2} strokeDasharray="4 3" fill="url(#dcGradAnt)" dot={false} />
+          <Area type="monotone" dataKey="actual" name="actual" stroke="#818CF8" strokeWidth={2.5} fill="url(#dcGradActual)" dot={{ fill: '#818CF8', r: 4, strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 6 }} />
+        </AreaChart>
+      )}
+    </div>
   )
 }
 
 export function PieChartServicios({ data }: { data: DonutSlice[] }) {
+  const [ref, width] = useChartWidth()
   return (
-    <ResponsiveContainer width="100%" height={180}>
-      <PieChart>
-        <Pie data={data} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
-          {data.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
-        </Pie>
-        <Tooltip
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(v: any, n: any) => [`${v} reservas`, n]}
-          contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+    <div ref={ref} style={{ width: '100%', height: 180 }}>
+      {width > 0 && (
+        <PieChart width={width} height={180}>
+          <Pie data={data} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} dataKey="value" stroke="none">
+            {data.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
+          </Pie>
+          <Tooltip
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            formatter={(v: any, n: any) => [`${v} reservas`, n]}
+            contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }}
+          />
+        </PieChart>
+      )}
+    </div>
   )
 }
 
 export function BarChartNegocios({ data, colors }: { data: { nombre: string; reservas: number; ingresos: number }[]; colors: string[] }) {
+  const [ref, width] = useChartWidth()
   return (
-    <ResponsiveContainer width="100%" height={160}>
-      <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-        <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-        <Tooltip
-          contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(v: any) => [`${v} reservas`, 'Mes actual']}
-        />
-        <Bar dataKey="reservas" radius={[6, 6, 0, 0]}>
-          {data.map((_, i) => (
-            <Cell key={i} fill={colors[i % colors.length]} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
+    <div ref={ref} style={{ width: '100%', height: 160 }}>
+      {width > 0 && (
+        <BarChart width={width} height={160} data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barSize={28}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
+          <XAxis dataKey="nombre" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip
+            contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            formatter={(v: any) => [`${v} reservas`, 'Mes actual']}
+          />
+          <Bar dataKey="reservas" radius={[6, 6, 0, 0]}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={colors[i % colors.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      )}
+    </div>
   )
 }
