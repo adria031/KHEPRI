@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, PieChart, Pie, AreaChart, Area } from 'recharts'
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie } from 'recharts'
 import { supabase, getSessionClient } from '../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../lib/negocioActivo'
 import { setNegocioActivo } from '../lib/negocio-activo'
@@ -53,29 +53,23 @@ function PieChartNoSSR({ data }: { data: { name: string; value: number }[] }) {
   )
 }
 
-function AreaChartNoSSR({ data }: { data: { sem: string; actual: number; anterior: number }[] }) {
+function GroupedBarChartNoSSR({ data }: { data: { sem: string; actual: number; anterior: number }[] }) {
   const [ref, width] = useChartWidth()
   return (
     <div ref={ref} style={{ width: '100%', height: 250 }}>
       {width > 0 && (
-        <AreaChart width={width} height={250} data={data} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-          <defs>
-            <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#818CF8" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="gradAnt" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#C4B5FD" stopOpacity={0.18} />
-              <stop offset="95%" stopColor="#C4B5FD" stopOpacity={0} />
-            </linearGradient>
-          </defs>
+        <BarChart width={width} height={250} data={data} barGap={4} barCategoryGap="28%" margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F5" vertical={false} />
-          <XAxis dataKey="sem" tick={{ fontSize: 12, fill: '#9CA3AF', fontWeight: 600 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `€${v}`} />
-          <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }} />
-          <Area type="monotone" dataKey="anterior" name="Mes ant." stroke="#C4B5FD" strokeWidth={2} strokeDasharray="4 3" fill="url(#gradAnt)" dot={false} />
-          <Area type="monotone" dataKey="actual" name="Este mes" stroke="#818CF8" strokeWidth={2.5} fill="url(#gradActual)" dot={{ fill: '#818CF8', r: 4, strokeWidth: 2, stroke: 'white' }} activeDot={{ r: 6 }} />
-        </AreaChart>
+          <XAxis dataKey="sem" tick={{ fontSize: 11, fontWeight: 600, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} tickFormatter={(v: number) => `€${v}`} />
+          <Tooltip
+            contentStyle={{ borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 }}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            formatter={(v: any) => [`€${Number(v).toLocaleString('es-ES')}`]}
+          />
+          <Bar dataKey="anterior" name="Mes ant." fill="#E0D9FF" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="actual"   name="Este mes" fill="#818CF8" radius={[4, 4, 0, 0]} />
+        </BarChart>
       )}
     </div>
   )
@@ -741,9 +735,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── TEST CHART (diagnóstico — eliminar cuando funcione) ── */}
-        <TestChart />
-
         {/* ── Resumen por negocio (modo todos) ── */}
         {negocio === null && bizStats.length > 1 && (
           <>
@@ -1164,39 +1155,35 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Row 3: AreaChart ingresos 4 semanas ── */}
+        {/* ── Row 3: GroupedBarChart ingresos 4 semanas ── */}
         <div className="db-row3">
           <div className="db-card">
             <div className="db-card-head">
               <span className="db-section-title">Ingresos — comparativa mensual</span>
               <span className="db-section-badge">Últimas 4 semanas</span>
             </div>
-            {(() => {
-              const areaData = area4sem.length > 0
-                ? area4sem
-                : chartData.map(d => ({ sem: d.nombre, actual: d.reservas * 10, anterior: Math.round(d.reservas * 8) }))
-              return (
-                <AreaChartNoSSR data={areaData} />
-              )
-            })()}
+            <GroupedBarChartNoSSR data={area4sem.length > 0
+              ? area4sem
+              : chartData.map(d => ({ sem: d.nombre, actual: d.reservas * 10, anterior: Math.round(d.reservas * 8) }))}
+            />
             {!cargando && (
-              <div style={{ display: 'flex', gap: 20, marginTop: 14, paddingTop: 14, borderTop: '1px solid #F0F2F5', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14, paddingTop: 14, borderTop: '1px solid #F0F2F5', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 24, height: 3, background: '#818CF8', borderRadius: 2 }} />
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#818CF8' }} />
                   <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 500 }}>Este mes</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 24, height: 3, background: '#C4B5FD', borderRadius: 2, backgroundImage: 'repeating-linear-gradient(90deg,#C4B5FD,#C4B5FD 4px,transparent 4px,transparent 7px)' }} />
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#E0D9FF' }} />
                   <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 500 }}>Mes anterior</span>
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 20 }}>
                   <div>
                     <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>Total este mes</div>
-                    <div style={{ fontFamily: 'inherit', fontSize: 16, fontWeight: 800, color: '#111827' }}>€{ingresosMes.toLocaleString('es-ES')}</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>€{ingresosMes.toLocaleString('es-ES')}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>Hoy</div>
-                    <div style={{ fontFamily: 'inherit', fontSize: 16, fontWeight: 800, color: '#4F46E5' }}>€{ingresosHoy.toLocaleString('es-ES')}</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: '#4F46E5' }}>€{ingresosHoy.toLocaleString('es-ES')}</div>
                   </div>
                 </div>
               </div>
