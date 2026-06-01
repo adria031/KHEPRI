@@ -52,10 +52,17 @@ export async function GET(request: NextRequest) {
   const rol         = searchParams.get('rol')
   const negocioParam = searchParams.get('negocio')
 
-  // Employee invitation via OAuth
+  // Employee invitation — email confirmation link carries rol=empleado&negocio=...
   if (rol === 'empleado' && negocioParam) {
-    await supabase.from('profiles').upsert({ id: user.id, tipo: 'empleado', email: user.email })
-    await supabase.from('trabajadores').update({ email: user.email }).eq('negocio_id', negocioParam).eq('email', user.email)
+    const nombre = user.user_metadata?.nombre as string | undefined
+    await supabase.from('profiles').upsert(
+      { id: user.id, tipo: 'empleado', email: user.email, ...(nombre ? { nombre } : {}) },
+      { onConflict: 'id' }
+    )
+    await supabase.from('trabajadores')
+      .update({ user_id: user.id })
+      .eq('negocio_id', negocioParam)
+      .eq('email', user.email)
     return makeResponse(new URL('/empleado', request.url))
   }
 

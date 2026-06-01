@@ -33,7 +33,7 @@ function TrabajadorOnboardingInner() {
   const [confirmPass, setConfirmPass]     = useState('')
   const [enviando, setEnviando]           = useState(false)
   const [error, setError]                 = useState('')
-  const [paso, setPaso]                   = useState<'form' | 'exito'>('form')
+  const [paso, setPaso]                   = useState<'form' | 'exito' | 'email-pendiente'>('form')
   const [yaRegistrado, setYaRegistrado]   = useState(false)
 
   // Load negocio name
@@ -54,8 +54,16 @@ function TrabajadorOnboardingInner() {
 
     setEnviando(true)
     try {
-      // 1. Crear cuenta
-      const { data: authData, error: signUpErr } = await supabase.auth.signUp({ email, password })
+      // 1. Crear cuenta — emailRedirectTo lleva rol+negocio para que el callback
+      //    pueda crear el perfil server-side si hay confirmación de email pendiente
+      const { data: authData, error: signUpErr } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?rol=empleado&negocio=${encodeURIComponent(negocioId)}`,
+          data: { nombre: formNombre.trim() },
+        },
+      })
       if (signUpErr) {
         const msg = signUpErr.message.toLowerCase()
         if (msg.includes('already registered') || msg.includes('user already registered') || msg.includes('email address is already')) {
@@ -67,25 +75,29 @@ function TrabajadorOnboardingInner() {
         setEnviando(false); return
       }
 
-      const userId = authData?.user?.id ?? (await supabase.auth.getUser()).data.user?.id
+      const userId = authData?.user?.id
       if (!userId) { setError('Error al obtener el usuario. Inténtalo de nuevo.'); setEnviando(false); return }
 
-      // 2. Crear perfil de empleado
-      await supabase.from('profiles').upsert(
-        { id: userId, tipo: 'empleado', nombre: formNombre.trim(), email },
-        { onConflict: 'id' }
-      )
-
-      // 3. Vincular con trabajador existente en el negocio
-      if (negocioId) {
-        await supabase.from('trabajadores')
-          .update({ email, user_id: userId })
-          .eq('negocio_id', negocioId)
-          .eq('nombre', nombre)
+      if (authData.session) {
+        // Confirmación de email desactivada — sesión inmediata, podemos escribir
+        // 2. Crear perfil de empleado
+        await supabase.from('profiles').upsert(
+          { id: userId, tipo: 'empleado', nombre: formNombre.trim(), email },
+          { onConflict: 'id' }
+        )
+        // 3. Vincular con trabajador existente en el negocio
+        if (negocioId) {
+          await supabase.from('trabajadores')
+            .update({ email, user_id: userId })
+            .eq('negocio_id', negocioId)
+            .eq('nombre', nombre)
+        }
+        setPaso('exito')
+        setTimeout(() => router.push('/empleado'), 2000)
+      } else {
+        // Confirmación de email activada — el callback creará el perfil al confirmar
+        setPaso('email-pendiente')
       }
-
-      setPaso('exito')
-      setTimeout(() => router.push('/empleado'), 2000)
     } catch (e: unknown) {
       setError((e as Error).message ?? 'Error inesperado')
       setEnviando(false)
@@ -172,6 +184,12 @@ function TrabajadorOnboardingInner() {
                     ? <><strong style={{ color: '#1E3A5F' }}>{nombreNegocio}</strong> te ha invitado a unirte</>
                     : 'Te han invitado a unirte a su equipo'}
                 </div>
+              </>
+            ) : paso === 'email-pendiente' ? (
+              <>
+                <div style={{ fontSize: '36px', margin: '16px 0 10px' }}>📧</div>
+                <div className="tw-title">Revisa tu email</div>
+                <div className="tw-subtitle">Te hemos enviado un enlace de confirmación a <strong style={{ color: '#1E3A5F' }}>{email}</strong></div>
               </>
             ) : (
               <>
