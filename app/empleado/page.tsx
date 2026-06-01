@@ -72,7 +72,8 @@ export default function EmpleadoPage() {
         .select('id, nombre, especialidad, email, negocio_id, foto_url')
         .eq('email', email)
         .eq('activo', true)
-        .single()
+        .limit(1)
+        .maybeSingle()
 
       if (!trab) { window.location.href = '/auth'; return }
       setTrabajador(trab)
