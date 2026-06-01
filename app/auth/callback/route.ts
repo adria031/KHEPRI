@@ -7,10 +7,9 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('next')
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/onboarding`)
+    return NextResponse.redirect(new URL('/onboarding', request.url))
   }
 
-  // Collect cookies set during session exchange, apply to response
   const pendingCookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = []
 
   const supabase = createServerClient(
@@ -28,41 +27,46 @@ export async function GET(request: NextRequest) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
-  // Si viene con ?next (ej. recuperar contraseña), redirigir ahí directamente
-  if (next && !error) {
-    const response = NextResponse.redirect(`${origin}${next}`)
+  function makeResponse(destination: URL | string) {
+    const response = NextResponse.redirect(destination)
     pendingCookies.forEach(({ name, value, options }) =>
       response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
     )
     return response
   }
 
-  const rol = searchParams.get('rol')
-  const negocioParam = searchParams.get('negocio')
-
-  let redirectTo = `${origin}/onboarding`
-
-  if (!error) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      if (rol === 'empleado' && negocioParam) {
-        // Create employee profile and link to negocio
-        await supabase.from('profiles').upsert({ id: user.id, tipo: 'empleado', email: user.email })
-        await supabase.from('trabajadores').update({ email: user.email }).eq('negocio_id', negocioParam).eq('email', user.email)
-        redirectTo = `${origin}/empleado`
-      } else {
-        const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', user.id).single()
-        if (profile?.tipo === 'empleado') redirectTo = `${origin}/empleado`
-        else if (profile?.tipo === 'negocio') redirectTo = `${origin}/dashboard`
-        else if (profile?.tipo === 'cliente') redirectTo = `${origin}/cliente`
-        else redirectTo = `${origin}/onboarding`
-      }
-    }
+  // Password reset / magic link — honour ?next param
+  if (next && !error) {
+    return makeResponse(`${origin}${next}`)
   }
 
-  const response = NextResponse.redirect(redirectTo)
-  pendingCookies.forEach(({ name, value, options }) =>
-    response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
-  )
-  return response
+  if (error) {
+    return makeResponse(new URL('/onboarding', request.url))
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return makeResponse(new URL('/onboarding', request.url))
+  }
+
+  const rol         = searchParams.get('rol')
+  const negocioParam = searchParams.get('negocio')
+
+  // Employee invitation via OAuth
+  if (rol === 'empleado' && negocioParam) {
+    await supabase.from('profiles').upsert({ id: user.id, tipo: 'empleado', email: user.email })
+    await supabase.from('trabajadores').update({ email: user.email }).eq('negocio_id', negocioParam).eq('email', user.email)
+    return makeResponse(new URL('/empleado', request.url))
+  }
+
+  const { data: perfil } = await supabase
+    .from('profiles')
+    .select('tipo')
+    .eq('id', user.id)
+    .single()
+
+  if (perfil?.tipo === 'empleado') return makeResponse(new URL('/empleado', request.url))
+  if (perfil?.tipo === 'negocio')  return makeResponse(new URL('/dashboard', request.url))
+  if (perfil?.tipo === 'cliente')  return makeResponse(new URL('/cliente', request.url))
+  return makeResponse(new URL('/onboarding', request.url))
 }
