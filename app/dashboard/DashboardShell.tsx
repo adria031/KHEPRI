@@ -123,7 +123,6 @@ export function DashboardShell({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [negSheetOpen, setNegSheetOpen] = useState(false)
   const [planFromStorage, setPlanFromStorage] = useState<string>('starter')
   const pathname = usePathname() ?? ''
   const { theme, toggle: toggleTheme } = useTheme()
@@ -220,8 +219,6 @@ export function DashboardShell({
     : negocio?.nombre
       ? negocio.nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
       : '?'
-  const shortName = esTodos ? 'Todos' : (negocio?.nombre ?? 'Negocio').split(' ')[0].slice(0, 14)
-
   async function handleLogout() {
     await supabase.auth.signOut()
     window.location.href = '/'
@@ -494,8 +491,7 @@ export function DashboardShell({
           .ds-topbar { position: relative; }
           .ds-breadcrumb-wrap { display: none; }
           .ds-topbar-title-mobile { display: block; }
-          .ds-negsel-wrap { display: none; }
-          .ds-negsel-mobile-btn { display: flex; }
+          .ds-negsel-wrap { display: block; }
         }
         @media (max-width: 480px) {
           .ds-content { padding: 12px; }
@@ -623,12 +619,6 @@ export function DashboardShell({
             {/* Mobile: centered page title */}
             <span className="ds-topbar-title-mobile">{pageTitle}</span>
             <div className="ds-topbar-right">
-              {/* Mobile compact negocio selector */}
-              <button className="ds-negsel-mobile-btn" onClick={() => setNegSheetOpen(true)}>
-                <div className="ds-negsel-mob-av">{initials}</div>
-                <span className="ds-negsel-mob-name">{shortName}</span>
-              </button>
-              {/* Desktop full negocio selector */}
               <div className="ds-negsel-wrap">
                 <NegocioSelector negocios={todosNegocios} activoId={esTodos ? 'todos' : (negocio?.id ?? (todosNegocios[0]?.id ?? ''))} />
               </div>
@@ -722,36 +712,6 @@ export function DashboardShell({
         </Link>
       </nav>
 
-      {/* Mobile negocio bottom sheet */}
-      {negSheetOpen && (
-        <div className="ds-neg-sheet-overlay" onClick={() => setNegSheetOpen(false)}>
-          <div className="ds-neg-sheet" onClick={e => e.stopPropagation()}>
-            <div className="ds-neg-sheet-handle" />
-            <div className="ds-neg-sheet-title">Seleccionar negocio</div>
-            {todosNegocios.map(n => {
-              const nInitials = n.nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
-              const isActivo = n.id === negocio?.id
-              return (
-                <button
-                  key={n.id}
-                  className="ds-neg-sheet-item"
-                  onClick={() => {
-                    localStorage.setItem('negocio_activo_id', n.id)
-                    window.location.reload()
-                  }}
-                >
-                  <div className="ds-neg-sheet-item-av">{nInitials}</div>
-                  <div>
-                    <div className="ds-neg-sheet-item-name">{n.nombre}</div>
-                    <div className="ds-neg-sheet-item-badge">{(n.plan ?? 'starter').charAt(0).toUpperCase() + (n.plan ?? 'starter').slice(1)}</div>
-                  </div>
-                  {isActivo && <span className="ds-neg-sheet-item-check">✓</span>}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

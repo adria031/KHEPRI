@@ -87,6 +87,20 @@ export function NegocioSelector({
 
   if (negocios.length === 0) return null
 
+  if (negocios.length === 1) {
+    const n = negocios[0]
+    const pColor = PLAN_COLOR[n.plan] ?? '#9CA3AF'
+    const pBg    = PLAN_BG[n.plan] ?? '#F3F4F6'
+    const pLabel = PLAN_LABEL[n.plan]
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px 6px 7px', background: '#F7F9FC', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 11 }}>
+        <NegInitials nombre={n.nombre} size={26} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.nombre}</span>
+        {pLabel && <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 100, background: pBg, color: pColor, flexShrink: 0 }}>{pLabel}</span>}
+      </div>
+    )
+  }
+
   const esTodos = activoId === TODOS_ID
   const activo  = negocios.find(n => n.id === activoId) ?? negocios[0]
 
@@ -117,10 +131,12 @@ export function NegocioSelector({
       else localStorage.setItem('negocio_activo_id', id)
     }
     setOpen(false)
+    document.body.style.transition = 'opacity 0.18s ease'
+    document.body.style.opacity = '0'
     if (sheetOpen) {
-      closeSheet(() => window.location.reload())
+      closeSheet(() => setTimeout(() => window.location.reload(), 50))
     } else {
-      window.location.reload()
+      setTimeout(() => window.location.reload(), 200)
     }
   }
 
@@ -375,6 +391,8 @@ export function NegocioSelector({
         .ns-mb { display: none; align-items: center; gap: 7px; padding: 6px 10px 6px 8px; background: #F7F9FC; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: #111827; white-space: nowrap; transition: all 0.15s; max-width: 160px; }
         @media (max-width: 768px) { .ns-mb { display: flex; } }
 
+        @keyframes ns-in { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
         /* Bottom sheet */
         .ns-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
         .ns-ov.vis { opacity: 1; pointer-events: auto; }
@@ -433,6 +451,7 @@ export function NegocioSelector({
             background: 'white', border: '1px solid rgba(0,0,0,0.08)',
             borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
             minWidth: 258, overflow: 'hidden',
+            animation: 'ns-in 0.15s cubic-bezier(.4,0,.2,1)',
           }}>
             <NegList variant="dropdown" />
           </div>
