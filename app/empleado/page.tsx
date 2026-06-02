@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
 
 type Reserva = {
   id: string
@@ -19,13 +20,33 @@ type Trabajador = {
   email: string | null
   negocio_id: string
   foto_url: string | null
+  telefono?: string | null
 }
 
-type Stats = {
-  total: number
-  completadas: number
-  servicioTop: string
+type Servicio = {
+  id: string
+  nombre: string
+  precio: number
+  duracion: number
 }
+
+type Nomina = {
+  id: string
+  mes: number | null
+  anio: number | null
+  bruto: number | null
+  neto: number | null
+  irpf: number | null
+  ss: number | null
+  pdf_url: string | null
+  created_at: string
+}
+
+type ChartPoint = { mes: string; citas: number }
+type TabActiva = 'agenda' | 'estadisticas' | 'nominas' | 'perfil'
+
+const MESES_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+const MESES_LARGO = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
 const COLORES_ESTADO: Record<string, { bg: string; color: string; label: string; dot: string }> = {
   pendiente:  { bg: '#FEF3C7', color: '#92400E', label: 'Pendiente',  dot: '#F59E0B' },
@@ -48,6 +69,10 @@ function formatFecha(f: string) {
 function avatarIniciales(nombre: string) {
   return nombre.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()
 }
+function fmt(n: number | null) {
+  if (n === null || n === undefined) return '—'
+  return n.toFixed(2).replace('.', ',') + ' €'
+}
 
 export default function EmpleadoPage() {
   const [cargando,         setCargando]         = useState(true)
@@ -56,8 +81,42 @@ export default function EmpleadoPage() {
   const [userEmail,        setUserEmail]        = useState('')
   const [reservasHoy,      setReservasHoy]      = useState<Reserva[]>([])
   const [reservasProximas, setReservasProximas] = useState<Reserva[]>([])
-  const [stats,            setStats]            = useState<Stats>({ total: 0, completadas: 0, servicioTop: '—' })
   const [actualizando,     setActualizando]     = useState<string | null>(null)
+  const [tabActiva,        setTabActiva]        = useState<TabActiva>('agenda')
+  const [notifBadge,       setNotifBadge]       = useState(0)
+
+  // Estadísticas
+  const [totalMes,         setTotalMes]         = useState(0)
+  const [completadasMes,   setComplestadasMes]  = useState(0)
+  const [servicioTop,      setServicioTop]      = useState('—')
+  const [clientesUnicos,   setClientesUnicos]   = useState(0)
+  const [chartData,        setChartData]        = useState<ChartPoint[]>([])
+  const chartRef = useRef<HTMLDivElement | null>(null)
+  const [chartW, setChartW] = useState(0)
+
+  // Nóminas
+  const [nominas,          setNominas]          = useState<Nomina[]>([])
+
+  // Servicios para nueva reserva
+  const [servicios,        setServicios]        = useState<Servicio[]>([])
+
+  // Modal nueva reserva
+  const [showModal,        setShowModal]        = useState(false)
+  const [nrServicioId,     setNrServicioId]     = useState('')
+  const [nrCliente,        setNrCliente]        = useState('')
+  const [nrTelefono,       setNrTelefono]       = useState('')
+  const [nrFecha,          setNrFecha]          = useState(hoyISO())
+  const [nrHora,           setNrHora]           = useState('10:00')
+  const [guardandoNR,      setGuardandoNR]      = useState(false)
+  const [errorNR,          setErrorNR]          = useState('')
+
+  // Perfil editable
+  const [pfNombre,         setPfNombre]         = useState('')
+  const [pfTelefono,       setPfTelefono]       = useState('')
+  const [pfPass1,          setPfPass1]          = useState('')
+  const [pfPass2,          setPfPass2]          = useState('')
+  const [guardandoPf,      setGuardandoPf]      = useState(false)
+  const [msgPf,            setMsgPf]            = useState('')
 
   useEffect(() => {
     ;(async () => {
@@ -69,7 +128,7 @@ export default function EmpleadoPage() {
 
       const { data: trab } = await supabase
         .from('trabajadores')
-        .select('id, nombre, especialidad, email, negocio_id, foto_url')
+        .select('id, nombre, especialidad, email, negocio_id, foto_url, telefono')
         .eq('email', email)
         .eq('activo', true)
         .limit(1)
@@ -77,8 +136,9 @@ export default function EmpleadoPage() {
 
       if (!trab) { window.location.href = '/auth'; return }
       setTrabajador(trab)
+      setPfNombre(trab.nombre ?? '')
+      setPfTelefono(trab.telefono ?? '')
 
-      // Fetch negocio name
       const { data: neg } = await supabase
         .from('negocios')
         .select('nombre')
@@ -86,11 +146,22 @@ export default function EmpleadoPage() {
         .single()
       setNombreNegocio(neg?.nombre ?? null)
 
-      const hoy     = hoyISO()
-      const en7     = enXDias(7)
+      const hoy       = hoyISO()
+      const en7       = enXDias(7)
       const inicioMes = hoy.slice(0, 8) + '01'
+      const hace6m    = new Date()
+      hace6m.setMonth(hace6m.getMonth() - 5)
+      hace6m.setDate(1)
+      const hace6mISO = hace6m.toISOString().split('T')[0]
 
-      const [{ data: rHoy }, { data: rProx }, { data: rMes }] = await Promise.all([
+      const [
+        { data: rHoy },
+        { data: rProx },
+        { data: rMes },
+        { data: r6m },
+        { data: svcData },
+        { data: nominasData },
+      ] = await Promise.all([
         supabase.from('reservas')
           .select('id, fecha, hora, cliente_nombre, cliente_telefono, estado, servicios(nombre, precio, duracion)')
           .eq('trabajador_id', trab.id)
@@ -105,29 +176,93 @@ export default function EmpleadoPage() {
           .neq('estado', 'cancelada')
           .order('fecha').order('hora'),
         supabase.from('reservas')
-          .select('id, estado, servicios(nombre)')
+          .select('id, estado, cliente_nombre, servicios(nombre)')
           .eq('trabajador_id', trab.id)
           .gte('fecha', inicioMes)
           .lte('fecha', hoy),
+        supabase.from('reservas')
+          .select('id, fecha, estado')
+          .eq('trabajador_id', trab.id)
+          .gte('fecha', hace6mISO)
+          .lte('fecha', hoy),
+        supabase.from('servicios')
+          .select('id, nombre, precio, duracion')
+          .eq('negocio_id', trab.negocio_id)
+          .eq('activo', true)
+          .order('nombre'),
+        supabase.from('nominas')
+          .select('id, mes, anio, bruto, neto, irpf, ss, pdf_url, created_at')
+          .eq('trabajador_id', trab.id)
+          .order('anio', { ascending: false })
+          .order('mes', { ascending: false }),
       ])
 
       setReservasHoy((rHoy ?? []) as unknown as Reserva[])
       setReservasProximas((rProx ?? []) as unknown as Reserva[])
+      setServicios((svcData ?? []) as Servicio[])
+      setNominas((nominasData ?? []) as Nomina[])
+      if (svcData && svcData.length > 0) setNrServicioId(svcData[0].id)
 
       if (rMes) {
         const completadas = rMes.filter(r => r.estado === 'completada').length
         const conteo: Record<string, number> = {}
+        const clientes = new Set<string>()
         rMes.forEach(r => {
           const nom = (r.servicios as { nombre?: string } | null)?.nombre
           if (nom) conteo[nom] = (conteo[nom] ?? 0) + 1
+          if (r.cliente_nombre) clientes.add(r.cliente_nombre.toLowerCase().trim())
         })
         const top = Object.entries(conteo).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
-        setStats({ total: rMes.length, completadas, servicioTop: top })
+        setTotalMes(rMes.length)
+        setComplestadasMes(completadas)
+        setServicioTop(top)
+        setClientesUnicos(clientes.size)
+      }
+
+      if (r6m) {
+        const ahora = new Date()
+        const puntos: ChartPoint[] = []
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1)
+          const yy = d.getFullYear()
+          const mm = String(d.getMonth() + 1).padStart(2, '0')
+          const prefix = `${yy}-${mm}`
+          const citas = r6m.filter(r => r.fecha.startsWith(prefix)).length
+          puntos.push({ mes: MESES_ES[d.getMonth()], citas })
+        }
+        setChartData(puntos)
       }
 
       setCargando(false)
     })()
   }, [])
+
+  // Chart width listener
+  useEffect(() => {
+    if (chartRef.current) setChartW(chartRef.current.offsetWidth)
+  }, [chartData, tabActiva])
+
+  // Supabase Realtime
+  useEffect(() => {
+    if (!trabajador?.id) return
+    const channel = supabase
+      .channel(`emp-reservas-${trabajador.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'reservas', filter: `trabajador_id=eq.${trabajador.id}` },
+        (payload) => {
+          setNotifBadge(prev => prev + 1)
+          const nueva = payload.new as Reserva
+          if (nueva?.fecha === hoyISO()) {
+            setReservasHoy(prev =>
+              [...prev, nueva].sort((a, b) => a.hora.localeCompare(b.hora))
+            )
+          }
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [trabajador?.id])
 
   async function completarReserva(id: string) {
     setActualizando(id)
@@ -136,10 +271,64 @@ export default function EmpleadoPage() {
     setActualizando(null)
   }
 
+  async function guardarNuevaReserva() {
+    if (!trabajador) return
+    if (!nrCliente.trim()) { setErrorNR('El nombre del cliente es obligatorio'); return }
+    if (!nrFecha || !nrHora) { setErrorNR('Indica fecha y hora'); return }
+    setGuardandoNR(true)
+    setErrorNR('')
+    const { error } = await supabase.from('reservas').insert({
+      trabajador_id: trabajador.id,
+      negocio_id: trabajador.negocio_id,
+      servicio_id: nrServicioId || null,
+      cliente_nombre: nrCliente.trim(),
+      cliente_telefono: nrTelefono.trim() || null,
+      fecha: nrFecha,
+      hora: nrHora + ':00',
+      estado: 'confirmada',
+    })
+    setGuardandoNR(false)
+    if (error) { setErrorNR(error.message); return }
+    setShowModal(false)
+    setNrCliente('')
+    setNrTelefono('')
+    setNrFecha(hoyISO())
+    setNrHora('10:00')
+  }
+
+  async function guardarPerfil() {
+    if (!trabajador) return
+    setGuardandoPf(true)
+    setMsgPf('')
+    if (pfPass1) {
+      if (pfPass1 !== pfPass2) { setMsgPf('Las contraseñas no coinciden'); setGuardandoPf(false); return }
+      if (pfPass1.length < 6) { setMsgPf('La contraseña debe tener al menos 6 caracteres'); setGuardandoPf(false); return }
+    }
+    await supabase.from('trabajadores').update({
+      nombre: pfNombre.trim(),
+      telefono: pfTelefono.trim() || null,
+    }).eq('id', trabajador.id)
+    if (pfPass1) {
+      await supabase.auth.updateUser({ password: pfPass1 })
+    }
+    setTrabajador(prev => prev ? { ...prev, nombre: pfNombre.trim(), telefono: pfTelefono.trim() || null } : prev)
+    setPfPass1('')
+    setPfPass2('')
+    setMsgPf('✓ Cambios guardados')
+    setGuardandoPf(false)
+  }
+
   async function cerrarSesion() {
     await supabase.auth.signOut()
     window.location.href = '/auth'
   }
+
+  const TABS: { id: TabActiva; label: string; icon: string }[] = [
+    { id: 'agenda',       label: 'Agenda',       icon: '📅' },
+    { id: 'estadisticas', label: 'Estadísticas', icon: '📊' },
+    { id: 'nominas',      label: 'Nóminas',      icon: '💶' },
+    { id: 'perfil',       label: 'Perfil',       icon: '👤' },
+  ]
 
   if (cargando) {
     return (
@@ -160,12 +349,11 @@ export default function EmpleadoPage() {
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       <style>{`
         * { box-sizing:border-box; }
-        .emp-page { max-width:860px; margin:0 auto; padding:28px 24px 60px; display:flex; flex-direction:column; gap:18px; }
-        .emp-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+        .emp-page { max-width:860px; margin:0 auto; padding:0 24px 80px; display:flex; flex-direction:column; gap:18px; }
         .emp-card { background:white; border-radius:20px; border:1px solid rgba(0,0,0,0.06); padding:22px; }
         .emp-card-title { font-size:15px; font-weight:700; color:#111827; margin-bottom:14px; letter-spacing:-0.2px; }
         .tl-wrap { position:relative; padding-left:4px; }
-        .tl-line { position:absolute; left:22px; top:18px; bottom:18px; width:2px; background:linear-gradient(to bottom, rgba(99,102,241,0.2), rgba(99,102,241,0.05)); border-radius:2px; }
+        .tl-line { position:absolute; left:22px; top:18px; bottom:18px; width:2px; background:linear-gradient(to bottom,rgba(99,102,241,0.2),rgba(99,102,241,0.05)); border-radius:2px; }
         .tl-row { display:flex; gap:0; margin-bottom:10px; }
         .tl-row:last-child { margin-bottom:0; }
         .tl-left { width:46px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px; padding-top:3px; }
@@ -174,17 +362,30 @@ export default function EmpleadoPage() {
         .tl-card { flex:1; border-radius:14px; padding:12px 14px; border:1.5px solid; }
         .prox-row { display:flex; align-items:center; gap:12px; padding:11px 14px; background:#F9FAFB; border-radius:12px; border:1px solid rgba(0,0,0,0.05); margin-bottom:8px; }
         .prox-row:last-child { margin-bottom:0; }
+        .tab-bar { display:flex; gap:4px; overflow-x:auto; padding:0; scrollbar-width:none; }
+        .tab-bar::-webkit-scrollbar { display:none; }
+        .tab-btn { flex:1; min-width:80px; padding:10px 12px; border-radius:12px; border:none; background:transparent; font-family:inherit; font-size:13px; font-weight:600; color:#6B7280; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; transition:background 0.15s; }
+        .tab-btn:hover { background:rgba(99,102,241,0.06); }
+        .tab-btn.active { background:white; color:#4F46E5; box-shadow:0 1px 6px rgba(0,0,0,0.08); }
+        .tab-icon { font-size:16px; }
+        .form-label { font-size:12px; font-weight:700; color:#374151; margin-bottom:5px; display:block; letter-spacing:0.2px; }
+        .form-input { width:100%; padding:11px 14px; border:1.5px solid #E5E7EB; border-radius:12px; font-size:14px; font-family:inherit; color:#111827; outline:none; background:white; transition:border-color 0.15s; }
+        .form-input:focus { border-color:#6366F1; }
+        .form-select { width:100%; padding:11px 14px; border:1.5px solid #E5E7EB; border-radius:12px; font-size:14px; font-family:inherit; color:#111827; outline:none; background:white; cursor:pointer; }
+        .stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+        .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:100; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal { background:white; border-radius:24px; padding:28px; width:100%; max-width:440px; max-height:90vh; overflow-y:auto; }
         @media(max-width:640px){
-          .emp-page { padding:16px 16px 80px; gap:14px; }
-          .emp-stats { grid-template-columns:repeat(2,1fr); }
-          .emp-stats > :last-child { grid-column:span 2; }
+          .emp-page { padding:0 16px 80px; gap:14px; }
+          .stat-grid { grid-template-columns:repeat(2,1fr); }
           .emp-card { padding:16px; border-radius:16px; }
           .nav-negocio { display:none !important; }
+          .tab-btn { min-width:60px; }
         }
       `}</style>
 
       {/* ── NAV ── */}
-      <div style={{ background:'white', borderBottom:'1px solid rgba(0,0,0,0.06)', padding:'0 24px' }}>
+      <div style={{ background:'white', borderBottom:'1px solid rgba(0,0,0,0.06)', padding:'0 24px', position:'sticky', top:0, zIndex:50 }}>
         <div style={{ maxWidth:'860px', margin:'0 auto', height:'60px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
             <div style={{ width:'32px', height:'32px', borderRadius:'9px', background:'linear-gradient(135deg,#B8D8F8,#D4C5F9,#B8EDD4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -197,180 +398,394 @@ export default function EmpleadoPage() {
             <span style={{ fontWeight:800, fontSize:'15px', letterSpacing:'-0.5px', color:'#111827' }}>Khepria</span>
             <span style={{ background:'#F3F4F6', color:'#6B7280', fontSize:'11px', fontWeight:600, padding:'2px 8px', borderRadius:'6px' }}>Empleado</span>
             {nombreNegocio && (
-              <span className="nav-negocio" style={{ fontSize:'13px', color:'#6B7280', marginLeft:'4px' }}>· {nombreNegocio}</span>
+              <span className="nav-negocio" style={{ fontSize:'13px', color:'#6B7280' }}>· {nombreNegocio}</span>
             )}
           </div>
-          <button onClick={cerrarSesion} style={{ padding:'8px 16px', background:'rgba(239,68,68,0.08)', border:'1.5px solid rgba(239,68,68,0.15)', borderRadius:'10px', fontSize:'13px', fontWeight:700, color:'#DC2626', cursor:'pointer', fontFamily:'inherit' }}>
-            Cerrar sesión
-          </button>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+            {notifBadge > 0 && (
+              <button
+                onClick={() => { setNotifBadge(0); setTabActiva('agenda') }}
+                style={{ position:'relative', width:'36px', height:'36px', borderRadius:'10px', background:'#EEF2FF', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px' }}
+              >
+                🔔
+                <span style={{ position:'absolute', top:'-4px', right:'-4px', minWidth:'18px', height:'18px', background:'#EF4444', color:'white', borderRadius:'9px', fontSize:'10px', fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px', border:'2px solid white' }}>
+                  {notifBadge}
+                </span>
+              </button>
+            )}
+            <button onClick={cerrarSesion} style={{ padding:'8px 16px', background:'rgba(239,68,68,0.08)', border:'1.5px solid rgba(239,68,68,0.15)', borderRadius:'10px', fontSize:'13px', fontWeight:700, color:'#DC2626', cursor:'pointer', fontFamily:'inherit' }}>
+              Salir
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="emp-page">
+      <div className="emp-page" style={{ paddingTop:'20px' }}>
 
         {/* ── BIENVENIDA ── */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'8px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'8px' }}>
           <div>
-            <h1 style={{ fontSize:'24px', fontWeight:800, color:'#111827', letterSpacing:'-0.5px', marginBottom:'3px' }}>
+            <h1 style={{ fontSize:'22px', fontWeight:800, color:'#111827', letterSpacing:'-0.5px', marginBottom:'3px' }}>
               Hola, {trabajador?.nombre?.split(' ')[0]} 👋
             </h1>
-            <p style={{ fontSize:'13px', color:'#6B7280' }}>
-              {hoyLabel}
-              {trabajador?.especialidad && ` · ${trabajador.especialidad}`}
-              {nombreNegocio && ` · ${nombreNegocio}`}
-            </p>
+            <p style={{ fontSize:'13px', color:'#6B7280' }}>{hoyLabel}{trabajador?.especialidad && ` · ${trabajador.especialidad}`}</p>
           </div>
-          <div style={{ width:'44px', height:'44px', borderRadius:'50%', background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', fontWeight:800, color:'#1E3A5F', flexShrink:0, overflow:'hidden' }}>
-            {trabajador?.foto_url
-              ? <img src={trabajador.foto_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-              : avatarIniciales(trabajador?.nombre ?? '?')
-            }
-          </div>
-        </div>
-
-        {/* ── STATS DEL MES ── */}
-        <div className="emp-stats">
-          {[
-            { label:'Citas este mes',   value: stats.total,        bg:'#EFF6FF', color:'#1D4ED8', icon:'📅' },
-            { label:'Completadas',      value: stats.completadas,  bg:'#F0FDF4', color:'#16A34A', icon:'✅' },
-            { label:'Servicio top',     value: stats.servicioTop,  bg:'#FAF5FF', color:'#7C3AED', icon:'⭐', small:true },
-          ].map((s, i) => (
-            <div key={i} style={{ background:s.bg, borderRadius:'16px', padding:'16px 18px', border:'1px solid rgba(0,0,0,0.04)' }}>
-              <p style={{ fontSize:'11px', fontWeight:700, color:s.color, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'6px', display:'flex', alignItems:'center', gap:'5px' }}>
-                <span>{s.icon}</span>{s.label}
-              </p>
-              <p style={{ fontSize:s.small ? '15px' : '26px', fontWeight:800, color:'#111827', lineHeight:1 }}>{s.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ── AGENDA DEL DÍA (TIMELINE) ── */}
-        <div className="emp-card">
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
-            <h2 className="emp-card-title" style={{ margin:0 }}>
-              Agenda de hoy
-              <span style={{ fontWeight:500, color:'#9CA3AF', marginLeft:'6px', fontSize:'13px' }}>
-                {reservasHoy.length} cita{reservasHoy.length !== 1 ? 's' : ''}
-              </span>
-            </h2>
-            <span style={{ fontSize:'12px', fontWeight:600, color:'#6B7280', background:'#F3F4F6', padding:'4px 10px', borderRadius:'8px' }}>
-              {new Date().toLocaleDateString('es-ES', { day:'numeric', month:'short' })}
-            </span>
-          </div>
-
-          {reservasHoy.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'32px 0', color:'#9CA3AF' }}>
-              <div style={{ fontSize:'36px', marginBottom:'8px' }}>🎉</div>
-              <p style={{ fontSize:'14px', fontWeight:600, color:'#374151' }}>Sin citas hoy</p>
-              <p style={{ fontSize:'13px', marginTop:'4px' }}>¡Disfruta el día libre!</p>
-            </div>
-          ) : (
-            <div className="tl-wrap">
-              {reservasHoy.length > 1 && <div className="tl-line"/>}
-              {reservasHoy.map((r, idx) => {
-                const est = COLORES_ESTADO[r.estado] ?? COLORES_ESTADO.pendiente
-                const completada = r.estado === 'completada'
-                const svc = r.servicios as { nombre?: string; duracion?: number; precio?: number } | null
-                return (
-                  <div key={r.id} className="tl-row">
-                    <div className="tl-left">
-                      <span className="tl-time" style={{ color: completada ? '#9CA3AF' : '#111827' }}>
-                        {r.hora?.slice(0, 5)}
-                      </span>
-                      <div className="tl-dot" style={{ background: est.dot, boxShadow:`0 0 0 3px ${est.dot}22` }}/>
-                      {svc?.duracion && (
-                        <span style={{ fontSize:'10px', color:'#9CA3AF', fontWeight:500 }}>{svc.duracion}m</span>
-                      )}
-                    </div>
-                    <div className="tl-card" style={{
-                      background: completada ? '#F9FAFB' : 'white',
-                      borderColor: completada ? 'rgba(0,0,0,0.05)' : `${est.dot}30`,
-                      opacity: completada ? 0.75 : 1,
-                    }}>
-                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'8px' }}>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <p style={{ fontSize:'14px', fontWeight:700, color:'#111827', marginBottom:'3px' }}>{r.cliente_nombre}</p>
-                          <p style={{ fontSize:'12px', color:'#6B7280', marginBottom:'6px' }}>
-                            {svc?.nombre ?? 'Servicio'}
-                            {r.cliente_telefono && ` · ${r.cliente_telefono}`}
-                            {svc?.precio ? ` · ${svc.precio}€` : ''}
-                          </p>
-                          <span style={{ display:'inline-flex', background:est.bg, color:est.color, fontSize:'10px', fontWeight:700, padding:'2px 8px', borderRadius:'6px' }}>
-                            {est.label}
-                          </span>
-                        </div>
-                        {r.estado !== 'completada' && r.estado !== 'cancelada' && (
-                          <button
-                            onClick={() => completarReserva(r.id)}
-                            disabled={actualizando === r.id}
-                            style={{ padding:'7px 12px', background:'#D1FAE5', color:'#065F46', border:'none', borderRadius:'10px', fontSize:'12px', fontWeight:700, cursor:'pointer', flexShrink:0, fontFamily:'inherit' }}
-                          >
-                            {actualizando === r.id ? '…' : '✓ Hecho'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ── PRÓXIMAS DE LA SEMANA ── */}
-        {reservasProximas.length > 0 && (
-          <div className="emp-card">
-            <h2 className="emp-card-title">Próximos 7 días
-              <span style={{ fontWeight:500, color:'#9CA3AF', marginLeft:'6px', fontSize:'13px' }}>
-                {reservasProximas.length} cita{reservasProximas.length !== 1 ? 's' : ''}
-              </span>
-            </h2>
-            {reservasProximas.map(r => {
-              const est = COLORES_ESTADO[r.estado] ?? COLORES_ESTADO.pendiente
-              const svc = r.servicios as { nombre?: string } | null
-              return (
-                <div key={r.id} className="prox-row">
-                  <div style={{ minWidth:'72px' }}>
-                    <p style={{ fontSize:'11px', fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.3px' }}>{formatFecha(r.fecha)}</p>
-                    <p style={{ fontSize:'14px', fontWeight:800, color:'#111827' }}>{r.hora?.slice(0, 5)}</p>
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:'13px', fontWeight:700, color:'#111827' }}>{r.cliente_nombre}</p>
-                    <p style={{ fontSize:'12px', color:'#6B7280', marginTop:'1px' }}>{svc?.nombre ?? 'Servicio'}</p>
-                  </div>
-                  <span style={{ background:est.bg, color:est.color, fontSize:'11px', fontWeight:700, padding:'3px 8px', borderRadius:'6px', flexShrink:0 }}>{est.label}</span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* ── MI PERFIL ── */}
-        <div className="emp-card">
-          <h2 className="emp-card-title">Mi perfil</h2>
-          <div style={{ display:'flex', alignItems:'center', gap:'14px', marginBottom:'20px' }}>
-            <div style={{ width:'52px', height:'52px', borderRadius:'14px', background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', fontWeight:800, color:'#1E3A5F', flexShrink:0, overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px', flexShrink:0 }}>
+            <button
+              onClick={() => { setShowModal(true); setErrorNR('') }}
+              style={{ padding:'9px 16px', background:'linear-gradient(135deg,#4F46E5,#7C3AED)', color:'white', border:'none', borderRadius:'12px', fontSize:'13px', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}
+            >
+              + Nueva reserva
+            </button>
+            <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'15px', fontWeight:800, color:'#1E3A5F', overflow:'hidden' }}>
               {trabajador?.foto_url
                 ? <img src={trabajador.foto_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                 : avatarIniciales(trabajador?.nombre ?? '?')
               }
             </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ fontSize:'16px', fontWeight:800, color:'#111827', letterSpacing:'-0.3px' }}>{trabajador?.nombre}</p>
-              {trabajador?.especialidad && <p style={{ fontSize:'13px', color:'#6B7280', marginTop:'2px' }}>{trabajador.especialidad}</p>}
-              {nombreNegocio && <p style={{ fontSize:'12px', color:'#9CA3AF', marginTop:'2px' }}>📍 {nombreNegocio}</p>}
-              <p style={{ fontSize:'12px', color:'#9CA3AF', marginTop:'1px' }}>{userEmail}</p>
-            </div>
           </div>
-          <button
-            onClick={cerrarSesion}
-            style={{ width:'100%', padding:'13px', background:'linear-gradient(135deg,rgba(239,68,68,0.08),rgba(239,68,68,0.06))', color:'#DC2626', border:'1.5px solid rgba(239,68,68,0.18)', borderRadius:'12px', fontSize:'14px', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}
-          >
-            🚪 Cerrar sesión
-          </button>
         </div>
 
+        {/* ── TABS ── */}
+        <div style={{ background:'#F3F4F6', borderRadius:'16px', padding:'6px' }}>
+          <div className="tab-bar">
+            {TABS.map(t => (
+              <button
+                key={t.id}
+                className={`tab-btn${tabActiva === t.id ? ' active' : ''}`}
+                onClick={() => setTabActiva(t.id)}
+              >
+                <span className="tab-icon">{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ══════════════ TAB: AGENDA ══════════════ */}
+        {tabActiva === 'agenda' && (
+          <>
+            {/* Agenda hoy */}
+            <div className="emp-card">
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px' }}>
+                <h2 className="emp-card-title" style={{ margin:0 }}>
+                  Agenda de hoy
+                  <span style={{ fontWeight:500, color:'#9CA3AF', marginLeft:'6px', fontSize:'13px' }}>
+                    {reservasHoy.length} cita{reservasHoy.length !== 1 ? 's' : ''}
+                  </span>
+                </h2>
+                <span style={{ fontSize:'12px', fontWeight:600, color:'#6B7280', background:'#F3F4F6', padding:'4px 10px', borderRadius:'8px' }}>
+                  {new Date().toLocaleDateString('es-ES', { day:'numeric', month:'short' })}
+                </span>
+              </div>
+              {reservasHoy.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'32px 0', color:'#9CA3AF' }}>
+                  <div style={{ fontSize:'36px', marginBottom:'8px' }}>🎉</div>
+                  <p style={{ fontSize:'14px', fontWeight:600, color:'#374151' }}>Sin citas hoy</p>
+                  <p style={{ fontSize:'13px', marginTop:'4px' }}>¡Disfruta el día libre!</p>
+                </div>
+              ) : (
+                <div className="tl-wrap">
+                  {reservasHoy.length > 1 && <div className="tl-line"/>}
+                  {reservasHoy.map(r => {
+                    const est = COLORES_ESTADO[r.estado] ?? COLORES_ESTADO.pendiente
+                    const completada = r.estado === 'completada'
+                    const svc = r.servicios as { nombre?: string; duracion?: number; precio?: number } | null
+                    return (
+                      <div key={r.id} className="tl-row">
+                        <div className="tl-left">
+                          <span className="tl-time" style={{ color: completada ? '#9CA3AF' : '#111827' }}>{r.hora?.slice(0, 5)}</span>
+                          <div className="tl-dot" style={{ background: est.dot, boxShadow:`0 0 0 3px ${est.dot}22` }}/>
+                          {svc?.duracion && <span style={{ fontSize:'10px', color:'#9CA3AF', fontWeight:500 }}>{svc.duracion}m</span>}
+                        </div>
+                        <div className="tl-card" style={{ background: completada ? '#F9FAFB' : 'white', borderColor: completada ? 'rgba(0,0,0,0.05)' : `${est.dot}30`, opacity: completada ? 0.75 : 1 }}>
+                          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'8px' }}>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <p style={{ fontSize:'14px', fontWeight:700, color:'#111827', marginBottom:'3px' }}>{r.cliente_nombre}</p>
+                              <p style={{ fontSize:'12px', color:'#6B7280', marginBottom:'6px' }}>
+                                {svc?.nombre ?? 'Servicio'}
+                                {r.cliente_telefono && ` · ${r.cliente_telefono}`}
+                                {svc?.precio ? ` · ${svc.precio}€` : ''}
+                              </p>
+                              <span style={{ display:'inline-flex', background:est.bg, color:est.color, fontSize:'10px', fontWeight:700, padding:'2px 8px', borderRadius:'6px' }}>{est.label}</span>
+                            </div>
+                            {r.estado !== 'completada' && r.estado !== 'cancelada' && (
+                              <button
+                                onClick={() => completarReserva(r.id)}
+                                disabled={actualizando === r.id}
+                                style={{ padding:'7px 12px', background:'#D1FAE5', color:'#065F46', border:'none', borderRadius:'10px', fontSize:'12px', fontWeight:700, cursor:'pointer', flexShrink:0, fontFamily:'inherit' }}
+                              >
+                                {actualizando === r.id ? '…' : '✓ Hecho'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Próximos 7 días */}
+            {reservasProximas.length > 0 && (
+              <div className="emp-card">
+                <h2 className="emp-card-title">Próximos 7 días
+                  <span style={{ fontWeight:500, color:'#9CA3AF', marginLeft:'6px', fontSize:'13px' }}>
+                    {reservasProximas.length} cita{reservasProximas.length !== 1 ? 's' : ''}
+                  </span>
+                </h2>
+                {reservasProximas.map(r => {
+                  const est = COLORES_ESTADO[r.estado] ?? COLORES_ESTADO.pendiente
+                  const svc = r.servicios as { nombre?: string } | null
+                  return (
+                    <div key={r.id} className="prox-row">
+                      <div style={{ minWidth:'72px' }}>
+                        <p style={{ fontSize:'11px', fontWeight:600, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.3px' }}>{formatFecha(r.fecha)}</p>
+                        <p style={{ fontSize:'14px', fontWeight:800, color:'#111827' }}>{r.hora?.slice(0, 5)}</p>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:'13px', fontWeight:700, color:'#111827' }}>{r.cliente_nombre}</p>
+                        <p style={{ fontSize:'12px', color:'#6B7280', marginTop:'1px' }}>{svc?.nombre ?? 'Servicio'}</p>
+                      </div>
+                      <span style={{ background:est.bg, color:est.color, fontSize:'11px', fontWeight:700, padding:'3px 8px', borderRadius:'6px', flexShrink:0 }}>{est.label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══════════════ TAB: ESTADÍSTICAS ══════════════ */}
+        {tabActiva === 'estadisticas' && (
+          <>
+            <div className="stat-grid">
+              {[
+                { label:'Citas este mes',      value: totalMes,       bg:'#EFF6FF', color:'#1D4ED8', icon:'📅' },
+                { label:'Completadas',         value: completadasMes, bg:'#F0FDF4', color:'#16A34A', icon:'✅' },
+                { label:'Clientes únicos',     value: clientesUnicos, bg:'#FAF5FF', color:'#7C3AED', icon:'👥' },
+                { label:'Servicio top',        value: servicioTop,    bg:'#FFFBEB', color:'#D97706', icon:'⭐', small: true },
+              ].map((s, i) => (
+                <div key={i} style={{ background:s.bg, borderRadius:'16px', padding:'16px 18px', border:'1px solid rgba(0,0,0,0.04)' }}>
+                  <p style={{ fontSize:'11px', fontWeight:700, color:s.color, textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'6px', display:'flex', alignItems:'center', gap:'5px' }}>
+                    <span>{s.icon}</span>{s.label}
+                  </p>
+                  <p style={{ fontSize:(s as { small?: boolean }).small ? '14px' : '26px', fontWeight:800, color:'#111827', lineHeight:1.2 }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="emp-card">
+              <h2 className="emp-card-title">Citas últimos 6 meses</h2>
+              <div ref={chartRef} style={{ width:'100%', height:'200px' }}>
+                {chartW > 0 && chartData.length > 0 && (
+                  <BarChart width={chartW} height={200} data={chartData} margin={{ top:4, right:4, left:-20, bottom:0 }}>
+                    <XAxis dataKey="mes" tick={{ fontSize:12, fill:'#6B7280', fontFamily:'Plus Jakarta Sans' }} axisLine={false} tickLine={false}/>
+                    <YAxis allowDecimals={false} tick={{ fontSize:11, fill:'#9CA3AF', fontFamily:'Plus Jakarta Sans' }} axisLine={false} tickLine={false}/>
+                    <Tooltip
+                      contentStyle={{ borderRadius:'10px', border:'none', boxShadow:'0 4px 16px rgba(0,0,0,0.12)', fontSize:'13px', fontFamily:'Plus Jakarta Sans' }}
+                      labelStyle={{ fontWeight:700, color:'#111827' }}
+                      formatter={(v) => [`${v ?? 0}`, 'Citas']}
+                    />
+                    <Bar dataKey="citas" fill="#6366F1" radius={[6,6,0,0]}/>
+                  </BarChart>
+                )}
+                {chartData.length === 0 && (
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#9CA3AF', fontSize:'14px' }}>
+                    Sin datos suficientes
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ══════════════ TAB: NÓMINAS ══════════════ */}
+        {tabActiva === 'nominas' && (
+          <div className="emp-card">
+            <h2 className="emp-card-title">Mis nóminas</h2>
+            {nominas.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'40px 0', color:'#9CA3AF' }}>
+                <div style={{ fontSize:'40px', marginBottom:'10px' }}>💶</div>
+                <p style={{ fontSize:'14px', fontWeight:600, color:'#374151' }}>Sin nóminas registradas</p>
+                <p style={{ fontSize:'13px', marginTop:'4px' }}>Contacta con tu empleador</p>
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                {nominas.map(n => (
+                  <div key={n.id} style={{ background:'#F9FAFB', borderRadius:'14px', padding:'16px', border:'1px solid rgba(0,0,0,0.05)' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
+                      <div>
+                        <p style={{ fontSize:'15px', fontWeight:800, color:'#111827' }}>
+                          {n.mes ? MESES_LARGO[n.mes - 1] : '—'} {n.anio ?? ''}
+                        </p>
+                        <p style={{ fontSize:'12px', color:'#9CA3AF', marginTop:'1px' }}>Nómina mensual</p>
+                      </div>
+                      <div style={{ textAlign:'right' }}>
+                        <p style={{ fontSize:'18px', fontWeight:800, color:'#16A34A' }}>{fmt(n.neto)}</p>
+                        <p style={{ fontSize:'11px', color:'#9CA3AF' }}>neto</p>
+                      </div>
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom: n.pdf_url ? '12px' : '0' }}>
+                      {[
+                        { label:'Bruto', value: fmt(n.bruto), color:'#374151' },
+                        { label:'IRPF', value: fmt(n.irpf), color:'#DC2626' },
+                        { label:'S.S.', value: fmt(n.ss), color:'#D97706' },
+                      ].map((item, i) => (
+                        <div key={i} style={{ background:'white', borderRadius:'10px', padding:'10px', border:'1px solid rgba(0,0,0,0.05)', textAlign:'center' }}>
+                          <p style={{ fontSize:'11px', color:'#9CA3AF', marginBottom:'3px' }}>{item.label}</p>
+                          <p style={{ fontSize:'13px', fontWeight:700, color:item.color }}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {n.pdf_url && (
+                      <a
+                        href={n.pdf_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', padding:'10px', background:'linear-gradient(135deg,rgba(99,102,241,0.08),rgba(124,58,237,0.08))', border:'1.5px solid rgba(99,102,241,0.2)', borderRadius:'10px', color:'#4F46E5', fontWeight:700, fontSize:'13px', textDecoration:'none' }}
+                      >
+                        📄 Descargar PDF
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════ TAB: PERFIL ══════════════ */}
+        {tabActiva === 'perfil' && (
+          <div className="emp-card">
+            <div style={{ display:'flex', alignItems:'center', gap:'16px', marginBottom:'24px' }}>
+              <div style={{ width:'60px', height:'60px', borderRadius:'16px', background:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', fontWeight:800, color:'#1E3A5F', flexShrink:0, overflow:'hidden' }}>
+                {trabajador?.foto_url
+                  ? <img src={trabajador.foto_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                  : avatarIniciales(trabajador?.nombre ?? '?')
+                }
+              </div>
+              <div>
+                <p style={{ fontSize:'17px', fontWeight:800, color:'#111827', letterSpacing:'-0.3px' }}>{trabajador?.nombre}</p>
+                {trabajador?.especialidad && <p style={{ fontSize:'13px', color:'#6B7280', marginTop:'2px' }}>{trabajador.especialidad}</p>}
+                <p style={{ fontSize:'12px', color:'#9CA3AF', marginTop:'2px' }}>{userEmail}</p>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:'16px', marginBottom:'24px' }}>
+              <div>
+                <label className="form-label">Nombre</label>
+                <input className="form-input" value={pfNombre} onChange={e => setPfNombre(e.target.value)} placeholder="Tu nombre"/>
+              </div>
+              <div>
+                <label className="form-label">Teléfono</label>
+                <input className="form-input" value={pfTelefono} onChange={e => setPfTelefono(e.target.value)} placeholder="+34 600 000 000" type="tel"/>
+              </div>
+            </div>
+
+            <div style={{ background:'#F9FAFB', borderRadius:'14px', padding:'16px', marginBottom:'20px', border:'1px solid rgba(0,0,0,0.05)' }}>
+              <p style={{ fontSize:'13px', fontWeight:700, color:'#374151', marginBottom:'14px' }}>Cambiar contraseña</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+                <div>
+                  <label className="form-label">Nueva contraseña</label>
+                  <input className="form-input" value={pfPass1} onChange={e => setPfPass1(e.target.value)} type="password" placeholder="Mínimo 6 caracteres"/>
+                </div>
+                <div>
+                  <label className="form-label">Repetir contraseña</label>
+                  <input className="form-input" value={pfPass2} onChange={e => setPfPass2(e.target.value)} type="password" placeholder="Repite la contraseña"/>
+                </div>
+              </div>
+            </div>
+
+            {msgPf && (
+              <div style={{ background: msgPf.startsWith('✓') ? '#D1FAE5' : '#FEE2E2', color: msgPf.startsWith('✓') ? '#065F46' : '#991B1B', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:600, marginBottom:'16px' }}>
+                {msgPf}
+              </div>
+            )}
+
+            <button
+              onClick={guardarPerfil}
+              disabled={guardandoPf}
+              style={{ width:'100%', padding:'13px', background:'linear-gradient(135deg,#4F46E5,#7C3AED)', color:'white', border:'none', borderRadius:'12px', fontSize:'14px', fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity: guardandoPf ? 0.7 : 1 }}
+            >
+              {guardandoPf ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+
+            <button
+              onClick={cerrarSesion}
+              style={{ width:'100%', marginTop:'12px', padding:'13px', background:'rgba(239,68,68,0.08)', color:'#DC2626', border:'1.5px solid rgba(239,68,68,0.18)', borderRadius:'12px', fontSize:'14px', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}
+            >
+              🚪 Cerrar sesión
+            </button>
+          </div>
+        )}
+
       </div>
+
+      {/* ══════════════ MODAL NUEVA RESERVA ══════════════ */}
+      {showModal && (
+        <div className="overlay" onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}>
+          <div className="modal">
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
+              <h2 style={{ fontSize:'18px', fontWeight:800, color:'#111827', letterSpacing:'-0.3px' }}>Nueva reserva</h2>
+              <button onClick={() => setShowModal(false)} style={{ width:'32px', height:'32px', border:'none', background:'#F3F4F6', borderRadius:'8px', cursor:'pointer', fontSize:'18px', color:'#6B7280' }}>×</button>
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:'14px' }}>
+              <div>
+                <label className="form-label">Servicio</label>
+                <select className="form-select" value={nrServicioId} onChange={e => setNrServicioId(e.target.value)}>
+                  <option value="">Sin servicio específico</option>
+                  {servicios.map(s => (
+                    <option key={s.id} value={s.id}>{s.nombre} — {s.duracion}min{s.precio ? ` — ${s.precio}€` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Cliente *</label>
+                <input className="form-input" value={nrCliente} onChange={e => setNrCliente(e.target.value)} placeholder="Nombre del cliente"/>
+              </div>
+              <div>
+                <label className="form-label">Teléfono</label>
+                <input className="form-input" value={nrTelefono} onChange={e => setNrTelefono(e.target.value)} placeholder="+34 600 000 000" type="tel"/>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                <div>
+                  <label className="form-label">Fecha *</label>
+                  <input className="form-input" value={nrFecha} onChange={e => setNrFecha(e.target.value)} type="date"/>
+                </div>
+                <div>
+                  <label className="form-label">Hora *</label>
+                  <input className="form-input" value={nrHora} onChange={e => setNrHora(e.target.value)} type="time"/>
+                </div>
+              </div>
+            </div>
+
+            {errorNR && (
+              <div style={{ background:'#FEE2E2', color:'#991B1B', borderRadius:'10px', padding:'10px 14px', fontSize:'13px', fontWeight:600, marginTop:'14px' }}>
+                {errorNR}
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:'10px', marginTop:'20px' }}>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{ flex:1, padding:'13px', background:'#F3F4F6', color:'#374151', border:'none', borderRadius:'12px', fontSize:'14px', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarNuevaReserva}
+                disabled={guardandoNR}
+                style={{ flex:2, padding:'13px', background:'linear-gradient(135deg,#4F46E5,#7C3AED)', color:'white', border:'none', borderRadius:'12px', fontSize:'14px', fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity: guardandoNR ? 0.7 : 1 }}
+              >
+                {guardandoNR ? 'Guardando…' : 'Crear reserva'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
