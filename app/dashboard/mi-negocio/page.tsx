@@ -34,6 +34,9 @@ export default function MiNegocio() {
   } | null>(null)
   const [importModel, setImportModel] = useState('')
   const [importSteps, setImportSteps] = useState<{label:string;status:'pending'|'running'|'done'|'error'}[]>([])
+  const [importImagenes, setImportImagenes] = useState<{ logo_candidates: string[]; foto_candidates: string[] } | null>(null)
+  const [selectedImages, setSelectedImages] = useState<{ tipo: 'logo' | 'foto'; url: string }[]>([])
+  const [subiendoImagenes, setSubiendoImagenes] = useState(false)
 
   const [form, setForm] = useState({
     nombre: '', tipo: '', descripcion: '', telefono: '',
@@ -235,7 +238,7 @@ export default function MiNegocio() {
 
   async function analizarImport() {
     if (!importUrl.trim()) return
-    setImportLoading(true); setImportError(''); setImportData(null)
+    setImportLoading(true); setImportError(''); setImportData(null); setImportImagenes(null); setSelectedImages([])
     try {
       const res = await fetch('/api/importar-negocio', {
         method: 'POST',
@@ -246,6 +249,7 @@ export default function MiNegocio() {
       if (json.error) { setImportError(json.error); setImportLoading(false); return }
       setImportData(json.data)
       setImportModel(json.model || '')
+      if (json.imagenes) setImportImagenes(json.imagenes)
     } catch (e: unknown) {
       setImportError((e as Error).message)
     }
@@ -351,6 +355,67 @@ export default function MiNegocio() {
     setImportSteps([])
     setGuardado(true)
     setTimeout(() => setGuardado(false), 3000)
+  }
+
+  async function descargarImagen(url: string, tipo: 'logo' | 'foto'): Promise<string | null> {
+    if (!negocioId) return null
+    try {
+      const response = await fetch('/api/proxy-imagen?url=' + encodeURIComponent(url))
+      if (!response.ok) return null
+      const blob = await response.blob()
+      const ext = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg'
+      const ts = Date.now()
+      const path = tipo === 'logo'
+        ? `logos/${negocioId}/logo-${ts}.${ext}`
+        : `negocios/${negocioId}/${ts}.${ext}`
+      const file = new File([blob], `imagen.${ext}`, { type: blob.type || 'image/jpeg' })
+      const { error } = await supabase.storage.from('fotos').upload(path, file, { upsert: true })
+      if (error) return null
+      const { data: { publicUrl } } = supabase.storage.from('fotos').getPublicUrl(path)
+      return publicUrl
+    } catch {
+      return null
+    }
+  }
+
+  function toggleSelectImage(url: string, tipo: 'logo' | 'foto') {
+    setSelectedImages(prev => {
+      const exists = prev.some(s => s.url === url)
+      if (exists) return prev.filter(s => s.url !== url)
+      // Only one logo allowed at a time
+      if (tipo === 'logo') return [...prev.filter(s => s.tipo !== 'logo'), { tipo, url }]
+      return [...prev, { tipo, url }]
+    })
+  }
+
+  async function importarImagenesSeleccionadas() {
+    if (!negocioId || selectedImages.length === 0) return
+    setSubiendoImagenes(true)
+    let newLogoUrl: string | null = null
+    const newFotos: string[] = []
+
+    for (const { url, tipo } of selectedImages) {
+      const publicUrl = await descargarImagen(url, tipo)
+      if (!publicUrl) continue
+      if (tipo === 'logo') newLogoUrl = publicUrl
+      else newFotos.push(publicUrl)
+    }
+
+    const updates: Record<string, unknown> = {}
+    if (newLogoUrl) {
+      updates.logo_url = newLogoUrl
+      setForm(prev => ({ ...prev, logo_url: newLogoUrl! }))
+    }
+    if (newFotos.length > 0) {
+      const fotos = [...form.fotos, ...newFotos]
+      updates.fotos = fotos
+      setForm(prev => ({ ...prev, fotos }))
+    }
+    if (Object.keys(updates).length > 0) {
+      await supabase.from('negocios').update(updates).eq('id', negocioId)
+    }
+    setSubiendoImagenes(false)
+    setSelectedImages([])
   }
 
   async function eliminarFoto(url: string) {
@@ -534,6 +599,17 @@ export default function MiNegocio() {
         .btn-import-basic { padding: 12px 18px; background: none; border: 1.5px solid var(--border); color: var(--text2); border-radius: 12px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
         .btn-import-basic:hover:not(:disabled) { background: var(--bg); border-color: var(--text); color: var(--text); }
         .btn-import-basic:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* IMPORT IMAGES */
+        .import-img-grid { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 16px; }
+        .import-img-item { position: relative; border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s; flex-shrink: 0; background: var(--bg); }
+        .import-img-item:hover { transform: scale(1.03); }
+        .import-img-item.logo-item { width: 80px; height: 80px; }
+        .import-img-item.foto-item { width: 110px; height: 80px; }
+        .import-img-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .import-img-item.selected { outline: 3px solid #1D4ED8; }
+        .import-img-check { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; background: #1D4ED8; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; box-shadow: 0 2px 6px rgba(29,78,216,0.5); }
+        .import-img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--muted); background: var(--bg); }
+        .import-img-section-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 16px 4px; border-top: 1px solid var(--border); }
 
         /* STICKY SAVE MOBILE */
         .save-bar-mobile { display: none; }
@@ -589,7 +665,7 @@ export default function MiNegocio() {
               </Link>
             )}
 
-            <button className="btn-importar-abrir" onClick={() => { setImportModal(true); setImportData(null); setImportError(''); setImportUrl('') }}>
+            <button className="btn-importar-abrir" onClick={() => { setImportModal(true); setImportData(null); setImportError(''); setImportUrl(''); setImportImagenes(null); setSelectedImages([]) }}>
               📥 Importar datos desde otra app
             </button>
 
@@ -1342,11 +1418,88 @@ export default function MiNegocio() {
                     </div>
                   )}
 
+                  {/* Imágenes encontradas */}
+                  {importImagenes && (importImagenes.logo_candidates.length > 0 || importImagenes.foto_candidates.length > 0) && (
+                    <div className="import-section">
+                      <div className="import-section-head">
+                        <div className="import-section-head-left">
+                          🖼️ Imágenes encontradas
+                          <span style={{fontSize:'11px',color:'var(--muted)',fontWeight:400}}> — toca para seleccionar</span>
+                        </div>
+                        <span className="import-count-badge">
+                          {importImagenes.logo_candidates.length + importImagenes.foto_candidates.length}
+                        </span>
+                      </div>
+
+                      {importImagenes.logo_candidates.length > 0 && (
+                        <>
+                          <div className="import-img-section-label">Logo / imagen principal</div>
+                          <div className="import-img-grid">
+                            {importImagenes.logo_candidates.map((url, i) => {
+                              const sel = selectedImages.some(s => s.url === url)
+                              return (
+                                <div key={i} className={`import-img-item logo-item${sel ? ' selected' : ''}`} onClick={() => toggleSelectImage(url, 'logo')} title={url}>
+                                  <img
+                                    src={`/api/proxy-imagen?url=${encodeURIComponent(url)}`}
+                                    alt="Logo"
+                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden') }}
+                                  />
+                                  <div className="import-img-placeholder" hidden>🏪</div>
+                                  {sel && <div className="import-img-check">✓</div>}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      {importImagenes.foto_candidates.length > 0 && (
+                        <>
+                          <div className="import-img-section-label" style={{borderTop: importImagenes.logo_candidates.length > 0 ? '1px solid var(--border)' : 'none', paddingTop: '12px'}}>Fotos del local</div>
+                          <div className="import-img-grid">
+                            {importImagenes.foto_candidates.map((url, i) => {
+                              const sel = selectedImages.some(s => s.url === url)
+                              return (
+                                <div key={i} className={`import-img-item foto-item${sel ? ' selected' : ''}`} onClick={() => toggleSelectImage(url, 'foto')} title={url}>
+                                  <img
+                                    src={`/api/proxy-imagen?url=${encodeURIComponent(url)}`}
+                                    alt="Foto"
+                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden') }}
+                                  />
+                                  <div className="import-img-placeholder" hidden>🖼️</div>
+                                  {sel && <div className="import-img-check">✓</div>}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      {selectedImages.length > 0 && (
+                        <div style={{padding:'12px 16px', borderTop:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px', flexWrap:'wrap'}}>
+                          <span style={{fontSize:'13px', color:'var(--text2)', fontWeight:500}}>
+                            {selectedImages.filter(s=>s.tipo==='logo').length > 0 && '1 logo'}
+                            {selectedImages.filter(s=>s.tipo==='logo').length > 0 && selectedImages.filter(s=>s.tipo==='foto').length > 0 && ' + '}
+                            {selectedImages.filter(s=>s.tipo==='foto').length > 0 && `${selectedImages.filter(s=>s.tipo==='foto').length} foto${selectedImages.filter(s=>s.tipo==='foto').length !== 1 ? 's' : ''}`}
+                            {' '}seleccionada{selectedImages.length !== 1 ? 's' : ''}
+                          </span>
+                          <button
+                            onClick={importarImagenesSeleccionadas}
+                            disabled={subiendoImagenes}
+                            style={{padding:'9px 16px', background:'linear-gradient(135deg,#1D4ED8,#6B4FD8)', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'13px', fontWeight:700, cursor: subiendoImagenes ? 'not-allowed':'pointer', opacity: subiendoImagenes ? 0.7:1, whiteSpace:'nowrap'}}
+                          >
+                            {subiendoImagenes ? '⏳ Subiendo...' : '📥 Importar seleccionadas'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Actions */}
                   <div style={{marginTop:'6px'}}>
                     {importModel && <div className="import-model-badge" style={{marginBottom:'10px'}}>✦ Extraído con {importModel}</div>}
                     <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
-                      <button className="btn-import-cancel" onClick={() => { setImportModal(false); setImportData(null); setImportUrl('') }} disabled={importando}>
+                      <button className="btn-import-cancel" onClick={() => { setImportModal(false); setImportData(null); setImportUrl(''); setImportImagenes(null); setSelectedImages([]) }} disabled={importando}>
                         Cancelar
                       </button>
                       <button className="btn-import-basic" onClick={() => aplicarImport(true)} disabled={importando}>

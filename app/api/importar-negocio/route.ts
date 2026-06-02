@@ -114,11 +114,61 @@ Reglas:
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const text: string = (geminiData as any)?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 
+  // ── Extract image candidates from HTML ───────────────────────────────────
+  const imagenes: { logo_candidates: string[]; foto_candidates: string[] } = {
+    logo_candidates: [],
+    foto_candidates: [],
+  }
+
+  const baseUrl = new URL(url)
+  const resolveUrl = (src: string): string | null => {
+    try {
+      if (src.startsWith('http')) return src
+      if (src.startsWith('//')) return `${baseUrl.protocol}${src}`
+      if (src.startsWith('/')) return `${baseUrl.origin}${src}`
+      return new URL(src, url).href
+    } catch { return null }
+  }
+
+  // og:image and twitter:image → logo candidates
+  const metaImgRe = /<meta[^>]*(?:property|name)=["'](?:og:image|twitter:image)["'][^>]*content=["']([^"']+)["']|<meta[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/gi
+  let metaMatch
+  while ((metaMatch = metaImgRe.exec(rawHtml)) !== null) {
+    const src = resolveUrl(metaMatch[1] || metaMatch[2])
+    if (src && !imagenes.logo_candidates.includes(src)) {
+      imagenes.logo_candidates.push(src)
+    }
+  }
+
+  // img src → photo candidates
+  const imgRe = /<img[^>]+\bsrc=["']([^"']+)["'][^>]*/gi
+  const seenImgs = new Set<string>()
+  let imgMatch
+  while ((imgMatch = imgRe.exec(rawHtml)) !== null && imagenes.foto_candidates.length < 8) {
+    const src = resolveUrl(imgMatch[1])
+    if (!src || seenImgs.has(src)) continue
+    seenImgs.add(src)
+    const lower = src.toLowerCase()
+    if (
+      lower.match(/\.(jpe?g|png|webp)/) &&
+      !lower.includes('icon') &&
+      !lower.includes('favicon') &&
+      !lower.includes('pixel') &&
+      !lower.includes('tracking') &&
+      !lower.includes('1x1') &&
+      !lower.includes('avatar') &&
+      !lower.includes('logo') &&
+      !imagenes.logo_candidates.includes(src)
+    ) {
+      imagenes.foto_candidates.push(src)
+    }
+  }
+
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('No se encontró JSON en la respuesta')
     const data = JSON.parse(jsonMatch[0])
-    return NextResponse.json({ data, model })
+    return NextResponse.json({ data, imagenes, model })
   } catch {
     return NextResponse.json({ error: 'No se pudieron extraer los datos. Prueba con otra URL.' }, { status: 422 })
   }
