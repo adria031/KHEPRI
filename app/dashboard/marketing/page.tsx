@@ -79,7 +79,7 @@ function BrandHeader({ logoUrl, mostrarLogo, negocioNombre, textColor, hasShadow
         <img src={logoUrl} alt="" crossOrigin="anonymous"
           style={{ width:40, height:40, borderRadius:8, objectFit:'cover', display:'block', flexShrink:0 }} />
       )}
-      <span style={{ fontSize:12, fontWeight:700, color:textColor, letterSpacing:'-0.2px', lineHeight:1.2,
+      <span style={{ fontSize:18, fontWeight:700, color:textColor, letterSpacing:'-0.2px', lineHeight:1.2,
         textShadow:hasShadow ? '0 1px 3px rgba(0,0,0,0.3)' : 'none' }}>
         {negocioNombre}
       </span>
@@ -93,25 +93,24 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
   const fontTitulo = FONT_MAP[fuente]
   const hasDato    = !!contenido.dato
 
-  // Font sizes — vw resolves against windowWidth in html2canvas (set to element width)
-  const fzDato  = 'clamp(40px, 10vw, 72px)'
-  const fzTit   = hasDato ? 'clamp(20px, 5vw, 36px)' : 'clamp(26px, 6vw, 42px)'
-  const fzSub   = 'clamp(14px, 3vw, 22px)'
-  const fzCta   = 'clamp(12px, 2.5vw, 16px)'
-  const fzUrl   = 'clamp(10px, 2vw, 13px)'
-  const gap     = '4%'
+  const fzDato  = '52px'
+  const fzTit   = '28px'
+  const fzSub   = '16px'
+  const fzCta   = '13px'
+  const fzUrl   = '11px'
+  const gap     = '16px'
 
-  // Reusable text-overflow helpers
-  const ell  = { overflow:'hidden' as const, textOverflow:'ellipsis', whiteSpace:'nowrap' as const }
-  const cl2  = { overflow:'hidden' as const, display:'-webkit-box' as const, WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }
-  const cl3  = { overflow:'hidden' as const, display:'-webkit-box' as const, WebkitLineClamp:3, WebkitBoxOrient:'vertical' as const }
+  const txtOvf = { wordBreak:'break-word' as const, overflowWrap:'break-word' as const, overflow:'hidden' as const }
+  const ell    = txtOvf
+  const cl2    = txtOvf
+  const cl3    = txtOvf
 
   /* ── minimalista ── */
   if (layout === 'minimalista') {
     return (
       <div style={{ width:540, height:540, background:'#FAFAFA', position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'flex-end', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
         <div style={{ position:'absolute', top:'8%', left:'8%', width:44, height:3, background:colorPpal, borderRadius:2 }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="#374151" />
         <div style={{ position:'relative', zIndex:2, width:'100%', overflow:'hidden' }}>
@@ -141,7 +140,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
     return (
       <div style={{ width:540, height:540, background:isMarca?`linear-gradient(135deg,${colorPpal},${colorSec})`:colorPpal, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
         <div style={{ position:'absolute', bottom:-80, right:-80, width:420, height:420, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
         <div style={{ position:'absolute', top:-40, right:40, width:200, height:200, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="rgba(255,255,255,0.9)" hasShadow />
@@ -166,7 +165,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
     return (
       <div style={{ width:540, height:540, background:bgE, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
         <div style={{ position:'absolute', inset:18, border:`1px solid ${isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)'}`, borderRadius:4, pointerEvents:'none' }} />
         <div style={{ position:'absolute', top:34, left:'50%', transform:'translateX(-50%)', display:'flex', gap:6 }}>
           {[colorPpal, colorSec, colorPpal].map((c, i) => (
@@ -205,7 +204,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
     return (
       <div style={{ width:540, height:540, background:bgD, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
         <div style={{ position:'absolute', top:-120, right:-120, width:520, height:720,
           background:`linear-gradient(135deg,${colorPpal},${colorSec})`,
           transform:'rotate(-15deg)', opacity: isDark ? 0.16 : 0.1, borderRadius:48 }} />
@@ -241,7 +240,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
   return (
     <div style={{ width:540, height:540, background:bg, position:'relative', overflow:'hidden',
       display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
       <div style={{ position:'absolute', top:-80, left:-80, width:280, height:280, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.15)':hexToRgba(colorSec,isDark?0.45:0.7)} 0%,transparent 70%)`, filter:'blur(30px)' }} />
       <div style={{ position:'absolute', bottom:-60, right:-60, width:240, height:240, borderRadius:'50%',
@@ -275,24 +274,24 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
   const fontTitulo = FONT_MAP[fuente]
   const hasDato    = !!contenido.dato
 
-  // Font sizes — same vw values as Publicacion; at windowWidth=303, clamp min kicks in
-  const fzDato  = 'clamp(40px, 10vw, 72px)'
-  const fzTit   = hasDato ? 'clamp(20px, 5vw, 36px)' : 'clamp(26px, 6vw, 42px)'
-  const fzSub   = 'clamp(14px, 3vw, 22px)'
-  const fzCta   = 'clamp(12px, 2.5vw, 16px)'
-  const fzUrl   = 'clamp(10px, 2vw, 13px)'
-  const gap     = '4%'
+  const fzDato  = '52px'
+  const fzTit   = '28px'
+  const fzSub   = '16px'
+  const fzCta   = '13px'
+  const fzUrl   = '11px'
+  const gap     = '16px'
 
-  const ell  = { overflow:'hidden' as const, textOverflow:'ellipsis', whiteSpace:'nowrap' as const }
-  const cl2  = { overflow:'hidden' as const, display:'-webkit-box' as const, WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const }
-  const cl3  = { overflow:'hidden' as const, display:'-webkit-box' as const, WebkitLineClamp:3, WebkitBoxOrient:'vertical' as const }
+  const txtOvf = { wordBreak:'break-word' as const, overflowWrap:'break-word' as const, overflow:'hidden' as const }
+  const ell    = txtOvf
+  const cl2    = txtOvf
+  const cl3    = txtOvf
 
   /* ── minimalista ── */
   if (layout === 'minimalista') {
     return (
       <div style={{ width:303, height:538, background:'#FAFAFA', position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'flex-end', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
         <div style={{ position:'absolute', top:'8%', left:'8%', width:30, height:3, background:colorPpal, borderRadius:2 }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="#374151" />
         <div style={{ position:'relative', zIndex:2, width:'100%', overflow:'hidden' }}>
@@ -318,7 +317,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
     return (
       <div style={{ width:303, height:538, background:isMarca?`linear-gradient(135deg,${colorPpal},${colorSec})`:colorPpal, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
         <div style={{ position:'absolute', bottom:-60, right:-60, width:280, height:280, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)' }} />
         <div style={{ position:'absolute', top:-30, right:30, width:140, height:140, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
         <BrandHeader logoUrl={logoUrl} mostrarLogo={mostrarLogo} negocioNombre={negocioNombre} textColor="rgba(255,255,255,0.9)" hasShadow />
@@ -343,7 +342,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
     return (
       <div style={{ width:303, height:538, background:bgE, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
         <div style={{ position:'absolute', inset:12, border:`1px solid ${isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.05)'}`, borderRadius:4, pointerEvents:'none' }} />
         <div style={{ position:'absolute', top:22, left:'50%', transform:'translateX(-50%)', display:'flex', gap:5 }}>
           {[colorPpal, colorSec, colorPpal].map((c, i) => (
@@ -378,7 +377,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
     return (
       <div style={{ width:303, height:538, background:bgD, position:'relative', overflow:'hidden',
         display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start',
-        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+        fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
         <div style={{ position:'absolute', top:-80, right:-80, width:320, height:460,
           background:`linear-gradient(135deg,${colorPpal},${colorSec})`,
           transform:'rotate(-15deg)', opacity: isDark ? 0.14 : 0.09, borderRadius:30 }} />
@@ -414,7 +413,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
   return (
     <div style={{ width:303, height:538, background:bg, position:'relative', overflow:'hidden',
       display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center',
-      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'8%' }}>
+      fontFamily:"'Plus Jakarta Sans', sans-serif", padding:'40px' }}>
       <div style={{ position:'absolute', top:-50, left:-40, width:160, height:160, borderRadius:'50%',
         background:`radial-gradient(circle,${isMarca?'rgba(255,255,255,0.15)':hexToRgba(colorSec,isDark?0.5:0.8)} 0%,transparent 70%)`, filter:'blur(20px)' }} />
       <div style={{ position:'absolute', bottom:-40, right:-30, width:140, height:140, borderRadius:'50%',
@@ -640,11 +639,11 @@ Devuelve SOLO JSON sin markdown:
     while (intentos < 3) {
       try {
         await document.fonts.ready
-        await new Promise(r => setTimeout(r, 1000))
+        await new Promise(r => setTimeout(r, 1200))
         const element = document.getElementById('render-post')
         if (!element) { intentos++; continue }
         const canvas = await html2canvas(element, {
-          scale: 1080 / element.offsetWidth,
+          scale: 2,
           useCORS: true,
           allowTaint: true,
           backgroundColor: null,
@@ -653,6 +652,13 @@ Devuelve SOLO JSON sin markdown:
           height: element.offsetHeight,
           windowWidth: element.offsetWidth,
           windowHeight: element.offsetHeight,
+          onclone: (doc) => {
+            const el = doc.getElementById('render-post')
+            if (el) {
+              el.style.position = 'relative'
+              el.style.left = '0'
+            }
+          },
         })
         const link = document.createElement('a')
         link.download = `marketing_${formato}_${Date.now()}.png`
@@ -909,7 +915,9 @@ Devuelve SOLO JSON sin markdown:
       {/* Off-screen render target for html2canvas */}
       {imgContenido && (
         <div id="render-post" style={{ position:'fixed', left:'-9999px', top:'0px',
-          width: formato === 'publicacion' ? '540px' : '303px', height: formato === 'publicacion' ? '540px' : '538px', zIndex:-1 }}>
+          width: formato === 'historia' ? '303px' : '540px',
+          height: formato === 'historia' ? '538px' : '540px',
+          overflow:'hidden', zIndex:-1 }}>
           {formato === 'publicacion'
             ? <TemplatePublicacion {...tplProps(imgContenido)} />
             : <TemplateHistoria   {...tplProps(imgContenido)} />}
