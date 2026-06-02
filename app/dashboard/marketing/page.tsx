@@ -94,7 +94,7 @@ function TemplatePublicacion({ contenido, negocioNombre, colorPpal, colorSec, mo
   const hasDato    = !!contenido.dato
 
   const fzDato  = '52px'
-  const fzTit   = '28px'
+  const fzTit   = '26px'
   const fzSub   = '16px'
   const fzCta   = '13px'
   const fzUrl   = '11px'
@@ -275,7 +275,7 @@ function TemplateHistoria({ contenido, negocioNombre, colorPpal, colorSec, mostr
   const hasDato    = !!contenido.dato
 
   const fzDato  = '52px'
-  const fzTit   = '28px'
+  const fzTit   = '26px'
   const fzSub   = '16px'
   const fzCta   = '13px'
   const fzUrl   = '11px'
@@ -638,31 +638,50 @@ Devuelve SOLO JSON sin markdown:
     let intentos = 0
     while (intentos < 3) {
       try {
-        await document.fonts.ready
-        await new Promise(r => setTimeout(r, 1200))
         const element = document.getElementById('render-post')
         if (!element) { intentos++; continue }
+
+        const isHistoria = formato === 'historia'
+        const captureW = isHistoria ? 303 : 540
+        const captureH = isHistoria ? 538 : 540
+        const finalW   = 1080
+        const finalH   = isHistoria ? 1920 : 1080
+
+        // Fuerza dimensiones exactas antes de capturar
+        element.style.width    = `${captureW}px`
+        element.style.height   = `${captureH}px`
+        element.style.position = 'fixed'
+        element.style.left     = '-9999px'
+        element.style.top      = '0'
+        element.style.overflow = 'hidden'
+
+        await document.fonts.ready
+        await new Promise(r => setTimeout(r, 1200))
+
         const canvas = await html2canvas(element, {
           scale: 2,
           useCORS: true,
           allowTaint: true,
           backgroundColor: null,
           logging: false,
-          width: element.offsetWidth,
-          height: element.offsetHeight,
-          windowWidth: element.offsetWidth,
-          windowHeight: element.offsetHeight,
-          onclone: (doc) => {
-            const el = doc.getElementById('render-post')
-            if (el) {
-              el.style.position = 'relative'
-              el.style.left = '0'
-            }
-          },
+          width: captureW,
+          height: captureH,
+          windowWidth: captureW,
+          windowHeight: captureH,
+          x: 0,
+          y: 0,
         })
+
+        // Escala al tamaño final exacto
+        const finalCanvas = document.createElement('canvas')
+        finalCanvas.width  = finalW
+        finalCanvas.height = finalH
+        const ctx = finalCanvas.getContext('2d')
+        if (ctx) ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, finalW, finalH)
+
         const link = document.createElement('a')
-        link.download = `marketing_${formato}_${Date.now()}.png`
-        link.href = canvas.toDataURL('image/png')
+        link.download = `khepria-${formato}-${Date.now()}.png`
+        link.href = finalCanvas.toDataURL('image/png')
         link.click()
         break
       } catch {
