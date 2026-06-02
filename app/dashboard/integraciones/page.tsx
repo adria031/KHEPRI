@@ -45,7 +45,7 @@ async function buildQR(url: string, color: string, logoUrl?: string | null): Pro
 }
 
 const WEBHOOK_URL   = 'https://khepria.app/api/whatsapp/webhook'
-const VERIFY_TOKEN  = 'khepria_webhook_2026'
+const VERIFY_TOKEN  = process.env.NEXT_PUBLIC_META_VERIFY_TOKEN ?? 'khepria_webhook_2026'
 
 export default function Integraciones() {
   const [negocio,       setNegocio]       = useState<NegMin | null>(null)

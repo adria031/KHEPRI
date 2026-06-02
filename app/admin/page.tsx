@@ -13,7 +13,7 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts'
 
-const ADMIN_EMAIL = 'adria.gaitan.sola@gmail.com'
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'adria.gaitan.sola@gmail.com'
 const PRECIOS: Record<string, number> = { starter: 9.99, basico: 29.99, pro: 59.99, plus: 99.99, agencia: 99.99, beta: 0 }
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
