@@ -105,6 +105,7 @@ export default function Reservar() {
   const [error, setError] = useState('')
   const [horasOcupadas, setHorasOcupadas] = useState<Set<string>>(new Set())
   const [cargandoSlots, setCargandoSlots] = useState(false)
+  const [bloqueosDia, setBloqueosDia] = useState<{ hora_inicio: string | null; hora_fin: string | null; dia_completo: boolean }[]>([])
 
   // Lista de espera
   const [listaEsperaMode, setListaEsperaMode] = useState(false)
@@ -182,7 +183,7 @@ export default function Reservar() {
     })
   }, [id])
 
-  // Cargar horas ocupadas cuando llegamos al paso de hora
+  // Cargar horas ocupadas y bloqueos cuando llegamos al paso de hora
   useEffect(() => {
     if (paso !== 3 || !fecha || serviciosSeleccionados.length === 0 || !id) return
     setCargandoSlots(true)
@@ -193,8 +194,10 @@ export default function Reservar() {
       .eq('fecha', fecha)
       .neq('estado', 'cancelada')
     if (trabajador?.id) query = query.eq('trabajador_id', trabajador.id)
-    query.then(({ data }) => {
-      // Count reservations per slot; mark as occupied when count >= maxSimul
+    const bloqueosQuery = trabajador?.id
+      ? supabase.from('bloqueos_trabajador').select('hora_inicio, hora_fin, dia_completo').eq('trabajador_id', trabajador.id).eq('fecha', fecha)
+      : Promise.resolve({ data: [] })
+    Promise.all([query, bloqueosQuery]).then(([{ data }, { data: bloqs }]) => {
       const counts: Record<string, number> = {}
       for (const r of data || []) {
         const h = r.hora.slice(0, 5)
@@ -203,13 +206,16 @@ export default function Reservar() {
       const { maxSimul } = negocioAgenda
       const ocupados = new Set(Object.entries(counts).filter(([, n]) => n >= maxSimul).map(([h]) => h))
       setHorasOcupadas(ocupados)
+      setBloqueosDia((bloqs ?? []) as { hora_inicio: string | null; hora_fin: string | null; dia_completo: boolean }[])
       setCargandoSlots(false)
     })
   }, [paso, fecha, serviciosSeleccionados, trabajador, id, negocioAgenda])
 
-  // Generar slots para la fecha y duración total seleccionada
+  // Generar slots para la fecha y duración total seleccionada (respeta bloqueos_trabajador)
   const slots = useCallback((): string[] => {
     if (!fecha || serviciosSeleccionados.length === 0) return []
+    // Si el día está bloqueado completamente, no hay slots
+    if (bloqueosDia.some(b => b.dia_completo)) return []
     const [y, m, d] = fecha.split('-').map(Number)
     const diaNombre = diasNombre[new Date(y, m-1, d).getDay()]
     const horario = horarios.find(h => h.dia === diaNombre)
@@ -221,9 +227,21 @@ export default function Reservar() {
     return [...s1, ...s2].filter(slot => {
       const [sh, sm] = slot.split(':').map(Number)
       const slotTime = new Date(y, m - 1, d, sh, sm).getTime()
-      return slotTime >= ahora + anteMin * 60 * 1000
+      if (slotTime < ahora + anteMin * 60 * 1000) return false
+      // Filtrar slots que solapan con bloqueos parciales del trabajador
+      const slotStart = sh * 60 + sm
+      const slotEnd = slotStart + duracionTotal
+      const bloqueado = bloqueosDia.some(b => {
+        if (!b.hora_inicio || !b.hora_fin) return false
+        const [bh, bm] = b.hora_inicio.slice(0, 5).split(':').map(Number)
+        const [eh, em] = b.hora_fin.slice(0, 5).split(':').map(Number)
+        const bStart = bh * 60 + bm
+        const bEnd = eh * 60 + em
+        return slotStart < bEnd && slotEnd > bStart
+      })
+      return !bloqueado
     })
-  }, [fecha, serviciosSeleccionados, duracionTotal, horarios, negocioAgenda])
+  }, [fecha, serviciosSeleccionados, duracionTotal, horarios, negocioAgenda, bloqueosDia])
 
   function diaDisponible(y: number, m: number, d: number): boolean {
     const f = new Date(y, m, d)
