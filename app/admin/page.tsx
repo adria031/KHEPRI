@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
 const ADMIN_EMAIL = 'adria.gaitan.sola@gmail.com'
-const PRECIO_PLAN: Record<string, number> = { basico: 29, pro: 59, agencia: 99 }
+const PRECIO_PLAN: Record<string, number> = { basico: 29, pro: 59, agencia: 99, beta: 0 }
 const COSTE_GEMINI_POR_MSG = 0.00012
 // Costes plataforma mensuales estimados (EUR)
 const COSTE_VERCEL_MES = 20
@@ -25,6 +25,12 @@ type Negocio = {
   visible: boolean | null
 }
 
+type NegocioProfile = {
+  email?: string
+  creditos_totales?: number
+  creditos_usados?: number
+}
+
 type Cliente = {
   id: string
   nombre: string
@@ -34,15 +40,19 @@ type Cliente = {
   user_id?: string
 }
 
-type TabActiva = 'overview' | 'negocios' | 'clientes' | 'fiscal'
+type TabActiva = 'overview' | 'negocios' | 'clientes' | 'fiscal' | 'invitar'
 
 export default function Admin() {
   const router = useRouter()
   const [cargando, setCargando] = useState(true)
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [profilesMap, setProfilesMap] = useState<Record<string, NegocioProfile>>({})
   const [msgsPorNegocio, setMsgsPorNegocio] = useState<Record<string, number>>({})
   const [reservasPorCliente, setReservasPorCliente] = useState<Record<string, number>>({})
+  const [totalReservas, setTotalReservas] = useState(0)
+  const [totalUsuarios, setTotalUsuarios] = useState(0)
+  const [negociosActivos7d, setNegociosActivos7d] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [tabActiva, setTabActiva] = useState<TabActiva>('overview')
   const [busqNeg, setBusqNeg] = useState('')
@@ -59,6 +69,10 @@ export default function Admin() {
   const [diasGratisModal, setDiasGratisModal] = useState<{ id: string; nombre: string } | null>(null)
   const [diasGratisInput, setDiasGratisInput] = useState('')
   const [guardandoDias, setGuardandoDias] = useState(false)
+  // Invitar empresa
+  const [invitarEmail, setInvitarEmail] = useState('')
+  const [invitando, setInvitando] = useState(false)
+  const [inviteMsg, setInviteMsg] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
   // Calculadora fiscal
   const [costeVercel, setCosteVercel] = useState(COSTE_VERCEL_MES)
   const [costeSupabase, setCosteSupabase] = useState(COSTE_SUPABASE_MES)
@@ -84,6 +98,24 @@ export default function Admin() {
         .from('negocios')
         .select('id, nombre, tipo, plan, ciudad, created_at, suspendido, user_id, visible')
         .order('created_at', { ascending: false })
+
+      // Fetch profiles for negocios (email, créditos)
+      if (negs && negs.length > 0) {
+        const userIds = negs.map((n: any) => n.user_id).filter(Boolean)
+        if (userIds.length > 0) {
+          const { data: profsData } = await supabase
+            .from('profiles')
+            .select('id, email, creditos_totales, creditos_usados')
+            .in('id', userIds)
+          if (profsData) {
+            const pMap: Record<string, NegocioProfile> = {}
+            profsData.forEach((p: any) => {
+              pMap[p.id] = { email: p.email, creditos_totales: p.creditos_totales, creditos_usados: p.creditos_usados }
+            })
+            setProfilesMap(pMap)
+          }
+        }
+      }
 
       const { data: clis } = await supabase
         .from('clientes')
@@ -112,11 +144,22 @@ export default function Admin() {
       const msgsMap: Record<string, number> = {}
       const resCliMap: Record<string, number> = {}
       if (reservas) {
+        const hace7d = Date.now() - 7 * 24 * 3600 * 1000
+        const negIds7d = new Set<string>()
         reservas.forEach((r: any) => {
           msgsMap[r.negocio_id] = (msgsMap[r.negocio_id] || 0) + 3
           if (r.cliente_id) resCliMap[r.cliente_id] = (resCliMap[r.cliente_id] || 0) + 1
+          if (new Date(r.created_at).getTime() >= hace7d) negIds7d.add(r.negocio_id)
         })
+        setTotalReservas(reservas.length)
+        setNegociosActivos7d(negIds7d.size)
       }
+
+      // Total usuarios (todos los profiles)
+      const { count: usersCount } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+      setTotalUsuarios(usersCount || 0)
 
       setNegocios((negs as Negocio[]) || [])
       setClientes(clientesConEmail)
@@ -139,6 +182,12 @@ export default function Admin() {
   async function cambiarPlan(negId: string, nuevoPlan: string) {
     setCambiandoPlan(negId)
     await supabase.from('negocios').update({ plan: nuevoPlan }).eq('id', negId)
+    const neg = negocios.find(n => n.id === negId)
+    if (neg?.user_id) {
+      const profileUpdates: Record<string, unknown> = { plan: nuevoPlan }
+      if (nuevoPlan === 'beta') profileUpdates.creditos_totales = 2000
+      await supabase.from('profiles').update(profileUpdates).eq('id', neg.user_id)
+    }
     setNegocios(prev => prev.map(n => n.id === negId ? { ...n, plan: nuevoPlan } : n))
     setCambiandoPlan(null)
     setPlanModal(null)
@@ -174,10 +223,34 @@ export default function Admin() {
     if (error) alert('Error al guardar: ' + error.message)
   }
 
+  async function invitarEmpresa() {
+    if (!invitarEmail.trim()) return
+    setInvitando(true)
+    setInviteMsg(null)
+    try {
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: invitarEmail.trim() }),
+      })
+      if (res.ok) {
+        setInviteMsg({ tipo: 'ok', texto: `✓ Invitación enviada a ${invitarEmail.trim()}` })
+        setInvitarEmail('')
+      } else {
+        const data = await res.json()
+        setInviteMsg({ tipo: 'error', texto: data.error || 'Error al enviar' })
+      }
+    } catch (e: unknown) {
+      setInviteMsg({ tipo: 'error', texto: (e as Error).message })
+    } finally {
+      setInvitando(false)
+    }
+  }
+
   // ── Stats ──
   const totalNegocios = negocios.length
   const totalClientes = clientes.length
-  const porPlan = { basico: 0, pro: 0, agencia: 0 }
+  const porPlan = { basico: 0, pro: 0, agencia: 0, beta: 0 }
   negocios.forEach(n => { if (n.plan in porPlan) porPlan[n.plan as keyof typeof porPlan]++ })
   const ingresosMes = Object.entries(porPlan).reduce((s, [p, c]) => s + (PRECIO_PLAN[p] || 0) * c, 0)
   const totalMsgs = Object.values(msgsPorNegocio).reduce((s, v) => s + v, 0)
@@ -199,7 +272,11 @@ export default function Admin() {
 
   const negociosFiltrados = negocios.filter(n => {
     const matchPlan = filtroPlan === 'todos' || n.plan === filtroPlan
-    const matchBusq = !busqNeg || n.nombre.toLowerCase().includes(busqNeg.toLowerCase()) || n.ciudad?.toLowerCase().includes(busqNeg.toLowerCase())
+    const email = profilesMap[n.user_id]?.email || ''
+    const matchBusq = !busqNeg ||
+      n.nombre.toLowerCase().includes(busqNeg.toLowerCase()) ||
+      n.ciudad?.toLowerCase().includes(busqNeg.toLowerCase()) ||
+      email.toLowerCase().includes(busqNeg.toLowerCase())
     return matchPlan && matchBusq
   })
 
@@ -228,7 +305,6 @@ export default function Admin() {
     const trimestre = Math.ceil((new Date().getMonth() + 1) / 3)
     const year = new Date().getFullYear()
 
-    // Ingresos por negocio
     const rows = [
       ['Kit para Gestor — Khepria', `Generado: ${hoy}`],
       [],
@@ -251,16 +327,16 @@ export default function Admin() {
       ['A pagar Hacienda este trimestre', ivaTrimestral.toFixed(2)],
       [],
       ['== NEGOCIOS =='],
-      ['Nombre', 'Plan', 'Ciudad', 'Precio/mes', 'Suspendido', 'Visible', 'Descuento%'],
+      ['Nombre', 'Email', 'Plan', 'Ciudad', 'Precio/mes', 'Suspendido', 'Visible', 'Descuento%'],
       ...negocios.map(n => [
-        n.nombre, n.plan, n.ciudad || '', PRECIO_PLAN[n.plan] || 0,
-        n.suspendido ? 'Sí' : 'No', n.visible ? 'Sí' : 'No',
+        n.nombre, profilesMap[n.user_id]?.email || '', n.plan, n.ciudad || '',
+        PRECIO_PLAN[n.plan] || 0, n.suspendido ? 'Sí' : 'No', n.visible ? 'Sí' : 'No',
         descuentoNegocio[n.id] || 0,
       ]),
     ]
 
     const csv = rows.map(r => r.join(';')).join('\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -279,6 +355,7 @@ export default function Admin() {
       pro:     { bg: 'rgba(212,197,249,0.25)', color: '#6B4FD8', label: 'Pro' },
       agencia: { bg: 'rgba(184,237,212,0.25)', color: '#2E8A5E', label: 'Plus' },
       plus:    { bg: 'rgba(184,237,212,0.25)', color: '#2E8A5E', label: 'Plus' },
+      beta:    { bg: 'rgba(245,158,11,0.18)',  color: '#D97706', label: 'Beta' },
     }
     const c = cfg[plan] || { bg: 'rgba(0,0,0,0.06)', color: '#6B7280', label: plan }
     return <span style={{ background: c.bg, color: c.color, fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{c.label}</span>
@@ -419,13 +496,6 @@ export default function Admin() {
         /* ── Compliance cards ── */
         .compliance-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
         .compliance-card { display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px; border-radius: 14px; border: 1px solid; }
-        .compliance-card.active { background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.3); }
-        .compliance-card.done { background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.2); }
-        .compliance-card.pending { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.06); }
-        .compliance-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
-        .compliance-dot.active { background: #F59E0B; box-shadow: 0 0 8px rgba(245,158,11,0.5); }
-        .compliance-dot.done { background: #4ADE80; }
-        .compliance-dot.pending { background: #334155; }
         .compliance-title { font-size: 14px; font-weight: 700; color: #F1F5F9; margin-bottom: 4px; }
         .compliance-desc { font-size: 12px; color: #94A3B8; line-height: 1.5; }
 
@@ -445,6 +515,14 @@ export default function Admin() {
         .fiscal-edit-input:focus { border-color: #F59E0B; }
         .export-btn { display: flex; align-items: center; gap: 8px; padding: 11px 20px; background: linear-gradient(135deg, rgba(184,216,248,0.15), rgba(212,197,249,0.15)); border: 1px solid rgba(184,216,248,0.25); border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 700; color: #B8D8F8; cursor: pointer; transition: all 0.2s; }
         .export-btn:hover { background: linear-gradient(135deg, rgba(184,216,248,0.25), rgba(212,197,249,0.25)); border-color: rgba(184,216,248,0.4); }
+
+        /* ── Invitar ── */
+        .invite-card { background: #1E293B; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 28px; margin-bottom: 20px; }
+        .invite-input { flex: 1; padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; font-family: inherit; font-size: 14px; color: #F1F5F9; outline: none; }
+        .invite-input::placeholder { color: #475569; }
+        .invite-input:focus { border-color: #F59E0B; }
+        .invite-btn { padding: 10px 22px; border-radius: 10px; border: none; background: linear-gradient(135deg, #F59E0B, #EF4444); color: #0F172A; font-weight: 800; font-size: 14px; cursor: pointer; font-family: inherit; white-space: nowrap; transition: opacity 0.2s; }
+        .invite-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
         /* ── Responsive ── */
         @media (max-width: 1024px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } .planes-row { grid-template-columns: 1fr; } .fiscal-grid { grid-template-columns: 1fr; } }
@@ -468,9 +546,10 @@ export default function Admin() {
             <p className="modal-sub">{planModal.nombre}</p>
             <div className="plan-options">
               {[
-                { id: 'basico', nombre: 'Básico', precio: `${PRECIO_PLAN.basico} €/mes` },
-                { id: 'pro',    nombre: 'Pro',    precio: `${PRECIO_PLAN.pro} €/mes` },
-                { id: 'agencia',nombre: 'Plus',   precio: `${PRECIO_PLAN.agencia} €/mes` },
+                { id: 'basico',  nombre: 'Básico',  precio: `${PRECIO_PLAN.basico} €/mes` },
+                { id: 'pro',     nombre: 'Pro',     precio: `${PRECIO_PLAN.pro} €/mes` },
+                { id: 'agencia', nombre: 'Plus',    precio: `${PRECIO_PLAN.agencia} €/mes` },
+                { id: 'beta',    nombre: 'Beta',    precio: 'Gratis · 2.000 créditos IA' },
               ].map(p => (
                 <div
                   key={p.id}
@@ -479,7 +558,7 @@ export default function Admin() {
                 >
                   <div style={{ flex: 1 }}>
                     <div className="plan-option-name">{p.nombre}</div>
-                    <div className="plan-option-price">{p.precio} estimado</div>
+                    <div className="plan-option-price">{p.precio}</div>
                   </div>
                   {planModal.planActual === p.id && (
                     <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>Actual</span>
@@ -562,6 +641,7 @@ export default function Admin() {
               { id: 'overview', icon: '📊', label: 'Resumen' },
               { id: 'negocios', icon: '🏢', label: `Negocios (${totalNegocios})` },
               { id: 'clientes', icon: '👥', label: `Clientes (${totalClientes})` },
+              { id: 'invitar',  icon: '📩', label: 'Invitar empresa' },
               { id: 'fiscal',   icon: '🧾', label: 'Fiscal y legal' },
             ] as const).map(item => (
               <button
@@ -605,7 +685,8 @@ export default function Admin() {
                   {tabActiva === 'overview' && '📊 Resumen general'}
                   {tabActiva === 'negocios' && '🏢 Gestión de negocios'}
                   {tabActiva === 'clientes' && '👥 Gestión de clientes'}
-                  {tabActiva === 'fiscal' && '🧾 Fiscal y cumplimiento legal'}
+                  {tabActiva === 'invitar'  && '📩 Invitar empresa'}
+                  {tabActiva === 'fiscal'   && '🧾 Fiscal y cumplimiento legal'}
                 </div>
                 <div className="topbar-sub">Panel de administrador · Khepria</div>
               </div>
@@ -633,16 +714,24 @@ export default function Admin() {
                     </div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon" style={{ background: 'rgba(184,216,248,0.12)' }}>👥</div>
-                    <div className="stat-label">Clientes registrados</div>
-                    <div className="stat-val">{totalClientes}</div>
+                    <div className="stat-icon" style={{ background: 'rgba(184,216,248,0.12)' }}>📅</div>
+                    <div className="stat-label">Total reservas</div>
+                    <div className="stat-val">{totalReservas.toLocaleString()}</div>
+                    <div className="stat-sub">
+                      <span>{negociosActivos7d} negocios activos (7d)</span>
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-icon" style={{ background: 'rgba(184,237,212,0.12)' }}>👤</div>
+                    <div className="stat-label">Total usuarios</div>
+                    <div className="stat-val">{totalUsuarios}</div>
                     <div className="stat-sub" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span>usuarios finales</span>
+                      <span>{totalClientes} clientes finales</span>
                       {deltaChip(clisSemana, clisSemAnt)}
                     </div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon" style={{ background: 'rgba(184,237,212,0.12)' }}>💰</div>
+                    <div className="stat-icon" style={{ background: 'rgba(212,197,249,0.12)' }}>💰</div>
                     <div className="stat-label">MRR estimado</div>
                     <div className="stat-val">{ingresosMes.toLocaleString('es-ES')} €</div>
                     <div className="stat-sub">
@@ -650,12 +739,6 @@ export default function Admin() {
                         {mrr < 500 ? 'Fase 1: sin obligaciones' : mrr < 800 ? 'Fase 2: alta Hacienda recomendada' : mrr < 1134 ? 'Fase 3: preparar autónomos' : 'Fase 4: alta autónomos obligatoria'}
                       </span>
                     </div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-icon" style={{ background: 'rgba(212,197,249,0.12)' }}>🤖</div>
-                    <div className="stat-label">Coste API Gemini est.</div>
-                    <div className="stat-val">${costeGeminiTotal}</div>
-                    <div className="stat-sub">{totalMsgs.toLocaleString()} msgs estimados</div>
                   </div>
                 </div>
 
@@ -754,11 +837,11 @@ export default function Admin() {
                   <div className="filters">
                     <input
                       className="search-input"
-                      placeholder="🔍 Buscar nombre o ciudad..."
+                      placeholder="🔍 Nombre, email o ciudad..."
                       value={busqNeg}
                       onChange={e => setBusqNeg(e.target.value)}
                     />
-                    {(['todos', 'basico', 'pro', 'agencia'] as const).map(p => (
+                    {(['todos', 'basico', 'pro', 'agencia', 'beta'] as const).map(p => (
                       <button
                         key={p}
                         className={`filter-btn ${filtroPlan === p ? 'active' : ''}`}
@@ -789,7 +872,8 @@ export default function Admin() {
                         <tr key={n.id} className={n.suspendido ? 'suspended-row' : ''}>
                           <td>
                             <div className="cell-name">{n.nombre}</div>
-                            <div className="cell-sub">{n.tipo?.replace(/^.+? /, '') || '—'} · {fmtFecha(n.created_at)}</div>
+                            <div className="cell-sub">{profilesMap[n.user_id]?.email || n.tipo?.replace(/^.+? /, '') || '—'}</div>
+                            <div className="cell-sub">{fmtFecha(n.created_at)}</div>
                           </td>
                           <td>{planBadge(n.plan)}</td>
                           <td style={{ color: '#94A3B8' }}>{n.ciudad || '—'}</td>
@@ -946,6 +1030,74 @@ export default function Admin() {
                   </table>
                 </div>
               </>
+            )}
+
+            {/* ══ INVITAR EMPRESA ══ */}
+            {tabActiva === 'invitar' && (
+              <div style={{ maxWidth: '580px' }}>
+                <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '24px', lineHeight: '1.7' }}>
+                  Envía una invitación a una empresa para que pruebe Khepria gratis de por vida con el plan Beta (2.000 créditos IA incluidos).
+                  Al confirmar el plan Beta se actualizan los créditos en su perfil automáticamente.
+                </p>
+
+                <div className="invite-card">
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' as const, letterSpacing: '0.5px', marginBottom: '10px' }}>
+                    Email de la empresa
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: inviteMsg ? '14px' : '0' }}>
+                    <input
+                      className="invite-input"
+                      type="email"
+                      placeholder="empresa@ejemplo.com"
+                      value={invitarEmail}
+                      onChange={e => { setInvitarEmail(e.target.value); setInviteMsg(null) }}
+                      onKeyDown={e => e.key === 'Enter' && invitarEmpresa()}
+                    />
+                    <button
+                      className="invite-btn"
+                      onClick={invitarEmpresa}
+                      disabled={invitando || !invitarEmail.trim()}
+                    >
+                      {invitando ? 'Enviando…' : '📩 Invitar'}
+                    </button>
+                  </div>
+
+                  {inviteMsg && (
+                    <div style={{
+                      padding: '10px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: 500,
+                      background: inviteMsg.tipo === 'ok' ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.1)',
+                      border: `1px solid ${inviteMsg.tipo === 'ok' ? 'rgba(74,222,128,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                      color: inviteMsg.tipo === 'ok' ? '#4ADE80' : '#F87171',
+                    }}>
+                      {inviteMsg.texto}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.18)', borderRadius: '14px', padding: '20px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#F59E0B', textTransform: 'uppercase' as const, letterSpacing: '0.6px', marginBottom: '12px' }}>
+                    Plan Beta — lo que recibirá la empresa
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '8px' }}>
+                    {[
+                      'Acceso gratuito de por vida',
+                      '2.000 créditos de IA incluidos',
+                      'Agenda, clientes y reservas ilimitadas',
+                      'Soporte prioritario directo',
+                    ].map(item => (
+                      <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#CBD5E1' }}>
+                        <span style={{ color: '#4ADE80', fontWeight: 800, fontSize: '12px' }}>✓</span>
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '12px', color: '#475569', marginTop: '16px', lineHeight: '1.6' }}>
+                  El plan Beta también puede asignarse manualmente desde la tabla de Negocios → botón <strong style={{ color: '#94A3B8' }}>📋 Plan</strong>.
+                  Al seleccionar Beta se añaden automáticamente 2.000 créditos al perfil del negocio.
+                </p>
+              </div>
             )}
 
             {/* ══ FISCAL Y LEGAL ══ */}
@@ -1139,7 +1291,7 @@ export default function Admin() {
                 <div className="section-title" style={{ marginBottom: '16px' }}>Kit para gestor</div>
                 <div style={{ background: '#1E293B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '20px', marginBottom: '28px' }}>
                   <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '16px', lineHeight: '1.6' }}>
-                    Exporta un CSV con el resumen mensual de ingresos, costes de plataforma (Vercel, Supabase, Gemini), cálculo de IVA trimestral, y el detalle de todos los negocios. Listo para entregar a tu gestor o asesor fiscal.
+                    Exporta un CSV con el resumen mensual de ingresos, costes de plataforma (Vercel, Supabase, Gemini), cálculo de IVA trimestral, y el detalle de todos los negocios con su email. Listo para entregar a tu gestor o asesor fiscal.
                   </p>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <button className="export-btn" onClick={exportCSV}>
