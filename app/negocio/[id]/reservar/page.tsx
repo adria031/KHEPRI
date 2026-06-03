@@ -375,12 +375,16 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
   async function inscribirEspera() {
     if (!nombre.trim() || !id || serviciosSeleccionados.length === 0 || !fecha) return
     setEnviandoEspera(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    const userId = session?.user?.id ?? null
     await supabase.from('lista_espera').insert({
-      negocio_id: id,
-      servicio_id: serviciosSeleccionados[0].id,
-      cliente_nombre: nombre.trim(),
+      negocio_id:       id,
+      servicio_id:      serviciosSeleccionados[0].id,
+      trabajador_id:    trabajador?.id ?? null,
+      user_id:          userId,
+      cliente_nombre:   nombre.trim(),
       cliente_telefono: telefono.trim() || null,
-      cliente_email: email.trim() || null,
+      cliente_email:    email.trim() || null,
       fecha,
     })
     setEnviandoEspera(false)

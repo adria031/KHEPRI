@@ -32,6 +32,7 @@ type ClienteStat = { total: number; cancelaciones: number; tasa: number }
 
 type EsperaEntry = {
   id: string
+  servicio_id: string | null
   cliente_nombre: string
   cliente_telefono: string | null
   cliente_email: string | null
@@ -125,6 +126,8 @@ export default function Reservas() {
   const [nuevaError, setNuevaError] = useState('')
   // Cancelar con confirmación
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
+  // Asignar hueco desde lista de espera
+  const [esperaAsignarId, setEsperaAsignarId] = useState<string | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -295,7 +298,7 @@ export default function Reservas() {
     setCargandoEspera(true)
     supabase
       .from('lista_espera')
-      .select('id, cliente_nombre, cliente_telefono, cliente_email, fecha, created_at, servicios(nombre)')
+      .select('id, servicio_id, cliente_nombre, cliente_telefono, cliente_email, fecha, created_at, servicios(nombre)')
       .eq('negocio_id', negocio.id)
       .order('fecha', { ascending: true })
       .then(({ data }) => {
@@ -386,6 +389,12 @@ export default function Reservas() {
       // Update month count
       if (estado === 'cancelada') {
         setReservasMes(prev => ({ ...prev, [fecha]: Math.max(0, (prev[fecha] || 1) - 1) }))
+        // Notify first person on waiting list for this date/service
+        fetch('/api/notificar-espera', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reserva_id: id }),
+        }).catch(() => {})
       } else if (estado === 'confirmada') {
         setReservasMes(prev => ({ ...prev, [fecha]: (prev[fecha] || 0) + 1 }))
       }
@@ -406,6 +415,21 @@ export default function Reservas() {
       }
     }
     setActualizando(null)
+  }
+
+  function abrirModalDesdeEspera(e: EsperaEntry) {
+    setFecha(e.fecha)
+    setNuevaForm({
+      servicio_id:   e.servicio_id ?? '',
+      trabajador_id: '',
+      nombre:        e.cliente_nombre,
+      telefono:      e.cliente_telefono ?? '',
+      email:         e.cliente_email ?? '',
+      hora:          '',
+    })
+    setEsperaAsignarId(e.id)
+    setNuevaError('')
+    setModalNueva(true)
   }
 
   async function insertarReserva() {
@@ -439,6 +463,12 @@ export default function Reservas() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reserva_id: nuevaRes.id }),
       }).catch(() => {})
+    }
+    // Remove from waiting list if assigned from there
+    if (esperaAsignarId) {
+      await supabase.from('lista_espera').delete().eq('id', esperaAsignarId)
+      setListaEspera(prev => prev.filter(x => x.id !== esperaAsignarId))
+      setEsperaAsignarId(null)
     }
     setModalNueva(false)
     setNuevaForm({ servicio_id: '', trabajador_id: '', nombre: '', telefono: '', email: '', hora: '' })
@@ -994,15 +1024,23 @@ export default function Reservas() {
                             {e.cliente_email && <span>✉️ {e.cliente_email}</span>}
                           </div>
                         </div>
-                        <button
-                          className="btn-cancelar"
-                          onClick={async () => {
-                            await supabase.from('lista_espera').delete().eq('id', e.id)
-                            setListaEspera(prev => prev.filter(x => x.id !== e.id))
-                          }}
-                        >
-                          Eliminar
-                        </button>
+                        <div style={{display:'flex',gap:'6px',flexShrink:0}}>
+                          <button
+                            className="btn-completar"
+                            onClick={() => abrirModalDesdeEspera(e)}
+                          >
+                            📅 Asignar
+                          </button>
+                          <button
+                            className="btn-cancelar"
+                            onClick={async () => {
+                              await supabase.from('lista_espera').delete().eq('id', e.id)
+                              setListaEspera(prev => prev.filter(x => x.id !== e.id))
+                            }}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1011,11 +1049,11 @@ export default function Reservas() {
             )}
       {/* ── MODAL NUEVA RESERVA ── */}
       {modalNueva && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setModalNueva(false) }}>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setModalNueva(false); setEsperaAsignarId(null) } }}>
           <div className="modal-card">
             <div className="modal-title">
-              <span>+ Nueva reserva</span>
-              <button className="modal-close" onClick={() => setModalNueva(false)}>✕</button>
+              <span>{esperaAsignarId ? '📅 Asignar hueco (espera)' : '+ Nueva reserva'}</span>
+              <button className="modal-close" onClick={() => { setModalNueva(false); setEsperaAsignarId(null) }}>✕</button>
             </div>
             <div className="form-group">
               <label className="form-label">Servicio *</label>
