@@ -123,7 +123,7 @@ async function ejecutar(): Promise<NextResponse> {
   // ── 1. Reservas confirmadas de días anteriores ────────────────────────────
   const { data: pasadas, error: errPasadas } = await sb
     .from('reservas')
-    .select('id, cliente_email, cliente_nombre, fecha, hora, negocio_id, resena_enviada, servicios(nombre, duracion, precio), negocios(nombre), trabajadores(nombre)')
+    .select('id, user_id, cliente_email, cliente_nombre, fecha, hora, negocio_id, precio_total, resena_enviada, servicios(nombre, duracion, precio), negocios(nombre), trabajadores(nombre)')
     .eq('estado', 'confirmada')
     .lt('fecha', hoy)
 
@@ -135,7 +135,7 @@ async function ejecutar(): Promise<NextResponse> {
   // ── 2. Reservas de hoy cuya hora + duración ya pasó ──────────────────────
   const { data: hoyReservas, error: errHoy } = await sb
     .from('reservas')
-    .select('id, cliente_email, cliente_nombre, fecha, hora, negocio_id, resena_enviada, servicios(nombre, duracion, precio), negocios(nombre), trabajadores(nombre)')
+    .select('id, user_id, cliente_email, cliente_nombre, fecha, hora, negocio_id, precio_total, resena_enviada, servicios(nombre, duracion, precio), negocios(nombre), trabajadores(nombre)')
     .eq('estado', 'confirmada')
     .eq('fecha', hoy)
 
@@ -171,8 +171,10 @@ async function ejecutar(): Promise<NextResponse> {
   for (const r of paraCompletar) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const servicio = (Array.isArray(r.servicios) ? r.servicios[0] : r.servicios) as any
-    const precio   = servicio?.precio ?? 0
-    const puntos   = Math.floor(precio)
+    // precio_total for multi-service bookings, fallback to single service price
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const precio = (r as any).precio_total ?? servicio?.precio ?? 0
+    const puntos = Math.floor(precio)
     if (puntos <= 0) continue
 
     await sb.from('reservas').update({ puntos_ganados: puntos }).eq('id', r.id)
@@ -188,6 +190,13 @@ async function ejecutar(): Promise<NextResponse> {
           .from('profiles')
           .update({ puntos: (profile.puntos ?? 0) + puntos })
           .eq('id', profile.id)
+        await sb.from('historial_puntos').insert({
+          user_id:   profile.id,
+          negocio_id: r.negocio_id,
+          reserva_id: r.id,
+          puntos,
+          concepto: `Reserva completada${servicio?.nombre ? ` — ${servicio.nombre}` : ''}`,
+        })
       }
     }
   }

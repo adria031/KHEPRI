@@ -16,6 +16,7 @@ type ReservaRaw = {
   cliente_telefono: string
   cliente_email: string | null
   precio_total: number | null
+  puntos_ganados: number | null
   servicios: { nombre: string; precio: number | null } | null
 }
 
@@ -27,6 +28,7 @@ type ClienteAgrupado = {
   visitas: number
   cancelaciones: number
   gasto_total: number
+  puntos_total: number
   servicio_frecuente: string
   primera_visita: string
   ultima_visita: string
@@ -119,7 +121,8 @@ function agruparClientes(reservas: ReservaRaw[]): ClienteAgrupado[] {
     const cancel   = rs.filter(r => r.estado === 'cancelada')
     const visitas  = noCancel.length
 
-    const gasto_total = noCancel.reduce((sum, r) => sum + (r.precio_total ?? r.servicios?.precio ?? 0), 0)
+    const gasto_total  = noCancel.reduce((sum, r) => sum + (r.precio_total ?? r.servicios?.precio ?? 0), 0)
+    const puntos_total = noCancel.reduce((sum, r) => sum + (r.puntos_ganados ?? 0), 0)
 
     const servicioCount: Record<string, number> = {}
     for (const r of noCancel) {
@@ -168,6 +171,7 @@ function agruparClientes(reservas: ReservaRaw[]): ClienteAgrupado[] {
       visitas,
       cancelaciones:    cancel.length,
       gasto_total,
+      puntos_total,
       servicio_frecuente,
       primera_visita,
       ultima_visita,
@@ -247,7 +251,7 @@ export default function ClientesPage() {
     setCargando(true)
     const [{ data: reservas }, { data: notasData }] = await Promise.all([
       supabase.from('reservas')
-        .select('id, fecha, hora, estado, cliente_nombre, cliente_telefono, cliente_email, precio_total, servicios(nombre, precio)')
+        .select('id, fecha, hora, estado, cliente_nombre, cliente_telefono, cliente_email, precio_total, puntos_ganados, servicios(nombre, precio)')
         .eq('negocio_id', negocioId)
         .order('fecha', { ascending: false }),
       supabase.from('notas_clientes')
@@ -758,6 +762,7 @@ Responde con este JSON exacto:
                   <div className="cli-section-title">Información</div>
                   <div style={{ background:'#F8FAFC', borderRadius:'12px', padding:'4px 16px' }}>
                     {[
+                      ['Puntos de fidelización', c.puntos_total > 0 ? `⭐ ${c.puntos_total} pts` : '—'],
                       ['Servicio más frecuente', c.servicio_frecuente],
                       ['Primera visita', c.primera_visita ? formatFechaCorta(c.primera_visita) : '—'],
                       ['Última visita', c.ultima_visita ? formatFechaLarga(c.ultima_visita) : '—'],
