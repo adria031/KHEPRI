@@ -67,6 +67,9 @@ export default function Analytics() {
   const [periodo, setPeriodo] = useState<Periodo>('30d')
   const [descuentoActivado, setDescuentoActivado] = useState<string[]>([])
   const [activandoDescuento, setActivandoDescuento] = useState<string | null>(null)
+  const [modalDescuento, setModalDescuento] = useState<{ dia: string; diaCorto: string } | null>(null)
+  const [pctDescuentoModal, setPctDescuentoModal] = useState(15)
+  const [guardandoDescuento, setGuardandoDescuento] = useState(false)
 
   // ── Raw data ─────────────────────────────────────────────────────────────
   const [reservas, setReservas] = useState<ReservaRaw[]>([])
@@ -620,6 +623,118 @@ export default function Analytics() {
             </div>
           </div>
 
+          {/* ── Predicciones & Alertas ── */}
+          <div className="an-section">
+            <div className="an-section-title">🤖 Predicciones & Alertas</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+
+              {/* Alerta fiscal urgente */}
+              {(alertaFiscal.urgente || alertaFiscal.aviso) && (
+                <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', background: alertaFiscal.urgente ? '#FEF2F2' : '#FFFBEB', border:`1.5px solid ${alertaFiscal.urgente ? '#FECACA' : '#FDE68A'}`, borderRadius:12 }}>
+                  <span style={{ fontSize:20, flexShrink:0 }}>{alertaFiscal.urgente ? '🚨' : '⚠️'}</span>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:800, color: alertaFiscal.urgente ? '#DC2626' : '#92400E' }}>
+                      {alertaFiscal.urgente
+                        ? `¡Solo ${alertaFiscal.diasHasta} día${alertaFiscal.diasHasta !== 1 ? 's' : ''} para declaración T${alertaFiscal.trimestre}!`
+                        : `${alertaFiscal.diasHasta} días para declaración T${alertaFiscal.trimestre} AEAT`}
+                    </div>
+                    <div style={{ fontSize:12, color:'var(--text2)', marginTop:2 }}>
+                      Vence el {alertaFiscal.deadlineLabel} · {fmtEur(alertaFiscal.ingTrimestre)} € registrados este trimestre
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Predicción demanda */}
+              {diaPunta && (
+                <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', background:'rgba(184,216,248,0.2)', border:'1px solid rgba(184,216,248,0.6)', borderRadius:12 }}>
+                  <span style={{ fontSize:20, flexShrink:0 }}>📅</span>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#111827' }}>
+                      Tu día más ocupado es el <strong>{diaPunta.dia}</strong> — considera añadir más disponibilidad
+                    </div>
+                    <div style={{ fontSize:12, color:'var(--text2)', marginTop:2 }}>
+                      {diaPunta.count} reservas en el periodo{horaPunta ? ` · Hora punta: ${horaPunta[0]} (${horaPunta[1]} reservas)` : ''}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Forecasting */}
+              {forecasting.keys.length > 0 && (
+                <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', background:'rgba(184,237,212,0.2)', border:'1px solid rgba(184,237,212,0.6)', borderRadius:12 }}>
+                  <span style={{ fontSize:20, flexShrink:0 }}>📈</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:5 }}>
+                      Previsión próximo mes (media {forecasting.keys.length} meses)
+                    </div>
+                    <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
+                      <span style={{ fontSize:13, color:'var(--text2)' }}>
+                        Reservas: <strong style={{ color:'#111827' }}>{forecasting.mediaReservas}</strong>
+                        {forecastVsMes.diffRes !== 0 && (
+                          <span style={{ marginLeft:6, fontWeight:700, color: forecastVsMes.diffRes >= 0 ? K.greenDark : '#DC2626' }}>
+                            {forecastVsMes.diffRes >= 0 ? '▲' : '▼'} {Math.abs(forecastVsMes.diffRes)} vs hoy
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ fontSize:13, color:'var(--text2)' }}>
+                        Ingresos: <strong style={{ color:'#111827' }}>{fmtEur(forecasting.mediaIngresos)} €</strong>
+                        {forecastVsMes.diffIng !== 0 && (
+                          <span style={{ marginLeft:6, fontWeight:700, color: forecastVsMes.diffIng >= 0 ? K.greenDark : '#DC2626' }}>
+                            {forecastVsMes.diffIng >= 0 ? '▲' : '▼'} {fmtEur(Math.abs(forecastVsMes.diffIng))} € vs hoy
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* No-shows de hoy */}
+              {reservasHoyConRiesgo.filter(r => r.riesgo === 'alto').length > 0 && (
+                <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', background:'#FEF2F2', border:'1.5px solid #FECACA', borderRadius:12 }}>
+                  <span style={{ fontSize:20, flexShrink:0 }}>🔴</span>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#DC2626' }}>
+                      {reservasHoyConRiesgo.filter(r => r.riesgo === 'alto').length} reserva{reservasHoyConRiesgo.filter(r => r.riesgo === 'alto').length > 1 ? 's' : ''} de hoy con alto riesgo de no-show ({'>'}50% cancelaciones históricas)
+                    </div>
+                    <div style={{ fontSize:12, color:'#991B1B', marginTop:2 }}>
+                      {reservasHoyConRiesgo.filter(r => r.riesgo === 'alto').map(r => r.cliente_nombre).join(', ')}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Días flojos */}
+              {diasFlojos.length > 0 && (
+                <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', background:'rgba(212,197,249,0.15)', border:'1px solid rgba(212,197,249,0.6)', borderRadius:12 }}>
+                  <span style={{ fontSize:20, flexShrink:0 }}>📉</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:6 }}>
+                      Días con poca demanda — un descuento puede llenar los huecos
+                    </div>
+                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                      {diasFlojos.map((d, i) => (
+                        <button key={i}
+                          onClick={() => setModalDescuento({ dia: d.dia, diaCorto: d.diaCorto })}
+                          style={{ padding:'5px 12px', background:'rgba(212,197,249,0.4)', border:'1px solid rgba(109,40,217,0.25)', borderRadius:100, fontSize:12, fontWeight:700, color:K.lilaDark, cursor:'pointer', fontFamily:'inherit' }}>
+                          {d.dia} ({d.pct}%) → Activar descuento
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sin alertas */}
+              {!diaPunta && forecasting.keys.length === 0 && diasFlojos.length === 0 && !alertaFiscal.urgente && !alertaFiscal.aviso && reservasHoyConRiesgo.filter(r => r.riesgo === 'alto').length === 0 && (
+                <div style={{ padding:'20px', textAlign:'center', color:'var(--muted)', fontSize:13, background:'white', border:'1px solid var(--border)', borderRadius:12 }}>
+                  Sin alertas activas · Las predicciones aparecerán con más datos históricos
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* ── Reservas de hoy — predicción no-show ── */}
           {reservasHoyConRiesgo.length > 0 && (
             <div className="an-section">
@@ -1051,18 +1166,8 @@ export default function Analytics() {
                           💡 Los {d.dia.toLowerCase()}s tienes poca demanda — considera un descuento
                         </div>
                         <button
-                          disabled={activado || activando}
-                          onClick={async () => {
-                            setActivandoDescuento(d.dia)
-                            try {
-                              await supabase.from('descuentos').upsert({
-                                negocio_id: negocioId, dia_semana: d.diaCorto.toLowerCase(),
-                                porcentaje: 15, activo: true, nombre: `Descuento ${d.dia}`,
-                              })
-                            } catch { /* tabla descuentos no existe aún — ignorar */ }
-                            setDescuentoActivado(prev => [...prev, d.dia])
-                            setActivandoDescuento(null)
-                          }}
+                          disabled={activado}
+                          onClick={() => { if (!activado) setModalDescuento({ dia: d.dia, diaCorto: d.diaCorto }) }}
                           style={{
                             width:'100%', padding:'8px 12px', border:'none', borderRadius:9,
                             fontFamily:'inherit', fontSize:12, fontWeight:700, cursor: activado ? 'default' : 'pointer',
@@ -1071,7 +1176,7 @@ export default function Analytics() {
                             transition:'all 0.15s',
                           }}
                         >
-                          {activado ? '✅ Descuento activado' : activando ? '⏳ Activando...' : '🏷️ Activar descuento 15%'}
+                          {activado ? '✅ Descuento activado' : '🏷️ Activar descuento'}
                         </button>
                       </div>
                     )
@@ -1159,6 +1264,69 @@ export default function Analytics() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Modal descuento día flojo ── */}
+      {modalDescuento && (
+        <div
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:300, display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+          onClick={() => setModalDescuento(null)}
+        >
+          <div
+            style={{ background:'white', borderRadius:'24px 24px 0 0', padding:'24px 20px 40px', width:'100%', maxWidth:480 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize:18, fontWeight:800, color:'#111827', marginBottom:4 }}>🏷️ Activar descuento</div>
+            <div style={{ fontSize:13, color:'var(--text2)', marginBottom:20, lineHeight:1.6 }}>
+              Crea un descuento para los <strong>{modalDescuento.dia.toLowerCase()}s</strong> — ese día tiene menos del 50% de ocupación histórica.
+            </div>
+            <div style={{ marginBottom:18 }}>
+              <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginBottom:8 }}>Porcentaje de descuento</div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {[10, 15, 20, 25, 30].map(p => (
+                  <button key={p} onClick={() => setPctDescuentoModal(p)} style={{
+                    padding:'8px 16px', border:`1.5px solid ${pctDescuentoModal === p ? '#111827' : 'rgba(0,0,0,0.12)'}`,
+                    borderRadius:10, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer',
+                    background: pctDescuentoModal === p ? '#111827' : 'white',
+                    color: pctDescuentoModal === p ? 'white' : '#374151', transition:'all 0.15s',
+                  }}>
+                    {p}%
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ padding:'12px 14px', background:'rgba(184,237,212,0.2)', border:'1px solid rgba(184,237,212,0.5)', borderRadius:12, marginBottom:20, fontSize:13, color:'var(--text2)', lineHeight:1.6 }}>
+              Se aplicará un <strong>{pctDescuentoModal}% de descuento</strong> en todos los servicios los <strong>{modalDescuento.dia.toLowerCase()}s</strong>.
+            </div>
+            <button
+              disabled={guardandoDescuento}
+              onClick={async () => {
+                setGuardandoDescuento(true)
+                try {
+                  await supabase.from('descuentos').upsert({
+                    negocio_id: negocioId,
+                    dia_semana: modalDescuento.diaCorto.toLowerCase(),
+                    porcentaje: pctDescuentoModal,
+                    activo: true,
+                    nombre: `Descuento ${modalDescuento.dia}`,
+                  })
+                } catch { /* tabla descuentos opcional */ }
+                setDescuentoActivado(prev => [...prev, modalDescuento.dia])
+                setGuardandoDescuento(false)
+                setModalDescuento(null)
+              }}
+              style={{ width:'100%', padding:'13px', background:'#111827', color:'white', border:'none', borderRadius:12, fontFamily:'inherit', fontSize:15, fontWeight:700, cursor: guardandoDescuento ? 'not-allowed' : 'pointer', opacity: guardandoDescuento ? 0.6 : 1, marginBottom:10, transition:'opacity 0.15s' }}
+            >
+              {guardandoDescuento ? 'Activando...' : `✅ Activar ${pctDescuentoModal}% los ${modalDescuento.dia.toLowerCase()}s`}
+            </button>
+            <button
+              onClick={() => setModalDescuento(null)}
+              style={{ width:'100%', padding:'13px', background:'#F3F4F6', color:'#374151', border:'none', borderRadius:12, fontFamily:'inherit', fontSize:15, fontWeight:700, cursor:'pointer' }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
     </DashboardShell>
   )
