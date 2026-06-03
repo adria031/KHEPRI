@@ -95,6 +95,11 @@ export default function Facturacion() {
   const [datosTrim, setDatosTrim] = useState<DatosTrim | null>(null)
   const [cargandoTrim, setCargandoTrim] = useState(false)
 
+  // Datos fiscales negocio
+  const [negocioNif, setNegocioNif] = useState('')
+  const [negocioFormaJuridica, setNegocioFormaJuridica] = useState('autonomo')
+  const [negocioRegimenIva, setNegocioRegimenIva] = useState('general')
+
   // Modales
   const [modal303, setModal303] = useState(false)
   const [modal130, setModal130] = useState(false)
@@ -246,10 +251,13 @@ export default function Facturacion() {
       const { activo, todos } = await getNegocioActivo(session.user.id, session.access_token)
       if (!activo) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todos); setNegocio(activo)
-      const { data: neg } = await db.from('negocios').select('id,nombre,direccion,ciudad,codigo_postal,telefono').eq('id', activo.id).single()
+      const { data: neg } = await db.from('negocios').select('id,nombre,direccion,ciudad,codigo_postal,telefono,nif,forma_juridica,regimen_iva').eq('id', activo.id).single()
       if (!neg) { window.location.href = '/onboarding'; return }
       setNegocioId(neg.id); setNegocioNombre(neg.nombre)
       setNegocioDatos({ direccion: neg.direccion, ciudad: neg.ciudad, codigo_postal: neg.codigo_postal, telefono: neg.telefono })
+      setNegocioNif(neg.nif || '')
+      setNegocioFormaJuridica(neg.forma_juridica || 'autonomo')
+      setNegocioRegimenIva(neg.regimen_iva || 'general')
       const { count: rc } = await db.from('resenas').select('*', { count:'exact', head:true }).eq('negocio_id', neg.id).not('texto', 'is', null)
       setResenasCount(rc || 0)
       await Promise.all([
@@ -280,6 +288,23 @@ export default function Facturacion() {
 
   const trimestreLabel = `T${trim} ${trimAno}`
   const mesesTrimestre = [0,1,2].map(i => MESES[(trim - 1) * 3 + i]).join(', ')
+
+  // Aviso fiscal: días hasta próximo vencimiento trimestral
+  const avisoDias = (() => {
+    const h = new Date()
+    const a = h.getFullYear()
+    const fs = [
+      { d: new Date(a,3,20), t:'T1', label:'20 de abril' },
+      { d: new Date(a,6,20), t:'T2', label:'20 de julio' },
+      { d: new Date(a,9,20), t:'T3', label:'20 de octubre' },
+      { d: new Date(a+1,0,30), t:'T4', label:'30 de enero' },
+    ]
+    for (const f of fs) {
+      const dias = Math.ceil((f.d.getTime()-h.getTime())/86400000)
+      if (dias>=0&&dias<=15) return { dias, t:f.t, label:f.label }
+    }
+    return null
+  })()
 
   // ── PDF generators ───────────────────────────────────────────────────────────
 
@@ -460,7 +485,7 @@ export default function Facturacion() {
     doc.text(negocioNombre, mL+4, y+15)
     doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(75,85,99)
     doc.text(`Período: ${trimestreLabel} (${mesesTrimestre})`, mR-4, y+9, {align:'right'})
-    doc.text('NIF: ________________  ·  Régimen: General', mR-4, y+17, {align:'right'})
+    doc.text(`NIF: ${negocioNif||'________________'}  ·  Régimen: ${negocioRegimenIva==='general'?'General':'Simplificado'}`, mR-4, y+17, {align:'right'})
     y += 30
 
     const seccion = (titulo: string) => {
@@ -555,7 +580,7 @@ export default function Facturacion() {
     doc.text(negocioNombre, mL+4, y+15)
     doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(75,85,99)
     doc.text(`Período: ${trimestreLabel} (${mesesTrimestre})`, mR-4, y+9, {align:'right'})
-    doc.text('NIF: ________________  ·  Estimación directa', mR-4, y+17, {align:'right'})
+    doc.text(`NIF: ${negocioNif||'________________'}  ·  Estimación directa`, mR-4, y+17, {align:'right'})
     y += 30
 
     const seccion = (t: string) => {
@@ -641,7 +666,7 @@ export default function Facturacion() {
     doc.text(negocioNombre, mL+4, y+15)
     doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(75,85,99)
     doc.text(`Período: ${trimestreLabel} (${mesesTrimestre})`, mR-4, y+9, {align:'right'})
-    doc.text('NIF: ________________', mR-4, y+17, {align:'right'})
+    doc.text(`NIF: ${negocioNif||'________________'}`, mR-4, y+17, {align:'right'})
     y += 30
 
     doc.setFillColor(29,78,216); doc.rect(mL,y,mR-mL,7,'F')
@@ -1363,6 +1388,31 @@ RESEÑAS:\n${texto}`
       <div className="section-block">
         <div className="section-title">Modelos fiscales AEAT 2026</div>
         <div className="section-sub">Declaraciones trimestrales con PDF oficial descargable</div>
+
+        {/* Aviso trimestral */}
+        {avisoDias && (
+          <div style={{
+            background: avisoDias.dias < 3 ? '#FEE2E2' : '#FEF3C7',
+            border: `1px solid ${avisoDias.dias < 3 ? '#FCA5A5' : '#FDE68A'}`,
+            borderRadius:'12px', padding:'12px 16px', marginBottom:'16px',
+            display:'flex', alignItems:'center', gap:'12px'
+          }}>
+            <span style={{fontSize:'22px', flexShrink:0}}>{avisoDias.dias < 3 ? '🚨' : '⏰'}</span>
+            <div>
+              <div style={{fontSize:'14px', fontWeight:800, color: avisoDias.dias < 3 ? '#991B1B' : '#92400E', marginBottom:'3px'}}>
+                {avisoDias.dias === 0
+                  ? `¡Vence HOY! — ${avisoDias.t} presenta hoy (${avisoDias.label})`
+                  : avisoDias.dias < 3
+                    ? `¡Quedan ${avisoDias.dias} días! — ${avisoDias.t} vence el ${avisoDias.label}`
+                    : `⚠️ Quedan ${avisoDias.dias} días — ${avisoDias.t} vence el ${avisoDias.label}`
+                }
+              </div>
+              <div style={{fontSize:'12px', color: avisoDias.dias < 3 ? '#B91C1C' : '#78350F', lineHeight:1.5}}>
+                Presenta los modelos 303 y 130{datosTrim?.retenciones ? ' y 111' : ''} en la Sede Electrónica de la AEAT antes del {avisoDias.label}.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Selector trimestre */}
         <div className="trim-selector">

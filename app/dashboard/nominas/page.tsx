@@ -14,6 +14,25 @@ type Nomina = {
   salario_bruto: number; irpf: number; ss_trabajador: number; ss_empresa: number
   salario_neto: number; horas_semana?: number
 }
+type ContratoForm = {
+  tipo: 'indefinido' | 'temporal' | 'parcial' | 'formacion'
+  fecha_inicio: string; jornada_horas: string; salario_anual: string
+  duracion_meses: string; puesto: string; dni: string; direccion: string
+}
+
+const TIPO_CONTRATO = {
+  indefinido: 'Contrato indefinido ordinario',
+  temporal: 'Contrato de duración determinada',
+  parcial: 'Contrato a tiempo parcial indefinido',
+  formacion: 'Contrato de formación en alternancia',
+}
+
+const CONTRATO_FORM_VACIO: ContratoForm = {
+  tipo: 'indefinido', fecha_inicio: new Date().toISOString().slice(0,10),
+  jornada_horas: '40', salario_anual: '', duracion_meses: '',
+  puesto: '', dni: '', direccion: '',
+}
+
 type NominaForm = {
   trabajador_id: string
   salario_mensual: string
@@ -75,6 +94,10 @@ export default function Nominas() {
   const [chatInput, setChatInput] = useState('')
   const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([])
   const [chatLoading, setChatLoading] = useState(false)
+
+  const [contratoModal, setContratoModal] = useState(false)
+  const [contratoTrabId, setContratoTrabId] = useState('')
+  const [contratoForm, setContratoForm] = useState<ContratoForm>(CONTRATO_FORM_VACIO)
 
   useEffect(() => {
     ;(async () => {
@@ -376,6 +399,144 @@ Pregunta: ${msg}`
     setChatLoading(false)
   }
 
+  function abrirContratoModal(trabId: string) {
+    const t = trabajadores.find(x => x.id === trabId)
+    setContratoTrabId(trabId)
+    setContratoForm({
+      ...CONTRATO_FORM_VACIO,
+      puesto: t?.especialidad || '',
+      salario_anual: t?.salario_anual ? String(t.salario_anual) : '',
+    })
+    setContratoModal(true)
+  }
+
+  async function generarContratoPDF() {
+    const trab = trabajadores.find(x => x.id === contratoTrabId)
+    if (!trab) return
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit:'mm', format:'a4' })
+    const W=210, mL=14, mR=196
+    let y=0
+
+    const tipoLabel = TIPO_CONTRATO[contratoForm.tipo]
+    const salAnual = parseFloat(contratoForm.salario_anual)||0
+    const salMensual = salAnual>0 ? (salAnual/12).toFixed(2) : '—'
+    const fechaInicioLabel = contratoForm.fecha_inicio
+      ? new Date(contratoForm.fecha_inicio+'T12:00').toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})
+      : '—'
+
+    // ── CABECERA ──
+    doc.setFillColor(17,24,39); doc.rect(0,0,W,28,'F')
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(14)
+    doc.text('CONTRATO DE TRABAJO', mL, 13)
+    doc.setFontSize(8); doc.setFont('helvetica','normal')
+    doc.text('SEPE — Servicio Público de Empleo Estatal', mL, 21)
+    doc.setFontSize(9); doc.setFont('helvetica','bold')
+    doc.text(tipoLabel.toUpperCase(), mR, 12, {align:'right'})
+    doc.setFontSize(8); doc.setFont('helvetica','normal')
+    doc.text(`Art. 15 ET — ${new Date().getFullYear()}`, mR, 20, {align:'right'})
+    y = 36
+
+    // ── PARTES ──
+    const seccion = (t: string) => {
+      doc.setFillColor(29,78,216); doc.rect(mL,y,mR-mL,7,'F')
+      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8)
+      doc.text(t, mL+3, y+5); y+=7
+    }
+    const fila = (l: string, v: string, alt=false) => {
+      doc.setFillColor(alt?250:255,alt?250:255,alt?252:255); doc.rect(mL,y,mR-mL,8,'F')
+      doc.setDrawColor(229,231,235); doc.line(mL,y+8,mR,y+8)
+      doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(8.5)
+      doc.text(l, mL+3, y+5.5)
+      doc.setFont('helvetica','bold'); doc.setTextColor(17,24,39)
+      doc.text(v||'—', mR-3, y+5.5, {align:'right'}); y+=8
+    }
+
+    seccion('I. IDENTIFICACIÓN DE LAS PARTES')
+    fila('EMPRESA', negocio?.nombre||'—')
+    fila('NIF empresa', '____________________', true)
+    fila('Domicilio empresa', '____________________')
+    y+=4
+    fila('TRABAJADOR/A', trab.nombre, true)
+    fila('DNI / NIE', contratoForm.dni||'____________________')
+    fila('Domicilio trabajador/a', contratoForm.direccion||'____________________', true)
+    y+=6
+
+    seccion('II. OBJETO Y CONDICIONES DEL CONTRATO')
+    fila('Modalidad contractual', tipoLabel)
+    fila('Categoría / Puesto de trabajo', contratoForm.puesto||trab.especialidad||'____________________', true)
+    fila('Fecha de inicio', fechaInicioLabel)
+    if (contratoForm.tipo==='temporal'||contratoForm.tipo==='formacion') {
+      const meses = parseInt(contratoForm.duracion_meses)||0
+      fila('Duración', meses>0?`${meses} mes${meses!==1?'es':''}`:'____________________', true)
+      const fin = contratoForm.fecha_inicio&&meses>0
+        ? new Date(new Date(contratoForm.fecha_inicio+'T12:00').setMonth(new Date(contratoForm.fecha_inicio+'T12:00').getMonth()+meses)).toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'})
+        : '____________________'
+      fila('Fecha prevista de finalización', fin)
+    }
+    y+=6
+
+    seccion('III. JORNADA Y RETRIBUCIÓN')
+    fila('Jornada semanal', `${contratoForm.jornada_horas||40} horas/semana`)
+    fila('Distribución horaria', 'Según cuadrante del negocio', true)
+    fila('Salario bruto anual', salAnual>0?`${salAnual.toLocaleString('es-ES',{minimumFractionDigits:2})} €`:'____________________')
+    fila('Salario bruto mensual', salAnual>0?`${parseFloat(salMensual).toLocaleString('es-ES',{minimumFractionDigits:2})} €`:'____________________', true)
+    fila('Número de pagas', '14 (12 ordinarias + 2 extraordinarias)')
+    fila('Forma de pago', 'Transferencia bancaria', true)
+    y+=6
+
+    seccion('IV. PERÍODO DE PRUEBA')
+    fila('Duración del período de prueba',
+      contratoForm.tipo==='formacion'?'No aplica':
+      contratoForm.tipo==='temporal'?'Máximo 1 mes':
+      '6 meses (técnicos titulados) / 2 meses (resto)')
+    y+=6
+
+    seccion('V. CONVENIO COLECTIVO')
+    fila('Convenio aplicable', 'Según actividad principal del negocio')
+    fila('Grupo profesional', '____________________', true)
+    y+=6
+
+    seccion('VI. CLÁUSULAS ADICIONALES')
+    const clausulas = [
+      'Ambas partes se someten a la legislación laboral española vigente y al convenio colectivo aplicable.',
+      'El trabajador/a se compromete a guardar confidencialidad sobre los datos de clientes.',
+      'Cualquier modificación sustancial deberá formalizarse por escrito con 15 días de preaviso.',
+      'En caso de despido, se estará a lo dispuesto en el Estatuto de los Trabajadores.',
+    ]
+    clausulas.forEach((c, i) => {
+      doc.setFillColor(i%2===0?255:250,i%2===0?255:250,i%2===0?255:252); doc.rect(mL,y,mR-mL,7,'F')
+      doc.setTextColor(75,85,99); doc.setFont('helvetica','normal'); doc.setFontSize(7.5)
+      doc.text(`${i+1}. ${c}`, mL+3, y+4.5, {maxWidth:mR-mL-6}); y+=7
+    })
+    y+=8
+
+    // ── FIRMAS ──
+    doc.setDrawColor(180,180,180)
+    const midX=W/2
+    doc.line(mL,y+16,mL+72,y+16); doc.line(midX+8,y+16,mR,y+16)
+    doc.setTextColor(120,120,120); doc.setFont('helvetica','normal'); doc.setFontSize(8)
+    doc.text(`Empresa: ${negocio?.nombre||''}`, mL+36, y+21, {align:'center'})
+    doc.text(`Trabajador/a: ${trab.nombre}`, midX+8+36, y+21, {align:'center'})
+    y+=28
+
+    // ── AVISO LEGAL ──
+    doc.setFillColor(255,251,235); doc.setDrawColor(253,230,138)
+    doc.roundedRect(mL,y,mR-mL,16,3,3,'FD')
+    doc.setTextColor(146,64,14); doc.setFontSize(7.5); doc.setFont('helvetica','bold')
+    doc.text('⚠  AVISO LEGAL', mL+4, y+7)
+    doc.setFont('helvetica','normal')
+    doc.text('Documento orientativo generado con Khepria. Debe ser revisado y firmado por un gestor laboral antes de su entrega.', mL+4, y+13)
+
+    // ── PIE ──
+    doc.setFillColor(247,249,252); doc.rect(0,285,W,12,'F')
+    doc.setTextColor(153,153,153); doc.setFontSize(7)
+    doc.text(`Generado con Khepria · ${tipoLabel} · ${trab.nombre} · ${new Date().toLocaleDateString('es-ES')}`, 105, 292, {align:'center'})
+
+    doc.save(`contrato-${(trab.nombre).toLowerCase().replace(/\s+/g,'-')}-${contratoForm.tipo}.pdf`)
+    setContratoModal(false)
+  }
+
   const totalBruto = nominas.reduce((s, n) => s + n.salario_bruto, 0)
   const totalNeto  = nominas.reduce((s, n) => s + n.salario_neto, 0)
 
@@ -450,6 +611,11 @@ Pregunta: ${msg}`
         .chat-input:focus { border-color: var(--blue-dark); }
         .chat-send { padding: 11px 18px; background: var(--text); color: white; border: none; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
         .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+        .contratos-section { margin-top: 28px; }
+        .contratos-grid { display: grid; gap: 10px; }
+        .contrato-worker-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+        .btn-contrato { padding: 7px 14px; background: #1D4ED8; color: white; border: none; border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+        .btn-contrato:hover { background: #1e40af; }
         @media (max-width: 768px) {
           .resumen { grid-template-columns: 1fr 1fr; }
           .grid2 { grid-template-columns: 1fr; }
@@ -562,6 +728,45 @@ Pregunta: ${msg}`
               })}
             </div>
           )}
+
+          {/* Contratos laborales */}
+          <div className="contratos-section">
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14}}>
+              <div>
+                <div style={{fontSize:16, fontWeight:800, color:'var(--text)'}}>Contratos laborales</div>
+                <div style={{fontSize:13, color:'var(--muted)', marginTop:2}}>Genera contratos SEPE en PDF para cada trabajador</div>
+              </div>
+            </div>
+            {trabajadores.length === 0 ? (
+              <div className="empty">
+                <div style={{fontSize:36, marginBottom:10}}>📋</div>
+                <div style={{fontWeight:700, color:'var(--text)', marginBottom:6}}>Sin trabajadores</div>
+                Añade trabajadores en la sección Equipo para generar contratos.
+              </div>
+            ) : (
+              <div className="contratos-grid">
+                {trabajadores.map(t => (
+                  <div key={t.id} className="contrato-worker-card">
+                    <div className="avatar">
+                      {t.foto_url
+                        ? <img src={t.foto_url} alt={t.nombre} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                        : '👤'}
+                    </div>
+                    <div style={{flex:1, minWidth:0}}>
+                      <div style={{fontSize:15, fontWeight:700, color:'var(--text)'}}>{t.nombre}</div>
+                      <div style={{fontSize:12, color:'var(--muted)'}}>{t.especialidad || 'Sin especialidad'}</div>
+                      {t.salario_anual && (
+                        <div style={{fontSize:12, color:'var(--text2)', marginTop:2}}>{fmtEur(t.salario_anual)} / año</div>
+                      )}
+                    </div>
+                    <button className="btn-contrato" onClick={() => abrirContratoModal(t.id)}>
+                      📝 Generar contrato
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Chat IA */}
           <div className="chat-wrap">
@@ -747,6 +952,81 @@ Pregunta: ${msg}`
               <button className="btn-pdf-modal" onClick={() => guardar(true)} disabled={guardando || baseMensual <= 0}>
                 {guardando ? 'Generando...' : '📄 Guardar y PDF'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── MODAL CONTRATO ── */}
+      {contratoModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setContratoModal(false) }}>
+          <div className="modal">
+            <div className="modal-title">📝 Generar contrato SEPE</div>
+            <div style={{background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#1D4ED8', marginBottom:14}}>
+              Trabajador: <strong>{trabajadores.find(x => x.id === contratoTrabId)?.nombre}</strong>
+            </div>
+
+            <div className="field">
+              <label>Tipo de contrato *</label>
+              <select value={contratoForm.tipo} onChange={e => setContratoForm(f => ({...f, tipo: e.target.value as ContratoForm['tipo']}))}>
+                <option value="indefinido">Contrato indefinido ordinario</option>
+                <option value="temporal">Contrato de duración determinada</option>
+                <option value="parcial">Contrato a tiempo parcial indefinido</option>
+                <option value="formacion">Contrato de formación en alternancia</option>
+              </select>
+            </div>
+
+            <div className="section-label">👤 Datos del trabajador/a</div>
+            <div className="grid2">
+              <div className="field">
+                <label>DNI / NIE</label>
+                <input type="text" placeholder="12345678A" value={contratoForm.dni}
+                  onChange={e => setContratoForm(f => ({...f, dni: e.target.value}))} />
+              </div>
+              <div className="field">
+                <label>Puesto / Categoría</label>
+                <input type="text" placeholder="Ej: Esteticista" value={contratoForm.puesto}
+                  onChange={e => setContratoForm(f => ({...f, puesto: e.target.value}))} />
+              </div>
+            </div>
+            <div className="field">
+              <label>Dirección trabajador/a</label>
+              <input type="text" placeholder="Calle, número, ciudad" value={contratoForm.direccion}
+                onChange={e => setContratoForm(f => ({...f, direccion: e.target.value}))} />
+            </div>
+
+            <div className="section-label">📅 Condiciones laborales</div>
+            <div className="grid2">
+              <div className="field">
+                <label>Fecha de inicio</label>
+                <input type="date" value={contratoForm.fecha_inicio}
+                  onChange={e => setContratoForm(f => ({...f, fecha_inicio: e.target.value}))} />
+              </div>
+              <div className="field">
+                <label>Jornada semanal (horas)</label>
+                <input type="number" min="1" max="40" placeholder="40" value={contratoForm.jornada_horas}
+                  onChange={e => setContratoForm(f => ({...f, jornada_horas: e.target.value}))} />
+              </div>
+              <div className="field">
+                <label>Salario bruto anual (€)</label>
+                <input type="number" step="0.01" min="0" placeholder="Ej: 20000" value={contratoForm.salario_anual}
+                  onChange={e => setContratoForm(f => ({...f, salario_anual: e.target.value}))} />
+              </div>
+              {(contratoForm.tipo === 'temporal' || contratoForm.tipo === 'formacion') && (
+                <div className="field">
+                  <label>Duración (meses)</label>
+                  <input type="number" min="1" max="36" placeholder="Ej: 6" value={contratoForm.duracion_meses}
+                    onChange={e => setContratoForm(f => ({...f, duracion_meses: e.target.value}))} />
+                </div>
+              )}
+            </div>
+
+            <div style={{background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#92400E', marginTop:8}}>
+              ⚠️ <strong>Documento orientativo.</strong> Revisa y firma con un gestor laboral antes de entregar.
+            </div>
+
+            <div className="modal-btns">
+              <button className="btn-secondary" onClick={() => setContratoModal(false)}>Cancelar</button>
+              <button className="btn-pdf-modal" onClick={generarContratoPDF}>📄 Generar contrato PDF</button>
             </div>
           </div>
         </div>
