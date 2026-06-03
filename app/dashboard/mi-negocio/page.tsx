@@ -1117,14 +1117,14 @@ export default function MiNegocio() {
                   </div>
 
                   <div className="field" style={{marginTop:'18px', marginBottom:0}}>
-                    <label>Mensaje al cancelar <span style={{fontWeight:400, color:'var(--muted)'}}>(opcional)</span></label>
+                    <label>Penalización por cancelación tardía <span style={{fontWeight:400, color:'var(--muted)'}}>(opcional)</span></label>
                     <textarea
-                      placeholder="Ej: Lamentamos que hayas tenido que cancelar. Si lo deseas puedes reservar de nuevo cuando quieras. ¡Te esperamos!"
+                      placeholder="Ej: Las cancelaciones fuera de plazo podrán ser penalizadas con el 50% del importe del servicio."
                       value={form.mensaje_cancelacion}
                       onChange={e => setForm({ ...form, mensaje_cancelacion: e.target.value })}
                       style={{minHeight:'80px'}}
                     />
-                    <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'4px'}}>Este mensaje se mostrará al cliente cuando cancele una cita.</p>
+                    <p style={{fontSize:'12px', color:'var(--muted)', marginTop:'4px'}}>Se mostrará al cliente si intenta cancelar fuera del plazo permitido.</p>
                   </div>
                 </div>
 

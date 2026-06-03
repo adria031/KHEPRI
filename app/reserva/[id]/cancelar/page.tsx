@@ -169,6 +169,53 @@ export default function CancelarReserva() {
   const diffHoras       = (reservaDateTime.getTime() - Date.now()) / 3600000
   const fueraPlazo      = diffHoras > 0 && diffHoras < horas
 
+  // BLOQUEADO: fuera del plazo de cancelación
+  if (fueraPlazo) return wrap(
+    <div className="card">
+      <div style={{background:'linear-gradient(135deg,rgba(254,202,202,0.4),rgba(252,165,165,0.2))',padding:'24px 32px',borderBottom:'1px solid rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:'13px',fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:'6px'}}>
+          {reserva.negocios?.nombre}
+        </div>
+        <div style={{fontSize:'20px',fontWeight:800,color:'#991B1B',letterSpacing:'-0.5px'}}>No se puede cancelar</div>
+        <div style={{fontSize:'13px',color:'#B91C1C',marginTop:'4px'}}>Estás fuera del plazo de cancelación</div>
+      </div>
+      <div style={{padding:'28px 32px'}}>
+        <div style={{marginBottom:'24px',padding:'16px 18px',background:'rgba(254,202,202,0.25)',border:'1px solid rgba(252,165,165,0.5)',borderRadius:'14px',fontSize:'14px',color:'#7F1D1D',lineHeight:1.7}}>
+          <strong>⚠️ Plazo superado:</strong> Este negocio requiere cancelar con al menos <strong>{horas === 1 ? '1 hora' : `${horas} horas`}</strong> de antelación. Tu cita es el <strong>{formatFecha(reserva.fecha, reserva.hora)}</strong>, por lo que ya no es posible cancelarla desde aquí.
+          {reserva.negocios?.mensaje_cancelacion && (
+            <div style={{marginTop:'10px',padding:'10px 14px',background:'rgba(127,29,29,0.06)',borderRadius:'10px',fontStyle:'italic',color:'#991B1B',fontSize:'13px'}}>
+              "{reserva.negocios.mensaje_cancelacion}"
+            </div>
+          )}
+        </div>
+        <div style={{marginBottom:'24px'}}>
+          {reserva.servicios?.nombre && (
+            <div className="detail-row"><span className="detail-label">Servicio</span><span className="detail-val">{reserva.servicios.nombre}</span></div>
+          )}
+          {reserva.trabajadores?.nombre && (
+            <div className="detail-row"><span className="detail-label">Profesional</span><span className="detail-val">{reserva.trabajadores.nombre}</span></div>
+          )}
+          <div className="detail-row"><span className="detail-label">Fecha y hora</span><span className="detail-val">{formatFecha(reserva.fecha, reserva.hora)}</span></div>
+        </div>
+        <p style={{fontSize:'13px',color:'#6B7280',marginBottom:'18px',lineHeight:1.6}}>Si necesitas cancelar, contacta directamente con el negocio.</p>
+        <div style={{display:'flex',flexDirection:'column',gap:'10px'}}>
+          {reserva.negocios?.email && (
+            <a href={`mailto:${reserva.negocios.email}`}
+              style={{display:'block',width:'100%',padding:'14px',background:'#111827',color:'#fff',borderRadius:'12px',fontSize:'15px',fontWeight:700,textAlign:'center',textDecoration:'none'}}>
+              Contactar al negocio →
+            </a>
+          )}
+          {reserva.negocios?.id && (
+            <Link href={`/negocio/${reserva.negocios.id}/reservar`}
+              style={{display:'block',width:'100%',padding:'14px',background:'transparent',color:'#111827',border:'1.5px solid rgba(0,0,0,0.1)',borderRadius:'12px',fontSize:'15px',fontWeight:700,textAlign:'center',textDecoration:'none'}}>
+              Volver al negocio
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
   return wrap(
     <div className="card">
       {/* Header */}
@@ -181,16 +228,6 @@ export default function CancelarReserva() {
       </div>
 
       <div style={{padding:'28px 32px'}}>
-        {/* Aviso fuera de plazo */}
-        {fueraPlazo && (
-          <div style={{marginBottom:'20px',padding:'12px 16px',background:'rgba(254,202,202,0.3)',border:'1px solid rgba(252,165,165,0.5)',borderRadius:'12px',fontSize:'13px',color:'#991B1B',lineHeight:1.6}}>
-            <strong>⚠️ Fuera del plazo de cancelación:</strong> Este negocio pide cancelar con al menos <strong>{horas === 1 ? '1 hora' : `${horas} horas`}</strong> de antelación. Puedes cancelar igualmente, pero te recomendamos contactar directamente.
-            {reserva.negocios?.mensaje_cancelacion && (
-              <div style={{marginTop:'6px',fontStyle:'italic',color:'#7F1D1D'}}>"{reserva.negocios.mensaje_cancelacion}"</div>
-            )}
-          </div>
-        )}
-
         {/* Detalles */}
         <div style={{marginBottom:'28px'}}>
           {reserva.servicios?.nombre && (

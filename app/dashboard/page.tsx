@@ -135,7 +135,7 @@ type DonutSlice = { name: string; value: number }
 
 const DIAS = ['L','M','X','J','V','S','D']
 
-type ChecklistT = { logo: boolean; servicios: boolean; horarios: boolean; trabajadores: boolean; enlaceCompartido: boolean }
+type ChecklistT = { logo: boolean; descripcion: boolean; servicios: boolean; horarios: boolean; trabajadores: boolean; ubicacion: boolean }
 
 function calcularAlertaFiscal(): { dias: number; trimestre: string } | null {
   const hoy = new Date(); hoy.setHours(0,0,0,0)
@@ -467,21 +467,22 @@ export default function Dashboard() {
       try {
         const ya = localStorage.getItem(`checklist_ok_${neg.id}`)
         if (ya !== 'true') {
-          const [{ data: negLogo }, { count: cSrv }, { count: cHor }, { count: cTrb }] = await Promise.all([
-            db.from('negocios').select('logo_url').eq('id', neg.id).single(),
+          const [{ data: negData }, { count: cSrv }, { count: cHor }, { count: cTrb }] = await Promise.all([
+            db.from('negocios').select('logo_url, descripcion, lat, lng').eq('id', neg.id).single(),
             db.from('servicios').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('activo', true),
             db.from('horarios').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('abierto', true),
             db.from('trabajadores').select('id', { count: 'exact', head: true }).eq('negocio_id', neg.id).eq('activo', true),
           ])
           const cl: ChecklistT = {
-            logo: !!negLogo?.logo_url,
+            logo: !!negData?.logo_url,
+            descripcion: !!(negData?.descripcion && (negData.descripcion as string).trim().length > 0),
             servicios: (cSrv ?? 0) > 0,
             horarios: (cHor ?? 0) > 0,
             trabajadores: (cTrb ?? 0) > 0,
-            enlaceCompartido: localStorage.getItem(`enlace_compartido_${neg.id}`) === 'true',
+            ubicacion: !!(negData?.lat && negData?.lng),
           }
           const done = Object.values(cl).filter(Boolean).length
-          if (done >= 5) localStorage.setItem(`checklist_ok_${neg.id}`, 'true')
+          if (done >= 6) localStorage.setItem(`checklist_ok_${neg.id}`, 'true')
           else setChecklist(cl)
         }
       } catch { /* ignorar */ }
@@ -925,12 +926,13 @@ export default function Dashboard() {
 
         {/* ── Checklist configuración ── */}
         {checklist && (() => {
-          const items: { key: keyof ChecklistT; label: string; href: string | null; icon: string }[] = [
-            { key: 'logo',             label: 'Logo del negocio',    href: '/dashboard/configuracion', icon: '🖼️' },
-            { key: 'servicios',        label: 'Servicios activos',   href: '/dashboard/servicios',     icon: '✂️' },
-            { key: 'horarios',         label: 'Horarios definidos',  href: '/dashboard/horarios',      icon: '🕐' },
-            { key: 'trabajadores',     label: 'Equipo añadido',      href: '/dashboard/trabajadores',  icon: '👥' },
-            { key: 'enlaceCompartido', label: 'Enlace compartido',   href: null,                       icon: '🔗' },
+          const items: { key: keyof ChecklistT; label: string; href: string; icon: string }[] = [
+            { key: 'logo',         label: 'Logo del negocio',     href: '/dashboard/mi-negocio', icon: '🖼️' },
+            { key: 'descripcion',  label: 'Descripción añadida',  href: '/dashboard/mi-negocio', icon: '📝' },
+            { key: 'servicios',    label: 'Servicios activos',    href: '/dashboard/servicios',  icon: '✂️' },
+            { key: 'horarios',     label: 'Horarios configurados',href: '/dashboard/horarios',   icon: '🕐' },
+            { key: 'trabajadores', label: 'Equipo añadido',       href: '/dashboard/trabajadores', icon: '👥' },
+            { key: 'ubicacion',    label: 'Ubicación configurada',href: '/dashboard/mi-negocio', icon: '📍' },
           ]
           const done = items.filter(it => checklist[it.key]).length
           const pct  = Math.round((done / items.length) * 100)
@@ -949,32 +951,9 @@ export default function Dashboard() {
               <div className="db-cl-items">
                 {items.map(it => {
                   const ok = checklist[it.key]
-                  if (it.key === 'enlaceCompartido' && !ok) {
-                    return (
-                      <button
-                        key={it.key}
-                        className="db-cl-item db-cl-item-todo"
-                        onClick={() => {
-                          if (!negocio) return
-                          navigator.clipboard?.writeText(`https://khepria.app/negocio/${negocio.id}`).catch(() => {})
-                          localStorage.setItem(`enlace_compartido_${negocio.id}`, 'true')
-                          setChecklist(prev => {
-                            if (!prev) return prev
-                            const next = { ...prev, enlaceCompartido: true }
-                            const allDone = Object.values(next).filter(Boolean).length >= 5
-                            if (allDone && negocio) localStorage.setItem(`checklist_ok_${negocio.id}`, 'true')
-                            return allDone ? null : next
-                          })
-                        }}
-                      >
-                        <span className="db-cl-check db-cl-check-todo">·</span>
-                        {it.icon} {it.label}
-                      </button>
-                    )
-                  }
                   const El = ok ? 'span' : Link
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const props: any = ok ? {} : { href: it.href ?? '#' }
+                  const props: any = ok ? {} : { href: it.href }
                   return (
                     <El key={it.key} {...props} className={`db-cl-item ${ok ? 'db-cl-item-done' : 'db-cl-item-todo'}`}>
                       <span className={`db-cl-check ${ok ? 'db-cl-check-done' : 'db-cl-check-todo'}`}>{ok ? '✓' : '·'}</span>

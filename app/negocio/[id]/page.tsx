@@ -35,6 +35,7 @@ type Negocio = {
   instagram:string; whatsapp:string; facebook:string;
   logo_url:string; fotos:string[]; metodos_pago:string[]|null;
   color_principal:string|null; color_secundario:string|null
+  horas_cancelacion:number|null; mensaje_cancelacion:string|null
 }
 type Horario = { dia:string; abierto:boolean; hora_apertura:string; hora_cierre:string; hora_apertura2:string|null; hora_cierre2:string|null }
 type Servicio = { id:string; nombre:string; duracion:number; precio:number; precio_descuento:number|null; descuento_inicio:string|null; descuento_fin:string|null; categoria?:string|null }
@@ -853,6 +854,21 @@ export default function FichaNegocio() {
                       </div>
                     )
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* POLÍTICA DE CANCELACIÓN */}
+            {negocio.horas_cancelacion != null && (
+              <div className="card">
+                <div className="card-title">Política de cancelación</div>
+                <div style={{fontSize:'14px',color:'#4B5563',lineHeight:1.7}}>
+                  <span style={{display:'inline-flex',alignItems:'center',gap:'6px',marginBottom:'8px',fontWeight:600,color:'#111827'}}>
+                    ⏱️ Plazo mínimo de cancelación: <strong>{negocio.horas_cancelacion === 1 ? '1 hora' : `${negocio.horas_cancelacion} horas`}</strong>
+                  </span>
+                  {negocio.mensaje_cancelacion && (
+                    <p style={{margin:0,color:'#6B7280',fontStyle:'italic'}}>{negocio.mensaje_cancelacion}</p>
+                  )}
                 </div>
               </div>
             )}
