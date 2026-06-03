@@ -193,6 +193,12 @@ function ClienteContent(){
   const[reservas,setReservas]=useState<ReservaCliente[]>([])
   const[cancelando,setCancelando]=useState<string|null>(null)
   const[modalReservarNeg,setModalReservarNeg]=useState<string|null>(null)
+  const[abiertoFiltro,setAbiertoFiltro]=useState(false)
+  const[minRating,setMinRating]=useState(0)
+  const[maxDist,setMaxDist]=useState<number|null>(null)
+  const[sortBy,setSortBy]=useState<'relevancia'|'valorados'|'cercanos'|'recientes'>('relevancia')
+  const[showAdvanced,setShowAdvanced]=useState(false)
+  const[serviciosNombres,setServiciosNombres]=useState<Record<string,string[]>>({})
 
 
   // ── Geocodificación en background para negocios sin lat/lng ──────────────
@@ -299,7 +305,8 @@ function ClienteContent(){
     Promise.all([
       supabase.from('horarios').select('negocio_id,dia,abierto,hora_apertura,hora_cierre,hora_apertura2,hora_cierre2'),
       supabase.from('resenas').select('negocio_id,valoracion'),
-    ]).then(([{data:hs},{data:rs}])=>{
+      supabase.from('servicios').select('negocio_id,nombre'),
+    ]).then(([{data:hs},{data:rs},{data:sv}])=>{
       if(hs){
         const m:Record<string,HorarioDB[]>={}
         for(const h of hs as HorarioDB[]){if(!m[h.negocio_id])m[h.negocio_id]=[];m[h.negocio_id].push(h)}
@@ -314,6 +321,14 @@ function ClienteContent(){
         const avg:Record<string,number>={}
         for(const[id,s]of Object.entries(sums))avg[id]=Math.round((s.t/s.c)*10)/10
         setVals(avg)
+      }
+      if(sv){
+        const snm:Record<string,string[]>={}
+        for(const s of sv as{negocio_id:string;nombre:string}[]){
+          if(!snm[s.negocio_id])snm[s.negocio_id]=[]
+          snm[s.negocio_id].push(s.nombre)
+        }
+        setServiciosNombres(snm)
       }
     }).catch(()=>{})
   },[])
@@ -363,15 +378,24 @@ function ClienteContent(){
 
   const negFiltrados=negocios.filter(n=>{
     const mc=matchCat(n.tipo||'',cats)
-    const mq=!q||norm(n.nombre).includes(norm(q))||norm(n.ciudad||'').includes(norm(q))
+    const nq=norm(q)
+    const mq=!q||
+      norm(n.nombre).includes(nq)||
+      norm(n.ciudad||'').includes(nq)||
+      norm(n.tipo||'').includes(nq)||
+      (serviciosNombres[n.id]||[]).some(s=>norm(s).includes(nq))
     return mc&&mq
   })
 
   let negMostrados=[...negFiltrados]
-  if(filtro==='abierto')   negMostrados=negMostrados.filter(n=>estaAbierto(hors[n.id]||[]))
-  else if(filtro==='valorados') negMostrados=[...negMostrados].sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0))
-  else if(filtro==='cercanos'&&pos) negMostrados=[...negMostrados].filter(n=>n.lat&&n.lng).sort((a,b)=>haversineKm(pos.lat,pos.lng,a.lat!,a.lng!)-haversineKm(pos.lat,pos.lng,b.lat!,b.lng!))
-  else if(filtro==='ninguno'&&pos) negMostrados=[...negMostrados].sort((a,b)=>{
+  if(filtro==='abierto'||abiertoFiltro) negMostrados=negMostrados.filter(n=>estaAbierto(hors[n.id]||[]))
+  if(minRating>0) negMostrados=negMostrados.filter(n=>(vals[n.id]??0)>=minRating)
+  if(maxDist!=null&&pos) negMostrados=negMostrados.filter(n=>n.lat&&n.lng&&haversineKm(pos.lat,pos.lng,n.lat,n.lng)<=maxDist)
+  const efectSort=sortBy!=='relevancia'?sortBy:filtro==='valorados'?'valorados':filtro==='cercanos'?'cercanos':null
+  if(efectSort==='valorados') negMostrados=[...negMostrados].sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0))
+  else if(efectSort==='cercanos'&&pos) negMostrados=[...negMostrados].filter(n=>n.lat&&n.lng).sort((a,b)=>haversineKm(pos.lat,pos.lng,a.lat!,a.lng!)-haversineKm(pos.lat,pos.lng,b.lat!,b.lng!))
+  else if(efectSort==='recientes') negMostrados=[...negMostrados].sort((a,b)=>(b.creado_en??'').localeCompare(a.creado_en??''))
+  else if(pos) negMostrados=[...negMostrados].sort((a,b)=>{
     if(a.lat&&a.lng&&b.lat&&b.lng) return haversineKm(pos.lat,pos.lng,a.lat,a.lng)-haversineKm(pos.lat,pos.lng,b.lat,b.lng)
     if(a.lat&&a.lng) return -1; if(b.lat&&b.lng) return 1; return 0
   })
@@ -379,6 +403,7 @@ function ClienteContent(){
   const negValTop=[...negocios].filter(n=>vals[n.id]!=null).sort((a,b)=>(vals[b.id]??0)-(vals[a.id]??0)).slice(0,8)
   const hoyISO=new Date().toISOString().slice(0,10)
   const negRecientes=[...negocios].sort((a,b)=>(b.creado_en??'').localeCompare(a.creado_en??'')).slice(0,8)
+  const negCercanos=pos?[...negocios].filter(n=>n.lat&&n.lng).sort((a,b)=>haversineKm(pos.lat,pos.lng,a.lat!,a.lng!)-haversineKm(pos.lat,pos.lng,b.lat!,b.lng!)).slice(0,8):[]
   const proximasReservas=reservas.filter(r=>r.estado==='confirmada'&&r.fecha>=hoyISO).sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.hora.localeCompare(b.hora))
   const historialReservas=reservas.filter(r=>r.estado==='cancelada'||r.estado==='completada'||r.fecha<hoyISO)
 
@@ -394,6 +419,11 @@ function ClienteContent(){
     }
     setFiltro(f)
   }
+
+  const advancedCount=[abiertoFiltro,minRating>0,maxDist!=null].filter(Boolean).length
+  const hayFiltros=!!(q||cats.length>0||filtro!=='ninguno'||abiertoFiltro||minRating>0||maxDist!=null||sortBy!=='relevancia')
+  function limpiarAvanzado(){setAbiertoFiltro(false);setMinRating(0);setMaxDist(null);setSortBy('relevancia')}
+  function limpiarTodo(){setQ('');setCats([]);setFiltro('ninguno');limpiarAvanzado()}
 
   const hNow=new Date().getHours()
   const saludo=hNow<12?'Buenos días':hNow<20?'Buenas tardes':'Buenas noches'
@@ -717,6 +747,37 @@ function ClienteContent(){
               </div>
             )}
 
+            {/* CERCA DE TI */}
+            {pos&&negCercanos.length>0&&!q&&cats.length===0&&filtro==='ninguno'&&(
+              <div className="sec">
+                <div className="sec-h">
+                  <span className="sec-t">📍 Cerca de ti</span>
+                </div>
+                <div className="hscroll">
+                  {negCercanos.map(n=>{
+                    const cfg=TIPO_CFG[normTipo(n.tipo||'')]||TIPO_DEF
+                    const portada=(n.fotos&&n.fotos[0])||null
+                    const dist=haversineKm(pos.lat,pos.lng,n.lat!,n.lng!)
+                    return(
+                      <Link key={n.id} href={`/negocio/${n.id}`} style={{textDecoration:'none',color:'inherit'}}>
+                        <div className="hn-card">
+                          {portada?<img src={portada} alt={n.nombre} className="hn-cover"/>:<div className="hn-ph" style={{background:cfg.grad}}>{cfg.emoji}</div>}
+                          <div className="hn-body">
+                            <div style={{fontSize:'13px',fontWeight:800,color:'#0F172A',marginBottom:'3px'}}>{n.nombre}</div>
+                            <div style={{fontSize:'12px',color:'#94A3B8',marginBottom:'6px'}}>{n.ciudad||''}</div>
+                            <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                              <span style={{fontSize:'11px',fontWeight:700,color:'#059669'}}>📍 {dist<1?`${Math.round(dist*1000)}m`:`${dist.toFixed(1)}km`}</span>
+                              {vals[n.id]&&<span style={{fontSize:'12px',fontWeight:800,color:'#D97706'}}>⭐ {vals[n.id]}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* MEJOR VALORADOS (solo si hay ratings y no hay búsqueda activa) */}
             {negValTop.length>0&&!q&&cats.length===0&&filtro==='ninguno'&&(
               <div className="sec">
@@ -809,7 +870,7 @@ function ClienteContent(){
                   </span>
                   {(q||cats.length>0||filtro!=='ninguno')&&(
                     <button
-                      onClick={()=>{setQ('');setCats([]);setFiltro('ninguno')}}
+                      onClick={limpiarTodo}
                       style={{background:'none',border:'none',fontSize:'12px',fontWeight:700,color:'#6366F1',cursor:'pointer',padding:'2px 6px'}}
                     >
                       Limpiar todo ✕
@@ -898,6 +959,7 @@ function ClienteContent(){
       {/* ══════════ BUSCAR ══════════ */}
       {tab==='buscar'&&(
         <div className="fade">
+          {/* Barra de búsqueda */}
           <div style={{position:'sticky',top:'60px',zIndex:50,background:'white',borderBottom:'1px solid #F1F5F9',padding:'12px 20px',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
             <div className="sbar" style={{maxWidth:'100%'}}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -905,6 +967,7 @@ function ClienteContent(){
               {q&&<button onClick={()=>setQ('')} style={{background:'none',border:'none',cursor:'pointer',color:'#94A3B8',fontSize:'16px',padding:0}}>✕</button>}
             </div>
           </div>
+          {/* Filtros de categoría */}
           <div className="cats-bar" style={{padding:'0 16px'}}>
             <div className="cats-inner">
               <button className={`catbtn ${cats.length===0?'on':''}`} onClick={()=>setCats([])}>
@@ -917,44 +980,216 @@ function ClienteContent(){
               ))}
             </div>
           </div>
-          <div className="fbar" style={{padding:'8px 16px'}}>
-            <button className={`fchip ${filtro==='abierto'?'on':''}`} onClick={()=>pedirGeo('abierto')}>🟢 Abierto ahora</button>
-            <button className={`fchip ${filtro==='valorados'?'on':''}`} onClick={()=>pedirGeo('valorados')}>⭐ Mejor valorados</button>
-            <button className={`fchip ${filtro==='cercanos'?'on':''}`} onClick={()=>pedirGeo('cercanos')}>📍 Más cercanos</button>
-            {filtro!=='ninguno'&&<button className="fchip" style={{color:'#DC2626',borderColor:'rgba(220,38,38,0.2)'}} onClick={()=>setFiltro('ninguno')}>✕ Limpiar</button>}
-          </div>
-          <div className="content" style={{paddingTop:'16px'}}>
-            {!cargando&&(q||cats.length>0||filtro!=='ninguno')&&(
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px',padding:'10px 14px',background:'white',borderRadius:'12px',border:'1px solid #F1F5F9'}}>
-                <span style={{fontSize:'13px',color:'#64748B',fontWeight:600}}>
-                  {negMostrados.length===0?'Sin resultados':`${negMostrados.length} resultado${negMostrados.length!==1?'s':''}`}
-                </span>
-                <button onClick={()=>{setQ('');setCats([]);setFiltro('ninguno')}} style={{background:'none',border:'none',fontSize:'12px',fontWeight:700,color:'#6366F1',cursor:'pointer'}}>Limpiar ✕</button>
+          {/* Filtros avanzados */}
+          <div style={{background:'white',borderBottom:'1px solid #F1F5F9',padding:'8px 16px 10px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+              <button
+                onClick={()=>setShowAdvanced(o=>!o)}
+                style={{display:'inline-flex',alignItems:'center',gap:'6px',padding:'7px 14px',borderRadius:'100px',border:'1.5px solid',borderColor:advancedCount>0?'#6366F1':'#E2E8F0',background:advancedCount>0?'rgba(99,102,241,0.08)':'white',fontSize:'12px',fontWeight:700,color:advancedCount>0?'#6366F1':'#475569',cursor:'pointer',fontFamily:'inherit',flexShrink:0,transition:'all 0.15s'}}
+              >
+                ⚙️ Filtros{advancedCount>0?` · ${advancedCount}`:''} {showAdvanced?'▲':'▼'}
+              </button>
+              {advancedCount>0&&(
+                <button onClick={limpiarAvanzado} style={{fontSize:'11px',fontWeight:700,color:'#DC2626',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit'}}>Limpiar ✕</button>
+              )}
+            </div>
+            {showAdvanced&&(
+              <div style={{paddingTop:'14px',display:'flex',flexDirection:'column',gap:'16px',paddingBottom:'4px'}}>
+                {/* Abierto ahora */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <span style={{fontSize:'13px',fontWeight:700,color:'#0F172A'}}>🟢 Abierto ahora</span>
+                  <button
+                    onClick={()=>setAbiertoFiltro(o=>!o)}
+                    style={{width:'44px',height:'24px',borderRadius:'12px',background:abiertoFiltro?'#6366F1':'#E2E8F0',border:'none',cursor:'pointer',position:'relative',transition:'background 0.2s',flexShrink:0}}
+                  >
+                    <div style={{position:'absolute',top:'2px',left:abiertoFiltro?'22px':'2px',width:'20px',height:'20px',borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 4px rgba(0,0,0,0.2)'}}/>
+                  </button>
+                </div>
+                {/* Valoración mínima */}
+                <div>
+                  <div style={{fontSize:'13px',fontWeight:700,color:'#0F172A',marginBottom:'8px'}}>⭐ Valoración mínima</div>
+                  <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                    {[0,1,2,3,4,5].map(r=>{
+                      const active=r>0&&minRating===r
+                      return(
+                        <button key={r} onClick={()=>setMinRating(active?0:r)} style={{padding:'6px 10px',borderRadius:'10px',border:'1.5px solid',borderColor:active?'#6366F1':'#E2E8F0',background:active?'rgba(99,102,241,0.08)':'white',fontSize:'12px',fontWeight:700,color:active?'#6366F1':'#475569',cursor:'pointer',fontFamily:'inherit'}}>
+                          {r===0?'Todos':`${r}⭐+`}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                {/* Distancia */}
+                {pos&&(
+                  <div>
+                    <div style={{fontSize:'13px',fontWeight:700,color:'#0F172A',marginBottom:'8px'}}>📍 Distancia máxima</div>
+                    <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                      {([null,1,5,10,20] as (number|null)[]).map((d,i)=>{
+                        const active=d!=null&&maxDist===d
+                        return(
+                          <button key={i} onClick={()=>setMaxDist(active?null:d)} style={{padding:'6px 10px',borderRadius:'10px',border:'1.5px solid',borderColor:active?'#6366F1':'#E2E8F0',background:active?'rgba(99,102,241,0.08)':'white',fontSize:'12px',fontWeight:700,color:active?'#6366F1':'#475569',cursor:'pointer',fontFamily:'inherit'}}>
+                            {d===null?'Cualquier':`${d}km`}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Ordenar por */}
+                <div>
+                  <div style={{fontSize:'13px',fontWeight:700,color:'#0F172A',marginBottom:'8px'}}>↕️ Ordenar por</div>
+                  <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                    {([
+                      {v:'relevancia',l:'Relevancia'},
+                      {v:'valorados',l:'⭐ Mejor valorados'},
+                      {v:'cercanos',l:'📍 Más cercanos'},
+                      {v:'recientes',l:'🆕 Más recientes'},
+                    ] as {v:string;l:string}[]).map(({v,l})=>(
+                      <button key={v} onClick={()=>setSortBy(v as typeof sortBy)} style={{padding:'6px 10px',borderRadius:'10px',border:'1.5px solid',borderColor:sortBy===v?'#6366F1':'#E2E8F0',background:sortBy===v?'rgba(99,102,241,0.08)':'white',fontSize:'12px',fontWeight:700,color:sortBy===v?'#6366F1':'#475569',cursor:'pointer',fontFamily:'inherit'}}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
-            {cargando?(
-              <Skeleton/>
-            ):negMostrados.length===0&&(q||cats.length>0)?(
-              <div className="empty">
-                <div className="empty-ico" style={{background:'#F1F5F9'}}>🔍</div>
-                <div style={{fontSize:'20px',fontWeight:900,color:'#0F172A',marginBottom:'8px'}}>Sin resultados</div>
-                <div style={{fontSize:'14px',color:'#94A3B8',marginBottom:'20px'}}>{q?`No hay negocios para "${q}"`:'Prueba otra categoría'}</div>
-                <button onClick={()=>{setQ('');setCats([]);setFiltro('ninguno')}} style={{padding:'10px 20px',background:'#F1F5F9',border:'none',borderRadius:'100px',fontSize:'13px',fontWeight:700,color:'#475569',cursor:'pointer'}}>Limpiar filtros</button>
-              </div>
+          </div>
+          {/* Contenido */}
+          <div className="content" style={{paddingTop:'16px'}}>
+            {!cargando&&!hayFiltros?(
+              <>
+                {pos&&negCercanos.length>0&&(
+                  <div className="sec">
+                    <div className="sec-h"><span className="sec-t">📍 Cerca de ti</span></div>
+                    <div className="hscroll">
+                      {negCercanos.map(n=>{
+                        const cfg=TIPO_CFG[normTipo(n.tipo||'')]||TIPO_DEF
+                        const portada=(n.fotos&&n.fotos[0])||null
+                        const dist=haversineKm(pos.lat,pos.lng,n.lat!,n.lng!)
+                        return(
+                          <Link key={n.id} href={`/negocio/${n.id}`} style={{textDecoration:'none',color:'inherit'}}>
+                            <div className="hn-card">
+                              {portada?<img src={portada} alt={n.nombre} className="hn-cover"/>:<div className="hn-ph" style={{background:cfg.grad}}>{cfg.emoji}</div>}
+                              <div className="hn-body">
+                                <div style={{fontSize:'13px',fontWeight:800,color:'#0F172A',marginBottom:'3px'}}>{n.nombre}</div>
+                                <div style={{fontSize:'12px',color:'#94A3B8',marginBottom:'6px'}}>{n.ciudad||''}</div>
+                                <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                  <span style={{fontSize:'11px',fontWeight:700,color:'#059669'}}>📍 {dist<1?`${Math.round(dist*1000)}m`:`${dist.toFixed(1)}km`}</span>
+                                  {vals[n.id]&&<span style={{fontSize:'12px',fontWeight:800,color:'#D97706'}}>⭐ {vals[n.id]}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                {negValTop.length>0&&(
+                  <div className="sec">
+                    <div className="sec-h"><span className="sec-t">⭐ Mejor valorados</span></div>
+                    <div className="hscroll">
+                      {negValTop.map(n=>{
+                        const cfg=TIPO_CFG[normTipo(n.tipo||'')]||TIPO_DEF
+                        const portada=(n.fotos&&n.fotos[0])||null
+                        return(
+                          <Link key={n.id} href={`/negocio/${n.id}`} style={{textDecoration:'none',color:'inherit'}}>
+                            <div className="hn-card">
+                              {portada?<img src={portada} alt={n.nombre} className="hn-cover"/>:<div className="hn-ph" style={{background:cfg.grad}}>{cfg.emoji}</div>}
+                              <div className="hn-body">
+                                <div style={{fontSize:'13px',fontWeight:800,color:'#0F172A',marginBottom:'3px'}}>{n.nombre}</div>
+                                <div style={{fontSize:'12px',color:'#94A3B8',marginBottom:'6px'}}>{n.ciudad||''}</div>
+                                <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                  <span style={{fontSize:'12px',fontWeight:800,color:'#D97706'}}>⭐ {vals[n.id]}</span>
+                                  <span style={{fontSize:'11px',fontWeight:700,padding:'2px 7px',borderRadius:'100px',background:cfg.bg,color:cfg.color}}>{n.tipo?.replace(/^[\p{Emoji}\s]*/u,'').replace(/\s*\/.*/,'').trim()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                {negRecientes.length>0&&(
+                  <div className="sec">
+                    <div className="sec-h"><span className="sec-t">🆕 Recién llegados</span></div>
+                    <div className="hscroll">
+                      {negRecientes.map(n=>{
+                        const cfg=TIPO_CFG[normTipo(n.tipo||'')]||TIPO_DEF
+                        const portada=(n.fotos&&n.fotos[0])||null
+                        return(
+                          <div key={n.id} className="hn-card" style={{cursor:'pointer'}} onClick={()=>window.location.href=`/negocio/${n.id}`}>
+                            {portada?<img src={portada} alt={n.nombre} className="hn-cover"/>:<div className="hn-ph" style={{background:cfg.grad}}>{cfg.emoji}</div>}
+                            <div className="hn-body">
+                              <div style={{fontSize:'13px',fontWeight:800,color:'#0F172A',marginBottom:'3px'}}>{n.nombre}</div>
+                              <div style={{fontSize:'12px',color:'#94A3B8',marginBottom:'6px'}}>{n.ciudad||''}</div>
+                              <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                                {vals[n.id]&&<span style={{fontSize:'12px',fontWeight:800,color:'#D97706'}}>⭐ {vals[n.id]}</span>}
+                                <span style={{fontSize:'11px',fontWeight:700,padding:'2px 7px',borderRadius:'100px',background:cfg.bg,color:cfg.color}}>{n.tipo?.replace(/^[\p{Emoji}\s]*/u,'').replace(/\s*\/.*/,'').trim()}</span>
+                                <span style={{fontSize:'11px',fontWeight:700,padding:'2px 7px',borderRadius:'100px',background:'rgba(99,102,241,0.08)',color:'#6366F1'}}>Nuevo</span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                {!pos&&negocios.length>0&&(
+                  <div className="sec">
+                    <div className="sec-h"><span className="sec-t">Todos los negocios</span></div>
+                    <div className="neg-grid">
+                      {negocios.slice(0,12).map(n=>(
+                        <NegCard key={n.id} n={n}
+                          abierto={estaAbierto(hors[n.id]||[])}
+                          rating={vals[n.id]}
+                          dist={null}
+                          fav={favs.includes(n.id)}
+                          onFav={()=>toggleFav(n.id)}
+                          horsTiene={(hors[n.id]||[]).length>0}
+                          onReservar={handleReservar}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             ):(
-              <div className="neg-grid">
-                {(q||cats.length>0||filtro!=='ninguno'?negMostrados:negocios.slice(0,20)).map(n=>(
-                  <NegCard key={n.id} n={n}
-                    abierto={estaAbierto(hors[n.id]||[])}
-                    rating={vals[n.id]}
-                    dist={pos&&n.lat&&n.lng?haversineKm(pos.lat,pos.lng,n.lat,n.lng):null}
-                    fav={favs.includes(n.id)}
-                    onFav={()=>toggleFav(n.id)}
-                    horsTiene={(hors[n.id]||[]).length>0}
-                    onReservar={handleReservar}
-                  />
-                ))}
-              </div>
+              <>
+                {!cargando&&(
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px',padding:'10px 14px',background:'white',borderRadius:'12px',border:'1px solid #F1F5F9'}}>
+                    <span style={{fontSize:'13px',color:'#64748B',fontWeight:600}}>
+                      {negMostrados.length===0?'Sin resultados':`${negMostrados.length} resultado${negMostrados.length!==1?'s':''}`}
+                    </span>
+                    <button onClick={limpiarTodo} style={{background:'none',border:'none',fontSize:'12px',fontWeight:700,color:'#6366F1',cursor:'pointer'}}>Limpiar ✕</button>
+                  </div>
+                )}
+                {cargando?(
+                  <Skeleton/>
+                ):negMostrados.length===0?(
+                  <div className="empty">
+                    <div className="empty-ico" style={{background:'#F1F5F9'}}>🔍</div>
+                    <div style={{fontSize:'20px',fontWeight:900,color:'#0F172A',marginBottom:'8px'}}>Sin resultados</div>
+                    <div style={{fontSize:'14px',color:'#94A3B8',marginBottom:'20px'}}>{q?`No hay negocios para "${q}"`:'Prueba otros filtros'}</div>
+                    <button onClick={limpiarTodo} style={{padding:'10px 20px',background:'#F1F5F9',border:'none',borderRadius:'100px',fontSize:'13px',fontWeight:700,color:'#475569',cursor:'pointer'}}>Limpiar filtros</button>
+                  </div>
+                ):(
+                  <div className="neg-grid">
+                    {negMostrados.map(n=>(
+                      <NegCard key={n.id} n={n}
+                        abierto={estaAbierto(hors[n.id]||[])}
+                        rating={vals[n.id]}
+                        dist={pos&&n.lat&&n.lng?haversineKm(pos.lat,pos.lng,n.lat,n.lng):null}
+                        fav={favs.includes(n.id)}
+                        onFav={()=>toggleFav(n.id)}
+                        horsTiene={(hors[n.id]||[]).length>0}
+                        onReservar={handleReservar}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
