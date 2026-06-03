@@ -486,6 +486,19 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     }
   }
 
+  // Verifica que ningún tramo del bloque [slot, slot+duracionTotal) esté ocupado
+  function esSlotOcupado(s: string): boolean {
+    if (duracionTotal <= 0) return false
+    const [sh, sm] = s.split(':').map(Number)
+    const slotStart = sh * 60 + sm
+    const slotEnd = slotStart + duracionTotal
+    return [...horasOcupadas].some(h => {
+      const [hh, hm] = h.split(':').map(Number)
+      const hMin = hh * 60 + hm
+      return hMin >= slotStart && hMin < slotEnd
+    })
+  }
+
   if (cargandoInit) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F9FC', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
@@ -720,7 +733,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                             : serviciosSeleccionados.map(s => s.nombre).join(' + ')}
                         </div>
                         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '12px' }}>
-                          {serviciosSeleccionados.length} {serviciosSeleccionados.length === 1 ? 'servicio' : 'servicios'} · ⏱ {duracionTotal} min · 💰 €{precioTotal.toFixed(2)}
+                          {serviciosSeleccionados.length} {serviciosSeleccionados.length === 1 ? 'servicio' : 'servicios'} · {duracionTotal} min · {precioTotal.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                         </div>
                         <button className="btn-primary" style={{ marginTop: 0 }} onClick={avanzarServicios}>
                           Continuar →
@@ -832,7 +845,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                   <>
                     <div className="slot-list">
                       {slots().map(s => {
-                        const ocupado = horasOcupadas.has(s)
+                        const ocupado = esSlotOcupado(s)
                         return (
                           <div
                             key={s}
@@ -852,7 +865,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                     </div>
 
                     {/* Lista de espera — mostrar si TODOS los slots están ocupados */}
-                    {slots().length > 0 && slots().every(s => horasOcupadas.has(s)) && (
+                    {slots().length > 0 && slots().every(esSlotOcupado) && (
                       <div style={{marginTop:'20px', padding:'18px', background:'rgba(253,230,138,0.15)', border:'1.5px solid rgba(253,230,138,0.5)', borderRadius:'14px'}}>
                         <div style={{fontSize:'15px', fontWeight:700, color:'#92400E', marginBottom:'6px'}}>⏳ Agenda completa este día</div>
                         <div style={{fontSize:'13px', color:'#6B7280', marginBottom:'14px'}}>Apúntate y te avisamos si se libera una plaza.</div>
