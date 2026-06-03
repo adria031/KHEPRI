@@ -58,6 +58,8 @@ export default function Widget() {
   const [horarios,      setHorarios]      = useState<Horario[]>([])
   const [cargando,      setCargando]      = useState(true)
   const [noEncontrado,  setNoEncontrado]  = useState(false)
+  const [colorPpal,     setColorPpal]     = useState('#111827')
+  const [logoUrl,       setLogoUrl]       = useState<string | null>(null)
 
   // Booking flow
   const [paso,      setPaso]      = useState(0)
@@ -81,13 +83,15 @@ export default function Widget() {
   useEffect(() => {
     if (!negocioId) return
     Promise.all([
-      supabase.from('negocios').select('nombre').eq('id', negocioId).single(),
+      supabase.from('negocios').select('nombre,color_principal,logo_url').eq('id', negocioId).single(),
       supabase.from('servicios').select('id,nombre,duracion,precio').eq('negocio_id', negocioId).eq('activo', true).order('nombre'),
       supabase.from('trabajadores').select('id,nombre').eq('negocio_id', negocioId).eq('activo', true).order('nombre'),
       supabase.from('horarios').select('*').eq('negocio_id', negocioId),
     ]).then(([{ data: neg }, { data: svcs }, { data: trabs }, { data: hors }]) => {
       if (!neg) { setNoEncontrado(true); setCargando(false); return }
       setNegocioNombre(neg.nombre)
+      if ((neg as any).color_principal) setColorPpal((neg as any).color_principal)
+      setLogoUrl((neg as any).logo_url ?? null)
       setServicios(svcs || [])
       setTrabajadores(trabs || [])
       setHorarios(hors || [])
@@ -170,6 +174,9 @@ export default function Widget() {
 
   return (
     <>
+      {colorPpal !== '#111827' && (
+        <style>{`:root { --accent: ${colorPpal}; --accent-soft: ${colorPpal}18; }`}</style>
+      )}
       <style>{`
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -418,6 +425,14 @@ export default function Widget() {
         {/* ── Booking flow ── */}
         {!cargando && !noEncontrado && servicios.length > 0 && paso < 5 && (
           <>
+            {/* Negocio header */}
+            <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'18px'}}>
+              {logoUrl && (
+                <img src={logoUrl} alt={negocioNombre} style={{width:38, height:38, borderRadius:'10px', objectFit:'cover', border:'1px solid var(--border)'}} />
+              )}
+              <div style={{fontWeight:700, fontSize:'15px', color:'var(--text)', letterSpacing:'-0.2px'}}>{negocioNombre}</div>
+            </div>
+
             {/* Progress */}
             <div className="progress">
               <div className="progress-steps">

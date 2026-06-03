@@ -54,8 +54,9 @@ export default function Integraciones() {
   const [colorPpal,     setColorPpal]     = useState('#1a1a2e')
   const [qrUrl,         setQrUrl]         = useState<string | null>(null)
   const [generando,     setGenerando]     = useState(false)
-  const [copiado,       setCopiado]       = useState(false)
-  const [copiadoWidget, setCopiadoWidget] = useState(false)
+  const [copiado,           setCopiado]           = useState(false)
+  const [copiadoWidget,     setCopiadoWidget]     = useState(false)
+  const [showWidgetPreview, setShowWidgetPreview] = useState(false)
 
   // WhatsApp
   const [waToken,     setWaToken]     = useState('')
@@ -195,8 +196,9 @@ export default function Integraciones() {
   }
 
   const urlNegocio   = negocioId ? `https://khepria.app/negocio/${negocioId}` : ''
+  const urlWidget    = negocioId ? `https://khepria.app/widget/${negocioId}` : ''
   const codigoWidget = negocioId
-    ? `<script src="https://khepria.app/widget/${negocioId}.js" async></script>`
+    ? `<iframe src="https://khepria.app/widget/${negocioId}" width="100%" height="600px" frameborder="0" style="border:none;border-radius:12px;"></iframe>`
     : ''
 
   async function regenerarQR() {
@@ -433,25 +435,69 @@ export default function Integraciones() {
             🧩 Widget de reservas para tu web
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--ds-text2)', marginBottom: '14px' }}>
-            Pega este código en tu web para añadir un botón de reserva directamente.
+            Pega este <code style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 5px', borderRadius: '4px', fontSize: '12px' }}>&lt;iframe&gt;</code> en cualquier web — tus clientes reservan sin salir de tu página.
           </p>
+
+          {/* URL pública */}
+          {negocioId && (
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ds-text2)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.5px' }}>
+                URL pública del widget
+              </div>
+              <div style={{ padding: '10px 12px', background: 'var(--ds-bg)', border: '1px solid var(--ds-border)', borderRadius: '10px', fontSize: '12px', fontFamily: 'monospace', color: 'var(--ds-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {urlWidget}
+              </div>
+            </div>
+          )}
+
+          {/* Código iframe */}
           <div style={{ background: '#1E1E2E', borderRadius: '10px', padding: '14px 16px', marginBottom: '12px' }}>
-            <code style={{ fontSize: '12px', color: '#A78BFA', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+            <code style={{ fontSize: '12px', color: '#A78BFA', fontFamily: 'monospace', wordBreak: 'break-all' as const, display: 'block', whiteSpace: 'pre-wrap' as const }}>
               {codigoWidget || 'Cargando...'}
             </code>
           </div>
-          <button
-            onClick={() => copiar(codigoWidget, setCopiadoWidget)}
-            disabled={!codigoWidget}
-            style={{
-              padding: '9px 18px', borderRadius: '10px', border: 'none',
-              background: copiadoWidget ? '#059669' : 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
-              color: 'white', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
-              cursor: codigoWidget ? 'pointer' : 'not-allowed', transition: 'background 0.2s',
-            }}
-          >
-            {copiadoWidget ? '✅ Copiado' : '📋 Copiar código'}
-          </button>
+
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' as const, marginBottom: showWidgetPreview ? '16px' : '0' }}>
+            <button
+              onClick={() => copiar(codigoWidget, setCopiadoWidget)}
+              disabled={!codigoWidget}
+              style={{
+                padding: '9px 18px', borderRadius: '10px', border: 'none',
+                background: copiadoWidget ? '#059669' : 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
+                color: 'white', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
+                cursor: codigoWidget ? 'pointer' : 'not-allowed', transition: 'background 0.2s',
+              }}
+            >
+              {copiadoWidget ? '✅ Copiado' : '📋 Copiar código'}
+            </button>
+            <button
+              onClick={() => setShowWidgetPreview(v => !v)}
+              disabled={!negocioId}
+              style={{
+                padding: '9px 18px', borderRadius: '10px',
+                border: '1.5px solid var(--ds-border)', background: 'var(--ds-bg)',
+                color: 'var(--ds-text)', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
+                cursor: negocioId ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {showWidgetPreview ? '🔼 Ocultar preview' : '👁 Ver preview'}
+            </button>
+          </div>
+
+          {showWidgetPreview && negocioId && (
+            <div style={{ border: '1.5px solid var(--ds-border)', borderRadius: '12px', overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--ds-border)', fontSize: '12px', fontWeight: 600, color: 'var(--ds-text2)', background: 'var(--ds-bg)' }}>
+                Preview — así lo verán tus clientes
+              </div>
+              <iframe
+                src={urlWidget}
+                width="100%"
+                height="600"
+                style={{ border: 'none', display: 'block' }}
+                title="Preview widget de reservas"
+              />
+            </div>
+          )}
         </div>
 
         {/* ── WhatsApp Business ── */}
