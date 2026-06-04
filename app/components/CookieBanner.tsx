@@ -89,13 +89,13 @@ export function CookieBanner() {
             <div className="ck-title">🍪 Usamos cookies</div>
             <div className="ck-desc">
               Khepria usa cookies para mantener tu sesión y mejorar tu experiencia.
-              Consulta nuestra <Link href="/cookies">Política de Cookies</Link> y{' '}
-              <Link href="/privacidad">Política de Privacidad</Link>.
+              Consulta nuestra <Link href="/legal/cookies">Política de Cookies</Link> y{' '}
+              <Link href="/legal/privacidad">Política de Privacidad</Link>.
             </div>
           </div>
           <div className="ck-btns">
-            <button className="ck-btn-accept" onClick={accept}>Aceptar todo</button>
-            <button className="ck-btn-reject" onClick={reject}>Rechazar</button>
+            <button className="ck-btn-accept" onClick={accept}>Aceptar todas</button>
+            <button className="ck-btn-reject" onClick={reject}>Solo necesarias</button>
             <button className="ck-btn-config" onClick={() => setConfig(v => !v)}>
               {config ? 'Cerrar ▲' : 'Configurar ▼'}
             </button>
@@ -135,7 +135,7 @@ export function CookieBanner() {
               </label>
             </div>
             <div className="ck-config-btns">
-              <button className="ck-btn-reject" onClick={reject}>Rechazar todas</button>
+              <button className="ck-btn-reject" onClick={reject}>Solo necesarias</button>
               <button className="ck-btn-accept" onClick={saveConfig}>Guardar preferencias</button>
             </div>
           </div>

@@ -1340,10 +1340,10 @@ export default function Home() {
           <div className="kh-footer-bot">
             <div className="kh-footer-copy">© 2026 Khepria. Todos los derechos reservados.</div>
             <div className="kh-footer-legal">
-              <a href="/terminos">Términos</a>
-              <a href="/privacidad">Privacidad</a>
-              <a href="/aviso-legal">Aviso legal</a>
-              <a href="/cookies">Cookies</a>
+              <a href="/legal/privacidad">Política de Privacidad</a>
+              <a href="/legal/terminos">Términos y Condiciones</a>
+              <a href="/legal/cookies">Política de Cookies</a>
+              <a href="/aviso-legal">Aviso Legal</a>
             </div>
           </div>
         </div>
