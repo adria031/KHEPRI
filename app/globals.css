@@ -26,6 +26,26 @@ img, video, iframe {
   max-width: 100%;
 }
 
+:root {
+  --bg-primary: #F7F9FC;
+  --bg-secondary: #FFFFFF;
+  --text-primary: #1a1a2e;
+  --text-secondary: #6B7280;
+  --border: rgba(0,0,0,0.08);
+  --card: #FFFFFF;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.dark {
+  --bg-primary: #0f0f1a;
+  --bg-secondary: #1a1a2e;
+  --text-primary: #F7F9FC;
+  --text-secondary: #9CA3AF;
+  --border: rgba(255,255,255,0.08);
+  --card: #1a1a2e;
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+
 html.dark body {
   background: #0d0d0d;
   color: #f9fafb;
