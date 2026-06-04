@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, getIP } from '../../lib/rateLimit'
 
 function formatFecha(fecha: string): string {
   const [y, m, d] = fecha.split('-').map(Number)
@@ -94,6 +95,9 @@ function buildHtml(opts: {
 }
 
 export async function POST(req: Request) {
+  const rl = rateLimit(getIP(req), 5)
+  if (!rl.ok) return rl.response
+
   console.log('[confirmar-reserva] POST recibido')
 
   const RESEND_KEY = process.env.RESEND_API_KEY

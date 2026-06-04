@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
+import { rateLimit, getIP } from '../../lib/rateLimit'
 
 export async function POST(req: Request) {
+  const rl = rateLimit(getIP(req), 20)
+  if (!rl.ok) return rl.response
+
   const { prompt } = await req.json()
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
   if (!apiKey) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, getIP } from '../../lib/rateLimit'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,6 +8,9 @@ const supabase = createClient(
 )
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(getIP(req), 3)
+  if (!rl.ok) return rl.response
+
   const { nombre, email, tipo_negocio, ciudad } = await req.json()
   if (!email) return NextResponse.json({ error: 'Email requerido' }, { status: 400 })
 

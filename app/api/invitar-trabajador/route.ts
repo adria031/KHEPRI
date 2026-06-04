@@ -5,7 +5,7 @@ import { rateLimit, getIP } from '../../lib/rateLimit'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest) {
-  const rl = rateLimit(getIP(req), 10)
+  const rl = rateLimit(getIP(req), 3)
   if (!rl.ok) return NextResponse.json({ error: 'Demasiadas peticiones' }, { status: 429 })
 
   try {
