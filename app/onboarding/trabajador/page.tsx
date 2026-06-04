@@ -234,7 +234,7 @@ function TrabajadorOnboardingInner() {
                 </button>
 
                 <p style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px', lineHeight: 1.6 }}>
-                  Al continuar aceptas los <a href="/terminos" style={{ color: '#6B7280' }}>Términos de uso</a> de Khepria.
+                  Al continuar aceptas los <a href="/legal/terminos" style={{ color: '#6B7280' }}>Términos de uso</a> de Khepria.
                 </p>
               </form>
             </div>

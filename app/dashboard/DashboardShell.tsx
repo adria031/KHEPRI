@@ -580,9 +580,9 @@ export function DashboardShell({
               {t('logout')}
             </button>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '10px', paddingLeft: '4px' }}>
-              <Link href="/privacidad" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Privacidad</Link>
-              <Link href="/terminos" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Términos</Link>
-              <Link href="/cookies" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Cookies</Link>
+              <Link href="/legal/privacidad" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Privacidad</Link>
+              <Link href="/legal/terminos" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Términos</Link>
+              <Link href="/legal/cookies" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Cookies</Link>
               <Link href="/aviso-legal" style={{ fontSize: '11px', color: 'var(--ds-muted)', textDecoration: 'none' }}>Aviso Legal</Link>
             </div>
           </div>

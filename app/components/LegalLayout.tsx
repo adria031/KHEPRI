@@ -64,9 +64,9 @@ export function LegalLayout({ title, updated, children }: { title: string; updat
         <div className="lg-footer">
           <p>© 2025 Khepria · Hecho en España 🇪🇸</p>
           <div className="lg-footer-links">
-            <Link href="/privacidad">Privacidad</Link>
-            <Link href="/terminos">Términos</Link>
-            <Link href="/cookies">Cookies</Link>
+            <Link href="/legal/privacidad">Privacidad</Link>
+            <Link href="/legal/terminos">Términos</Link>
+            <Link href="/legal/cookies">Cookies</Link>
             <Link href="/aviso-legal">Aviso Legal</Link>
           </div>
         </div>

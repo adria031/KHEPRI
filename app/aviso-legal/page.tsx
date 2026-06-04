@@ -64,7 +64,7 @@ export default function AvisoLegal() {
 
       <div className="lg-section">
         <h2>7. Protección de datos personales</h2>
-        <p>El tratamiento de datos personales se realiza conforme al Reglamento (UE) 2016/679 (RGPD) y la Ley Orgánica 3/2018 (LOPDGDD). Consulta nuestra <a href="/privacidad">Política de Privacidad</a> para más información.</p>
+        <p>El tratamiento de datos personales se realiza conforme al Reglamento (UE) 2016/679 (RGPD) y la Ley Orgánica 3/2018 (LOPDGDD). Consulta nuestra <a href="/legal/privacidad">Política de Privacidad</a> para más información.</p>
       </div>
 
       <div className="lg-section">
