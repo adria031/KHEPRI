@@ -4,6 +4,7 @@ import "./globals.css";
 import { CookieBanner } from "./components/CookieBanner";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { LocaleProvider } from "./components/LocaleProvider";
+import { PWAInstallBanner } from "./components/PWAInstallBanner";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -48,7 +49,7 @@ export default function RootLayout({
 
         {/* PWA */}
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#B8D8F8" />
+        <meta name="theme-color" content="#7C3AED" />
         <meta name="mobile-web-app-capable" content="yes" />
 
         {/* iOS PWA */}
@@ -82,6 +83,7 @@ export default function RootLayout({
           </ThemeProvider>
         </LocaleProvider>
         <CookieBanner />
+        <PWAInstallBanner />
       </body>
     </html>
   );
