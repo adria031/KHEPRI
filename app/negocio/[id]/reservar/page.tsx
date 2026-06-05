@@ -797,6 +797,11 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                   <h2>¿Qué día te viene bien?</h2>
                   <p>Desliza para ver más fechas · días tachados cerrados</p>
                 </div>
+                {horarios.length === 0 && (
+                  <div style={{textAlign:'center', padding:'32px 20px', color:'#9CA3AF', fontSize:'14px', background:'#F9FAFB', borderRadius:'12px', border:'1px solid #F3F4F6'}}>
+                    Este negocio aún no ha configurado sus horarios. Contáctales directamente para reservar.
+                  </div>
+                )}
                 <div className="day-strip-wrap">
                   <div className="day-strip">
                     {Array.from({ length: Math.ceil(negocioAgenda.anteMax / 1440) }).map((_, i) => {

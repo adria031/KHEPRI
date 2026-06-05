@@ -131,24 +131,26 @@ export default function Horarios() {
   async function guardar() {
     if (!negocioId) return
     setGuardando(true); setApiError('')
-    for (const dia of diasSemana) {
+    const rows = diasSemana.map(dia => {
       const h = horarios[dia]
-      const datos = {
-        negocio_id: negocioId, dia,
+      return {
+        negocio_id: negocioId,
+        dia,
         abierto: h.estado !== 'cerrado',
         hora_apertura: h.apertura,
         hora_cierre: h.cierre,
         hora_apertura2: h.estado === 'partido' ? h.apertura2 : null,
         hora_cierre2: h.estado === 'partido' ? h.cierre2 : null,
       }
-      if (h.id) {
-        const { error: errUpd } = await dbMutation({ op: 'update', table: 'horarios', id: h.id, negocioId, data: datos })
-        if (errUpd) { setApiError(errUpd); }
-      } else {
-        const { data, error: errIns } = await dbMutation({ op: 'insert', table: 'horarios', negocioId, data: datos })
-        if (errIns || !data) { setApiError(errIns || 'Error al insertar horario'); }
-        else setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], id: (data as { id: string }).id } }))
-      }
+    })
+    const { error } = await supabase
+      .from('horarios')
+      .upsert(rows, { onConflict: 'negocio_id,dia' })
+    if (error) {
+      console.error('Error guardando horarios:', error)
+      setApiError(error.message)
+      setGuardando(false)
+      return
     }
     setGuardando(false)
     setGuardado(true)
@@ -413,6 +415,22 @@ export default function Horarios() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* ── GUARDAR HORARIO SEMANAL ── */}
+            {!cargando && (
+              <div style={{ marginBottom: 32, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button
+                  className={`btn-guardar ${guardado ? 'btn-guardado' : ''}`}
+                  onClick={guardar}
+                  disabled={guardando}
+                >
+                  {guardando ? 'Guardando...' : guardado ? '✓ Guardado' : 'Guardar horarios'}
+                </button>
+                {apiError && (
+                  <span style={{ fontSize: 13, color: '#DC2626' }}>Error: {apiError}</span>
+                )}
               </div>
             )}
 
