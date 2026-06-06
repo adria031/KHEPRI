@@ -39,10 +39,10 @@ const TIPOS_NEGOCIO = [
 ]
 
 const STATS = [
-  { icon: '⏱️', num: 3,  prefix: '',  suffix: 'h',  label: 'ahorradas al día',     isStatic: false, staticVal: '' },
-  { icon: '📈', num: 40, prefix: '+', suffix: '%',  label: 'más reservas',           isStatic: false, staticVal: '' },
-  { icon: '🤖', num: 0,  prefix: '',  suffix: '',   label: 'atención automática',   isStatic: true,  staticVal: '24/7' },
-  { icon: '💰', num: 0,  prefix: '',  suffix: '€',  label: 'en gestores de IVA',    isStatic: false, staticVal: '' },
+  { icon: '⏱️', num: 3,  prefix: '',  suffix: 'h',  label: 'ahorradas al día',    isStatic: false, staticVal: '' },
+  { icon: '📈', num: 40, prefix: '+', suffix: '%',  label: 'más reservas',          isStatic: false, staticVal: '' },
+  { icon: '🤖', num: 0,  prefix: '',  suffix: '',   label: 'atención automática',  isStatic: true,  staticVal: '24/7' },
+  { icon: '💰', num: 0,  prefix: '',  suffix: '€',  label: 'en gestores de IVA',   isStatic: false, staticVal: '' },
 ]
 
 // ── TILT CARD ─────────────────────────────────────────────────────────────────
@@ -193,6 +193,103 @@ function DiamondLogo3D() {
   return <canvas ref={canvasRef} style={{ display: 'block' }} />
 }
 
+// ── PARTICLES BACKGROUND ──────────────────────────────────────────────────────
+
+function ParticlesBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const rawCanvas = canvasRef.current
+    if (!rawCanvas) return
+    const canvasEl: HTMLCanvasElement = rawCanvas
+    const ctx: CanvasRenderingContext2D = canvasEl.getContext('2d')!
+    if (!ctx) return
+    let rafId = 0
+    let disposed = false
+    canvasEl.width = window.innerWidth
+    canvasEl.height = window.innerHeight
+    const onResize = () => {
+      canvasEl.width = window.innerWidth
+      canvasEl.height = window.innerHeight
+    }
+    window.addEventListener('resize', onResize)
+    const COLS = ['#7C5CEF', '#4FACFE', '#40DCA5', '#B89EFF']
+    const pts = Array.from({ length: 90 }, () => ({
+      x: Math.random() * canvasEl.width,
+      y: Math.random() * canvasEl.height,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      r: Math.random() * 1.8 + 0.5,
+      a: Math.random() * 0.28 + 0.07,
+      c: COLS[Math.floor(Math.random() * COLS.length)],
+    }))
+    function tick() {
+      if (disposed) return
+      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height)
+      for (const p of pts) {
+        p.x += p.vx; p.y += p.vy
+        if (p.x < 0) p.x = canvasEl.width
+        if (p.x > canvasEl.width) p.x = 0
+        if (p.y < 0) p.y = canvasEl.height
+        if (p.y > canvasEl.height) p.y = 0
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = p.c
+        ctx.globalAlpha = p.a
+        ctx.fill()
+      }
+      ctx.globalAlpha = 1
+      rafId = requestAnimationFrame(tick)
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => {
+      disposed = true
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+}
+
+// ── SECTION BRANCHES ──────────────────────────────────────────────────────────
+
+function SectionBranches({ color = '#7C5CEF' }: { color?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const inView = useInView(ref, { once: true, margin: '-20% 0px' })
+  return (
+    <div ref={ref} aria-hidden style={{ position: 'relative', height: 12, marginBottom: 48 }}>
+      <div style={{
+        position: 'absolute', right: '50%', top: 5, height: 1,
+        width: '50%',
+        background: `linear-gradient(to left, ${color}CC, transparent)`,
+        boxShadow: `0 0 8px ${color}60`,
+        transformOrigin: 'right center',
+        transform: `scaleX(${inView ? 1 : 0})`,
+        transition: 'transform 1s cubic-bezier(0.22,1,0.36,1)',
+      }} />
+      <div style={{
+        position: 'absolute', left: '50%', top: 0,
+        width: 12, height: 12, marginLeft: -6,
+        borderRadius: '50%',
+        background: color,
+        boxShadow: `0 0 20px ${color}, 0 0 8px ${color}`,
+        opacity: inView ? 1 : 0,
+        transform: inView ? 'scale(1)' : 'scale(0)',
+        transition: 'opacity 0.4s, transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+        zIndex: 1,
+      }} />
+      <div style={{
+        position: 'absolute', left: '50%', top: 5, height: 1,
+        width: '50%',
+        background: `linear-gradient(to right, ${color}CC, transparent)`,
+        boxShadow: `0 0 8px ${color}60`,
+        transformOrigin: 'left center',
+        transform: `scaleX(${inView ? 1 : 0})`,
+        transition: 'transform 1s cubic-bezier(0.22,1,0.36,1) 0.2s',
+      }} />
+    </div>
+  )
+}
+
 // ── HOME ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -212,7 +309,7 @@ export default function Home() {
 
   // Global scroll
   const { scrollY } = useScroll()
-  const navBg = useTransform(scrollY, [0, 60], ['rgba(7,7,15,0)', 'rgba(7,7,15,0.93)'])
+  const navBg  = useTransform(scrollY, [0, 60],  ['rgba(7,7,15,0)', 'rgba(7,7,15,0.93)'])
   const heroY  = useTransform(scrollY, [0, 700], [0, -130])
   const heroOp = useTransform(scrollY, [0, 500], [1, 0.15])
 
@@ -225,22 +322,22 @@ export default function Home() {
   const { scrollYProgress: qp } = useScroll({ target: quienRef,  offset: ['start end', 'center center'] })
   const { scrollYProgress: pp } = useScroll({ target: planesRef, offset: ['start end', 'center center'] })
 
-  // Feature transforms
-  const fLX  = useTransform(fp, [0, 0.75], [-90, 0])
-  const fLRY = useTransform(fp, [0, 0.75], [20,  0])
-  const fRX  = useTransform(fp, [0, 0.75], [ 90, 0])
-  const fRRY = useTransform(fp, [0, 0.75], [-20, 0])
-  const fOp  = useTransform(fp, [0, 0.45], [0,   1])
+  // Feature transforms — x:±200, rotateY:±25
+  const fLX  = useTransform(fp, [0, 0.75], [-200, 0])
+  const fLRY = useTransform(fp, [0, 0.75], [25,   0])
+  const fRX  = useTransform(fp, [0, 0.75], [ 200, 0])
+  const fRRY = useTransform(fp, [0, 0.75], [-25,  0])
+  const fOp  = useTransform(fp, [0, 0.45], [0,    1])
 
   // Para quién transforms
-  const qLX = useTransform(qp, [0, 0.7], [-70, 0])
-  const qRX = useTransform(qp, [0, 0.7], [ 70, 0])
-  const qOp = useTransform(qp, [0, 0.4], [0,   1])
+  const qLX = useTransform(qp, [0, 0.7], [-150, 0])
+  const qRX = useTransform(qp, [0, 0.7], [ 150, 0])
+  const qOp = useTransform(qp, [0, 0.4], [0,    1])
 
   // Planes transforms
-  const pLX = useTransform(pp, [0, 0.7], [-90, 0])
-  const pRX = useTransform(pp, [0, 0.7], [ 90, 0])
-  const pOp = useTransform(pp, [0, 0.4], [0,   1])
+  const pLX = useTransform(pp, [0, 0.7], [-180, 0])
+  const pRX = useTransform(pp, [0, 0.7], [ 180, 0])
+  const pOp = useTransform(pp, [0, 0.4], [0,    1])
 
   useEffect(() => {
     supabase.from('waitlist').select('*', { count: 'exact', head: true })
@@ -294,23 +391,33 @@ export default function Home() {
       {/* ── GLOBAL STYLES ── */}
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        body { font-family: 'DM Sans', sans-serif !important; background: #07070F; color: #E8E8F0; overflow-x: hidden; }
+        html { scroll-behavior: smooth; overflow-x: hidden !important; max-width: 100vw !important; }
+        body { font-family: 'DM Sans', sans-serif !important; background: #07070F; color: #E8E8F0; overflow-x: hidden !important; max-width: 100vw !important; }
 
+        @keyframes logoFloat {
+          0%, 100% { transform: translateY(0); }
+          50%       { transform: translateY(-16px); }
+        }
         @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
         @keyframes pulseLine {
-          0%,100% { opacity:0.5; box-shadow:0 0 8px rgba(124,92,239,0.5); }
-          50%     { opacity:1;   box-shadow:0 0 28px rgba(79,172,254,0.8), 0 0 56px rgba(64,220,165,0.25); }
+          0%,100% { opacity:0.55; box-shadow:0 0 12px rgba(124,92,239,0.6), 0 0 24px rgba(124,92,239,0.2); }
+          50%     { opacity:1;   box-shadow:0 0 48px rgba(79,172,254,0.95), 0 0 96px rgba(64,220,165,0.35), 0 0 24px rgba(124,92,239,0.8); }
         }
-        @keyframes flowDown {
+        @keyframes neuronFlow {
           0%   { top:-2%;   opacity:0; }
           10%  { opacity:1; }
           90%  { opacity:0.9; }
           100% { top:102%;  opacity:0; }
         }
         @keyframes nodePulse {
-          0%,100% { box-shadow:0 0 0 0 rgba(124,92,239,0.7), 0 0 10px rgba(124,92,239,0.3); }
-          50%     { box-shadow:0 0 0 12px rgba(124,92,239,0), 0 0 28px rgba(79,172,254,0.5); }
+          0%,100% { box-shadow:0 0 0 0 rgba(124,92,239,0.8), 0 0 10px rgba(124,92,239,0.4); }
+          50%     { box-shadow:0 0 0 14px rgba(124,92,239,0), 0 0 36px rgba(79,172,254,0.65); }
+        }
+        @keyframes particleFlow {
+          0%   { opacity:0; transform:translateY(0) scale(1); }
+          15%  { opacity:0.7; }
+          85%  { opacity:0.5; }
+          100% { opacity:0; transform:translateY(-40px) scale(0.6); }
         }
         @keyframes heroBg {
           0%,100% { transform:translate(0,0) scale(1); }
@@ -342,12 +449,12 @@ export default function Home() {
         .kh-mobile-btn { font-size:15px; font-weight:600; color:rgba(255,255,255,0.65); padding:13px 12px; border-radius:10px; cursor:pointer; border:none; background:none; text-align:left; font-family:'DM Sans',sans-serif; }
         .kh-mobile-btn:hover { background:rgba(255,255,255,0.05); color:#fff; }
 
-        /* ── Energy column ── */
-        .energy-wrap { position:absolute; left:50%; top:0; transform:translateX(-50%); width:20px; height:100%; z-index:0; pointer-events:none; display:none; }
+        /* ── Neuron / Energy column ── */
+        .energy-wrap { position:absolute; left:50%; top:0; transform:translateX(-50%); width:24px; height:100%; z-index:0; pointer-events:none; display:none; overflow:visible; }
         @media(min-width:768px) { .energy-wrap { display:block; } }
-        .energy-line { position:absolute; left:50%; transform:translateX(-50%); top:0; height:100%; width:2px; background:linear-gradient(to bottom, transparent 0%, rgba(124,92,239,0.9) 8%, rgba(79,172,254,0.85) 45%, rgba(64,220,165,0.75) 72%, rgba(124,92,239,0.85) 92%, transparent 100%); animation:pulseLine 3s ease-in-out infinite; }
-        .energy-dot { position:absolute; left:50%; transform:translateX(-50%); width:6px; height:6px; border-radius:50%; animation:flowDown var(--dur) linear var(--del) infinite; }
-        .energy-node { position:absolute; left:50%; transform:translate(-50%,-50%); width:13px; height:13px; border-radius:50%; background:rgba(124,92,239,0.25); border:1.5px solid rgba(124,92,239,0.7); animation:nodePulse 2.8s ease-in-out infinite; }
+        .energy-line { position:absolute; left:50%; transform:translateX(-50%); top:0; height:100%; width:4px; border-radius:2px; background:linear-gradient(to bottom, transparent 0%, rgba(124,92,239,0.95) 8%, rgba(79,172,254,0.9) 45%, rgba(64,220,165,0.8) 72%, rgba(124,92,239,0.9) 92%, transparent 100%); animation:pulseLine 3s ease-in-out infinite; }
+        .energy-dot { position:absolute; left:50%; transform:translateX(-50%); width:6px; height:6px; border-radius:50%; animation:neuronFlow var(--dur) linear var(--del) infinite; }
+        .energy-node { position:absolute; left:50%; transform:translate(-50%,-50%); width:16px; height:16px; border-radius:50%; background:rgba(124,92,239,0.22); border:2px solid rgba(124,92,239,0.8); animation:nodePulse 2.8s ease-in-out infinite; }
 
         /* ── Hero ── */
         .kh-hero { min-height:100svh; display:flex; align-items:center; justify-content:center; text-align:center; padding:120px 24px 100px; position:relative; overflow:hidden; }
@@ -372,16 +479,16 @@ export default function Home() {
         .scroll-txt { font-size:10px; letter-spacing:0.15em; color:rgba(255,255,255,0.28); text-transform:uppercase; }
 
         /* ── Section commons ── */
-        .kh-section { padding:100px 24px; position:relative; z-index:1; }
+        .kh-section { padding:100px 24px; position:relative; z-index:1; overflow:hidden; }
         .kh-section-inner { max-width:1180px; margin:0 auto; }
         .kh-sec-hdr { text-align:center; max-width:620px; margin:0 auto 56px; }
         .kh-sec-p { font-size:15px; color:rgba(255,255,255,0.4); line-height:1.75; margin-top:12px; }
 
-        /* ── Stats ── */
-        .kh-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-top:1px solid rgba(255,255,255,0.06); border-bottom:1px solid rgba(255,255,255,0.06); }
-        .kh-stat { display:flex; flex-direction:column; align-items:center; padding:40px 20px; gap:4px; border-right:1px solid rgba(255,255,255,0.06); transition:background 0.3s; }
-        .kh-stat:last-child { border-right:none; }
-        .kh-stat:hover { background:rgba(124,92,239,0.05); }
+        /* ── Stats — glassmorphism ── */
+        .kh-stats-section { position:relative; z-index:1; padding:48px 24px; }
+        .kh-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; max-width:1180px; margin:0 auto; }
+        .kh-stat { display:flex; flex-direction:column; align-items:center; padding:32px 20px; gap:4px; border-radius:20px; background:rgba(255,255,255,0.03); border:1px solid rgba(124,92,239,0.3); backdrop-filter:blur(12px); box-shadow:0 0 32px rgba(124,92,239,0.08), inset 0 1px 0 rgba(255,255,255,0.06); transition:background 0.3s,border-color 0.3s,box-shadow 0.3s; }
+        .kh-stat:hover { background:rgba(124,92,239,0.08); border-color:rgba(124,92,239,0.55); box-shadow:0 0 48px rgba(124,92,239,0.2), inset 0 1px 0 rgba(124,92,239,0.1); }
         .kh-stat-icon { font-size:22px; margin-bottom:8px; }
         .kh-stat-num { font-family:'Syne',sans-serif; font-size:clamp(1.8rem,3vw,2.4rem); font-weight:800; letter-spacing:-1.5px; color:#fff; }
         .kh-stat-label { font-size:13px; color:rgba(255,255,255,0.35); font-weight:500; text-align:center; }
@@ -420,7 +527,7 @@ export default function Home() {
         .kh-plan-note { font-size:11px; color:rgba(255,255,255,0.22); text-align:center; margin-top:16px; }
 
         /* ── Cliente CTA ── */
-        .kh-cliente { padding:80px 24px; text-align:center; position:relative; z-index:1; border-top:1px solid rgba(255,255,255,0.05); }
+        .kh-cliente { padding:80px 24px; text-align:center; position:relative; z-index:1; border-top:1px solid rgba(255,255,255,0.05); overflow:hidden; }
 
         /* ── Waitlist ── */
         .kh-waitlist { padding:100px 24px; background:linear-gradient(160deg, rgba(124,92,239,0.07) 0%, transparent 50%, rgba(64,220,165,0.04) 100%); position:relative; z-index:1; overflow:hidden; }
@@ -464,8 +571,6 @@ export default function Home() {
           .kh-planes-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:16px; padding-bottom:12px; }
           .kh-plan-card { min-width:260px; scroll-snap-align:start; }
           .kh-stats-grid { grid-template-columns:1fr 1fr; }
-          .kh-stat { border-right:none; border-bottom:1px solid rgba(255,255,255,0.06); }
-          .kh-stat:nth-child(odd) { border-right:1px solid rgba(255,255,255,0.06); }
           .kh-nav-links { display:none; }
           .kh-hamburger { display:flex; }
           .kh-quien-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:8px; }
@@ -478,6 +583,7 @@ export default function Home() {
           .kh-waitlist, .kh-cliente { padding:64px 20px; }
           .kh-footer-top { flex-direction:column; }
           .kh-footer-bot { flex-direction:column; align-items:flex-start; }
+          .kh-stats-section { padding:32px 16px; }
         }
       `}</style>
 
@@ -537,10 +643,10 @@ export default function Home() {
         </div>
       </motion.nav>
 
-      {/* ── MAIN WRAPPER WITH ENERGY COLUMN ── */}
-      <div style={{ position: 'relative' }}>
+      {/* ── MAIN WRAPPER ── */}
+      <div style={{ position: 'relative', overflowX: 'hidden', width: '100%', maxWidth: '100vw' }}>
 
-        {/* Energy column */}
+        {/* Neuron column */}
         <div className="energy-wrap" aria-hidden>
           <div className="energy-line" />
           {[
@@ -550,28 +656,31 @@ export default function Home() {
             { del: '3.4s',  dur: '5.1s', col: '#B89EFF' },
             { del: '0.6s',  dur: '6.5s', col: '#7EC8FF' },
           ].map((p, i) => (
-            <div key={i} className="energy-dot" style={{ '--del': p.del, '--dur': p.dur, background: p.col, boxShadow: `0 0 7px ${p.col}` } as React.CSSProperties} />
+            <div key={i} className="energy-dot" style={{ '--del': p.del, '--dur': p.dur, background: p.col, boxShadow: `0 0 8px ${p.col}` } as React.CSSProperties} />
           ))}
-          <div className="energy-node" style={{ top: '15%', animationDelay: '0s' }} />
-          <div className="energy-node" style={{ top: '34%', animationDelay: '0.7s',  borderColor: 'rgba(79,172,254,0.7)',  background: 'rgba(79,172,254,0.18)' }} />
-          <div className="energy-node" style={{ top: '53%', animationDelay: '1.4s',  borderColor: 'rgba(64,220,165,0.7)',  background: 'rgba(64,220,165,0.18)' }} />
-          <div className="energy-node" style={{ top: '72%', animationDelay: '0.35s' }} />
-          <div className="energy-node" style={{ top: '88%', animationDelay: '1.05s', borderColor: 'rgba(79,172,254,0.7)',  background: 'rgba(79,172,254,0.18)' }} />
+          <div className="energy-node" style={{ top: '12%', animationDelay: '0s' }} />
+          <div className="energy-node" style={{ top: '30%', animationDelay: '0.7s',  borderColor: 'rgba(79,172,254,0.8)',  background: 'rgba(79,172,254,0.2)' }} />
+          <div className="energy-node" style={{ top: '52%', animationDelay: '1.4s',  borderColor: 'rgba(64,220,165,0.8)',  background: 'rgba(64,220,165,0.2)' }} />
+          <div className="energy-node" style={{ top: '70%', animationDelay: '0.35s' }} />
+          <div className="energy-node" style={{ top: '85%', animationDelay: '1.05s', borderColor: 'rgba(79,172,254,0.8)',  background: 'rgba(79,172,254,0.2)' }} />
         </div>
 
         {/* ── HERO ── */}
         <section className="kh-hero" id="hero">
           <div className="kh-hero-bg" />
+          <ParticlesBackground />
           <motion.div className="kh-hero-inner" style={{ y: heroY, opacity: heroOp }}>
 
-            <motion.div
-              className="kh-diamond-wrap"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1.3, ease: 'easeOut' as const }}
-            >
-              <DiamondLogo3D />
-            </motion.div>
+            <div style={{ animation: 'logoFloat 4s ease-in-out infinite' }}>
+              <motion.div
+                className="kh-diamond-wrap"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1.3, ease: 'easeOut' as const }}
+              >
+                <DiamondLogo3D />
+              </motion.div>
+            </div>
 
             <motion.div
               initial={{ opacity: 0, y: 18 }}
@@ -619,7 +728,7 @@ export default function Home() {
         </section>
 
         {/* ── STATS ── */}
-        <section style={{ position: 'relative', zIndex: 1 }}>
+        <section className="kh-stats-section">
           <motion.div
             className="kh-stats-grid"
             initial="hidden" whileInView="visible"
@@ -644,6 +753,7 @@ export default function Home() {
         {/* ── FUNCIONES ── */}
         <section className="kh-section" id="funciones" ref={featRef}>
           <div className="kh-section-inner">
+            <SectionBranches color="#7C5CEF" />
             <motion.div
               className="kh-sec-hdr"
               initial="hidden" whileInView="visible"
@@ -671,7 +781,6 @@ export default function Home() {
             </motion.div>
 
             <div className="feat-cols">
-              {/* Left column */}
               <motion.div className="feat-col" style={{ x: fLX, rotateY: fLRY, opacity: fOp, transformPerspective: 1200 }}>
                 {FEATURES.filter((_, i) => i % 2 === 0).map(f => (
                   <TiltCard key={f.title} className="kh-feat-card">
@@ -682,7 +791,6 @@ export default function Home() {
                 ))}
               </motion.div>
 
-              {/* Right column — offset down for visual rhythm */}
               <motion.div className="feat-col" style={{ x: fRX, rotateY: fRRY, opacity: fOp, transformPerspective: 1200, marginTop: 48 }}>
                 {FEATURES.filter((_, i) => i % 2 === 1).map(f => (
                   <TiltCard key={f.title} className="kh-feat-card">
@@ -699,6 +807,7 @@ export default function Home() {
         {/* ── PARA QUIÉN ── */}
         <section className="kh-section" id="quien" ref={quienRef} style={{ background: 'rgba(79,172,254,0.025)' }}>
           <div className="kh-section-inner">
+            <SectionBranches color="#4FACFE" />
             <motion.div
               className="kh-sec-hdr"
               initial="hidden" whileInView="visible"
@@ -735,6 +844,7 @@ export default function Home() {
         {/* ── PLANES ── */}
         <section className="kh-section" id="planes" ref={planesRef}>
           <div className="kh-section-inner">
+            <SectionBranches color="#40DCA5" />
             <motion.div
               className="kh-sec-hdr"
               initial="hidden" whileInView="visible"
@@ -768,7 +878,7 @@ export default function Home() {
                   style={{
                     x: i % 2 === 0 ? pLX : pRX,
                     opacity: pOp,
-                    scale: p.popular ? 1.03 : 1,
+                    scale: p.popular ? 1.06 : 1,
                     transformPerspective: 1200,
                   }}
                 >
