@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { WebGLRenderer } from 'three'
 import { supabase } from './lib/supabase'
-import { motion, useScroll, useTransform, useInView } from 'framer-motion'
+import { motion, useScroll, useTransform, useInView, useSpring } from 'framer-motion'
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -193,7 +193,7 @@ function DiamondLogo3D() {
   return <canvas ref={canvasRef} style={{ display: 'block' }} />
 }
 
-// ── PARTICLES BACKGROUND ──────────────────────────────────────────────────────
+// ── PARTICLES BACKGROUND (hero) ───────────────────────────────────────────────
 
 function ParticlesBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -213,13 +213,13 @@ function ParticlesBackground() {
     }
     window.addEventListener('resize', onResize)
     const COLS = ['#7C5CEF', '#4FACFE', '#40DCA5', '#B89EFF']
-    const pts = Array.from({ length: 90 }, () => ({
+    const pts = Array.from({ length: 70 }, () => ({
       x: Math.random() * canvasEl.width,
       y: Math.random() * canvasEl.height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      r: Math.random() * 1.8 + 0.5,
-      a: Math.random() * 0.28 + 0.07,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      r: Math.random() * 1.6 + 0.4,
+      a: Math.random() * 0.25 + 0.06,
       c: COLS[Math.floor(Math.random() * COLS.length)],
     }))
     function tick() {
@@ -250,6 +250,171 @@ function ParticlesBackground() {
   return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
 }
 
+// ── NEURAL NETWORK BACKGROUND ─────────────────────────────────────────────────
+
+function NeuralNetworkBg() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const rawCanvas = canvasRef.current
+    if (!rawCanvas) return
+    const canvas: HTMLCanvasElement = rawCanvas
+    const ctx: CanvasRenderingContext2D = canvas.getContext('2d')!
+    if (!ctx) return
+
+    let rafId = 0
+    let disposed = false
+    let W = window.innerWidth
+    let H = window.innerHeight
+
+    const isMob = W < 768
+    const NODE_COUNT = isMob ? 16 : 30
+    const MAX_DIST = isMob ? 180 : 250
+    const COLS = ['#7C5CEF', '#4FACFE', '#40DCA5', '#B89EFF', '#7EC8FF']
+
+    // Nodes: some near center spine, rest spread
+    const SPINE = Math.floor(NODE_COUNT * 0.4)
+    type Node = { x: number; y: number; vx: number; vy: number; r: number; col: string; phase: number; ps: number }
+
+    const nodes: Node[] = Array.from({ length: NODE_COUNT }, (_, i) => ({
+      x: i < SPINE
+        ? W / 2 + (Math.random() - 0.5) * W * 0.22
+        : Math.random() * W,
+      y: i < SPINE
+        ? (i / SPINE) * H + Math.random() * (H / SPINE)
+        : Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.22,
+      vy: (Math.random() - 0.5) * 0.22,
+      r: Math.random() * 2.2 + 1.4,
+      col: COLS[Math.floor(Math.random() * COLS.length)],
+      phase: Math.random() * Math.PI * 2,
+      ps: 0.012 + Math.random() * 0.018,
+    }))
+
+    // Particles — each travels from one node to another
+    type Prt = { from: number; to: number; t: number; speed: number; col: string }
+    const PCOUNT = isMob ? 22 : 50
+    const particles: Prt[] = Array.from({ length: PCOUNT }, () => ({
+      from: Math.floor(Math.random() * NODE_COUNT),
+      to: Math.floor(Math.random() * NODE_COUNT),
+      t: Math.random(),
+      speed: 0.0035 + Math.random() * 0.005,
+      col: COLS[Math.floor(Math.random() * COLS.length)],
+    }))
+
+    const onResize = () => {
+      W = window.innerWidth
+      H = window.innerHeight
+      canvas.width = W
+      canvas.height = H
+    }
+    canvas.width = W
+    canvas.height = H
+    window.addEventListener('resize', onResize)
+
+    function draw() {
+      if (disposed) return
+      ctx.clearRect(0, 0, W, H)
+
+      // Edges
+      for (let i = 0; i < NODE_COUNT; i++) {
+        for (let j = i + 1; j < NODE_COUNT; j++) {
+          const dx = nodes[i].x - nodes[j].x
+          const dy = nodes[i].y - nodes[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < MAX_DIST) {
+            const a = (1 - dist / MAX_DIST) * 0.2
+            const grad = ctx.createLinearGradient(nodes[i].x, nodes[i].y, nodes[j].x, nodes[j].y)
+            const ai = Math.round(a * 255).toString(16).padStart(2, '0')
+            grad.addColorStop(0, nodes[i].col + ai)
+            grad.addColorStop(1, nodes[j].col + ai)
+            ctx.beginPath()
+            ctx.moveTo(nodes[i].x, nodes[i].y)
+            ctx.lineTo(nodes[j].x, nodes[j].y)
+            ctx.strokeStyle = grad
+            ctx.lineWidth = 0.9
+            ctx.stroke()
+          }
+        }
+      }
+
+      // Nodes
+      for (const n of nodes) {
+        n.x += n.vx; n.y += n.vy
+        if (n.x < 0 || n.x > W) n.vx *= -1
+        if (n.y < 0 || n.y > H) n.vy *= -1
+        n.phase += n.ps
+
+        const pulse = 1 + Math.sin(n.phase) * 0.35
+        const gr = n.r * pulse * 5
+        const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, gr)
+        grd.addColorStop(0, n.col + '55')
+        grd.addColorStop(1, n.col + '00')
+        ctx.beginPath()
+        ctx.arc(n.x, n.y, gr, 0, Math.PI * 2)
+        ctx.fillStyle = grd
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.arc(n.x, n.y, n.r * pulse, 0, Math.PI * 2)
+        ctx.fillStyle = n.col + 'DD'
+        ctx.fill()
+      }
+
+      // Particles
+      for (const p of particles) {
+        p.t += p.speed
+        if (p.t >= 1) {
+          p.t = 0
+          p.from = Math.floor(Math.random() * NODE_COUNT)
+          p.to = Math.floor(Math.random() * NODE_COUNT)
+          p.col = COLS[Math.floor(Math.random() * COLS.length)]
+        }
+        const n1 = nodes[p.from]
+        const n2 = nodes[p.to]
+        const edx = n1.x - n2.x
+        const edy = n1.y - n2.y
+        if (Math.sqrt(edx * edx + edy * edy) > MAX_DIST * 1.3) continue
+        const px = n1.x + (n2.x - n1.x) * p.t
+        const py = n1.y + (n2.y - n1.y) * p.t
+        const pg = ctx.createRadialGradient(px, py, 0, px, py, 5)
+        pg.addColorStop(0, p.col + 'EE')
+        pg.addColorStop(1, p.col + '00')
+        ctx.beginPath()
+        ctx.arc(px, py, 5, 0, Math.PI * 2)
+        ctx.fillStyle = pg
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(px, py, 1.8, 0, Math.PI * 2)
+        ctx.fillStyle = '#ffffffCC'
+        ctx.fill()
+      }
+
+      rafId = requestAnimationFrame(draw)
+    }
+
+    rafId = requestAnimationFrame(draw)
+
+    return () => {
+      disposed = true
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed', inset: 0,
+        width: '100%', height: '100%',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
+    />
+  )
+}
+
 // ── SECTION BRANCHES ──────────────────────────────────────────────────────────
 
 function SectionBranches({ color = '#7C5CEF' }: { color?: string }) {
@@ -258,8 +423,7 @@ function SectionBranches({ color = '#7C5CEF' }: { color?: string }) {
   return (
     <div ref={ref} aria-hidden style={{ position: 'relative', height: 12, marginBottom: 48 }}>
       <div style={{
-        position: 'absolute', right: '50%', top: 5, height: 1,
-        width: '50%',
+        position: 'absolute', right: '50%', top: 5, height: 1, width: '50%',
         background: `linear-gradient(to left, ${color}CC, transparent)`,
         boxShadow: `0 0 8px ${color}60`,
         transformOrigin: 'right center',
@@ -267,10 +431,8 @@ function SectionBranches({ color = '#7C5CEF' }: { color?: string }) {
         transition: 'transform 1s cubic-bezier(0.22,1,0.36,1)',
       }} />
       <div style={{
-        position: 'absolute', left: '50%', top: 0,
-        width: 12, height: 12, marginLeft: -6,
-        borderRadius: '50%',
-        background: color,
+        position: 'absolute', left: '50%', top: 0, width: 12, height: 12, marginLeft: -6,
+        borderRadius: '50%', background: color,
         boxShadow: `0 0 20px ${color}, 0 0 8px ${color}`,
         opacity: inView ? 1 : 0,
         transform: inView ? 'scale(1)' : 'scale(0)',
@@ -278,8 +440,7 @@ function SectionBranches({ color = '#7C5CEF' }: { color?: string }) {
         zIndex: 1,
       }} />
       <div style={{
-        position: 'absolute', left: '50%', top: 5, height: 1,
-        width: '50%',
+        position: 'absolute', left: '50%', top: 5, height: 1, width: '50%',
         background: `linear-gradient(to right, ${color}CC, transparent)`,
         boxShadow: `0 0 8px ${color}60`,
         transformOrigin: 'left center',
@@ -294,6 +455,7 @@ function SectionBranches({ color = '#7C5CEF' }: { color?: string }) {
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   // Waitlist
   const [count, setCount] = useState(0)
@@ -309,8 +471,8 @@ export default function Home() {
 
   // Global scroll
   const { scrollY } = useScroll()
-  const navBg  = useTransform(scrollY, [0, 60],  ['rgba(7,7,15,0)', 'rgba(7,7,15,0.93)'])
-  const heroY  = useTransform(scrollY, [0, 700], [0, -130])
+  const navBg  = useTransform(scrollY, [0, 60],  ['rgba(7,7,15,0)', 'rgba(7,7,15,0.95)'])
+  const heroY  = useTransform(scrollY, [0, 600], [0, -80])
   const heroOp = useTransform(scrollY, [0, 500], [1, 0.15])
 
   // Per-section scroll refs
@@ -318,26 +480,38 @@ export default function Home() {
   const quienRef  = useRef<HTMLElement>(null)
   const planesRef = useRef<HTMLElement>(null)
 
-  const { scrollYProgress: fp } = useScroll({ target: featRef,   offset: ['start end', 'center center'] })
-  const { scrollYProgress: qp } = useScroll({ target: quienRef,  offset: ['start end', 'center center'] })
-  const { scrollYProgress: pp } = useScroll({ target: planesRef, offset: ['start end', 'center center'] })
+  const { scrollYProgress: fpRaw } = useScroll({ target: featRef,   offset: ['start end', 'center center'] })
+  const { scrollYProgress: qpRaw } = useScroll({ target: quienRef,  offset: ['start end', 'center center'] })
+  const { scrollYProgress: ppRaw } = useScroll({ target: planesRef, offset: ['start end', 'center center'] })
 
-  // Feature transforms — x:±200, rotateY:±25
-  const fLX  = useTransform(fp, [0, 0.75], [-200, 0])
-  const fLRY = useTransform(fp, [0, 0.75], [25,   0])
-  const fRX  = useTransform(fp, [0, 0.75], [ 200, 0])
-  const fRRY = useTransform(fp, [0, 0.75], [-25,  0])
+  // Spring smoothing — eliminates jitter from rapid scroll
+  const fp = useSpring(fpRaw, { stiffness: 100, damping: 30, restDelta: 0.001 })
+  const qp = useSpring(qpRaw, { stiffness: 100, damping: 30, restDelta: 0.001 })
+  const pp = useSpring(ppRaw, { stiffness: 100, damping: 30, restDelta: 0.001 })
+
+  // Feature transforms — reduced range, zero on mobile to avoid clip
+  const fLX  = useTransform(fp, [0, 0.75], [-110, 0])
+  const fLRY = useTransform(fp, [0, 0.75], [18,   0])
+  const fRX  = useTransform(fp, [0, 0.75], [ 110, 0])
+  const fRRY = useTransform(fp, [0, 0.75], [-18,  0])
   const fOp  = useTransform(fp, [0, 0.45], [0,    1])
 
   // Para quién transforms
-  const qLX = useTransform(qp, [0, 0.7], [-150, 0])
-  const qRX = useTransform(qp, [0, 0.7], [ 150, 0])
-  const qOp = useTransform(qp, [0, 0.4], [0,    1])
+  const qLX = useTransform(qp, [0, 0.7], [-90, 0])
+  const qRX = useTransform(qp, [0, 0.7], [ 90, 0])
+  const qOp = useTransform(qp, [0, 0.4], [0,   1])
 
   // Planes transforms
-  const pLX = useTransform(pp, [0, 0.7], [-180, 0])
-  const pRX = useTransform(pp, [0, 0.7], [ 180, 0])
+  const pLX = useTransform(pp, [0, 0.7], [-110, 0])
+  const pRX = useTransform(pp, [0, 0.7], [ 110, 0])
   const pOp = useTransform(pp, [0, 0.4], [0,    1])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     supabase.from('waitlist').select('*', { count: 'exact', head: true })
@@ -391,42 +565,33 @@ export default function Home() {
       {/* ── GLOBAL STYLES ── */}
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; overflow-x: hidden !important; max-width: 100vw !important; }
-        body { font-family: 'DM Sans', sans-serif !important; background: #07070F; color: #E8E8F0; overflow-x: hidden !important; max-width: 100vw !important; }
+        html { scroll-behavior: smooth; overflow-x: hidden !important; }
+        body { font-family: 'DM Sans', sans-serif !important; background: #07070F; color: #E8E8F0; overflow-x: hidden !important; }
 
         @keyframes logoFloat {
           0%, 100% { transform: translateY(0); }
-          50%       { transform: translateY(-16px); }
+          50%       { transform: translateY(-14px); }
         }
         @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pulseLine {
-          0%,100% { opacity:0.55; box-shadow:0 0 12px rgba(124,92,239,0.6), 0 0 24px rgba(124,92,239,0.2); }
-          50%     { opacity:1;   box-shadow:0 0 48px rgba(79,172,254,0.95), 0 0 96px rgba(64,220,165,0.35), 0 0 24px rgba(124,92,239,0.8); }
-        }
-        @keyframes neuronFlow {
-          0%   { top:-2%;   opacity:0; }
-          10%  { opacity:1; }
-          90%  { opacity:0.9; }
-          100% { top:102%;  opacity:0; }
-        }
-        @keyframes nodePulse {
-          0%,100% { box-shadow:0 0 0 0 rgba(124,92,239,0.8), 0 0 10px rgba(124,92,239,0.4); }
-          50%     { box-shadow:0 0 0 14px rgba(124,92,239,0), 0 0 36px rgba(79,172,254,0.65); }
-        }
-        @keyframes particleFlow {
-          0%   { opacity:0; transform:translateY(0) scale(1); }
-          15%  { opacity:0.7; }
-          85%  { opacity:0.5; }
-          100% { opacity:0; transform:translateY(-40px) scale(0.6); }
-        }
         @keyframes heroBg {
           0%,100% { transform:translate(0,0) scale(1); }
-          33%     { transform:translate(60px,-40px) scale(1.08); }
-          66%     { transform:translate(-40px,60px) scale(0.94); }
+          33%     { transform:translate(50px,-30px) scale(1.06); }
+          66%     { transform:translate(-30px,50px) scale(0.95); }
         }
         @keyframes scrollBounce {
           0%,100% { transform:translateY(0); opacity:0.7; }
-          50%     { transform:translateY(9px); opacity:0.25; }
+          50%     { transform:translateY(8px); opacity:0.25; }
+        }
+        @keyframes neuronFlow { 0%{top:-2%;opacity:0} 10%{opacity:1} 90%{opacity:.9} 100%{top:102%;opacity:0} }
+        @keyframes nodePulse {
+          0%,100% { box-shadow:0 0 0 0 rgba(124,92,239,0.8); }
+          50%     { box-shadow:0 0 0 14px rgba(124,92,239,0); }
+        }
+        @keyframes particleFlow {
+          0%   { opacity:0; transform:translateY(0) scale(1); }
+          15%  { opacity:.7; }
+          85%  { opacity:.5; }
+          100% { opacity:0; transform:translateY(-40px) scale(.6); }
         }
 
         /* ── Nav ── */
@@ -448,13 +613,6 @@ export default function Home() {
         .kh-mobile.open { display:flex; }
         .kh-mobile-btn { font-size:15px; font-weight:600; color:rgba(255,255,255,0.65); padding:13px 12px; border-radius:10px; cursor:pointer; border:none; background:none; text-align:left; font-family:'DM Sans',sans-serif; }
         .kh-mobile-btn:hover { background:rgba(255,255,255,0.05); color:#fff; }
-
-        /* ── Neuron / Energy column ── */
-        .energy-wrap { position:absolute; left:50%; top:0; transform:translateX(-50%); width:24px; height:100%; z-index:0; pointer-events:none; display:none; overflow:visible; }
-        @media(min-width:768px) { .energy-wrap { display:block; } }
-        .energy-line { position:absolute; left:50%; transform:translateX(-50%); top:0; height:100%; width:4px; border-radius:2px; background:linear-gradient(to bottom, transparent 0%, rgba(124,92,239,0.95) 8%, rgba(79,172,254,0.9) 45%, rgba(64,220,165,0.8) 72%, rgba(124,92,239,0.9) 92%, transparent 100%); animation:pulseLine 3s ease-in-out infinite; }
-        .energy-dot { position:absolute; left:50%; transform:translateX(-50%); width:6px; height:6px; border-radius:50%; animation:neuronFlow var(--dur) linear var(--del) infinite; }
-        .energy-node { position:absolute; left:50%; transform:translate(-50%,-50%); width:16px; height:16px; border-radius:50%; background:rgba(124,92,239,0.22); border:2px solid rgba(124,92,239,0.8); animation:nodePulse 2.8s ease-in-out infinite; }
 
         /* ── Hero ── */
         .kh-hero { min-height:100svh; display:flex; align-items:center; justify-content:center; text-align:center; padding:120px 24px 100px; position:relative; overflow:hidden; }
@@ -479,7 +637,7 @@ export default function Home() {
         .scroll-txt { font-size:10px; letter-spacing:0.15em; color:rgba(255,255,255,0.28); text-transform:uppercase; }
 
         /* ── Section commons ── */
-        .kh-section { padding:100px 24px; position:relative; z-index:1; overflow:hidden; }
+        .kh-section { padding:100px 24px; position:relative; z-index:1; }
         .kh-section-inner { max-width:1180px; margin:0 auto; }
         .kh-sec-hdr { text-align:center; max-width:620px; margin:0 auto 56px; }
         .kh-sec-p { font-size:15px; color:rgba(255,255,255,0.4); line-height:1.75; margin-top:12px; }
@@ -488,14 +646,14 @@ export default function Home() {
         .kh-stats-section { position:relative; z-index:1; padding:48px 24px; }
         .kh-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; max-width:1180px; margin:0 auto; }
         .kh-stat { display:flex; flex-direction:column; align-items:center; padding:32px 20px; gap:4px; border-radius:20px; background:rgba(255,255,255,0.03); border:1px solid rgba(124,92,239,0.3); backdrop-filter:blur(12px); box-shadow:0 0 32px rgba(124,92,239,0.08), inset 0 1px 0 rgba(255,255,255,0.06); transition:background 0.3s,border-color 0.3s,box-shadow 0.3s; }
-        .kh-stat:hover { background:rgba(124,92,239,0.08); border-color:rgba(124,92,239,0.55); box-shadow:0 0 48px rgba(124,92,239,0.2), inset 0 1px 0 rgba(124,92,239,0.1); }
+        .kh-stat:hover { background:rgba(124,92,239,0.08); border-color:rgba(124,92,239,0.55); box-shadow:0 0 48px rgba(124,92,239,0.2); }
         .kh-stat-icon { font-size:22px; margin-bottom:8px; }
         .kh-stat-num { font-family:'Syne',sans-serif; font-size:clamp(1.8rem,3vw,2.4rem); font-weight:800; letter-spacing:-1.5px; color:#fff; }
         .kh-stat-label { font-size:13px; color:rgba(255,255,255,0.35); font-weight:500; text-align:center; }
 
         /* ── Feature cards ── */
         .feat-cols { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
-        .feat-col { display:flex; flex-direction:column; gap:20px; }
+        .feat-col { display:flex; flex-direction:column; gap:20px; will-change:transform; }
         .kh-feat-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:20px; padding:28px; cursor:default; transition:background 0.3s,border-color 0.3s; }
         .kh-feat-card:hover { background:rgba(124,92,239,0.07); border-color:rgba(124,92,239,0.28); }
         .kh-feat-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:16px; background:rgba(124,92,239,0.15); }
@@ -527,10 +685,10 @@ export default function Home() {
         .kh-plan-note { font-size:11px; color:rgba(255,255,255,0.22); text-align:center; margin-top:16px; }
 
         /* ── Cliente CTA ── */
-        .kh-cliente { padding:80px 24px; text-align:center; position:relative; z-index:1; border-top:1px solid rgba(255,255,255,0.05); overflow:hidden; }
+        .kh-cliente { padding:80px 24px; text-align:center; position:relative; z-index:1; border-top:1px solid rgba(255,255,255,0.05); }
 
         /* ── Waitlist ── */
-        .kh-waitlist { padding:100px 24px; background:linear-gradient(160deg, rgba(124,92,239,0.07) 0%, transparent 50%, rgba(64,220,165,0.04) 100%); position:relative; z-index:1; overflow:hidden; }
+        .kh-waitlist { padding:100px 24px; background:linear-gradient(160deg, rgba(124,92,239,0.07) 0%, transparent 50%, rgba(64,220,165,0.04) 100%); position:relative; z-index:1; }
         .kh-wl-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 40% 50% at 50% 50%, rgba(124,92,239,0.1) 0%,transparent 70%); }
         .kh-wl-inner { max-width:520px; margin:0 auto; text-align:center; position:relative; z-index:1; }
         .kh-wl-form { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:32px; margin-top:36px; backdrop-filter:blur(12px); }
@@ -568,31 +726,35 @@ export default function Home() {
         /* ── Responsive ── */
         @media(max-width:900px) {
           .feat-cols { grid-template-columns:1fr; }
-          .kh-planes-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:16px; padding-bottom:12px; }
-          .kh-plan-card { min-width:260px; scroll-snap-align:start; }
+          .kh-planes-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:16px; padding-bottom:12px; -webkit-overflow-scrolling:touch; }
+          .kh-plan-card { min-width:260px; scroll-snap-align:start; flex-shrink:0; }
           .kh-stats-grid { grid-template-columns:1fr 1fr; }
           .kh-nav-links { display:none; }
           .kh-hamburger { display:flex; }
-          .kh-quien-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:8px; }
-          .kh-quien-card { min-width:130px; scroll-snap-align:start; }
+          .kh-quien-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:8px; -webkit-overflow-scrolling:touch; }
+          .kh-quien-card { min-width:130px; scroll-snap-align:start; flex-shrink:0; }
         }
         @media(max-width:600px) {
           .kh-hero-btns { flex-direction:column; align-items:center; }
           .kh-btn-primary, .kh-btn-secondary { width:100%; justify-content:center; }
-          .kh-section { padding:64px 20px; }
-          .kh-waitlist, .kh-cliente { padding:64px 20px; }
+          .kh-section { padding:64px 16px; }
+          .kh-waitlist, .kh-cliente { padding:64px 16px; }
           .kh-footer-top { flex-direction:column; }
           .kh-footer-bot { flex-direction:column; align-items:flex-start; }
           .kh-stats-section { padding:32px 16px; }
+          .kh-stats-grid { grid-template-columns:1fr 1fr; gap:12px; }
         }
       `}</style>
+
+      {/* ── NEURAL NETWORK (fixed background, z-index:0) ── */}
+      <NeuralNetworkBg />
 
       {/* ── GRAIN ── */}
       <div aria-hidden style={{
         position: 'fixed', inset: 0, zIndex: 997, pointerEvents: 'none',
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
         backgroundRepeat: 'repeat', backgroundSize: '300px 300px',
-        opacity: 0.032, mixBlendMode: 'overlay',
+        opacity: 0.03, mixBlendMode: 'overlay',
       }} />
 
       {/* ── CURSOR ── */}
@@ -644,26 +806,7 @@ export default function Home() {
       </motion.nav>
 
       {/* ── MAIN WRAPPER ── */}
-      <div style={{ position: 'relative', overflowX: 'hidden', width: '100%', maxWidth: '100vw' }}>
-
-        {/* Neuron column */}
-        <div className="energy-wrap" aria-hidden>
-          <div className="energy-line" />
-          {[
-            { del: '0s',    dur: '4.2s', col: '#7C5CEF' },
-            { del: '1.05s', dur: '5.8s', col: '#4FACFE' },
-            { del: '2.2s',  dur: '3.9s', col: '#40DCA5' },
-            { del: '3.4s',  dur: '5.1s', col: '#B89EFF' },
-            { del: '0.6s',  dur: '6.5s', col: '#7EC8FF' },
-          ].map((p, i) => (
-            <div key={i} className="energy-dot" style={{ '--del': p.del, '--dur': p.dur, background: p.col, boxShadow: `0 0 8px ${p.col}` } as React.CSSProperties} />
-          ))}
-          <div className="energy-node" style={{ top: '12%', animationDelay: '0s' }} />
-          <div className="energy-node" style={{ top: '30%', animationDelay: '0.7s',  borderColor: 'rgba(79,172,254,0.8)',  background: 'rgba(79,172,254,0.2)' }} />
-          <div className="energy-node" style={{ top: '52%', animationDelay: '1.4s',  borderColor: 'rgba(64,220,165,0.8)',  background: 'rgba(64,220,165,0.2)' }} />
-          <div className="energy-node" style={{ top: '70%', animationDelay: '0.35s' }} />
-          <div className="energy-node" style={{ top: '85%', animationDelay: '1.05s', borderColor: 'rgba(79,172,254,0.8)',  background: 'rgba(79,172,254,0.2)' }} />
-        </div>
+      <div style={{ position: 'relative', zIndex: 1, overflowX: 'hidden' }}>
 
         {/* ── HERO ── */}
         <section className="kh-hero" id="hero">
@@ -753,7 +896,7 @@ export default function Home() {
         {/* ── FUNCIONES ── */}
         <section className="kh-section" id="funciones" ref={featRef}>
           <div className="kh-section-inner">
-            <SectionBranches color="#7C5CEF" />
+            {!isMobile && <SectionBranches color="#7C5CEF" />}
             <motion.div
               className="kh-sec-hdr"
               initial="hidden" whileInView="visible"
@@ -781,7 +924,10 @@ export default function Home() {
             </motion.div>
 
             <div className="feat-cols">
-              <motion.div className="feat-col" style={{ x: fLX, rotateY: fLRY, opacity: fOp, transformPerspective: 1200 }}>
+              <motion.div
+                className="feat-col"
+                style={{ x: isMobile ? 0 : fLX, rotateY: isMobile ? 0 : fLRY, opacity: isMobile ? 1 : fOp, transformPerspective: 1200 }}
+              >
                 {FEATURES.filter((_, i) => i % 2 === 0).map(f => (
                   <TiltCard key={f.title} className="kh-feat-card">
                     <div className="kh-feat-icon">{f.icon}</div>
@@ -791,7 +937,10 @@ export default function Home() {
                 ))}
               </motion.div>
 
-              <motion.div className="feat-col" style={{ x: fRX, rotateY: fRRY, opacity: fOp, transformPerspective: 1200, marginTop: 48 }}>
+              <motion.div
+                className="feat-col"
+                style={{ x: isMobile ? 0 : fRX, rotateY: isMobile ? 0 : fRRY, opacity: isMobile ? 1 : fOp, transformPerspective: 1200, marginTop: isMobile ? 0 : 48 }}
+              >
                 {FEATURES.filter((_, i) => i % 2 === 1).map(f => (
                   <TiltCard key={f.title} className="kh-feat-card">
                     <div className="kh-feat-icon">{f.icon}</div>
@@ -805,9 +954,9 @@ export default function Home() {
         </section>
 
         {/* ── PARA QUIÉN ── */}
-        <section className="kh-section" id="quien" ref={quienRef} style={{ background: 'rgba(79,172,254,0.025)' }}>
+        <section className="kh-section" id="quien" ref={quienRef} style={{ background: 'rgba(79,172,254,0.02)' }}>
           <div className="kh-section-inner">
-            <SectionBranches color="#4FACFE" />
+            {!isMobile && <SectionBranches color="#4FACFE" />}
             <motion.div
               className="kh-sec-hdr"
               initial="hidden" whileInView="visible"
@@ -830,7 +979,7 @@ export default function Home() {
 
             <div className="kh-quien-grid">
               {QUIENES.map((q, i) => (
-                <motion.div key={q.name} style={{ x: i % 2 === 0 ? qLX : qRX, opacity: qOp }}>
+                <motion.div key={q.name} style={{ x: isMobile ? 0 : (i % 2 === 0 ? qLX : qRX), opacity: isMobile ? 1 : qOp }}>
                   <TiltCard className="kh-quien-card">
                     <span className="kh-quien-emoji">{q.icon}</span>
                     <span className="kh-quien-name">{q.name}</span>
@@ -844,7 +993,7 @@ export default function Home() {
         {/* ── PLANES ── */}
         <section className="kh-section" id="planes" ref={planesRef}>
           <div className="kh-section-inner">
-            <SectionBranches color="#40DCA5" />
+            {!isMobile && <SectionBranches color="#40DCA5" />}
             <motion.div
               className="kh-sec-hdr"
               initial="hidden" whileInView="visible"
@@ -876,8 +1025,8 @@ export default function Home() {
                 <motion.div
                   key={p.nombre}
                   style={{
-                    x: i % 2 === 0 ? pLX : pRX,
-                    opacity: pOp,
+                    x: isMobile ? 0 : (i % 2 === 0 ? pLX : pRX),
+                    opacity: isMobile ? 1 : pOp,
                     scale: p.popular ? 1.06 : 1,
                     transformPerspective: 1200,
                   }}
