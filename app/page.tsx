@@ -8,12 +8,12 @@ import { motion, useScroll, useTransform, useInView } from 'framer-motion'
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: '📅', color: '#B8D8F8', title: 'Reservas automáticas 24/7', desc: 'Tus clientes reservan en cualquier momento. Confirmaciones y recordatorios automáticos sin que muevas un dedo.' },
-  { icon: '🤖', color: '#D4C5F9', title: 'Chatbot IA WhatsApp e Instagram', desc: 'Responde consultas, reserva citas y cancela automáticamente sin intervención humana, a cualquier hora.' },
-  { icon: '🧾', color: '#B8EDD4', title: 'Facturación española automática', desc: 'Facturas con IVA, modelos 303, 130 y 111. Compatible con la normativa fiscal española vigente.' },
-  { icon: '📊', color: '#FDE9A2', title: 'Analytics con IA', desc: 'Predicciones de ingresos, análisis de clientes y recomendaciones accionables para crecer cada mes.' },
-  { icon: '📸', color: '#FBCFE8', title: 'Marketing con IA', desc: 'Posts automáticos para redes, estrategias de captación y calendario editorial generados con IA.' },
-  { icon: '👥', color: '#B8D8F8', title: 'Equipo y nóminas', desc: 'Gestiona empleados, turnos, nóminas y contratos SEPE desde el panel de control.' },
+  { icon: '📅', title: 'Reservas automáticas 24/7', desc: 'Tus clientes reservan en cualquier momento. Confirmaciones y recordatorios automáticos.' },
+  { icon: '🤖', title: 'Chatbot IA WhatsApp e Instagram', desc: 'Responde, reserva y cancela automáticamente sin intervención humana.' },
+  { icon: '🧾', title: 'Facturación española automática', desc: 'Facturas con IVA, modelos 303, 130 y 111. Compatible con normativa española.' },
+  { icon: '📊', title: 'Analytics con IA', desc: 'Predicciones de ingresos, análisis de clientes y recomendaciones para crecer.' },
+  { icon: '📸', title: 'Marketing con IA', desc: 'Posts automáticos, estrategias de captación y calendario editorial con IA.' },
+  { icon: '👥', title: 'Equipo y nóminas', desc: 'Gestiona empleados, turnos, nóminas y contratos SEPE desde el panel.' },
 ]
 
 const QUIENES = [
@@ -26,10 +26,10 @@ const QUIENES = [
 ]
 
 const PLANES = [
-  { nombre: 'Starter', precio: '9,99', emoji: '🌱', badge: 'Para empezar', popular: false, color: '#B8EDD4', colorDark: '#2E8A5E', funciones: ['Reservas online 24/7', 'Ficha pública en mapa', 'Chatbot básico', 'Recordatorios automáticos', 'Reseñas post-cita', 'Estadísticas básicas'] },
-  { nombre: 'Básico', precio: '29,99', emoji: '🚀', badge: 'Para crecer', popular: false, color: '#B8D8F8', colorDark: '#1D4ED8', funciones: ['Todo lo del Starter', 'Chatbot completo', 'Caja diaria', 'Importador de apps', 'Fidelización con puntos', 'Descuentos y promociones'] },
-  { nombre: 'Pro', precio: '59,99', emoji: '💎', badge: 'Más popular', popular: true, color: '#D4C5F9', colorDark: '#6B4FD8', funciones: ['Todo lo del Básico', '2 negocios', 'Gestión de equipo', 'Marketing IA completo', 'Analytics avanzado', 'Facturación e IVA'] },
-  { nombre: 'Plus', precio: '99,99', emoji: '⚡', badge: 'Para escalar', popular: false, color: '#FDE9A2', colorDark: '#C4860A', funciones: ['Todo lo del Pro', 'Hasta 10 negocios', 'Nóminas + plantillas SEPE', 'Contratos SEPE oficiales', 'Kit gestor PDF/CSV', 'Soporte prioritario'] },
+  { nombre: 'Starter', precio: '9,99',  emoji: '🌱', badge: 'Para empezar', popular: false, col: '#40DCA5', funciones: ['Reservas online 24/7', 'Ficha pública en mapa', 'Chatbot básico', 'Recordatorios automáticos', 'Reseñas post-cita', 'Estadísticas básicas'] },
+  { nombre: 'Básico',  precio: '29,99', emoji: '🚀', badge: 'Para crecer',  popular: false, col: '#4FACFE', funciones: ['Todo lo del Starter', 'Chatbot completo', 'Caja diaria', 'Importador de apps', 'Fidelización con puntos', 'Descuentos y promociones'] },
+  { nombre: 'Pro',     precio: '59,99', emoji: '💎', badge: 'Más popular',  popular: true,  col: '#7C5CEF', funciones: ['Todo lo del Básico', '2 negocios', 'Gestión de equipo', 'Marketing IA completo', 'Analytics avanzado', 'Facturación e IVA'] },
+  { nombre: 'Plus',    precio: '99,99', emoji: '⚡', badge: 'Para escalar', popular: false, col: '#F59E0B', funciones: ['Todo lo del Pro', 'Hasta 10 negocios', 'Nóminas + plantillas SEPE', 'Contratos SEPE oficiales', 'Kit gestor PDF/CSV', 'Soporte prioritario'] },
 ]
 
 const TIPOS_NEGOCIO = [
@@ -38,16 +38,12 @@ const TIPOS_NEGOCIO = [
   'Dentista', 'Veterinaria', 'Otro tipo de negocio',
 ]
 
-// ── FRAMER VARIANTS ───────────────────────────────────────────────────────────
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: (d: number = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.7, ease: 'easeOut' as const, delay: d },
-  }),
-}
-const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }
+const STATS = [
+  { icon: '⏱️', num: 3,  prefix: '',  suffix: 'h',  label: 'ahorradas al día',     isStatic: false, staticVal: '' },
+  { icon: '📈', num: 40, prefix: '+', suffix: '%',  label: 'más reservas',           isStatic: false, staticVal: '' },
+  { icon: '🤖', num: 0,  prefix: '',  suffix: '',   label: 'atención automática',   isStatic: true,  staticVal: '24/7' },
+  { icon: '💰', num: 0,  prefix: '',  suffix: '€',  label: 'en gestores de IVA',    isStatic: false, staticVal: '' },
+]
 
 // ── TILT CARD ─────────────────────────────────────────────────────────────────
 
@@ -60,13 +56,13 @@ function TiltCard({ children, className, style }: {
     const r = ref.current.getBoundingClientRect()
     const x = (e.clientX - r.left) / r.width - 0.5
     const y = (e.clientY - r.top) / r.height - 0.5
-    ref.current.style.transform = `perspective(800px) rotateX(${y * -12}deg) rotateY(${x * 12}deg) scale(1.02)`
+    ref.current.style.transform = `perspective(800px) rotateX(${y * -10}deg) rotateY(${x * 10}deg) scale(1.02)`
     ref.current.style.transition = 'transform 0.05s ease'
   }
   const onLeave = () => {
     if (!ref.current) return
     ref.current.style.transform = 'perspective(800px) rotateX(0) rotateY(0) scale(1)'
-    ref.current.style.transition = 'transform 0.45s cubic-bezier(0.22,1,0.36,1)'
+    ref.current.style.transition = 'transform 0.5s cubic-bezier(0.22,1,0.36,1)'
   }
   return (
     <div ref={ref} className={className} style={{ willChange: 'transform', ...style }}
@@ -76,7 +72,7 @@ function TiltCard({ children, className, style }: {
   )
 }
 
-// ── ANIMATED COUNTER ─────────────────────────────────────────────────────────
+// ── ANIMATED COUNTER ──────────────────────────────────────────────────────────
 
 function AnimCount({ end, suffix = '', prefix = '' }: { end: number; suffix?: string; prefix?: string }) {
   const ref = useRef<HTMLSpanElement>(null)
@@ -111,7 +107,7 @@ function DiamondLogo3D() {
     import('three').then((THREE) => {
       if (disposed) return
 
-      const size = canvas.parentElement?.offsetWidth || 380
+      const size = canvas.parentElement?.offsetWidth || 340
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
       renderer.setSize(size, size)
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -214,18 +210,38 @@ export default function Home() {
   const [cursor, setCursor] = useState({ x: -100, y: -100 })
   const [cursorVis, setCursorVis] = useState(false)
 
-  // Parallax
-  const { scrollY, scrollYProgress } = useScroll()
-  const heroY = useTransform(scrollY, [0, 600], [0, -100])
-  const sectionsY = useTransform(scrollYProgress, [0, 1], [0, -100])
-  const sectionsRotateX = useTransform(scrollYProgress, [0, 0.5, 1], [10, 0, -10])
-  const heroOp = useTransform(scrollY, [0, 450], [1, 0.4])
-  const navShadow = useTransform(scrollY, [0, 60], [
-    'rgba(247,249,255,0)',
-    'rgba(247,249,255,0.95)',
-  ])
+  // Global scroll
+  const { scrollY } = useScroll()
+  const navBg = useTransform(scrollY, [0, 60], ['rgba(7,7,15,0)', 'rgba(7,7,15,0.93)'])
+  const heroY  = useTransform(scrollY, [0, 700], [0, -130])
+  const heroOp = useTransform(scrollY, [0, 500], [1, 0.15])
 
-  // Effects
+  // Per-section scroll refs
+  const featRef   = useRef<HTMLElement>(null)
+  const quienRef  = useRef<HTMLElement>(null)
+  const planesRef = useRef<HTMLElement>(null)
+
+  const { scrollYProgress: fp } = useScroll({ target: featRef,   offset: ['start end', 'center center'] })
+  const { scrollYProgress: qp } = useScroll({ target: quienRef,  offset: ['start end', 'center center'] })
+  const { scrollYProgress: pp } = useScroll({ target: planesRef, offset: ['start end', 'center center'] })
+
+  // Feature transforms
+  const fLX  = useTransform(fp, [0, 0.75], [-90, 0])
+  const fLRY = useTransform(fp, [0, 0.75], [20,  0])
+  const fRX  = useTransform(fp, [0, 0.75], [ 90, 0])
+  const fRRY = useTransform(fp, [0, 0.75], [-20, 0])
+  const fOp  = useTransform(fp, [0, 0.45], [0,   1])
+
+  // Para quién transforms
+  const qLX = useTransform(qp, [0, 0.7], [-70, 0])
+  const qRX = useTransform(qp, [0, 0.7], [ 70, 0])
+  const qOp = useTransform(qp, [0, 0.4], [0,   1])
+
+  // Planes transforms
+  const pLX = useTransform(pp, [0, 0.7], [-90, 0])
+  const pRX = useTransform(pp, [0, 0.7], [ 90, 0])
+  const pOp = useTransform(pp, [0, 0.4], [0,   1])
+
   useEffect(() => {
     supabase.from('waitlist').select('*', { count: 'exact', head: true })
       .then(({ count: c }) => setCount(c ?? 0))
@@ -254,10 +270,7 @@ export default function Home() {
     }
   }, [])
 
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
-    setMenuOpen(false)
-  }
+  const scrollTo = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); setMenuOpen(false) }
 
   async function handleWaitlist(e: React.FormEvent) {
     e.preventDefault()
@@ -265,8 +278,7 @@ export default function Home() {
     setEnviando(true); setFormError('')
     try {
       const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
       if (res.ok) { setEnviado(true); setCount(c => c + 1) }
@@ -277,230 +289,232 @@ export default function Home() {
 
   return (
     <>
-      {/* ── FONTS ── */}
       <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
-      {/* ── GRAIN ── */}
-      <div aria-hidden style={{
-        position: 'fixed', inset: 0, zIndex: 997, pointerEvents: 'none',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
-        backgroundRepeat: 'repeat', backgroundSize: '300px 300px',
-        opacity: 0.022, mixBlendMode: 'overlay',
-      }} />
-
-      {/* ── CURSOR ── */}
-      <div aria-hidden style={{
-        position: 'fixed',
-        left: cursor.x - 18, top: cursor.y - 18,
-        width: 36, height: 36, borderRadius: '50%',
-        border: '1.5px solid rgba(124,92,239,0.55)',
-        background: 'rgba(124,92,239,0.09)',
-        pointerEvents: 'none', zIndex: 9999,
-        transition: 'left 0.07s linear, top 0.07s linear, opacity 0.3s',
-        opacity: cursorVis ? 1 : 0,
-      }} />
 
       {/* ── GLOBAL STYLES ── */}
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
-        body { font-family: 'DM Sans', sans-serif !important; background: #F7F9FF; color: #111827; overflow-x: hidden; }
+        body { font-family: 'DM Sans', sans-serif !important; background: #07070F; color: #E8E8F0; overflow-x: hidden; }
 
         @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulseLine {
+          0%,100% { opacity:0.5; box-shadow:0 0 8px rgba(124,92,239,0.5); }
+          50%     { opacity:1;   box-shadow:0 0 28px rgba(79,172,254,0.8), 0 0 56px rgba(64,220,165,0.25); }
+        }
         @keyframes flowDown {
-          0%   { top: -5%; opacity: 0; }
-          8%   { opacity: 1; }
-          92%  { opacity: 0.85; }
-          100% { top: 105%; opacity: 0; }
+          0%   { top:-2%;   opacity:0; }
+          10%  { opacity:1; }
+          90%  { opacity:0.9; }
+          100% { top:102%;  opacity:0; }
         }
         @keyframes nodePulse {
-          0%,100% { box-shadow: 0 0 0 0 rgba(124,92,239,0.4); }
-          50%     { box-shadow: 0 0 0 8px rgba(124,92,239,0); }
+          0%,100% { box-shadow:0 0 0 0 rgba(124,92,239,0.7), 0 0 10px rgba(124,92,239,0.3); }
+          50%     { box-shadow:0 0 0 12px rgba(124,92,239,0), 0 0 28px rgba(79,172,254,0.5); }
         }
         @keyframes heroBg {
-          0%,100% { transform: translate(0,0) scale(1); }
-          33%     { transform: translate(40px,-30px) scale(1.06); }
-          66%     { transform: translate(-30px,40px) scale(0.96); }
+          0%,100% { transform:translate(0,0) scale(1); }
+          33%     { transform:translate(60px,-40px) scale(1.08); }
+          66%     { transform:translate(-40px,60px) scale(0.94); }
+        }
+        @keyframes scrollBounce {
+          0%,100% { transform:translateY(0); opacity:0.7; }
+          50%     { transform:translateY(9px); opacity:0.25; }
         }
 
         /* ── Nav ── */
         .kh-nav { position:fixed; top:0; left:0; right:0; z-index:200; }
         .kh-nav-inner { max-width:1180px; margin:0 auto; padding:0 24px; height:64px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
-        .kh-logo { font-family:'Syne',sans-serif; font-size:clamp(18px,2.5vw,22px); font-weight:800; color:#111827; text-decoration:none; letter-spacing:-0.5px; flex-shrink:0; cursor:pointer; display:flex; align-items:center; gap:8px; }
-        .kh-logo em { font-style:normal; color:#7C5CEF; }
+        .kh-logo { font-family:'Syne',sans-serif; font-size:clamp(18px,2.5vw,22px); font-weight:800; color:#fff; text-decoration:none; letter-spacing:-0.5px; flex-shrink:0; cursor:pointer; display:flex; align-items:center; gap:8px; }
+        .kh-logo em { font-style:normal; color:#9B7EFF; }
         .kh-logo-gem { width:20px; height:20px; flex-shrink:0; }
         .kh-nav-links { display:flex; gap:2px; align-items:center; }
-        .kh-nav-btn { font-size:14px; font-weight:600; color:#374151; padding:8px 14px; border-radius:8px; cursor:pointer; border:none; background:none; font-family:'DM Sans',sans-serif; transition:background 0.2s,color 0.2s; white-space:nowrap; }
-        .kh-nav-btn:hover { background:#F3F4F6; color:#111827; }
-        .kh-nav-login { font-size:14px; font-weight:600; color:#374151; padding:9px 18px; border-radius:999px; border:1.5px solid #E5E7EB; cursor:pointer; background:#fff; font-family:'DM Sans',sans-serif; white-space:nowrap; text-decoration:none; transition:border-color 0.2s,transform 0.2s; }
-        .kh-nav-login:hover { border-color:#D4C5F9; transform:translateY(-1px); }
-        .kh-nav-cta { font-size:14px; font-weight:700; color:#fff; background:linear-gradient(135deg,#7C5CEF,#4F46E5); padding:10px 22px; border-radius:999px; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; white-space:nowrap; text-decoration:none; flex-shrink:0; transition:transform 0.2s,box-shadow 0.2s; }
-        .kh-nav-cta:hover { transform:translateY(-1px); box-shadow:0 6px 24px rgba(124,92,239,0.4); }
+        .kh-nav-btn { font-size:14px; font-weight:600; color:rgba(255,255,255,0.6); padding:8px 14px; border-radius:8px; cursor:pointer; border:none; background:none; font-family:'DM Sans',sans-serif; transition:color 0.2s; white-space:nowrap; }
+        .kh-nav-btn:hover { color:#fff; }
+        .kh-nav-login { font-size:14px; font-weight:600; color:rgba(255,255,255,0.75); padding:9px 18px; border-radius:999px; border:1.5px solid rgba(124,92,239,0.45); cursor:pointer; background:transparent; font-family:'DM Sans',sans-serif; white-space:nowrap; text-decoration:none; transition:border-color 0.2s,color 0.2s,box-shadow 0.2s; }
+        .kh-nav-login:hover { border-color:#9B7EFF; color:#fff; box-shadow:0 0 20px rgba(124,92,239,0.3); }
+        .kh-nav-cta { font-size:14px; font-weight:700; color:#fff; background:linear-gradient(135deg,#7C5CEF,#4F46E5); padding:10px 22px; border-radius:999px; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; white-space:nowrap; text-decoration:none; flex-shrink:0; transition:box-shadow 0.2s,transform 0.2s; }
+        .kh-nav-cta:hover { transform:translateY(-1px); box-shadow:0 0 32px rgba(124,92,239,0.65); }
         .kh-hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; border:none; background:none; padding:6px; flex-shrink:0; }
-        .kh-hamburger span { display:block; width:22px; height:2px; background:#111827; border-radius:2px; }
-        .kh-mobile { display:none; flex-direction:column; gap:4px; padding:8px 16px 16px; border-top:1px solid rgba(0,0,0,0.06); background:rgba(247,249,255,0.98); animation:slideDown 0.25s ease; }
+        .kh-hamburger span { display:block; width:22px; height:2px; background:rgba(255,255,255,0.75); border-radius:2px; }
+        .kh-mobile { display:none; flex-direction:column; gap:4px; padding:8px 16px 16px; border-top:1px solid rgba(255,255,255,0.07); background:rgba(7,7,15,0.97); animation:slideDown 0.25s ease; }
         .kh-mobile.open { display:flex; }
-        .kh-mobile-btn { font-size:15px; font-weight:600; color:#374151; padding:13px 12px; border-radius:10px; cursor:pointer; border:none; background:none; text-align:left; font-family:'DM Sans',sans-serif; }
-        .kh-mobile-btn:hover { background:#F3F4F6; }
+        .kh-mobile-btn { font-size:15px; font-weight:600; color:rgba(255,255,255,0.65); padding:13px 12px; border-radius:10px; cursor:pointer; border:none; background:none; text-align:left; font-family:'DM Sans',sans-serif; }
+        .kh-mobile-btn:hover { background:rgba(255,255,255,0.05); color:#fff; }
 
         /* ── Energy column ── */
         .energy-wrap { position:absolute; left:50%; top:0; transform:translateX(-50%); width:20px; height:100%; z-index:0; pointer-events:none; display:none; }
         @media(min-width:768px) { .energy-wrap { display:block; } }
-        .energy-line { position:absolute; left:50%; transform:translateX(-50%); top:0; height:100%; width:2px; background:linear-gradient(to bottom, rgba(124,92,239,0.18), rgba(79,172,254,0.12), rgba(184,237,212,0.1), rgba(124,92,239,0.08)); }
-        .energy-dot { position:absolute; left:50%; transform:translateX(-50%); width:7px; height:7px; border-radius:50%; animation:flowDown var(--dur) linear var(--del) infinite; }
-        .energy-node { position:absolute; left:50%; transform:translate(-50%,-50%); width:14px; height:14px; border-radius:50%; background:rgba(124,92,239,0.25); border:1.5px solid rgba(124,92,239,0.45); animation:nodePulse 2.5s ease-in-out infinite; }
+        .energy-line { position:absolute; left:50%; transform:translateX(-50%); top:0; height:100%; width:2px; background:linear-gradient(to bottom, transparent 0%, rgba(124,92,239,0.9) 8%, rgba(79,172,254,0.85) 45%, rgba(64,220,165,0.75) 72%, rgba(124,92,239,0.85) 92%, transparent 100%); animation:pulseLine 3s ease-in-out infinite; }
+        .energy-dot { position:absolute; left:50%; transform:translateX(-50%); width:6px; height:6px; border-radius:50%; animation:flowDown var(--dur) linear var(--del) infinite; }
+        .energy-node { position:absolute; left:50%; transform:translate(-50%,-50%); width:13px; height:13px; border-radius:50%; background:rgba(124,92,239,0.25); border:1.5px solid rgba(124,92,239,0.7); animation:nodePulse 2.8s ease-in-out infinite; }
 
         /* ── Hero ── */
-        .kh-hero { min-height:100svh; display:flex; align-items:center; justify-content:center; text-align:center; padding:120px 24px 80px; position:relative; overflow:hidden; }
-        .kh-hero-bg { position:absolute; inset:-60px; background:radial-gradient(ellipse 70% 60% at 40% 40%, rgba(184,216,248,0.22) 0%,transparent 60%), radial-gradient(ellipse 50% 50% at 75% 65%, rgba(212,197,249,0.2) 0%,transparent 55%), #F7F9FF; animation:heroBg 12s ease-in-out infinite; z-index:0; }
+        .kh-hero { min-height:100svh; display:flex; align-items:center; justify-content:center; text-align:center; padding:120px 24px 100px; position:relative; overflow:hidden; }
+        .kh-hero-bg { position:absolute; inset:-80px; background:radial-gradient(ellipse 55% 50% at 35% 35%, rgba(124,92,239,0.18) 0%,transparent 60%), radial-gradient(ellipse 40% 45% at 72% 65%, rgba(79,172,254,0.13) 0%,transparent 55%), #07070F; animation:heroBg 14s ease-in-out infinite; z-index:0; }
         .kh-hero-inner { position:relative; z-index:1; max-width:760px; margin:0 auto; }
-        .kh-diamond-wrap { width:clamp(240px,40vw,380px); height:clamp(240px,40vw,380px); margin:0 auto 32px; }
+        .kh-diamond-wrap { width:clamp(180px,32vw,320px); height:clamp(180px,32vw,320px); margin:0 auto 28px; }
         .kh-tag { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; letter-spacing:0.3px; padding:6px 14px; border-radius:999px; }
-        .kh-tag-purple { background:rgba(124,92,239,0.1); color:#7C5CEF; border:1px solid rgba(124,92,239,0.2); }
-        .kh-tag-blue { background:rgba(184,216,248,0.4); color:#1D4ED8; border:1px solid rgba(184,216,248,0.6); }
-        .kh-tag-green { background:rgba(184,237,212,0.4); color:#2E8A5E; border:1px solid rgba(184,237,212,0.6); }
-        .kh-h1 { font-family:'Syne',sans-serif; font-size:clamp(2.2rem,5.5vw,3.8rem); font-weight:800; line-height:1.1; letter-spacing:-2px; color:#0F0F1A; margin:18px 0 16px; }
-        .kh-h1 .accent { color:#7C5CEF; }
-        .kh-h2 { font-family:'Syne',sans-serif; font-size:clamp(1.6rem,3.5vw,2.6rem); font-weight:800; line-height:1.15; letter-spacing:-1px; color:#0F0F1A; margin-bottom:14px; }
-        .kh-lead { font-size:clamp(14px,2vw,17px); color:#6B7280; line-height:1.75; max-width:540px; margin:0 auto; }
-        .kh-hero-btns { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:32px; }
+        .kh-tag-purple { background:rgba(124,92,239,0.15); color:#B89EFF; border:1px solid rgba(124,92,239,0.3); }
+        .kh-tag-blue   { background:rgba(79,172,254,0.12);  color:#7EC8FF; border:1px solid rgba(79,172,254,0.3); }
+        .kh-tag-green  { background:rgba(64,220,165,0.12);  color:#6EEBC2; border:1px solid rgba(64,220,165,0.3); }
+        .kh-h1 { font-family:'Syne',sans-serif; font-size:clamp(2rem,5.5vw,3.6rem); font-weight:800; line-height:1.1; letter-spacing:-2px; color:#fff; margin:16px 0 14px; }
+        .kh-h1 .accent { color:#B89EFF; }
+        .kh-h2 { font-family:'Syne',sans-serif; font-size:clamp(1.5rem,3.5vw,2.4rem); font-weight:800; line-height:1.15; letter-spacing:-1px; color:#fff; margin-bottom:14px; }
+        .kh-lead { font-size:clamp(14px,1.8vw,16px); color:rgba(255,255,255,0.5); line-height:1.8; max-width:520px; margin:0 auto; }
+        .kh-hero-btns { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:36px; }
         .kh-btn-primary { display:inline-flex; align-items:center; gap:8px; padding:14px 28px; border-radius:14px; background:linear-gradient(135deg,#7C5CEF,#4F46E5); color:#fff; font-size:15px; font-weight:700; font-family:'DM Sans',sans-serif; border:none; cursor:pointer; text-decoration:none; transition:transform 0.2s,box-shadow 0.2s; }
-        .kh-btn-primary:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgba(124,92,239,0.45); }
-        .kh-btn-secondary { display:inline-flex; align-items:center; gap:8px; padding:14px 24px; border-radius:14px; background:#fff; color:#374151; font-size:15px; font-weight:600; font-family:'DM Sans',sans-serif; border:1.5px solid #E5E7EB; cursor:pointer; text-decoration:none; transition:border-color 0.2s,transform 0.2s; }
-        .kh-btn-secondary:hover { border-color:#D4C5F9; transform:translateY(-2px); }
+        .kh-btn-primary:hover { transform:translateY(-2px); box-shadow:0 0 48px rgba(124,92,239,0.65); }
+        .kh-btn-secondary { display:inline-flex; align-items:center; gap:8px; padding:14px 24px; border-radius:14px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.8); font-size:15px; font-weight:600; font-family:'DM Sans',sans-serif; border:1.5px solid rgba(255,255,255,0.1); cursor:pointer; text-decoration:none; transition:border-color 0.2s,background 0.2s; }
+        .kh-btn-secondary:hover { border-color:rgba(124,92,239,0.5); background:rgba(124,92,239,0.07); }
+        .scroll-ind { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:6px; z-index:1; animation:scrollBounce 2.2s ease-in-out infinite; }
+        .scroll-line { width:1.5px; height:36px; background:linear-gradient(to bottom,rgba(124,92,239,0.9),transparent); }
+        .scroll-txt { font-size:10px; letter-spacing:0.15em; color:rgba(255,255,255,0.28); text-transform:uppercase; }
 
         /* ── Section commons ── */
         .kh-section { padding:100px 24px; position:relative; z-index:1; }
         .kh-section-inner { max-width:1180px; margin:0 auto; }
-        .kh-section-header { text-align:center; max-width:620px; margin:0 auto 56px; }
-        .kh-section-p { font-size:15px; color:#6B7280; line-height:1.75; margin-top:12px; }
+        .kh-sec-hdr { text-align:center; max-width:620px; margin:0 auto 56px; }
+        .kh-sec-p { font-size:15px; color:rgba(255,255,255,0.4); line-height:1.75; margin-top:12px; }
 
         /* ── Stats ── */
-        .kh-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0; background:#fff; border-top:1px solid #F1F5F9; border-bottom:1px solid #F1F5F9; }
-        .kh-stat { display:flex; flex-direction:column; align-items:center; padding:32px 20px; gap:4px; border-right:1px solid #F1F5F9; transition:background 0.2s; }
+        .kh-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-top:1px solid rgba(255,255,255,0.06); border-bottom:1px solid rgba(255,255,255,0.06); }
+        .kh-stat { display:flex; flex-direction:column; align-items:center; padding:40px 20px; gap:4px; border-right:1px solid rgba(255,255,255,0.06); transition:background 0.3s; }
         .kh-stat:last-child { border-right:none; }
-        .kh-stat:hover { background:#FAFBFF; }
-        .kh-stat-icon { font-size:22px; margin-bottom:6px; }
-        .kh-stat-num { font-family:'Syne',sans-serif; font-size:clamp(1.8rem,3vw,2.4rem); font-weight:800; letter-spacing:-1.5px; color:#0F0F1A; }
-        .kh-stat-label { font-size:13px; color:#9CA3AF; font-weight:500; text-align:center; }
+        .kh-stat:hover { background:rgba(124,92,239,0.05); }
+        .kh-stat-icon { font-size:22px; margin-bottom:8px; }
+        .kh-stat-num { font-family:'Syne',sans-serif; font-size:clamp(1.8rem,3vw,2.4rem); font-weight:800; letter-spacing:-1.5px; color:#fff; }
+        .kh-stat-label { font-size:13px; color:rgba(255,255,255,0.35); font-weight:500; text-align:center; }
 
         /* ── Feature cards ── */
-        .kh-feat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
-        .kh-feat-card { background:#fff; border:1px solid #F1F5F9; border-radius:20px; padding:28px; cursor:default; }
-        .kh-feat-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:16px; }
-        .kh-feat-title { font-size:15px; font-weight:700; color:#111827; margin-bottom:8px; }
-        .kh-feat-desc { font-size:13px; color:#6B7280; line-height:1.7; }
+        .feat-cols { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+        .feat-col { display:flex; flex-direction:column; gap:20px; }
+        .kh-feat-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:20px; padding:28px; cursor:default; transition:background 0.3s,border-color 0.3s; }
+        .kh-feat-card:hover { background:rgba(124,92,239,0.07); border-color:rgba(124,92,239,0.28); }
+        .kh-feat-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:16px; background:rgba(124,92,239,0.15); }
+        .kh-feat-title { font-size:15px; font-weight:700; color:#fff; margin-bottom:8px; }
+        .kh-feat-desc { font-size:13px; color:rgba(255,255,255,0.42); line-height:1.7; }
 
         /* ── Para quién ── */
         .kh-quien-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:16px; }
-        .kh-quien-card { background:#fff; border:1px solid #F1F5F9; border-radius:16px; padding:24px 12px; text-align:center; cursor:default; }
-        .kh-quien-emoji { font-size:34px; margin-bottom:10px; display:block; }
-        .kh-quien-name { font-size:12px; font-weight:600; color:#374151; line-height:1.4; white-space:pre-line; }
+        .kh-quien-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:16px; padding:24px 12px; text-align:center; cursor:default; transition:background 0.3s,border-color 0.3s; }
+        .kh-quien-card:hover { background:rgba(79,172,254,0.07); border-color:rgba(79,172,254,0.28); }
+        .kh-quien-emoji { font-size:30px; margin-bottom:10px; display:block; }
+        .kh-quien-name { font-size:12px; font-weight:600; color:rgba(255,255,255,0.55); line-height:1.4; white-space:pre-line; }
 
         /* ── Planes ── */
         .kh-planes-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
-        .kh-plan-card { background:#fff; border:2px solid #F1F5F9; border-radius:24px; padding:28px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
-        .kh-plan-card.popular { border-color:#7C5CEF; box-shadow:0 8px 32px rgba(124,92,239,0.15); }
+        .kh-plan-card { background:rgba(255,255,255,0.03); border:1.5px solid rgba(255,255,255,0.07); border-radius:24px; padding:28px; display:flex; flex-direction:column; position:relative; overflow:hidden; height:100%; transition:border-color 0.3s; }
+        .kh-plan-card.popular { border-color:rgba(124,92,239,0.6); box-shadow:0 0 48px rgba(124,92,239,0.2), inset 0 1px 0 rgba(124,92,239,0.15); background:rgba(124,92,239,0.06); }
         .kh-plan-badge { position:absolute; top:16px; right:16px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; }
-        .kh-plan-emoji { font-size:32px; margin-bottom:12px; }
-        .kh-plan-name { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:#111827; }
-        .kh-plan-price { font-family:'Syne',sans-serif; font-size:36px; font-weight:800; color:#0F0F1A; margin:12px 0 4px; letter-spacing:-1px; }
-        .kh-plan-mes { font-size:13px; color:#9CA3AF; margin-bottom:16px; }
-        .kh-plan-divider { height:1px; background:#F1F5F9; margin:14px 0; }
-        .kh-plan-feat { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:#4B5563; margin-bottom:9px; }
-        .kh-plan-check { color:#16A34A; font-weight:800; flex-shrink:0; margin-top:1px; }
-        .kh-plan-cta { display:block; width:100%; margin-top:auto; padding-top:20px; padding-bottom:0; }
+        .kh-plan-emoji { font-size:30px; margin-bottom:12px; }
+        .kh-plan-name { font-family:'Syne',sans-serif; font-size:19px; font-weight:800; color:#fff; }
+        .kh-plan-price { font-family:'Syne',sans-serif; font-size:34px; font-weight:800; color:#fff; margin:12px 0 4px; letter-spacing:-1px; }
+        .kh-plan-mes { font-size:13px; color:rgba(255,255,255,0.3); margin-bottom:16px; }
+        .kh-plan-divider { height:1px; background:rgba(255,255,255,0.07); margin:14px 0; }
+        .kh-plan-feat { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:rgba(255,255,255,0.5); margin-bottom:9px; }
+        .kh-plan-check { color:#40DCA5; font-weight:800; flex-shrink:0; margin-top:1px; }
+        .kh-plan-cta { display:block; width:100%; margin-top:auto; padding-top:20px; }
         .kh-plan-btn { display:block; width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer; font-size:14px; font-weight:700; font-family:'DM Sans',sans-serif; text-align:center; text-decoration:none; transition:transform 0.2s,box-shadow 0.2s; }
         .kh-plan-btn:hover { transform:translateY(-1px); }
-        .kh-plan-note { font-size:11px; color:#9CA3AF; text-align:center; margin-top:16px; }
+        .kh-plan-note { font-size:11px; color:rgba(255,255,255,0.22); text-align:center; margin-top:16px; }
 
         /* ── Cliente CTA ── */
-        .kh-cliente { padding:80px 24px; background:linear-gradient(135deg,rgba(184,216,248,0.3),rgba(212,197,249,0.2)); text-align:center; position:relative; z-index:1; }
+        .kh-cliente { padding:80px 24px; text-align:center; position:relative; z-index:1; border-top:1px solid rgba(255,255,255,0.05); }
 
         /* ── Waitlist ── */
-        .kh-waitlist { padding:100px 24px; background:linear-gradient(160deg,#0F0F1A,#1a1040); position:relative; z-index:1; overflow:hidden; }
-        .kh-wl-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 50% 60% at 50% 50%, rgba(124,92,239,0.18) 0%,transparent 70%); }
-        .kh-wl-inner { max-width:560px; margin:0 auto; text-align:center; position:relative; z-index:1; }
-        .kh-wl-form { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:24px; padding:32px; margin-top:36px; backdrop-filter:blur(10px); }
+        .kh-waitlist { padding:100px 24px; background:linear-gradient(160deg, rgba(124,92,239,0.07) 0%, transparent 50%, rgba(64,220,165,0.04) 100%); position:relative; z-index:1; overflow:hidden; }
+        .kh-wl-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 40% 50% at 50% 50%, rgba(124,92,239,0.1) 0%,transparent 70%); }
+        .kh-wl-inner { max-width:520px; margin:0 auto; text-align:center; position:relative; z-index:1; }
+        .kh-wl-form { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:32px; margin-top:36px; backdrop-filter:blur(12px); }
         .kh-wl-grid { display:flex; flex-direction:column; gap:12px; }
-        .kh-input { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:13px 16px; color:#fff; font-size:14px; font-family:'DM Sans',sans-serif; outline:none; width:100%; transition:border-color 0.2s; }
-        .kh-input::placeholder { color:rgba(255,255,255,0.35); }
+        .kh-input { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:13px 16px; color:#fff; font-size:14px; font-family:'DM Sans',sans-serif; outline:none; width:100%; transition:border-color 0.2s; }
+        .kh-input::placeholder { color:rgba(255,255,255,0.28); }
         .kh-input:focus { border-color:rgba(124,92,239,0.6); }
-        .kh-input option { background:#1a1040; color:#fff; }
+        .kh-input option { background:#07070F; color:#fff; }
         .kh-wl-submit { width:100%; padding:14px; border-radius:12px; border:none; cursor:pointer; background:linear-gradient(135deg,#7C5CEF,#4F46E5); color:#fff; font-size:15px; font-weight:700; font-family:'DM Sans',sans-serif; transition:transform 0.2s,box-shadow 0.2s; }
-        .kh-wl-submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 24px rgba(124,92,239,0.45); }
-        .kh-wl-submit:disabled { opacity:0.7; cursor:not-allowed; }
-        .kh-wl-counter { margin-top:22px; display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:999px; padding:9px 20px; font-size:14px; font-weight:600; color:rgba(255,255,255,0.8); }
-        .kh-wl-ok { padding:24px 0; text-align:center; }
+        .kh-wl-submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 0 40px rgba(124,92,239,0.55); }
+        .kh-wl-submit:disabled { opacity:0.6; cursor:not-allowed; }
+        .kh-wl-counter { margin-top:22px; display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); border-radius:999px; padding:9px 20px; font-size:14px; font-weight:600; color:rgba(255,255,255,0.6); }
+        .kh-wl-ok { padding:24px 0; }
         .kh-wl-ok-ico { font-size:48px; margin-bottom:12px; }
         .kh-wl-ok-t { font-size:20px; font-weight:700; color:#fff; margin-bottom:8px; }
-        .kh-wl-ok-p { font-size:14px; color:rgba(255,255,255,0.6); line-height:1.6; }
+        .kh-wl-ok-p { font-size:14px; color:rgba(255,255,255,0.45); line-height:1.6; }
         .kh-form-err { margin-top:10px; font-size:13px; color:#FCA5A5; }
 
         /* ── Footer ── */
-        .kh-footer { background:#0A0A0F; padding:40px 24px 28px; position:relative; z-index:1; }
+        .kh-footer { background:#030307; padding:40px 24px 28px; border-top:1px solid rgba(255,255,255,0.06); position:relative; z-index:1; }
         .kh-footer-wrap { max-width:1180px; margin:0 auto; }
         .kh-footer-top { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; margin-bottom:28px; }
         .kh-footer-logo { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:#fff; letter-spacing:-0.5px; }
-        .kh-footer-logo em { font-style:normal; color:#7C5CEF; }
-        .kh-footer-tag { font-size:13px; color:rgba(255,255,255,0.4); margin-top:4px; }
+        .kh-footer-logo em { font-style:normal; color:#9B7EFF; }
+        .kh-footer-tag { font-size:13px; color:rgba(255,255,255,0.28); margin-top:4px; }
         .kh-footer-links { display:flex; flex-wrap:wrap; gap:16px; align-items:center; }
-        .kh-footer-a { font-size:13px; color:rgba(255,255,255,0.5); text-decoration:none; display:flex; align-items:center; gap:6px; transition:color 0.2s; }
-        .kh-footer-a:hover { color:#fff; }
-        .kh-footer-bot { border-top:1px solid rgba(255,255,255,0.07); padding-top:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
-        .kh-footer-copy { font-size:12px; color:rgba(255,255,255,0.3); }
+        .kh-footer-a { font-size:13px; color:rgba(255,255,255,0.38); text-decoration:none; display:flex; align-items:center; gap:6px; transition:color 0.2s; }
+        .kh-footer-a:hover { color:rgba(255,255,255,0.8); }
+        .kh-footer-bot { border-top:1px solid rgba(255,255,255,0.06); padding-top:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+        .kh-footer-copy { font-size:12px; color:rgba(255,255,255,0.2); }
         .kh-footer-legal { display:flex; gap:16px; flex-wrap:wrap; }
-        .kh-footer-legal a { font-size:12px; color:rgba(255,255,255,0.3); text-decoration:none; transition:color 0.2s; }
-        .kh-footer-legal a:hover { color:rgba(255,255,255,0.7); }
-
-        /* ── Mobile carousels ── */
-        .kh-carousel { display:flex; gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:8px; -webkit-overflow-scrolling:touch; }
-        .kh-carousel::-webkit-scrollbar { height:4px; }
-        .kh-carousel::-webkit-scrollbar-track { background:transparent; }
-        .kh-carousel::-webkit-scrollbar-thumb { background:rgba(124,92,239,0.2); border-radius:2px; }
-        .kh-carousel-item { scroll-snap-align:start; flex-shrink:0; }
+        .kh-footer-legal a { font-size:12px; color:rgba(255,255,255,0.22); text-decoration:none; transition:color 0.2s; }
+        .kh-footer-legal a:hover { color:rgba(255,255,255,0.6); }
 
         /* ── Responsive ── */
         @media(max-width:900px) {
-          .kh-feat-grid { grid-template-columns:1fr 1fr; }
+          .feat-cols { grid-template-columns:1fr; }
           .kh-planes-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:16px; padding-bottom:12px; }
           .kh-plan-card { min-width:260px; scroll-snap-align:start; }
           .kh-stats-grid { grid-template-columns:1fr 1fr; }
-          .kh-stat { border-right:none; border-bottom:1px solid #F1F5F9; }
-          .kh-stat:nth-child(odd) { border-right:1px solid #F1F5F9; }
+          .kh-stat { border-right:none; border-bottom:1px solid rgba(255,255,255,0.06); }
+          .kh-stat:nth-child(odd) { border-right:1px solid rgba(255,255,255,0.06); }
           .kh-nav-links { display:none; }
           .kh-hamburger { display:flex; }
           .kh-quien-grid { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:8px; }
           .kh-quien-card { min-width:130px; scroll-snap-align:start; }
         }
         @media(max-width:600px) {
-          .kh-feat-grid { grid-template-columns:1fr; }
           .kh-hero-btns { flex-direction:column; align-items:center; }
           .kh-btn-primary, .kh-btn-secondary { width:100%; justify-content:center; }
           .kh-section { padding:64px 20px; }
           .kh-waitlist, .kh-cliente { padding:64px 20px; }
           .kh-footer-top { flex-direction:column; }
           .kh-footer-bot { flex-direction:column; align-items:flex-start; }
-          .kh-stats-grid { grid-template-columns:1fr 1fr; }
         }
       `}</style>
 
+      {/* ── GRAIN ── */}
+      <div aria-hidden style={{
+        position: 'fixed', inset: 0, zIndex: 997, pointerEvents: 'none',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+        backgroundRepeat: 'repeat', backgroundSize: '300px 300px',
+        opacity: 0.032, mixBlendMode: 'overlay',
+      }} />
+
+      {/* ── CURSOR ── */}
+      <div aria-hidden style={{
+        position: 'fixed', left: cursor.x - 20, top: cursor.y - 20,
+        width: 40, height: 40, borderRadius: '50%',
+        border: '1.5px solid rgba(124,92,239,0.6)',
+        background: 'rgba(124,92,239,0.09)',
+        boxShadow: '0 0 22px rgba(124,92,239,0.35)',
+        pointerEvents: 'none', zIndex: 9999,
+        transition: 'left 0.08s linear, top 0.08s linear, opacity 0.3s',
+        opacity: cursorVis ? 1 : 0,
+      }} />
+
       {/* ── NAVBAR ── */}
-      <motion.nav className="kh-nav" style={{ background: navShadow, backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+      <motion.nav className="kh-nav" style={{ background: navBg, backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="kh-nav-inner">
           <span className="kh-logo" onClick={() => scrollTo('hero')}>
-            {/* Diamond SVG logo */}
             <svg className="kh-logo-gem" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M12 2L20 9L12 22L4 9Z" stroke="#7C5CEF" strokeWidth="1.5" strokeLinejoin="round" fill="rgba(124,92,239,0.12)" />
-              <path d="M12 2L20 9L4 9Z" stroke="#7C5CEF" strokeWidth="1.5" strokeLinejoin="round" fill="rgba(124,92,239,0.2)" />
-              <circle cx="12" cy="9" r="2" fill="#7C5CEF" opacity="0.6" />
+              <path d="M12 2L20 9L12 22L4 9Z" stroke="#9B7EFF" strokeWidth="1.5" strokeLinejoin="round" fill="rgba(124,92,239,0.18)" />
+              <path d="M12 2L20 9L4 9Z" stroke="#9B7EFF" strokeWidth="1.5" strokeLinejoin="round" fill="rgba(124,92,239,0.3)" />
+              <circle cx="12" cy="9" r="2" fill="#9B7EFF" opacity="0.9" />
             </svg>
             <em>Kh</em>epria
           </span>
 
           <div className="kh-nav-links">
             <button className="kh-nav-btn" onClick={() => scrollTo('funciones')}>Funciones</button>
-            <button className="kh-nav-btn" onClick={() => scrollTo('quien')}>Para quién</button>
             <button className="kh-nav-btn" onClick={() => scrollTo('planes')}>Planes</button>
             <a href="/cliente" className="kh-nav-btn" style={{ textDecoration: 'none' }}>Explorar negocios</a>
           </div>
@@ -517,71 +531,91 @@ export default function Home() {
 
         <div className={`kh-mobile ${menuOpen ? 'open' : ''}`}>
           <button className="kh-mobile-btn" onClick={() => scrollTo('funciones')}>Funciones</button>
-          <button className="kh-mobile-btn" onClick={() => scrollTo('quien')}>Para quién</button>
           <button className="kh-mobile-btn" onClick={() => scrollTo('planes')}>Planes</button>
           <a href="/cliente" className="kh-mobile-btn" style={{ textDecoration: 'none' }}>Explorar negocios</a>
-          <a href="/auth" className="kh-mobile-btn" style={{ textDecoration: 'none', color: '#7C5CEF', fontWeight: 700 }}>Registrarme →</a>
+          <a href="/auth" className="kh-mobile-btn" style={{ textDecoration: 'none', color: '#B89EFF', fontWeight: 700 }}>Registrarme →</a>
         </div>
       </motion.nav>
 
-      {/* ── MAIN CONTENT WITH ENERGY COLUMN ── */}
+      {/* ── MAIN WRAPPER WITH ENERGY COLUMN ── */}
       <div style={{ position: 'relative' }}>
 
-        {/* Energy Column */}
+        {/* Energy column */}
         <div className="energy-wrap" aria-hidden>
           <div className="energy-line" />
           {[
-            { del: '0s', dur: '5s', col: '#7C5CEF' },
-            { del: '1.2s', dur: '6s', col: '#4FACFE' },
-            { del: '2.5s', dur: '4.5s', col: '#B8EDD4' },
-            { del: '3.8s', dur: '5.5s', col: '#D4C5F9' },
-            { del: '0.7s', dur: '7s', col: '#FDE9A2' },
+            { del: '0s',    dur: '4.2s', col: '#7C5CEF' },
+            { del: '1.05s', dur: '5.8s', col: '#4FACFE' },
+            { del: '2.2s',  dur: '3.9s', col: '#40DCA5' },
+            { del: '3.4s',  dur: '5.1s', col: '#B89EFF' },
+            { del: '0.6s',  dur: '6.5s', col: '#7EC8FF' },
           ].map((p, i) => (
-            <div key={i} className="energy-dot" style={{ '--del': p.del, '--dur': p.dur, background: p.col } as React.CSSProperties} />
+            <div key={i} className="energy-dot" style={{ '--del': p.del, '--dur': p.dur, background: p.col, boxShadow: `0 0 7px ${p.col}` } as React.CSSProperties} />
           ))}
-          {/* Section nodes */}
-          <div className="energy-node" style={{ top: '20%' }} />
-          <div className="energy-node" style={{ top: '38%' }} />
-          <div className="energy-node" style={{ top: '58%' }} />
-          <div className="energy-node" style={{ top: '75%' }} />
-          <div className="energy-node" style={{ top: '88%' }} />
+          <div className="energy-node" style={{ top: '15%', animationDelay: '0s' }} />
+          <div className="energy-node" style={{ top: '34%', animationDelay: '0.7s',  borderColor: 'rgba(79,172,254,0.7)',  background: 'rgba(79,172,254,0.18)' }} />
+          <div className="energy-node" style={{ top: '53%', animationDelay: '1.4s',  borderColor: 'rgba(64,220,165,0.7)',  background: 'rgba(64,220,165,0.18)' }} />
+          <div className="energy-node" style={{ top: '72%', animationDelay: '0.35s' }} />
+          <div className="energy-node" style={{ top: '88%', animationDelay: '1.05s', borderColor: 'rgba(79,172,254,0.7)',  background: 'rgba(79,172,254,0.18)' }} />
         </div>
 
         {/* ── HERO ── */}
         <section className="kh-hero" id="hero">
           <div className="kh-hero-bg" />
           <motion.div className="kh-hero-inner" style={{ y: heroY, opacity: heroOp }}>
-            <motion.div initial="hidden" animate="visible" variants={stagger}>
 
-              {/* Diamond 3D */}
-              <motion.div
-                className="kh-diamond-wrap"
-                variants={fadeUp} custom={0}
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.2, ease: 'easeOut' as const }}
-              >
-                <DiamondLogo3D />
-              </motion.div>
-
-              <motion.div variants={fadeUp} custom={0.1} style={{ display: 'inline-block' }}>
-                <span className="kh-tag kh-tag-purple">✨ La IA fusionada con tu negocio</span>
-              </motion.div>
-
-              <motion.h1 className="kh-h1" variants={fadeUp} custom={0.2}>
-                El corazón que une<br />la <span className="accent">IA</span> y tu negocio
-              </motion.h1>
-
-              <motion.p className="kh-lead" variants={fadeUp} custom={0.3}>
-                Khepria se fusiona con tu negocio para ser uno solo.<br />Crecen juntos.
-              </motion.p>
-
-              <motion.div className="kh-hero-btns" variants={fadeUp} custom={0.4}>
-                <a href="/auth" className="kh-btn-primary">Registrar mi negocio →</a>
-                <a href="/cliente" className="kh-btn-secondary">Explorar negocios</a>
-              </motion.div>
+            <motion.div
+              className="kh-diamond-wrap"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1.3, ease: 'easeOut' as const }}
+            >
+              <DiamondLogo3D />
             </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.45 }}
+              style={{ display: 'inline-block', marginBottom: 14 }}
+            >
+              <span className="kh-tag kh-tag-purple">✨ La IA fusionada con tu negocio</span>
+            </motion.div>
+
+            <motion.h1
+              className="kh-h1"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              El corazón que une<br />la <span className="accent">IA</span> y tu negocio
+            </motion.h1>
+
+            <motion.p
+              className="kh-lead"
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.75 }}
+            >
+              Khepria se fusiona con tu negocio para ser uno solo.<br />Crecen juntos.
+            </motion.p>
+
+            <motion.div
+              className="kh-hero-btns"
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.9 }}
+            >
+              <a href="/auth" className="kh-btn-primary">Registrar mi negocio →</a>
+              <a href="/cliente" className="kh-btn-secondary">Explorar negocios</a>
+            </motion.div>
+
           </motion.div>
+
+          <div className="scroll-ind" aria-hidden>
+            <div className="scroll-line" />
+            <span className="scroll-txt">scroll</span>
+          </div>
         </section>
 
         {/* ── STATS ── */}
@@ -590,20 +624,16 @@ export default function Home() {
             className="kh-stats-grid"
             initial="hidden" whileInView="visible"
             viewport={{ once: true, amount: 0.3 }}
-            variants={stagger}
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
           >
-            {[
-              { icon: '⏱️', num: 3, suffix: 'h', label: 'ahorradas al día', color: '#B8D8F8' },
-              { icon: '📈', num: 40, prefix: '+', suffix: '%', label: 'más reservas', color: '#D4C5F9' },
-              { icon: '🤖', label: 'atención automática', color: '#B8EDD4', static: '24/7' },
-              { icon: '💰', num: 0, suffix: '€', label: 'en gestores de IVA', color: '#FDE9A2' },
-            ].map((s, i) => (
-              <motion.div key={i} className="kh-stat" variants={fadeUp} custom={i * 0.1}>
+            {STATS.map((s, i) => (
+              <motion.div
+                key={i} className="kh-stat"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' as const } } }}
+              >
                 <span className="kh-stat-icon">{s.icon}</span>
-                <span className="kh-stat-num" style={{ color: s.color === '#FDE9A2' ? '#0F0F1A' : '#0F0F1A' }}>
-                  {'static' in s && s.static
-                    ? s.static
-                    : <AnimCount end={s.num ?? 0} prefix={'prefix' in s ? s.prefix : ''} suffix={s.suffix ?? ''} />}
+                <span className="kh-stat-num">
+                  {s.isStatic ? s.staticVal : <AnimCount end={s.num} prefix={s.prefix} suffix={s.suffix} />}
                 </span>
                 <span className="kh-stat-label">{s.label}</span>
               </motion.div>
@@ -612,63 +642,86 @@ export default function Home() {
         </section>
 
         {/* ── FUNCIONES ── */}
-        <section className="kh-section" id="funciones" style={{ background: '#F7F9FF' }}>
+        <section className="kh-section" id="funciones" ref={featRef}>
           <div className="kh-section-inner">
-            <motion.div className="kh-section-header" initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={stagger}>
-              <motion.span variants={fadeUp} custom={0} style={{ display: 'inline-block' }}>
+            <motion.div
+              className="kh-sec-hdr"
+              initial="hidden" whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
+            >
+              <motion.span
+                variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+                style={{ display: 'inline-block', marginBottom: 12 }}
+              >
                 <span className="kh-tag kh-tag-purple">Funciones</span>
               </motion.span>
-              <motion.h2 className="kh-h2" variants={fadeUp} custom={0.1} style={{ marginTop: 12 }}>
+              <motion.h2
+                className="kh-h2"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7 } } }}
+              >
                 Todo lo que necesitas,<br />nada de lo que no
               </motion.h2>
-              <motion.p className="kh-section-p" variants={fadeUp} custom={0.2}>
+              <motion.p
+                className="kh-sec-p"
+                variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+              >
                 Cada función está pensada para ahorrarte tiempo real y hacer crecer tu negocio
               </motion.p>
             </motion.div>
 
-            <motion.div className="kh-feat-grid" style={{ y: sectionsY, rotateX: sectionsRotateX, transformPerspective: 1000 }}>
-              {FEATURES.map((f, i) => (
-                <motion.div
-                  key={f.title}
-                  initial={{ opacity: 0, x: i % 2 === 0 ? -100 : 100 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, amount: 0.15 }}
-                  transition={{ duration: 0.7, ease: 'easeOut' as const, delay: i * 0.08 }}
-                >
-                  <TiltCard className="kh-feat-card">
-                    <div className="kh-feat-icon" style={{ background: f.color + '55' }}>{f.icon}</div>
+            <div className="feat-cols">
+              {/* Left column */}
+              <motion.div className="feat-col" style={{ x: fLX, rotateY: fLRY, opacity: fOp, transformPerspective: 1200 }}>
+                {FEATURES.filter((_, i) => i % 2 === 0).map(f => (
+                  <TiltCard key={f.title} className="kh-feat-card">
+                    <div className="kh-feat-icon">{f.icon}</div>
                     <div className="kh-feat-title">{f.title}</div>
                     <div className="kh-feat-desc">{f.desc}</div>
                   </TiltCard>
-                </motion.div>
-              ))}
-            </motion.div>
+                ))}
+              </motion.div>
+
+              {/* Right column — offset down for visual rhythm */}
+              <motion.div className="feat-col" style={{ x: fRX, rotateY: fRRY, opacity: fOp, transformPerspective: 1200, marginTop: 48 }}>
+                {FEATURES.filter((_, i) => i % 2 === 1).map(f => (
+                  <TiltCard key={f.title} className="kh-feat-card">
+                    <div className="kh-feat-icon">{f.icon}</div>
+                    <div className="kh-feat-title">{f.title}</div>
+                    <div className="kh-feat-desc">{f.desc}</div>
+                  </TiltCard>
+                ))}
+              </motion.div>
+            </div>
           </div>
         </section>
 
         {/* ── PARA QUIÉN ── */}
-        <section className="kh-section" id="quien" style={{ background: '#fff' }}>
+        <section className="kh-section" id="quien" ref={quienRef} style={{ background: 'rgba(79,172,254,0.025)' }}>
           <div className="kh-section-inner">
-            <motion.div className="kh-section-header" initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={stagger}>
-              <motion.span variants={fadeUp} custom={0} style={{ display: 'inline-block' }}>
+            <motion.div
+              className="kh-sec-hdr"
+              initial="hidden" whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
+            >
+              <motion.span
+                variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+                style={{ display: 'inline-block', marginBottom: 12 }}
+              >
                 <span className="kh-tag kh-tag-blue">¿Para quién?</span>
               </motion.span>
-              <motion.h2 className="kh-h2" variants={fadeUp} custom={0.1} style={{ marginTop: 12 }}>
+              <motion.h2
+                className="kh-h2"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7 } } }}
+              >
                 Diseñado para tu tipo<br />de negocio
               </motion.h2>
-              <motion.p className="kh-section-p" variants={fadeUp} custom={0.2}>
-                Khepria se adapta a cualquier negocio de servicios que trabaje con citas
-              </motion.p>
             </motion.div>
 
             <div className="kh-quien-grid">
               {QUIENES.map((q, i) => (
-                <motion.div
-                  key={q.name}
-                  initial="hidden" whileInView="visible"
-                  viewport={{ once: true, amount: 0.2 }}
-                  variants={fadeUp} custom={i * 0.07}
-                >
+                <motion.div key={q.name} style={{ x: i % 2 === 0 ? qLX : qRX, opacity: qOp }}>
                   <TiltCard className="kh-quien-card">
                     <span className="kh-quien-emoji">{q.icon}</span>
                     <span className="kh-quien-name">{q.name}</span>
@@ -680,33 +733,47 @@ export default function Home() {
         </section>
 
         {/* ── PLANES ── */}
-        <section className="kh-section" id="planes" style={{ background: '#F7F9FF' }}>
+        <section className="kh-section" id="planes" ref={planesRef}>
           <div className="kh-section-inner">
-            <motion.div className="kh-section-header" initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={stagger}>
-              <motion.span variants={fadeUp} custom={0} style={{ display: 'inline-block' }}>
+            <motion.div
+              className="kh-sec-hdr"
+              initial="hidden" whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
+            >
+              <motion.span
+                variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+                style={{ display: 'inline-block', marginBottom: 12 }}
+              >
                 <span className="kh-tag kh-tag-purple">Planes</span>
               </motion.span>
-              <motion.h2 className="kh-h2" variants={fadeUp} custom={0.1} style={{ marginTop: 12 }}>
+              <motion.h2
+                className="kh-h2"
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7 } } }}
+              >
                 Sin sorpresas. Sin comisiones.
               </motion.h2>
-              <motion.p className="kh-section-p" variants={fadeUp} custom={0.2}>
+              <motion.p
+                className="kh-sec-p"
+                variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+              >
                 Elige el plan que mejor se adapte. Cancela cuando quieras.
               </motion.p>
             </motion.div>
 
-            <motion.div className="kh-planes-grid" style={{ y: sectionsY, rotateX: sectionsRotateX, transformPerspective: 1000 }}>
+            <div className="kh-planes-grid">
               {PLANES.map((p, i) => (
                 <motion.div
                   key={p.nombre}
-                  initial={{ opacity: 0, x: i % 2 === 0 ? -100 : 100 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, amount: 0.1 }}
-                  transition={{ duration: 0.7, ease: 'easeOut' as const, delay: i * 0.1 }}
+                  style={{
+                    x: i % 2 === 0 ? pLX : pRX,
+                    opacity: pOp,
+                    scale: p.popular ? 1.03 : 1,
+                    transformPerspective: 1200,
+                  }}
                 >
                   <TiltCard className={`kh-plan-card ${p.popular ? 'popular' : ''}`}>
-                    <div className="kh-plan-badge" style={{ background: p.color + '66', color: p.colorDark }}>
-                      {p.badge}
-                    </div>
+                    <div className="kh-plan-badge" style={{ background: `${p.col}20`, color: p.col }}>{p.badge}</div>
                     <div className="kh-plan-emoji">{p.emoji}</div>
                     <div className="kh-plan-name">{p.nombre}</div>
                     <div className="kh-plan-price">{p.precio}€</div>
@@ -723,8 +790,9 @@ export default function Home() {
                         href="/auth"
                         className="kh-plan-btn"
                         style={{
-                          background: p.popular ? 'linear-gradient(135deg,#7C5CEF,#4F46E5)' : p.color + '55',
-                          color: p.popular ? '#fff' : p.colorDark,
+                          background: p.popular ? 'linear-gradient(135deg,#7C5CEF,#4F46E5)' : `${p.col}18`,
+                          color: p.popular ? '#fff' : p.col,
+                          border: p.popular ? 'none' : `1px solid ${p.col}40`,
                         }}
                       >
                         Empezar con {p.nombre} →
@@ -733,7 +801,7 @@ export default function Home() {
                   </TiltCard>
                 </motion.div>
               ))}
-            </motion.div>
+            </div>
             <p className="kh-plan-note" style={{ marginTop: 24 }}>* Precios orientativos. No se realiza ningún cargo durante el registro.</p>
           </div>
         </section>
@@ -744,27 +812,39 @@ export default function Home() {
             style={{ maxWidth: 600, margin: '0 auto' }}
             initial="hidden" whileInView="visible"
             viewport={{ once: true, amount: 0.3 }}
-            variants={stagger}
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
           >
-            <motion.span variants={fadeUp} custom={0} style={{ display: 'inline-block', marginBottom: 16 }}>
+            <motion.span
+              variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+              style={{ display: 'inline-block', marginBottom: 16 }}
+            >
               <span className="kh-tag kh-tag-green">Para clientes</span>
             </motion.span>
-            <motion.h2 className="kh-h2" variants={fadeUp} custom={0.1}>¿Eres cliente?</motion.h2>
-            <motion.p className="kh-lead" variants={fadeUp} custom={0.2} style={{ margin: '12px auto 28px' }}>
-              Descubre y reserva en los mejores negocios cerca de ti, con disponibilidad en tiempo real.
+            <motion.h2
+              className="kh-h2"
+              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7 } } }}
+            >
+              ¿Eres cliente?
+            </motion.h2>
+            <motion.p
+              className="kh-lead"
+              variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+              style={{ margin: '12px auto 28px' }}
+            >
+              Descubre y reserva en los mejores negocios cerca de ti,<br />con disponibilidad en tiempo real.
             </motion.p>
-            <motion.div variants={fadeUp} custom={0.3}>
-              <a
-                href="/cliente"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '16px 32px', borderRadius: 14,
-                  background: 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
-                  color: '#fff', fontWeight: 700, fontSize: 16,
-                  textDecoration: 'none', boxShadow: '0 6px 28px rgba(107,79,216,0.35)',
-                  transition: 'opacity 0.15s',
-                }}
-              >
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+            >
+              <a href="/cliente" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '16px 32px', borderRadius: 14,
+                background: 'linear-gradient(135deg,#40DCA5,#1aA080)',
+                color: '#fff', fontWeight: 700, fontSize: 16,
+                textDecoration: 'none',
+                boxShadow: '0 0 36px rgba(64,220,165,0.3)',
+                transition: 'transform 0.2s,box-shadow 0.2s',
+              }}>
                 Explorar negocios →
               </a>
             </motion.div>
@@ -775,17 +855,27 @@ export default function Home() {
         <section className="kh-waitlist" id="waitlist">
           <div className="kh-wl-glow" />
           <div className="kh-wl-inner">
-            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={stagger}>
-              <motion.span variants={fadeUp} custom={0} style={{ display: 'inline-block' }}>
+            <motion.div
+              initial="hidden" whileInView="visible"
+              viewport={{ once: true, amount: 0.3 }}
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
+            >
+              <motion.span
+                variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+                style={{ display: 'inline-block' }}
+              >
                 <span className="kh-tag kh-tag-purple">Lista de espera</span>
               </motion.span>
               <motion.h2
-                variants={fadeUp} custom={0.1}
+                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7 } } }}
                 style={{ fontFamily: "'Syne',sans-serif", fontSize: 'clamp(1.8rem,4.5vw,2.8rem)', fontWeight: 800, color: '#fff', letterSpacing: -1, margin: '16px 0 10px' }}
               >
                 Sé de los primeros<br />en probarlo
               </motion.h2>
-              <motion.p variants={fadeUp} custom={0.2} style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
+              <motion.p
+                variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6 } } }}
+                style={{ fontSize: 15, color: 'rgba(255,255,255,0.48)', lineHeight: 1.7 }}
+              >
                 Regístrate ahora y te avisamos cuando abramos la beta
               </motion.p>
             </motion.div>
@@ -823,7 +913,13 @@ export default function Home() {
             </motion.div>
 
             {count > 0 && (
-              <motion.div className="kh-wl-counter" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.4 }}>
+              <motion.div
+                className="kh-wl-counter"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.4 }}
+              >
                 <span>🏢</span>
                 <strong>{displayCount}</strong>
                 <span>negocios ya apuntados</span>
@@ -838,7 +934,7 @@ export default function Home() {
             <div className="kh-footer-top">
               <div>
                 <div className="kh-footer-logo"><em>Kh</em>epria</div>
-                <div className="kh-footer-tag">La IA que fusiona con tu negocio ✨</div>
+                <div className="kh-footer-tag">La IA que se fusiona con tu negocio ✨</div>
               </div>
               <div className="kh-footer-links">
                 <a href="/cliente" className="kh-footer-a">🗺️ Explorar negocios</a>
@@ -851,13 +947,13 @@ export default function Home() {
                 <a href="https://instagram.com/khepria_es" target="_blank" rel="noopener noreferrer" className="kh-footer-a">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
                     <defs>
-                      <linearGradient id="ig-f" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                      <linearGradient id="ig-f2" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
                         <stop offset="0%" stopColor="#F58529" /><stop offset="50%" stopColor="#DD2A7B" /><stop offset="100%" stopColor="#8134AF" />
                       </linearGradient>
                     </defs>
-                    <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#ig-f)" strokeWidth="2" />
-                    <circle cx="12" cy="12" r="4" stroke="url(#ig-f)" strokeWidth="2" />
-                    <circle cx="17.5" cy="6.5" r="1.2" fill="url(#ig-f)" />
+                    <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#ig-f2)" strokeWidth="2" />
+                    <circle cx="12" cy="12" r="4" stroke="url(#ig-f2)" strokeWidth="2" />
+                    <circle cx="17.5" cy="6.5" r="1.2" fill="url(#ig-f2)" />
                   </svg>
                   @khepria_es
                 </a>
@@ -875,7 +971,7 @@ export default function Home() {
           </div>
         </footer>
 
-      </div>{/* end energy wrapper */}
+      </div>
     </>
   )
 }
