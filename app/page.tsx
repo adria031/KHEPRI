@@ -99,116 +99,102 @@ function AnimCount({ end, suffix = '', prefix = '' }: { end: number; suffix?: st
 // ── DIAMOND LOGO 3D ───────────────────────────────────────────────────────────
 
 function DiamondLogo3D() {
-  const mountRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    const mount = mountRef.current
-    if (!mount) return
-    let disposed = false, animId = 0
+    const canvas = canvasRef.current
+    if (!canvas) return
+    let disposed = false
+    let rafId = 0
     let renderer: WebGLRenderer | null = null
-    let onResize: (() => void) | null = null
 
     import('three').then((THREE) => {
       if (disposed) return
-      const w = mount.offsetWidth || 380
-      const h = mount.offsetHeight || 380
 
-      const scene = new THREE.Scene()
-      const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 100)
-      camera.position.z = 5
-
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-      renderer.setSize(w, h)
+      const size = canvas.parentElement?.offsetWidth || 380
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+      renderer.setSize(size, size)
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.setClearColor(0x000000, 0)
-      mount.appendChild(renderer.domElement)
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
 
-      // Lighting
-      scene.add(new THREE.AmbientLight(0x334466, 2))
-      const pl1 = new THREE.PointLight(0xAA88FF, 3, 8)
-      const pl2 = new THREE.PointLight(0x66BBFF, 3, 8)
-      pl1.position.set(3, 3, 2)
-      pl2.position.set(-3, -3, 2)
-      scene.add(pl1, pl2)
-      const orb1 = new THREE.PointLight(0xFFFFFF, 2.5, 5)
-      const orb2 = new THREE.PointLight(0xAADDFF, 2, 5)
-      scene.add(orb1, orb2)
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
+      camera.position.z = 6
 
-      // Helper: torus ring
-      const mkRing = (
-        outerR: number, innerR: number,
-        col: number, emi: number, opa: number,
-        tiltX: number
-      ) => {
-        const radius = (outerR + innerR) / 2
-        const tube = (outerR - innerR) / 2
-        const geo = new THREE.TorusGeometry(radius, tube, 12, 80)
-        const mat = new THREE.MeshPhongMaterial({
-          color: col, emissive: emi, emissiveIntensity: 0.4,
-          transparent: true, opacity: opa, shininess: 130,
-        })
-        const mesh = new THREE.Mesh(geo, mat)
-        mesh.rotation.x = tiltX
-        return mesh
+      function makeDiamondRing(outer: number, inner: number, color: number, emissive: number, opacity: number) {
+        const shape = new THREE.Shape()
+        shape.moveTo(0, outer); shape.lineTo(outer, 0)
+        shape.lineTo(0, -outer); shape.lineTo(-outer, 0); shape.closePath()
+        const hole = new THREE.Path()
+        hole.moveTo(0, inner); hole.lineTo(inner, 0)
+        hole.lineTo(0, -inner); hole.lineTo(-inner, 0); hole.closePath()
+        shape.holes.push(hole)
+        return new THREE.Mesh(
+          new THREE.ShapeGeometry(shape, 2),
+          new THREE.MeshPhongMaterial({
+            color, emissive, emissiveIntensity: 0.35, shininess: 180,
+            specular: 0xffffff, transparent: true, opacity,
+            side: THREE.DoubleSide, depthWrite: false,
+          })
+        )
       }
 
-      // d1: outer=1.5, inner=1.14 → right
-      const d1 = mkRing(1.5, 1.14, 0xAA88FF, 0x6633CC, 0.80, 0)
-      // d2: outer=1.09, inner=0.74 → left
-      const d2 = mkRing(1.09, 0.74, 0x66BBFF, 0x2255AA, 0.85, Math.PI / 3)
-      // d3: outer=0.71, inner=0.42 → right
-      const d3 = mkRing(0.71, 0.42, 0xCCEEFF, 0x4488CC, 0.92, -Math.PI / 3)
+      const d1 = makeDiamondRing(1.5, 1.14, 0xAA88FF, 0x6633CC, 0.80)
+      const d2 = makeDiamondRing(1.09, 0.74, 0x66BBFF, 0x2255AA, 0.85)
+      const d3 = makeDiamondRing(0.71, 0.42, 0xCCEEFF, 0x4488CC, 0.92)
       scene.add(d1, d2, d3)
 
-      // Central sphere — pulsing
-      const sphereGeo = new THREE.SphereGeometry(0.18, 32, 32)
-      const sphereMat = new THREE.MeshPhongMaterial({
-        color: 0xFFFFFF, emissive: 0x9988FF, emissiveIntensity: 0.5, shininess: 200,
-      })
-      const sphere = new THREE.Mesh(sphereGeo, sphereMat)
-      scene.add(sphere)
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 32, 32),
+        new THREE.MeshPhongMaterial({ color: 0xffffff, emissive: 0xaaccff, emissiveIntensity: 0.4, shininess: 200, specular: 0xffffff })
+      )
+      sphere.position.z = 0.1
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(0.34, 32, 32),
+        new THREE.MeshBasicMaterial({ color: 0x8899ff, transparent: true, opacity: 0.12 })
+      )
+      halo.position.z = 0.08
+      scene.add(halo, sphere)
 
-      let t = 0
-      const animate = () => {
+      scene.add(new THREE.AmbientLight(0x334466, 2))
+      const l1 = new THREE.PointLight(0x7C5CEF, 8, 14)
+      const l2 = new THREE.PointLight(0x4FACFE, 7, 14)
+      const l3 = new THREE.PointLight(0xffffff, 4, 8)
+      l3.position.set(0, 0, 5)
+      scene.add(l1, l2, l3)
+
+      const PI2 = Math.PI * 2
+      const startTs = performance.now()
+
+      function animate() {
         if (disposed) return
-        animId = requestAnimationFrame(animate)
-        t += 0.008
-        // Ring rotations: d1→, d2←, d3→
-        d1.rotation.z += 0.005
-        d2.rotation.z -= 0.004
-        d3.rotation.z += 0.006
-        // Pulse sphere
-        const s = 1 + Math.sin(t * 2.5) * 0.15
-        sphere.scale.setScalar(s)
-        sphereMat.emissiveIntensity = 0.3 + Math.sin(t * 2.5) * 0.3
-        // Orbit lights for metallic sheen
-        orb1.position.set(Math.cos(t) * 3, Math.sin(t) * 3, 1.5)
-        orb2.position.set(Math.cos(t + Math.PI) * 3, Math.sin(t + Math.PI) * 3, -1.5)
+        const lt = ((performance.now() - startTs) / 1000 % 15) / 15
+        d1.rotation.y = lt * PI2
+        d2.rotation.y = -lt * PI2 * 2
+        d3.rotation.y = lt * PI2 * 3
+        const tilt = Math.sin(lt * PI2) * 0.25
+        d1.rotation.x = tilt; d2.rotation.x = tilt * 0.85; d3.rotation.x = tilt * 0.7
+        const la = lt * PI2 * 2
+        l1.position.x = Math.cos(la) * 4; l1.position.z = Math.sin(la) * 4
+        l2.position.x = Math.cos(la + Math.PI) * 4; l2.position.z = Math.sin(la + Math.PI) * 4
+        const p = 1 + Math.sin(lt * PI2 * 4) * 0.08
+        sphere.scale.setScalar(p); halo.scale.setScalar(p)
         renderer!.render(scene, camera)
+        rafId = requestAnimationFrame(animate)
       }
-      animate()
-
-      onResize = () => {
-        if (!mount || !renderer) return
-        const nw = mount.offsetWidth, nh = mount.offsetHeight
-        camera.aspect = nw / nh
-        camera.updateProjectionMatrix()
-        renderer.setSize(nw, nh)
-      }
-      window.addEventListener('resize', onResize)
+      rafId = requestAnimationFrame(animate)
     })
 
     return () => {
       disposed = true
-      cancelAnimationFrame(animId)
-      if (onResize) window.removeEventListener('resize', onResize)
+      cancelAnimationFrame(rafId)
       renderer?.dispose()
-      renderer?.domElement.remove()
-      renderer = null
     }
   }, [])
 
-  return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+  return <canvas ref={canvasRef} style={{ display: 'block' }} />
 }
 
 // ── HOME ──────────────────────────────────────────────────────────────────────
@@ -229,8 +215,10 @@ export default function Home() {
   const [cursorVis, setCursorVis] = useState(false)
 
   // Parallax
-  const { scrollY } = useScroll()
+  const { scrollY, scrollYProgress } = useScroll()
   const heroY = useTransform(scrollY, [0, 600], [0, -100])
+  const sectionsY = useTransform(scrollYProgress, [0, 1], [0, -100])
+  const sectionsRotateX = useTransform(scrollYProgress, [0, 0.5, 1], [10, 0, -10])
   const heroOp = useTransform(scrollY, [0, 450], [1, 0.4])
   const navShadow = useTransform(scrollY, [0, 60], [
     'rgba(247,249,255,0)',
@@ -638,13 +626,14 @@ export default function Home() {
               </motion.p>
             </motion.div>
 
-            <div className="kh-feat-grid">
+            <motion.div className="kh-feat-grid" style={{ y: sectionsY, rotateX: sectionsRotateX, transformPerspective: 1000 }}>
               {FEATURES.map((f, i) => (
                 <motion.div
                   key={f.title}
-                  initial="hidden" whileInView="visible"
+                  initial={{ opacity: 0, x: i % 2 === 0 ? -100 : 100 }}
+                  whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true, amount: 0.15 }}
-                  variants={fadeUp} custom={i * 0.08}
+                  transition={{ duration: 0.7, ease: 'easeOut' as const, delay: i * 0.08 }}
                 >
                   <TiltCard className="kh-feat-card">
                     <div className="kh-feat-icon" style={{ background: f.color + '55' }}>{f.icon}</div>
@@ -653,7 +642,7 @@ export default function Home() {
                   </TiltCard>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -705,13 +694,14 @@ export default function Home() {
               </motion.p>
             </motion.div>
 
-            <div className="kh-planes-grid">
+            <motion.div className="kh-planes-grid" style={{ y: sectionsY, rotateX: sectionsRotateX, transformPerspective: 1000 }}>
               {PLANES.map((p, i) => (
                 <motion.div
                   key={p.nombre}
-                  initial="hidden" whileInView="visible"
+                  initial={{ opacity: 0, x: i % 2 === 0 ? -100 : 100 }}
+                  whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true, amount: 0.1 }}
-                  variants={fadeUp} custom={i * 0.1}
+                  transition={{ duration: 0.7, ease: 'easeOut' as const, delay: i * 0.1 }}
                 >
                   <TiltCard className={`kh-plan-card ${p.popular ? 'popular' : ''}`}>
                     <div className="kh-plan-badge" style={{ background: p.color + '66', color: p.colorDark }}>
@@ -743,7 +733,7 @@ export default function Home() {
                   </TiltCard>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
             <p className="kh-plan-note" style={{ marginTop: 24 }}>* Precios orientativos. No se realiza ningún cargo durante el registro.</p>
           </div>
         </section>
