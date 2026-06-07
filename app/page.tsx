@@ -25,35 +25,6 @@ const QUIENES = [
 ]
 
 
-const TESTIMONIALS = [
-  {
-    name: 'Marcos García',
-    biz: 'Barbería Marcos',
-    city: 'Madrid',
-    avatar: '💈',
-    color: '#B8D8F8',
-    text: 'Antes perdía 2 horas al día al teléfono. Ahora mis clientes reservan solos y yo me centro en lo que me gusta. Las reservas subieron un 35% en tres meses.',
-    stars: 5,
-  },
-  {
-    name: 'Laia Puig',
-    biz: 'Spa Relax',
-    city: 'Barcelona',
-    avatar: '💆',
-    color: '#D4C5F9',
-    text: 'El chatbot de WhatsApp es una maravilla. Responde a las 2 de la mañana sin yo estar. Y la facturación automática me ha ahorrado el coste del gestor.',
-    stars: 5,
-  },
-  {
-    name: 'Carlos Pérez',
-    biz: 'Clínica Dental Pérez',
-    city: 'Valencia',
-    avatar: '🦷',
-    color: '#B8EDD4',
-    text: 'Gestionar 4 dentistas con sus agendas era un caos. Ahora todo está centralizado y los recordatorios han reducido las faltas en un 80%.',
-    stars: 5,
-  },
-]
 
 const PLANES = [
   {
@@ -581,9 +552,9 @@ export default function Home() {
         .kh-phone-wrap:nth-child(2) { transform: translateY(-20px); }
         .kh-phone-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); letter-spacing: 0.5px; text-transform: uppercase; }
         .kh-phone {
-          width: 200px; height: 420px; background: #0A0A0F; border-radius: 32px;
-          border: 2px solid rgba(255,255,255,0.12);
-          box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,58,237,0.1);
+          width: 200px; height: 420px; background: #F7F9FC; border-radius: 32px;
+          border: 2px solid rgba(0,0,0,0.1);
+          box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,58,237,0.08);
           overflow: hidden; position: relative;
           animation: float 4s ease-in-out infinite;
         }
@@ -592,28 +563,15 @@ export default function Home() {
         .kh-phone:nth-child(3) { animation-delay: 1s; }
         .kh-phone-notch {
           position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-          width: 70px; height: 6px; background: #1A1A2E; border-radius: 3px; z-index: 2;
+          width: 70px; height: 6px; background: #D1D5DB; border-radius: 3px; z-index: 2;
         }
         .kh-phone-screen { padding: 28px 0 0; }
         .kh-phone-bar {
           display: flex; align-items: center; justify-content: space-between;
-          padding: 8px 14px; font-size: 10px; color: rgba(255,255,255,0.5);
+          padding: 8px 14px; font-size: 10px; color: #6B7280;
         }
 
-        /* ── Testimonials ── */
-        .kh-testimonial-card {
-          background: #fff; border: 1px solid #F1F5F9; border-radius: 20px;
-          padding: 28px; display: flex; flex-direction: column; gap: 14px;
-          transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s;
-          will-change: transform;
-        }
-        .kh-testimonial-card:hover { box-shadow: 0 10px 40px rgba(0,0,0,0.07); }
-        .kh-testi-stars { color: #F59E0B; font-size: 14px; letter-spacing: 1px; }
-        .kh-testi-text { font-size: 14px; color: #4B5563; line-height: 1.75; flex: 1; }
-        .kh-testi-author { display: flex; align-items: center; gap: 12px; }
-        .kh-testi-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-        .kh-testi-name { font-size: 14px; font-weight: 700; color: #111827; }
-        .kh-testi-biz { font-size: 12px; color: #9CA3AF; }
+
 
         /* ── Plans ── */
         .kh-plans { padding: 100px 24px; background: #F7F9FF; }
@@ -798,13 +756,15 @@ export default function Home() {
         /* ── Responsive ── */
         @media (max-width: 900px) {
           .kh-hero-inner { grid-template-columns: 1fr; }
-          .kh-globe-wrap { height: 280px; order: -1; }
+          .kh-globe-wrap { height: 280px; order: -1; justify-self: center; }
           .kh-grid-3 { grid-template-columns: 1fr 1fr; }
           .kh-grid-4 { grid-template-columns: 1fr 1fr; }
 
           .kh-nav-links { display: none; }
           .kh-hamburger { display: flex; }
           .kh-phones-row { overflow-x: auto; padding-bottom: 8px; justify-content: flex-start; }
+          .kh-nav-inner { position: relative; }
+          .kh-logo { position: absolute; left: 50%; transform: translateX(-50%); }
         }
         @media (max-width: 600px) {
           .kh-grid-3 { grid-template-columns: 1fr; }
@@ -815,7 +775,6 @@ export default function Home() {
           .kh-section { padding: 64px 20px; }
           .kh-plans { padding: 64px 20px; }
           .kh-phones { padding: 64px 20px; }
-          .kh-waitlist { padding: 64px 20px; }
           .kh-footer-top { flex-direction: column; }
           .kh-footer-bot { flex-direction: column; align-items: flex-start; }
           .kh-modal { padding: 28px 20px; }
@@ -920,7 +879,7 @@ export default function Home() {
           </div>
 
           <div className="kh-phones-row">
-            {/* Phone 1: Mapa con negocios */}
+            {/* Phone 1: Agenda del día */}
             <motion.div
               className="kh-phone-wrap"
               initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}
@@ -929,39 +888,38 @@ export default function Home() {
             >
               <div className="kh-phone" style={{ height: '420px' }}>
                 <div className="kh-phone-notch" />
-                <div style={{ padding: '28px 14px 14px' }}>
-                  <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, color:'#fff', marginBottom:8 }}>HUB · Negocios cerca</div>
-                  <div style={{ background:'#1a2744', borderRadius:12, height:180, position:'relative', overflow:'hidden', marginBottom:10 }}>
-                    <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px)', backgroundSize:'24px 24px' }} />
-                    {[
-                      { top:'30%', left:'25%', emoji:'💈', name:'Barbería Marcos', highlight:true },
-                      { top:'55%', left:'58%', emoji:'💅', name:'Studio Nails', highlight:false },
-                      { top:'20%', left:'65%', emoji:'💆', name:'Spa Relax', highlight:false },
-                      { top:'70%', left:'35%', emoji:'🏥', name:'Clínica López', highlight:false },
-                    ].map((pin,i) => (
-                      <div key={i} style={{ position:'absolute', top:pin.top, left:pin.left, display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
-                        <div style={{ background: pin.highlight ? '#7C3AED' : '#fff', borderRadius:'50%', width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, boxShadow:'0 2px 8px rgba(0,0,0,0.4)' }}>{pin.emoji}</div>
-                        {pin.highlight && <div style={{ background:'#7C3AED', color:'#fff', borderRadius:4, padding:'2px 5px', fontSize:8, fontWeight:700, whiteSpace:'nowrap' }}>{pin.name}</div>}
-                      </div>
-                    ))}
-                    <div style={{ position:'absolute', top:'48%', left:'44%', width:12, height:12, borderRadius:'50%', background:'#4FACFE', boxShadow:'0 0 0 4px rgba(79,172,254,0.3)' }} />
+                <div style={{ padding: '28px 12px 12px' }}>
+                  <div className="kh-phone-bar" style={{ padding:'0 0 8px', marginBottom:6 }}>
+                    <span style={{ fontWeight:700, color:'#111827' }}>9:41</span>
+                    <span style={{ color:'#9CA3AF' }}>●●●</span>
+                  </div>
+                  <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, color:'#111827', marginBottom:4 }}>📋 Agenda hoy</div>
+                  <div style={{ fontSize:9, color:'#9CA3AF', marginBottom:10 }}>Sábado 7 jun · Barbería Marcos</div>
+                  <div style={{ display:'flex', gap:5, marginBottom:12 }}>
+                    <span style={{ background:'#EEF2FF', color:'#4F46E5', borderRadius:100, padding:'3px 8px', fontSize:9, fontWeight:700 }}>8 citas</span>
+                    <span style={{ background:'#FEF3C7', color:'#92400E', borderRadius:100, padding:'3px 8px', fontSize:9, fontWeight:700 }}>3 pendientes</span>
                   </div>
                   {[
-                    { emoji:'💈', name:'Barbería Marcos', dist:'120m', rating:'4.9', slots:'3 huecos hoy' },
-                    { emoji:'💅', name:'Studio Nails',   dist:'340m', rating:'4.8', slots:'Disponible' },
-                  ].map((b,i) => (
-                    <div key={i} style={{ background:'rgba(255,255,255,0.06)', borderRadius:10, padding:'8px 10px', marginBottom:6, display:'flex', alignItems:'center', gap:8 }}>
-                      <div style={{ fontSize:18 }}>{b.emoji}</div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontSize:11, fontWeight:700, color:'#fff' }}>{b.name}</div>
-                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)' }}>{b.dist} · ⭐{b.rating}</div>
+                    { hora:'10:00', nombre:'Ana López', srv:'Corte + tinte', color:'#818CF8', estado:'pendiente' },
+                    { hora:'11:00', nombre:'Carlos M.', srv:'Corte clásico', color:'#34D399', estado:'completada' },
+                    { hora:'12:30', nombre:'Sofía R.',  srv:'Peinado novia', color:'#F472B6', estado:'pendiente' },
+                    { hora:'16:00', nombre:'Daniel P.', srv:'Afeitado',      color:'#FBBF24', estado:'pendiente' },
+                  ].map((c,i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:7, marginBottom:8 }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:'#6B7280', minWidth:30, paddingTop:2 }}>{c.hora}</span>
+                      <div style={{ width:3, borderRadius:2, background:c.color, alignSelf:'stretch', flexShrink:0 }} />
+                      <div style={{ flex:1, background:'#fff', borderRadius:8, padding:'6px 8px', border:'1px solid #E8ECF0' }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#111827' }}>{c.nombre}</div>
+                        <div style={{ fontSize:9, color:'#9CA3AF' }}>{c.srv}</div>
                       </div>
-                      <div style={{ fontSize:9, color:'#B8EDD4', fontWeight:700 }}>{b.slots}</div>
+                      <span style={{ fontSize:8, fontWeight:700, color: c.estado==='completada' ? '#065F46' : '#92400E', background: c.estado==='completada' ? '#D1FAE5' : '#FEF3C7', borderRadius:100, padding:'2px 5px', whiteSpace:'nowrap', alignSelf:'center' }}>
+                        {c.estado==='completada' ? '✓' : '●'}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="kh-phone-label">Explora negocios</div>
+              <div className="kh-phone-label">Agenda del día</div>
             </motion.div>
 
             {/* Phone 2: Dashboard KPIs */}
@@ -973,40 +931,48 @@ export default function Home() {
             >
               <div className="kh-phone" style={{ height: '420px' }}>
                 <div className="kh-phone-notch" />
-                <div className="kh-phone-screen">
-                  <div className="kh-phone-bar">
-                    <span>9:41</span>
-                    <span>●●●</span>
+                <div style={{ padding: '28px 12px 12px' }}>
+                  <div className="kh-phone-bar" style={{ padding:'0 0 8px' }}>
+                    <span style={{ fontWeight:700, color:'#111827' }}>9:41</span>
+                    <span style={{ color:'#9CA3AF' }}>●●●</span>
                   </div>
-                  <div style={{ padding: '4px 14px 14px' }}>
-                    <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 800, color: '#fff', marginBottom: 12 }}>Dashboard</div>
-                    {/* Mini chart */}
-                    <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '10px', marginBottom: 10 }}>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>Ingresos esta semana</div>
-                      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 8 }}>1.248€</div>
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 32 }}>
-                        {[40, 65, 45, 80, 60, 90, 75].map((h, i) => (
-                          <div key={i} style={{ flex: 1, background: i === 5 ? '#7C3AED' : 'rgba(124,58,237,0.3)', borderRadius: '3px 3px 0 0', height: `${h}%` }} />
-                        ))}
-                      </div>
-                    </div>
-                    {/* Stats row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 10 }}>
-                      {[
-                        { label: 'Citas hoy', val: '8', color: '#B8D8F8' },
-                        { label: 'Pendientes', val: '3', color: '#FDE9A2' },
-                        { label: 'Canceladas', val: '1', color: '#FBCFE8' },
-                        { label: 'Completadas', val: '4', color: '#B8EDD4' },
-                      ].map(s => (
-                        <div key={s.label} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '8px 10px' }}>
-                          <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 16, fontWeight: 800, color: s.color }}>{s.val}</div>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{s.label}</div>
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, color:'#111827' }}>Buenas tardes 👋</div>
+                    <div style={{ fontSize:9, color:'#9CA3AF' }}>Barbería Marcos · sábado</div>
+                  </div>
+                  {/* KPI grid */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginBottom:10 }}>
+                    {[
+                      { label:'Hoy', val:'312€', color:'#818CF8', bg:'#EEF2FF' },
+                      { label:'Citas hoy', val:'8', color:'#34D399', bg:'#ECFDF5' },
+                      { label:'Semana', val:'1.248€', color:'#FBBF24', bg:'#FFF8E1' },
+                      { label:'Clientes', val:'24', color:'#F472B6', bg:'#FDF2F8' },
+                    ].map(s => (
+                      <div key={s.label} style={{ background:'#fff', border:'1px solid #E8ECF0', borderRadius:10, padding:'8px 9px' }}>
+                        <div style={{ fontSize:9, color:'#9CA3AF', marginBottom:3 }}>{s.label}</div>
+                        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:'#111827' }}>{s.val}</div>
+                        <div style={{ marginTop:4, height:3, borderRadius:2, background:s.bg }}>
+                          <div style={{ height:'100%', width:'70%', borderRadius:2, background:s.color }} />
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Mini bar chart */}
+                  <div style={{ background:'#fff', border:'1px solid #E8ECF0', borderRadius:10, padding:'8px 10px', marginBottom:8 }}>
+                    <div style={{ fontSize:9, color:'#9CA3AF', marginBottom:6 }}>Reservas esta semana</div>
+                    <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:28 }}>
+                      {[30,55,40,75,60,95,45].map((h,i) => (
+                        <div key={i} style={{ flex:1, background: i===5 ? '#818CF8' : '#EEF2FF', borderRadius:'2px 2px 0 0', height:`${h}%` }} />
                       ))}
                     </div>
-                    <div style={{ background: 'rgba(184,237,212,0.15)', border: '1px solid rgba(184,237,212,0.2)', borderRadius: 8, padding: '8px 10px', fontSize: 10, color: '#B8EDD4', lineHeight: 1.4 }}>
-                      🤖 IA: Martes y jueves con baja ocupación. Activa descuentos.
+                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:3 }}>
+                      {['L','M','X','J','V','S','D'].map(d => (
+                        <span key={d} style={{ fontSize:7, color:'#D1D5DB', flex:1, textAlign:'center' }}>{d}</span>
+                      ))}
                     </div>
+                  </div>
+                  <div style={{ background:'#ECFDF5', border:'1px solid #6EE7B7', borderRadius:8, padding:'6px 9px', fontSize:9, color:'#065F46', lineHeight:1.4 }}>
+                    🤖 IA: Jue y vie tienen baja ocupación. Activa descuentos.
                   </div>
                 </div>
               </div>
@@ -1022,36 +988,40 @@ export default function Home() {
             >
               <div className="kh-phone" style={{ height: '420px' }}>
                 <div className="kh-phone-notch" />
-                <div style={{ padding:'28px 14px 14px', display:'flex', flexDirection:'column', height:'100%' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, paddingBottom:10, borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#7C3AED,#4F46E5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>🤖</div>
+                <div style={{ padding:'28px 12px 12px', display:'flex', flexDirection:'column', height:'100%', boxSizing:'border-box' }}>
+                  <div className="kh-phone-bar" style={{ padding:'0 0 8px' }}>
+                    <span style={{ fontWeight:700, color:'#111827' }}>9:41</span>
+                    <span style={{ color:'#9CA3AF' }}>●●●</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, paddingBottom:8, borderBottom:'1px solid #E8ECF0' }}>
+                    <div style={{ width:28, height:28, borderRadius:'50%', background:'linear-gradient(135deg,#7C3AED,#4F46E5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>🤖</div>
                     <div>
-                      <div style={{ fontSize:11, fontWeight:700, color:'#fff' }}>Khepria AI</div>
-                      <div style={{ fontSize:9, color:'#B8EDD4' }}>● En línea siempre</div>
+                      <div style={{ fontSize:10, fontWeight:700, color:'#111827' }}>Khepria AI</div>
+                      <div style={{ fontSize:8, color:'#34D399', fontWeight:600 }}>● En línea siempre</div>
                     </div>
                   </div>
-                  <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8, overflow:'hidden' }}>
+                  <div style={{ flex:1, display:'flex', flexDirection:'column', gap:7, overflow:'hidden' }}>
                     {[
                       { from:'bot', text:'¡Hola! Soy el asistente de Barbería Marcos. ¿En qué puedo ayudarte? 💈' },
                       { from:'user', text:'Quiero reservar un corte para mañana' },
-                      { from:'bot', text:'Perfecto 👌 Tengo estos huecos disponibles mañana:' },
+                      { from:'bot', text:'Perfecto 👌 Tengo estos huecos disponibles:' },
                     ].map((m,i) => (
                       <div key={i} style={{ display:'flex', justifyContent: m.from==='user' ? 'flex-end' : 'flex-start' }}>
-                        <div style={{ background: m.from==='user' ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : 'rgba(255,255,255,0.08)', borderRadius: m.from==='user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px', padding:'7px 10px', maxWidth:'80%', fontSize:10, color:'#fff', lineHeight:1.5 }}>
+                        <div style={{ background: m.from==='user' ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : '#fff', border: m.from==='user' ? 'none' : '1px solid #E8ECF0', borderRadius: m.from==='user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px', padding:'7px 9px', maxWidth:'82%', fontSize:9, color: m.from==='user' ? '#fff' : '#374151', lineHeight:1.5 }}>
                           {m.text}
                         </div>
                       </div>
                     ))}
-                    <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                    <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                       {['10:00','11:30','16:00','17:30'].map((h,i) => (
-                        <div key={h} style={{ background: i===1 ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : 'rgba(255,255,255,0.08)', color:'#fff', borderRadius:8, padding:'5px 8px', fontSize:10, fontWeight:700 }}>{h}</div>
+                        <div key={h} style={{ background: i===1 ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : '#fff', color: i===1 ? '#fff' : '#4F46E5', border: i===1 ? 'none' : '1px solid #DDD6FE', borderRadius:8, padding:'4px 7px', fontSize:9, fontWeight:700 }}>{h}</div>
                       ))}
                     </div>
                     <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                      <div style={{ background:'linear-gradient(135deg,#7C3AED,#4F46E5)', borderRadius:'12px 12px 2px 12px', padding:'7px 10px', fontSize:10, color:'#fff' }}>Las 11:30 🙌</div>
+                      <div style={{ background:'linear-gradient(135deg,#7C3AED,#4F46E5)', borderRadius:'12px 12px 2px 12px', padding:'7px 9px', fontSize:9, color:'#fff' }}>Las 11:30 🙌</div>
                     </div>
                     <div style={{ display:'flex', justifyContent:'flex-start' }}>
-                      <div style={{ background:'rgba(255,255,255,0.08)', borderRadius:'12px 12px 12px 2px', padding:'7px 10px', maxWidth:'80%', fontSize:10, color:'#fff', lineHeight:1.5 }}>
+                      <div style={{ background:'#fff', border:'1px solid #E8ECF0', borderRadius:'12px 12px 12px 2px', padding:'7px 9px', maxWidth:'82%', fontSize:9, color:'#374151', lineHeight:1.5 }}>
                         ✅ ¡Reserva confirmada! Mañana a las 11:30. Te envío recordatorio 1h antes.
                       </div>
                     </div>
@@ -1147,54 +1117,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
-      <section className="kh-section" id="testimonios" style={{ background: '#fff' }}>
-        <div className="kh-section-inner">
-          <motion.div
-            className="kh-section-header"
-            initial="hidden" whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={staggerContainer}
-          >
-            <motion.span variants={fadeUp} custom={0} style={{ display: 'inline-block' }}>
-              <span className="kh-tag kh-tag-green">Testimonios</span>
-            </motion.span>
-            <motion.h2 className="kh-h2" variants={fadeUp} custom={1} style={{ marginTop: 12 }}>
-              Lo que dicen los primeros
-            </motion.h2>
-            <motion.p className="kh-section-p" variants={fadeUp} custom={2}>
-              Negocios reales que ya confían en Khepria para gestionar su día a día
-            </motion.p>
-          </motion.div>
-
-          <div className="kh-grid-3">
-            {TESTIMONIALS.map((t, i) => (
-              <motion.div
-                key={t.name}
-                className="kh-testimonial-card"
-                initial="hidden" whileInView="visible"
-                viewport={{ once: true, amount: 0.2 }}
-                variants={fadeUp}
-                custom={i * 0.5}
-                onMouseMove={onTileMove}
-                onMouseLeave={onTileLeave}
-              >
-                <div className="kh-testi-stars">{'★'.repeat(t.stars)}</div>
-                <p className="kh-testi-text">"{t.text}"</p>
-                <div className="kh-testi-author">
-                  <div className="kh-testi-avatar" style={{ background: t.color + '66' }}>
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <div className="kh-testi-name">{t.name}</div>
-                    <div className="kh-testi-biz">{t.biz} · {t.city}</div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── PLANES ── */}
       <section className="kh-plans" id="planes">
