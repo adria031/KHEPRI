@@ -24,12 +24,6 @@ const QUIENES = [
   { icon: '🏋️', name: 'Gimnasios y entrenadores' },
 ]
 
-const NUMEROS = [
-  { num: '3h', label: 'ahorradas al día', color: '#B8D8F8', icon: '⏱️' },
-  { num: '+40%', label: 'más reservas', color: '#D4C5F9', icon: '📈' },
-  { num: '24/7', label: 'atención automática', color: '#B8EDD4', icon: '🤖' },
-  { num: '0€', label: 'en gestores de IVA', color: '#FDE9A2', icon: '💰' },
-]
 
 const TESTIMONIALS = [
   {
@@ -522,31 +516,6 @@ export default function Home() {
           pointer-events: none; border-radius: 50%; filter: blur(20px);
         }
 
-        /* ── Stats strip ── */
-        .kh-stats {
-          padding: 0 24px 0;
-          background: #fff;
-          border-top: 1px solid #F1F5F9;
-          border-bottom: 1px solid #F1F5F9;
-        }
-        .kh-stats-inner {
-          max-width: 1180px; margin: 0 auto;
-          display: grid; grid-template-columns: repeat(4, 1fr);
-          gap: 0;
-        }
-        .kh-stat {
-          display: flex; flex-direction: column; align-items: center;
-          padding: 28px 16px; gap: 4px;
-          border-right: 1px solid #F1F5F9;
-          transition: background 0.2s;
-        }
-        .kh-stat:last-child { border-right: none; }
-        .kh-stat:hover { background: #FAFBFF; }
-        .kh-stat-num {
-          font-family: 'Syne', sans-serif; font-size: clamp(1.6rem,3vw,2.2rem);
-          font-weight: 800; letter-spacing: -1px; color: #0F0F1A;
-        }
-        .kh-stat-label { font-size: 13px; color: #9CA3AF; font-weight: 500; text-align: center; }
 
         /* ── Section ── */
         .kh-section {
@@ -832,9 +801,7 @@ export default function Home() {
           .kh-globe-wrap { height: 280px; order: -1; }
           .kh-grid-3 { grid-template-columns: 1fr 1fr; }
           .kh-grid-4 { grid-template-columns: 1fr 1fr; }
-          .kh-stats-inner { grid-template-columns: 1fr 1fr; }
-          .kh-stat { border-right: none; border-bottom: 1px solid #F1F5F9; }
-          .kh-stat:nth-child(odd) { border-right: 1px solid #F1F5F9; }
+
           .kh-nav-links { display: none; }
           .kh-hamburger { display: flex; }
           .kh-phones-row { overflow-x: auto; padding-bottom: 8px; justify-content: flex-start; }
@@ -913,19 +880,7 @@ export default function Home() {
                   Ver funciones
                 </button>
               </motion.div>
-              <motion.div
-                variants={fadeUp} custom={4}
-                style={{ marginTop: 32, display: 'flex', flexWrap: 'wrap', gap: 20 }}
-              >
-                {NUMEROS.map(n => (
-                  <div key={n.num} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: -1, color: '#0F0F1A' }}>
-                      {n.num}
-                    </span>
-                    <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 500 }}>{n.icon} {n.label}</span>
-                  </div>
-                ))}
-              </motion.div>
+
             </motion.div>
           </div>
 
@@ -942,26 +897,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── STATS STRIP ── */}
-      <section className="kh-stats">
-        <div className="kh-stats-inner">
-          {NUMEROS.map((n, i) => (
-            <motion.div
-              key={n.num}
-              className="kh-stat"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.5 }}
-              variants={fadeUp}
-              custom={i}
-            >
-              <span style={{ fontSize: 22 }}>{n.icon}</span>
-              <span className="kh-stat-num">{n.num}</span>
-              <span className="kh-stat-label">{n.label}</span>
-            </motion.div>
-          ))}
-        </div>
-      </section>
 
       {/* ── PHONES ── */}
       <section className="kh-phones">
