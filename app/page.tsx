@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { WebGLRenderer } from 'three'
 import { supabase } from './lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -27,7 +26,7 @@ const QUIENES = [
 
 const NUMEROS = [
   { num: '3h', label: 'ahorradas al día', color: '#B8D8F8', icon: '⏱️' },
-  { num: '+30%', label: 'más reservas', color: '#D4C5F9', icon: '📈' },
+  { num: '+40%', label: 'más reservas', color: '#D4C5F9', icon: '📈' },
   { num: '24/7', label: 'atención automática', color: '#B8EDD4', icon: '🤖' },
   { num: '0€', label: 'en gestores de IVA', color: '#FDE9A2', icon: '💰' },
 ]
@@ -111,18 +110,6 @@ const COMPARE: { feat: string; s: CmpVal; b: CmpVal; p: CmpVal; pl: CmpVal }[] =
   { feat: 'Soporte prioritario',         s: false,  b: false,  p: false,   pl: true },
 ]
 
-const TIPOS_NEGOCIO = [
-  'Peluquería / Barbería',
-  'Centro de estética / Uñas',
-  'Spa / Masajes',
-  'Clínica / Consulta médica',
-  'Yoga / Pilates',
-  'Gimnasio / Entrenador personal',
-  'Dentista',
-  'Veterinaria',
-  'Otro tipo de negocio',
-]
-
 // ── FRAMER VARIANTS ───────────────────────────────────────────────────────────
 
 const fadeUp = {
@@ -162,125 +149,71 @@ function CmpCell({ val, highlight }: { val: CmpVal; highlight?: boolean }) {
   )
 }
 
-// ── Globe3D ───────────────────────────────────────────────────────────────────
+// ── DiamondLogo3D ─────────────────────────────────────────────────────────────
 
-function Globe3D() {
-  const mountRef = useRef<HTMLDivElement>(null)
-
+function DiamondLogo3D() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
-    const mount = mountRef.current
-    if (!mount) return
-
-    let disposed = false
-    let animId = 0
-    let renderer: WebGLRenderer | null = null
-    let onResize: (() => void) | null = null
-
+    const canvas = canvasRef.current
+    if (!canvas) return
+    let disposed = false, rafId = 0
+    let renderer: any = null
     import('three').then((THREE) => {
       if (disposed) return
-
-      const w = mount.offsetWidth || 400
-      const h = mount.offsetHeight || 400
-
-      const scene = new THREE.Scene()
-      const camera = new THREE.PerspectiveCamera(55, w / h, 0.1, 100)
-      camera.position.z = 2.6
-
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-      renderer.setSize(w, h)
+      const size = canvas.parentElement?.offsetWidth || 340
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+      renderer.setSize(size, size)
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.setClearColor(0x000000, 0)
-      mount.appendChild(renderer.domElement)
-
-      // Wireframe globe
-      const sphereGeo = new THREE.SphereGeometry(1, 36, 36)
-      const wire = new THREE.WireframeGeometry(sphereGeo)
-      const wireMat = new THREE.LineBasicMaterial({ color: 0x7C3AED, transparent: true, opacity: 0.14 })
-      const globe = new THREE.LineSegments(wire, wireMat)
-      scene.add(globe)
-
-      // Fibonacci sphere points
-      const n = 280
-      const pos = new Float32Array(n * 3)
-      const gr = (1 + Math.sqrt(5)) / 2
-      for (let i = 0; i < n; i++) {
-        const theta = (2 * Math.PI * i) / gr
-        const phi = Math.acos(1 - (2 * (i + 0.5)) / n)
-        pos[i * 3]     = Math.sin(phi) * Math.cos(theta)
-        pos[i * 3 + 1] = Math.sin(phi) * Math.sin(theta)
-        pos[i * 3 + 2] = Math.cos(phi)
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100)
+      camera.position.z = 6
+      function mkRing(o: number, i: number, c: number, e: number, op: number) {
+        const sh = new THREE.Shape()
+        sh.moveTo(0,o); sh.lineTo(o,0); sh.lineTo(0,-o); sh.lineTo(-o,0); sh.closePath()
+        const h = new THREE.Path()
+        h.moveTo(0,i); h.lineTo(i,0); h.lineTo(0,-i); h.lineTo(-i,0); h.closePath()
+        sh.holes.push(h)
+        return new THREE.Mesh(new THREE.ShapeGeometry(sh,2), new THREE.MeshPhongMaterial({
+          color:c, emissive:e, emissiveIntensity:0.35, shininess:180, specular:0xffffff,
+          transparent:true, opacity:op, side:THREE.DoubleSide, depthWrite:false
+        }))
       }
-      const ptGeo = new THREE.BufferGeometry()
-      ptGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-      const ptMat = new THREE.PointsMaterial({ color: 0xB8D8F8, size: 0.022, transparent: true, opacity: 0.8 })
-      const points = new THREE.Points(ptGeo, ptMat)
-      scene.add(points)
-
-      // Spain city highlights (lat/lon → unit sphere)
-      const cities = [
-        [40.4, -3.7],  // Madrid
-        [41.4, 2.2],   // Barcelona
-        [39.5, -0.4],  // Valencia
-        [37.4, -5.9],  // Sevilla
-        [43.3, -8.4],  // A Coruña
-        [43.3, -1.9],  // Donostia
-        [36.7, -4.4],  // Málaga
-        [39.6, 2.7],   // Palma
-      ]
-      const cityFlat: number[] = []
-      cities.forEach(([lat, lon]) => {
-        const phi   = (90 - lat) * (Math.PI / 180)
-        const theta = (lon + 180) * (Math.PI / 180)
-        cityFlat.push(-(Math.sin(phi) * Math.cos(theta)), Math.cos(phi), Math.sin(phi) * Math.sin(theta))
-      })
-      const cityGeo = new THREE.BufferGeometry()
-      cityGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cityFlat), 3))
-      const cityMat = new THREE.PointsMaterial({ color: 0x7C3AED, size: 0.055, transparent: true, opacity: 0.95 })
-      const cityPts = new THREE.Points(cityGeo, cityMat)
-      scene.add(cityPts)
-
-      // Glow mesh (BackSide sphere)
-      const glowGeo = new THREE.SphereGeometry(1.06, 32, 32)
-      const glowMat = new THREE.MeshBasicMaterial({ color: 0x7C3AED, transparent: true, opacity: 0.045, side: THREE.BackSide })
-      scene.add(new THREE.Mesh(glowGeo, glowMat))
-
-      // Animate
-      let t = 0
-      const animate = () => {
-        if (disposed) return
-        animId = requestAnimationFrame(animate)
-        t += 0.004
-        const rx = Math.sin(t * 0.18) * 0.08
-        globe.rotation.y = t; globe.rotation.x = rx
-        points.rotation.y = t; points.rotation.x = rx
-        cityPts.rotation.y = t; cityPts.rotation.x = rx
-        renderer!.render(scene, camera)
+      const d1=mkRing(1.5,1.14,0xAA88FF,0x6633CC,0.80)
+      const d2=mkRing(1.09,0.74,0x66BBFF,0x2255AA,0.85)
+      const d3=mkRing(0.71,0.42,0xCCEEFF,0x4488CC,0.92)
+      scene.add(d1,d2,d3)
+      const sph = new THREE.Mesh(new THREE.SphereGeometry(0.22,32,32), new THREE.MeshPhongMaterial({color:0xffffff,emissive:0xaaccff,emissiveIntensity:0.4,shininess:200,specular:0xffffff}))
+      sph.position.z=0.1
+      const hl = new THREE.Mesh(new THREE.SphereGeometry(0.34,32,32), new THREE.MeshBasicMaterial({color:0x8899ff,transparent:true,opacity:0.12}))
+      hl.position.z=0.08
+      scene.add(hl,sph)
+      scene.add(new THREE.AmbientLight(0x334466,2))
+      const l1=new THREE.PointLight(0x7C5CEF,8,14)
+      const l2=new THREE.PointLight(0x4FACFE,7,14)
+      const l3=new THREE.PointLight(0xffffff,4,8)
+      l3.position.set(0,0,5); scene.add(l1,l2,l3)
+      const PI2=Math.PI*2, st=performance.now()
+      function animate() {
+        if(disposed) return
+        const lt=((performance.now()-st)/1000%15)/15
+        d1.rotation.y=lt*PI2; d2.rotation.y=-lt*PI2*2; d3.rotation.y=lt*PI2*3
+        const tl=Math.sin(lt*PI2)*0.25
+        d1.rotation.x=tl; d2.rotation.x=tl*0.85; d3.rotation.x=tl*0.7
+        const la=lt*PI2*2
+        l1.position.x=Math.cos(la)*4; l1.position.z=Math.sin(la)*4
+        l2.position.x=Math.cos(la+Math.PI)*4; l2.position.z=Math.sin(la+Math.PI)*4
+        const p=1+Math.sin(lt*PI2*4)*0.08; sph.scale.setScalar(p); hl.scale.setScalar(p)
+        renderer.render(scene,camera)
+        rafId=requestAnimationFrame(animate)
       }
-      animate()
-
-      // Resize handler
-      onResize = () => {
-        if (!mount || !renderer) return
-        const nw = mount.offsetWidth
-        const nh = mount.offsetHeight
-        camera.aspect = nw / nh
-        camera.updateProjectionMatrix()
-        renderer.setSize(nw, nh)
-      }
-      window.addEventListener('resize', onResize)
+      rafId=requestAnimationFrame(animate)
     })
-
-    return () => {
-      disposed = true
-      cancelAnimationFrame(animId)
-      if (onResize) window.removeEventListener('resize', onResize)
-      renderer?.dispose()
-      renderer?.domElement.remove()
-      renderer = null
-    }
+    return () => { disposed=true; cancelAnimationFrame(rafId); renderer?.dispose() }
   }, [])
-
-  return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+  return (
+    <canvas ref={canvasRef} style={{ display:'block', width:'100%', height:'100%', animation:'float 4s ease-in-out infinite' }} />
+  )
 }
 
 // ── Tilt helper ───────────────────────────────────────────────────────────────
@@ -302,14 +235,6 @@ function onTileLeave(e: React.MouseEvent<HTMLDivElement>) {
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // Waitlist
-  const [count, setCount]             = useState(0)
-  const [displayCount, setDisplayCount] = useState(0)
-  const [form, setForm]               = useState({ nombre: '', email: '', tipo_negocio: '', ciudad: '' })
-  const [enviando, setEnviando]       = useState(false)
-  const [enviado, setEnviado]         = useState(false)
-  const [formError, setFormError]     = useState('')
-
   // Auth modal
   const [authOpen, setAuthOpen]       = useState(false)
   const [authMode, setAuthMode]       = useState<'login' | 'registro' | 'recuperar'>('login')
@@ -319,42 +244,6 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(false)
   const [authMsg, setAuthMsg]         = useState('')
   const [authIsError, setAuthIsError] = useState(false)
-
-  // Custom cursor
-  const [cursor, setCursor] = useState({ x: -100, y: -100 })
-  const [cursorVisible, setCursorVisible] = useState(false)
-
-  // Fetch waitlist count
-  useEffect(() => {
-    supabase.from('waitlist').select('*', { count: 'exact', head: true }).then(({ count: c }) => {
-      setCount(c ?? 0)
-    })
-  }, [])
-
-  // Animate counter
-  useEffect(() => {
-    if (count === 0) return
-    let current = 0
-    const step = Math.max(1, Math.ceil(count / 80))
-    const timer = setInterval(() => {
-      current = Math.min(current + step, count)
-      setDisplayCount(current)
-      if (current >= count) clearInterval(timer)
-    }, 20)
-    return () => clearInterval(timer)
-  }, [count])
-
-  // Custom cursor tracking
-  useEffect(() => {
-    const move = (e: MouseEvent) => { setCursor({ x: e.clientX, y: e.clientY }); setCursorVisible(true) }
-    const leave = () => setCursorVisible(false)
-    window.addEventListener('mousemove', move)
-    document.documentElement.addEventListener('mouseleave', leave)
-    return () => {
-      window.removeEventListener('mousemove', move)
-      document.documentElement.removeEventListener('mouseleave', leave)
-    }
-  }, [])
 
   // Close modal on Escape
   useEffect(() => {
@@ -456,22 +345,6 @@ export default function Home() {
     setAuthLoading(false)
   }
 
-  async function handleWaitlist(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.email) { setFormError('El email es obligatorio'); return }
-    setEnviando(true); setFormError('')
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      if (res.ok) { setEnviado(true); setCount(c => c + 1) }
-      else { const d = await res.json(); setFormError(d.error || 'Error. Inténtalo de nuevo.') }
-    } catch { setFormError('Error de conexión.') }
-    finally { setEnviando(false) }
-  }
-
   return (
     <>
       {/* ── FONTS ── */}
@@ -486,23 +359,6 @@ export default function Home() {
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
         backgroundRepeat: 'repeat', backgroundSize: '300px 300px',
         opacity: 0.022, mixBlendMode: 'overlay',
-      }} />
-
-      {/* ── CUSTOM CURSOR ── */}
-      <div aria-hidden style={{
-        position: 'fixed',
-        left: cursor.x - 18,
-        top: cursor.y - 18,
-        width: 36,
-        height: 36,
-        borderRadius: '50%',
-        border: '1.5px solid rgba(124,58,237,0.5)',
-        background: 'rgba(124,58,237,0.08)',
-        pointerEvents: 'none',
-        zIndex: 9999,
-        transition: 'left 0.08s linear, top 0.08s linear, opacity 0.3s',
-        opacity: cursorVisible ? 1 : 0,
-        backdropFilter: 'blur(1px)',
       }} />
 
       {/* ── GLOBAL STYLES ── */}
@@ -656,23 +512,14 @@ export default function Home() {
         }
         .kh-btn-secondary:hover { border-color: #D4C5F9; transform: translateY(-2px); }
         .kh-globe-wrap {
-          position: relative; height: 440px;
+          position: relative;
+          width: clamp(220px,38vw,380px); height: clamp(220px,38vw,380px);
           display: flex; align-items: center; justify-content: center;
         }
         .kh-globe-glow {
           position: absolute; inset: 0;
-          background: radial-gradient(circle at 50% 50%, rgba(124,58,237,0.12) 0%, transparent 70%);
-          pointer-events: none;
-        }
-        .kh-globe-ring {
-          position: absolute; inset: 20px; border-radius: 50%;
-          border: 1px solid rgba(124,58,237,0.12);
-          animation: spin 20s linear infinite;
-        }
-        .kh-globe-ring2 {
-          position: absolute; inset: 40px; border-radius: 50%;
-          border: 1px dashed rgba(184,216,248,0.4);
-          animation: spin 30s linear infinite reverse;
+          background: radial-gradient(circle at 50% 55%, rgba(124,58,237,0.18) 0%, rgba(79,172,254,0.08) 40%, transparent 70%);
+          pointer-events: none; border-radius: 50%; filter: blur(20px);
         }
 
         /* ── Stats strip ── */
@@ -765,7 +612,7 @@ export default function Home() {
         .kh-phone-wrap:nth-child(2) { transform: translateY(-20px); }
         .kh-phone-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); letter-spacing: 0.5px; text-transform: uppercase; }
         .kh-phone {
-          width: 200px; background: #0A0A0F; border-radius: 32px;
+          width: 200px; height: 420px; background: #0A0A0F; border-radius: 32px;
           border: 2px solid rgba(255,255,255,0.12);
           box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,58,237,0.1);
           overflow: hidden; position: relative;
@@ -1082,7 +929,7 @@ export default function Home() {
             </motion.div>
           </div>
 
-          {/* Right: globe */}
+          {/* Right: diamond logo */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1090,9 +937,7 @@ export default function Home() {
             className="kh-globe-wrap"
           >
             <div className="kh-globe-glow" />
-            <div className="kh-globe-ring" />
-            <div className="kh-globe-ring2" />
-            <Globe3D />
+            <DiamondLogo3D />
           </motion.div>
         </div>
       </section>
@@ -1140,47 +985,48 @@ export default function Home() {
           </div>
 
           <div className="kh-phones-row">
-            {/* Phone 1: Hub público */}
+            {/* Phone 1: Mapa con negocios */}
             <motion.div
               className="kh-phone-wrap"
               initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0 }}
               viewport={{ once: true }}
             >
-              <div className="kh-phone">
+              <div className="kh-phone" style={{ height: '420px' }}>
                 <div className="kh-phone-notch" />
-                <div className="kh-phone-screen">
-                  <div className="kh-phone-bar">
-                    <span>9:41</span>
-                    <span>●●●</span>
-                  </div>
-                  {/* Business profile */}
-                  <div style={{ padding: '4px 14px 14px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 14 }}>
-                      <div style={{ width: 52, height: 52, borderRadius: 16, background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>💈</div>
-                      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 800, color: '#fff' }}>Barbería Marcos</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Madrid · ⭐ 4.9</div>
-                    </div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Horarios disponibles</div>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
-                      {['10:00', '11:30', '14:00', '16:30'].map((h, i) => (
-                        <div key={h} style={{ background: i === 1 ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : 'rgba(255,255,255,0.08)', color: i === 1 ? '#fff' : 'rgba(255,255,255,0.7)', borderRadius: 7, padding: '5px 8px', fontSize: 11, fontWeight: 600 }}>{h}</div>
-                      ))}
-                    </div>
-                    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 16 }}>✂️</span>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>Corte de cabello</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>30 min · 18€</div>
+                <div style={{ padding: '28px 14px 14px' }}>
+                  <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, color:'#fff', marginBottom:8 }}>HUB · Negocios cerca</div>
+                  <div style={{ background:'#1a2744', borderRadius:12, height:180, position:'relative', overflow:'hidden', marginBottom:10 }}>
+                    <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px)', backgroundSize:'24px 24px' }} />
+                    {[
+                      { top:'30%', left:'25%', emoji:'💈', name:'Barbería Marcos', highlight:true },
+                      { top:'55%', left:'58%', emoji:'💅', name:'Studio Nails', highlight:false },
+                      { top:'20%', left:'65%', emoji:'💆', name:'Spa Relax', highlight:false },
+                      { top:'70%', left:'35%', emoji:'🏥', name:'Clínica López', highlight:false },
+                    ].map((pin,i) => (
+                      <div key={i} style={{ position:'absolute', top:pin.top, left:pin.left, display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
+                        <div style={{ background: pin.highlight ? '#7C3AED' : '#fff', borderRadius:'50%', width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, boxShadow:'0 2px 8px rgba(0,0,0,0.4)' }}>{pin.emoji}</div>
+                        {pin.highlight && <div style={{ background:'#7C3AED', color:'#fff', borderRadius:4, padding:'2px 5px', fontSize:8, fontWeight:700, whiteSpace:'nowrap' }}>{pin.name}</div>}
                       </div>
-                    </div>
-                    <div style={{ background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', borderRadius: 10, padding: '10px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
-                      Reservar ahora →
-                    </div>
+                    ))}
+                    <div style={{ position:'absolute', top:'48%', left:'44%', width:12, height:12, borderRadius:'50%', background:'#4FACFE', boxShadow:'0 0 0 4px rgba(79,172,254,0.3)' }} />
                   </div>
+                  {[
+                    { emoji:'💈', name:'Barbería Marcos', dist:'120m', rating:'4.9', slots:'3 huecos hoy' },
+                    { emoji:'💅', name:'Studio Nails',   dist:'340m', rating:'4.8', slots:'Disponible' },
+                  ].map((b,i) => (
+                    <div key={i} style={{ background:'rgba(255,255,255,0.06)', borderRadius:10, padding:'8px 10px', marginBottom:6, display:'flex', alignItems:'center', gap:8 }}>
+                      <div style={{ fontSize:18 }}>{b.emoji}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:11, fontWeight:700, color:'#fff' }}>{b.name}</div>
+                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)' }}>{b.dist} · ⭐{b.rating}</div>
+                      </div>
+                      <div style={{ fontSize:9, color:'#B8EDD4', fontWeight:700 }}>{b.slots}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="kh-phone-label">Hub público</div>
+              <div className="kh-phone-label">Explora negocios</div>
             </motion.div>
 
             {/* Phone 2: Dashboard KPIs */}
@@ -1190,7 +1036,7 @@ export default function Home() {
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
               viewport={{ once: true }}
             >
-              <div className="kh-phone">
+              <div className="kh-phone" style={{ height: '420px' }}>
                 <div className="kh-phone-notch" />
                 <div className="kh-phone-screen">
                   <div className="kh-phone-bar">
@@ -1232,52 +1078,52 @@ export default function Home() {
               <div className="kh-phone-label">Dashboard KPIs</div>
             </motion.div>
 
-            {/* Phone 3: Calendario */}
+            {/* Phone 3: Chatbot IA */}
             <motion.div
               className="kh-phone-wrap"
               initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
               viewport={{ once: true }}
             >
-              <div className="kh-phone">
+              <div className="kh-phone" style={{ height: '420px' }}>
                 <div className="kh-phone-notch" />
-                <div className="kh-phone-screen">
-                  <div className="kh-phone-bar">
-                    <span>9:41</span>
-                    <span>●●●</span>
+                <div style={{ padding:'28px 14px 14px', display:'flex', flexDirection:'column', height:'100%' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, paddingBottom:10, borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#7C3AED,#4F46E5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>🤖</div>
+                    <div>
+                      <div style={{ fontSize:11, fontWeight:700, color:'#fff' }}>Khepria AI</div>
+                      <div style={{ fontSize:9, color:'#B8EDD4' }}>● En línea siempre</div>
+                    </div>
                   </div>
-                  <div style={{ padding: '4px 14px 14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 12, fontWeight: 800, color: '#fff' }}>Junio 2026</div>
-                      <div style={{ fontSize: 10, color: '#7C3AED', fontWeight: 700 }}>Hoy</div>
-                    </div>
-                    {/* Calendar mini */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 10 }}>
-                      {['L','M','X','J','V','S','D'].map(d => (
-                        <div key={d} style={{ textAlign: 'center', fontSize: 8, color: 'rgba(255,255,255,0.3)', fontWeight: 700 }}>{d}</div>
-                      ))}
-                      {[1,2,3,4,5,6,7,8,9,10,11,12,13,14].map(d => (
-                        <div key={d} style={{ textAlign: 'center', fontSize: 9, fontWeight: d === 5 ? 800 : 400, color: d === 5 ? '#fff' : 'rgba(255,255,255,0.5)', background: d === 5 ? '#7C3AED' : 'transparent', borderRadius: 4, padding: '2px 0' }}>{d}</div>
-                      ))}
-                    </div>
-                    {/* Appointments */}
+                  <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8, overflow:'hidden' }}>
                     {[
-                      { time: '10:00', name: 'Ana García', color: '#B8D8F8', service: 'Corte' },
-                      { time: '11:30', name: 'Luis Martín', color: '#D4C5F9', service: 'Barba' },
-                      { time: '13:00', name: 'Sara López', color: '#B8EDD4', service: 'Tinte' },
-                    ].map(a => (
-                      <div key={a.time} style={{ background: 'rgba(255,255,255,0.05)', borderLeft: `3px solid ${a.color}`, borderRadius: '0 8px 8px 0', padding: '7px 8px', marginBottom: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{a.name}</div>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>{a.service}</div>
+                      { from:'bot', text:'¡Hola! Soy el asistente de Barbería Marcos. ¿En qué puedo ayudarte? 💈' },
+                      { from:'user', text:'Quiero reservar un corte para mañana' },
+                      { from:'bot', text:'Perfecto 👌 Tengo estos huecos disponibles mañana:' },
+                    ].map((m,i) => (
+                      <div key={i} style={{ display:'flex', justifyContent: m.from==='user' ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ background: m.from==='user' ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : 'rgba(255,255,255,0.08)', borderRadius: m.from==='user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px', padding:'7px 10px', maxWidth:'80%', fontSize:10, color:'#fff', lineHeight:1.5 }}>
+                          {m.text}
                         </div>
-                        <div style={{ fontSize: 9, color: a.color, fontWeight: 700 }}>{a.time}</div>
                       </div>
                     ))}
+                    <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                      {['10:00','11:30','16:00','17:30'].map((h,i) => (
+                        <div key={h} style={{ background: i===1 ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : 'rgba(255,255,255,0.08)', color:'#fff', borderRadius:8, padding:'5px 8px', fontSize:10, fontWeight:700 }}>{h}</div>
+                      ))}
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'flex-end' }}>
+                      <div style={{ background:'linear-gradient(135deg,#7C3AED,#4F46E5)', borderRadius:'12px 12px 2px 12px', padding:'7px 10px', fontSize:10, color:'#fff' }}>Las 11:30 🙌</div>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'flex-start' }}>
+                      <div style={{ background:'rgba(255,255,255,0.08)', borderRadius:'12px 12px 12px 2px', padding:'7px 10px', maxWidth:'80%', fontSize:10, color:'#fff', lineHeight:1.5 }}>
+                        ✅ ¡Reserva confirmada! Mañana a las 11:30. Te envío recordatorio 1h antes.
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="kh-phone-label">Calendario</div>
+              <div className="kh-phone-label">Chatbot IA</div>
             </motion.div>
           </div>
         </div>
@@ -1533,74 +1379,6 @@ export default function Home() {
               </table>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* ── WAITLIST ── */}
-      <section className="kh-waitlist" id="waitlist">
-        <div className="kh-waitlist-glow" />
-        <div className="kh-waitlist-inner">
-          <motion.div
-            initial="hidden" whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={staggerContainer}
-          >
-            <motion.span variants={fadeUp} custom={0} style={{ display: 'inline-block' }}>
-              <span className="kh-tag kh-tag-purple">Lista de espera</span>
-            </motion.span>
-            <motion.h2 className="kh-h2 kh-h2-light" variants={fadeUp} custom={1} style={{ marginTop: 14, fontSize: 'clamp(1.8rem,4.5vw,2.8rem)' }}>
-              Sé de los primeros<br />en probarlo
-            </motion.h2>
-            <motion.p className="kh-section-p kh-p-light" variants={fadeUp} custom={2}>
-              Regístrate ahora y te avisamos cuando abramos la beta
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            className="kh-wl-card"
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-          >
-            {enviado ? (
-              <div className="kh-success">
-                <div className="kh-success-ico">🎉</div>
-                <div className="kh-success-t">¡Apuntado!</div>
-                <p className="kh-success-p">Te avisaremos muy pronto cuando abramos la beta.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleWaitlist}>
-                <div className="kh-form-grid">
-                  <input className="kh-input" type="text" placeholder="Tu nombre" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} autoComplete="name" />
-                  <input className="kh-input" type="email" placeholder="Tu email *" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required autoComplete="email" />
-                  <select className="kh-input" value={form.tipo_negocio} onChange={e => setForm(f => ({ ...f, tipo_negocio: e.target.value }))}>
-                    <option value="">Tipo de negocio</option>
-                    {TIPOS_NEGOCIO.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <input className="kh-input" type="text" placeholder="Ciudad" value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))} autoComplete="address-level2" />
-                  <button className="kh-submit" type="submit" disabled={enviando}>
-                    {enviando ? 'Guardando...' : 'Unirme a la lista de espera →'}
-                  </button>
-                </div>
-                {formError && <p className="kh-form-err">{formError}</p>}
-              </form>
-            )}
-          </motion.div>
-
-          {count > 0 && (
-            <motion.div
-              className="kh-wl-counter"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.4 }}
-            >
-              <span>🏢</span>
-              <strong>{displayCount}</strong>
-              <span>negocios ya apuntados</span>
-            </motion.div>
-          )}
         </div>
       </section>
 
