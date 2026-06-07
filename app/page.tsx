@@ -490,10 +490,10 @@ export default function Home() {
   const pp = useSpring(ppRaw, { stiffness: 100, damping: 30, restDelta: 0.001 })
 
   // Feature transforms — reduced range, zero on mobile to avoid clip
-  const fLX  = useTransform(fp, [0, 0.75], [-110, 0])
-  const fLRY = useTransform(fp, [0, 0.75], [18,   0])
-  const fRX  = useTransform(fp, [0, 0.75], [ 110, 0])
-  const fRRY = useTransform(fp, [0, 0.75], [-18,  0])
+  const fLX  = useTransform(fp, [0, 0.8], [-60, 0])
+  const fLRY = useTransform(fp, [0, 0.8], [15,  0])
+  const fRX  = useTransform(fp, [0, 0.8], [ 60, 0])
+  const fRRY = useTransform(fp, [0, 0.8], [-15, 0])
   const fOp  = useTransform(fp, [0, 0.45], [0,    1])
 
   // Para quién transforms
@@ -565,12 +565,20 @@ export default function Home() {
       {/* ── GLOBAL STYLES ── */}
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; overflow-x: hidden !important; }
-        body { font-family: 'DM Sans', sans-serif !important; background: #07070F; color: #E8E8F0; overflow-x: hidden !important; }
+        html { scroll-behavior: smooth; overflow-x: hidden !important; max-width: 100vw !important; }
+        body { font-family: 'DM Sans', sans-serif !important; background: #07070F; color: #E8E8F0; overflow-x: hidden !important; max-width: 100vw !important; }
 
         @keyframes logoFloat {
           0%, 100% { transform: translateY(0); }
-          50%       { transform: translateY(-14px); }
+          50%       { transform: translateY(-16px); }
+        }
+        @keyframes planGlow {
+          0%,100% { box-shadow:0 0 30px rgba(124,92,239,0.2), inset 0 1px 0 rgba(124,92,239,0.15); }
+          50%     { box-shadow:0 0 60px rgba(124,92,239,0.45), 0 0 100px rgba(79,172,254,0.15), inset 0 1px 0 rgba(124,92,239,0.2); }
+        }
+        @keyframes scrollPulse {
+          0%,100% { opacity:0.45; box-shadow:0 0 8px rgba(124,92,239,0.5); }
+          50%     { opacity:1;    box-shadow:0 0 22px rgba(124,92,239,1), 0 0 40px rgba(79,172,254,0.4); }
         }
         @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
         @keyframes heroBg {
@@ -616,9 +624,10 @@ export default function Home() {
 
         /* ── Hero ── */
         .kh-hero { min-height:100svh; display:flex; align-items:center; justify-content:center; text-align:center; padding:120px 24px 100px; position:relative; overflow:hidden; }
-        .kh-hero-bg { position:absolute; inset:-80px; background:radial-gradient(ellipse 55% 50% at 35% 35%, rgba(124,92,239,0.18) 0%,transparent 60%), radial-gradient(ellipse 40% 45% at 72% 65%, rgba(79,172,254,0.13) 0%,transparent 55%), #07070F; animation:heroBg 14s ease-in-out infinite; z-index:0; }
+        .kh-hero-bg { position:absolute; inset:-80px; background:radial-gradient(ellipse 60% 55% at 30% 35%, rgba(124,92,239,0.28) 0%,transparent 58%), radial-gradient(ellipse 50% 50% at 75% 68%, rgba(79,172,254,0.22) 0%,transparent 55%), radial-gradient(ellipse 40% 45% at 62% 15%, rgba(64,220,165,0.1) 0%,transparent 52%), #07070F; animation:heroBg 14s ease-in-out infinite; z-index:0; }
         .kh-hero-inner { position:relative; z-index:1; max-width:760px; margin:0 auto; }
-        .kh-diamond-wrap { width:clamp(180px,32vw,320px); height:clamp(180px,32vw,320px); margin:0 auto 28px; }
+        .kh-diamond-wrap { width:clamp(180px,32vw,320px); height:clamp(180px,32vw,320px); margin:0 auto 28px; position:relative; }
+        .kh-diamond-wrap::before { content:''; position:absolute; inset:-25%; background:radial-gradient(circle at 50% 55%, rgba(124,92,239,0.38) 0%, rgba(79,172,254,0.12) 35%, transparent 65%); z-index:0; pointer-events:none; border-radius:50%; filter:blur(18px); }
         .kh-tag { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; letter-spacing:0.3px; padding:6px 14px; border-radius:999px; }
         .kh-tag-purple { background:rgba(124,92,239,0.15); color:#B89EFF; border:1px solid rgba(124,92,239,0.3); }
         .kh-tag-blue   { background:rgba(79,172,254,0.12);  color:#7EC8FF; border:1px solid rgba(79,172,254,0.3); }
@@ -633,7 +642,7 @@ export default function Home() {
         .kh-btn-secondary { display:inline-flex; align-items:center; gap:8px; padding:14px 24px; border-radius:14px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.8); font-size:15px; font-weight:600; font-family:'DM Sans',sans-serif; border:1.5px solid rgba(255,255,255,0.1); cursor:pointer; text-decoration:none; transition:border-color 0.2s,background 0.2s; }
         .kh-btn-secondary:hover { border-color:rgba(124,92,239,0.5); background:rgba(124,92,239,0.07); }
         .scroll-ind { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:6px; z-index:1; animation:scrollBounce 2.2s ease-in-out infinite; }
-        .scroll-line { width:1.5px; height:36px; background:linear-gradient(to bottom,rgba(124,92,239,0.9),transparent); }
+        .scroll-line { width:1.5px; height:36px; background:linear-gradient(to bottom,rgba(124,92,239,0.9),transparent); animation:scrollPulse 2s ease-in-out infinite; }
         .scroll-txt { font-size:10px; letter-spacing:0.15em; color:rgba(255,255,255,0.28); text-transform:uppercase; }
 
         /* ── Section commons ── */
@@ -644,8 +653,8 @@ export default function Home() {
 
         /* ── Stats — glassmorphism ── */
         .kh-stats-section { position:relative; z-index:1; padding:48px 24px; }
-        .kh-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; max-width:1180px; margin:0 auto; }
-        .kh-stat { display:flex; flex-direction:column; align-items:center; padding:32px 20px; gap:4px; border-radius:20px; background:rgba(255,255,255,0.03); border:1px solid rgba(124,92,239,0.3); backdrop-filter:blur(12px); box-shadow:0 0 32px rgba(124,92,239,0.08), inset 0 1px 0 rgba(255,255,255,0.06); transition:background 0.3s,border-color 0.3s,box-shadow 0.3s; }
+        .kh-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; max-width:1180px; margin:0 auto; backdrop-filter:blur(12px); }
+        .kh-stat { display:flex; flex-direction:column; align-items:center; padding:32px 20px; gap:4px; border-radius:20px; background:rgba(255,255,255,0.06); border:1px solid rgba(124,92,239,0.3); backdrop-filter:blur(12px); box-shadow:0 0 32px rgba(124,92,239,0.08), inset 0 1px 0 rgba(255,255,255,0.06); transition:background 0.3s,border-color 0.3s,box-shadow 0.3s; }
         .kh-stat:hover { background:rgba(124,92,239,0.08); border-color:rgba(124,92,239,0.55); box-shadow:0 0 48px rgba(124,92,239,0.2); }
         .kh-stat-icon { font-size:22px; margin-bottom:8px; }
         .kh-stat-num { font-family:'Syne',sans-serif; font-size:clamp(1.8rem,3vw,2.4rem); font-weight:800; letter-spacing:-1.5px; color:#fff; }
@@ -670,7 +679,7 @@ export default function Home() {
         /* ── Planes ── */
         .kh-planes-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
         .kh-plan-card { background:rgba(255,255,255,0.03); border:1.5px solid rgba(255,255,255,0.07); border-radius:24px; padding:28px; display:flex; flex-direction:column; position:relative; overflow:hidden; height:100%; transition:border-color 0.3s; }
-        .kh-plan-card.popular { border-color:rgba(124,92,239,0.6); box-shadow:0 0 48px rgba(124,92,239,0.2), inset 0 1px 0 rgba(124,92,239,0.15); background:rgba(124,92,239,0.06); }
+        .kh-plan-card.popular { border-color:rgba(124,92,239,0.6); box-shadow:0 0 48px rgba(124,92,239,0.2), inset 0 1px 0 rgba(124,92,239,0.15); background:rgba(124,92,239,0.06); animation:planGlow 3s ease-in-out infinite; }
         .kh-plan-badge { position:absolute; top:16px; right:16px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; }
         .kh-plan-emoji { font-size:30px; margin-bottom:12px; }
         .kh-plan-name { font-family:'Syne',sans-serif; font-size:19px; font-weight:800; color:#fff; }
@@ -806,7 +815,7 @@ export default function Home() {
       </motion.nav>
 
       {/* ── MAIN WRAPPER ── */}
-      <div style={{ position: 'relative', zIndex: 1, overflowX: 'hidden' }}>
+      <div style={{ position: 'relative', zIndex: 1, overflowX: 'hidden', maxWidth: '100vw' }}>
 
         {/* ── HERO ── */}
         <section className="kh-hero" id="hero">
@@ -894,7 +903,7 @@ export default function Home() {
         </section>
 
         {/* ── FUNCIONES ── */}
-        <section className="kh-section" id="funciones" ref={featRef}>
+        <section className="kh-section" id="funciones" ref={featRef} style={{ background: 'radial-gradient(ellipse 70% 50% at 20% 50%, rgba(124,92,239,0.06) 0%, transparent 60%)' }}>
           <div className="kh-section-inner">
             {!isMobile && <SectionBranches color="#7C5CEF" />}
             <motion.div
@@ -926,7 +935,7 @@ export default function Home() {
             <div className="feat-cols">
               <motion.div
                 className="feat-col"
-                style={{ x: isMobile ? 0 : fLX, rotateY: isMobile ? 0 : fLRY, opacity: isMobile ? 1 : fOp, transformPerspective: 1200 }}
+                style={{ x: isMobile ? 0 : fLX, rotateY: isMobile ? 0 : fLRY, opacity: isMobile ? 1 : fOp, transformPerspective: 1000 }}
               >
                 {FEATURES.filter((_, i) => i % 2 === 0).map(f => (
                   <TiltCard key={f.title} className="kh-feat-card">
@@ -939,7 +948,7 @@ export default function Home() {
 
               <motion.div
                 className="feat-col"
-                style={{ x: isMobile ? 0 : fRX, rotateY: isMobile ? 0 : fRRY, opacity: isMobile ? 1 : fOp, transformPerspective: 1200, marginTop: isMobile ? 0 : 48 }}
+                style={{ x: isMobile ? 0 : fRX, rotateY: isMobile ? 0 : fRRY, opacity: isMobile ? 1 : fOp, transformPerspective: 1000, marginTop: isMobile ? 0 : 48 }}
               >
                 {FEATURES.filter((_, i) => i % 2 === 1).map(f => (
                   <TiltCard key={f.title} className="kh-feat-card">
@@ -954,7 +963,7 @@ export default function Home() {
         </section>
 
         {/* ── PARA QUIÉN ── */}
-        <section className="kh-section" id="quien" ref={quienRef} style={{ background: 'rgba(79,172,254,0.02)' }}>
+        <section className="kh-section" id="quien" ref={quienRef} style={{ background: 'radial-gradient(ellipse 70% 50% at 80% 50%, rgba(79,172,254,0.06) 0%, transparent 60%)' }}>
           <div className="kh-section-inner">
             {!isMobile && <SectionBranches color="#4FACFE" />}
             <motion.div
@@ -991,7 +1000,7 @@ export default function Home() {
         </section>
 
         {/* ── PLANES ── */}
-        <section className="kh-section" id="planes" ref={planesRef}>
+        <section className="kh-section" id="planes" ref={planesRef} style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(64,220,165,0.05) 0%, transparent 60%)' }}>
           <div className="kh-section-inner">
             {!isMobile && <SectionBranches color="#40DCA5" />}
             <motion.div
@@ -1027,8 +1036,8 @@ export default function Home() {
                   style={{
                     x: isMobile ? 0 : (i % 2 === 0 ? pLX : pRX),
                     opacity: isMobile ? 1 : pOp,
-                    scale: p.popular ? 1.06 : 1,
-                    transformPerspective: 1200,
+                    scale: p.popular ? 1.05 : 1,
+                    transformPerspective: 1000,
                   }}
                 >
                   <TiltCard className={`kh-plan-card ${p.popular ? 'popular' : ''}`}>
