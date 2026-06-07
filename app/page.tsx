@@ -470,7 +470,7 @@ export default function Home() {
   const { scrollY } = useScroll()
   const navBg  = useTransform(scrollY, [0, 60],  ['rgba(248,246,255,0)', 'rgba(248,246,255,0.96)'])
   const heroY  = useTransform(scrollY, [0, 600], [0, -80])
-  const heroOp = useTransform(scrollY, [0, 500], [1, 0.15])
+  const heroOp = useTransform(scrollY, [0, 500], [1, 1])
 
   // Per-section scroll refs
   const featRef   = useRef<HTMLElement>(null)
