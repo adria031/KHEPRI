@@ -480,6 +480,7 @@ export default function Home() {
           position: relative;
           width: clamp(220px,38vw,380px); height: clamp(220px,38vw,380px);
           display: flex; align-items: center; justify-content: center;
+          justify-self: center;
         }
         .kh-globe-glow {
           position: absolute; inset: 0;
@@ -761,6 +762,7 @@ export default function Home() {
           .kh-grid-4 { grid-template-columns: 1fr 1fr; }
 
           .kh-nav-links { display: none; }
+          .kh-nav-actions { display: none; }
           .kh-hamburger { display: flex; }
           .kh-phones-row { overflow-x: auto; padding-bottom: 8px; justify-content: flex-start; }
           .kh-nav-inner { position: relative; }
@@ -792,7 +794,7 @@ export default function Home() {
             <button className="kh-nav-btn" onClick={() => scrollTo('planes')}>Precios</button>
             <button className="kh-nav-btn" onClick={() => scrollTo('testimonios')}>Testimonios</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <div className="kh-nav-actions" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button className="kh-nav-login" onClick={() => openAuth('login')}>Entrar</button>
             <button className="kh-nav-cta" onClick={() => openAuth('registro')}>Pruébalo gratis</button>
           </div>
