@@ -10,12 +10,12 @@ const TurnstileWidget = dynamic(() => import('../components/TurnstileWidget'), {
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: '📅', color: '#B8D8F8', title: 'Reservas automáticas 24/7', desc: 'Tus clientes reservan en cualquier momento. Confirmaciones y recordatorios automáticos sin que muevas un dedo.' },
-  { icon: '🤖', color: '#D4C5F9', title: 'Chatbot IA WhatsApp e Instagram', desc: 'Responde consultas, reserva citas y cancela automáticamente sin intervención humana, a cualquier hora.' },
-  { icon: '🧾', color: '#B8EDD4', title: 'Facturación e IVA automático', desc: 'Facturas con IVA, modelos 303, 130 y 111. Compatible con la normativa fiscal española vigente.' },
-  { icon: '📊', color: '#FDE9A2', title: 'Analytics con IA', desc: 'Predicciones de ingresos, análisis de clientes y recomendaciones accionables para crecer cada mes.' },
-  { icon: '📸', color: '#FBCFE8', title: 'Marketing con IA', desc: 'Posts automáticos para redes sociales, estrategias de captación y calendario editorial generados con IA.' },
-  { icon: '👥', color: '#B8D8F8', title: 'Gestión de equipo y nóminas', desc: 'Gestiona empleados, turnos, nóminas y contratos SEPE desde el panel de control.' },
+  { icon: '📅', color: '#B8D8F8', title: 'Reservas automáticas 24/7', desc: 'Tus clientes reservan, modifican y cancelan solos. Confirmaciones y recordatorios automáticos por WhatsApp.' },
+  { icon: '🤖', color: '#D4C5F9', title: 'Chatbot IA WhatsApp e Instagram', desc: 'Responde consultas, gestiona reservas y cobra automáticamente sin que toques el móvil.' },
+  { icon: '🧾', color: '#B8EDD4', title: 'Facturación e IVA automático', desc: 'Facturas con IVA, modelos 303, 130 y 111. Cumple con Hacienda sin gestor ni estrés.' },
+  { icon: '📊', color: '#FDE9A2', title: 'Analytics con IA predictiva', desc: 'Sabe cuánto vas a ingresar antes de que ocurra. Detecta clientes en riesgo y recomienda acciones.' },
+  { icon: '📸', color: '#FBCFE8', title: 'Marketing IA automático', desc: 'Genera y publica posts en Instagram automáticamente. Estrategia de captación lista en segundos.' },
+  { icon: '👥', color: '#B8D8F8', title: 'Equipo, nóminas y contratos', desc: 'Turnos, nóminas y contratos SEPE oficiales generados automáticamente. Sin errores, sin papel.' },
 ]
 
 const QUIENES = [
@@ -441,8 +441,9 @@ export default function Home() {
           padding: 120px 24px 80px;
           display: flex; align-items: center;
           position: relative; overflow: hidden;
-          background: radial-gradient(ellipse 80% 60% at 70% 50%, rgba(212,197,249,0.25) 0%, transparent 60%),
-                      radial-gradient(ellipse 60% 50% at 10% 80%, rgba(184,216,248,0.2) 0%, transparent 50%),
+          background: radial-gradient(ellipse 70% 60% at 70% 40%, rgba(212,197,249,0.35) 0%, transparent 55%),
+                      radial-gradient(ellipse 50% 50% at 15% 75%, rgba(184,216,248,0.3) 0%, transparent 50%),
+                      radial-gradient(ellipse 40% 40% at 85% 85%, rgba(184,237,212,0.2) 0%, transparent 50%),
                       #F7F9FF;
         }
         .kh-hero-inner {
@@ -525,12 +526,13 @@ export default function Home() {
         .kh-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 
         .kh-feature-card {
-          background: #fff; border: 1px solid #F1F5F9; border-radius: 20px;
+          background: rgba(255,255,255,0.85) !important; border: 1px solid rgba(124,58,237,0.08) !important;
+          border-radius: 20px !important; backdrop-filter: blur(12px) !important;
           padding: 28px; cursor: default;
-          transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s ease;
+          transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s ease, border-color 0.3s, background 0.3s;
           will-change: transform;
         }
-        .kh-feature-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.07); }
+        .kh-feature-card:hover { border-color: rgba(124,58,237,0.2) !important; box-shadow: 0 12px 40px rgba(124,58,237,0.1) !important; background: #fff !important; }
         .kh-feat-icon {
           width: 48px; height: 48px; border-radius: 14px;
           display: flex; align-items: center; justify-content: center;
@@ -553,8 +555,9 @@ export default function Home() {
         /* ── Phones section ── */
         .kh-phones {
           padding: 80px 24px;
+          padding-top: 100px !important;
           background: linear-gradient(160deg, #0F0F1A 0%, #1a1040 100%);
-          overflow: hidden; position: relative;
+          overflow: visible !important; position: relative;
         }
         .kh-phones-glow {
           position: absolute; inset: 0; pointer-events: none;
@@ -567,7 +570,7 @@ export default function Home() {
           font-weight: 800; color: #fff; letter-spacing: -1px; margin: 12px 0 10px;
         }
         .kh-phones-p { font-size: 15px; color: rgba(255,255,255,0.6); line-height: 1.7; }
-        .kh-phones-row { display: flex; gap: 24px; justify-content: center; align-items: flex-end; }
+        .kh-phones-row { display: flex; gap: 24px; justify-content: center; align-items: flex-end; overflow-x: auto; padding: 0 24px 20px; }
         .kh-phone-wrap {
           display: flex; flex-direction: column; align-items: center; gap: 16px;
         }
@@ -596,9 +599,11 @@ export default function Home() {
 
 
         /* ── Plans ── */
-        .kh-plans { padding: 100px 24px; background: #F7F9FF; }
+        .kh-plans { padding: 100px 24px; background: linear-gradient(180deg, rgba(212,197,249,0.1), #F7F9FF); }
         .kh-plan-card {
-          background: #fff; border: 2px solid #F1F5F9; border-radius: 24px;
+          background: rgba(255,255,255,0.9) !important; border: 1.5px solid rgba(124,58,237,0.1) !important;
+          backdrop-filter: blur(12px) !important;
+          border-radius: 24px;
           padding: 28px; display: flex; flex-direction: column; gap: 0;
           transition: transform 0.3s, box-shadow 0.3s;
           position: relative; overflow: hidden;
@@ -784,7 +789,7 @@ export default function Home() {
 
           .kh-nav-links { display: none; }
           .kh-hamburger { display: flex; }
-          .kh-phones-row { overflow-x: auto; padding-bottom: 8px; justify-content: flex-start; }
+          .kh-phones-row { justify-content: flex-start; }
         }
         @media (max-width: 600px) {
           .kh-nav-login { display: none !important; }
@@ -857,10 +862,50 @@ export default function Home() {
           }
         }
 
-        /* Scroll dots — solo móvil */
-        .scroll-dots-mobile { display: none; }
+        /* ── Carousel infinito — funciones ── */
+        @keyframes scrollCarousel {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .carousel-wrap {
+          overflow: hidden; position: relative;
+          mask-image: linear-gradient(to right, transparent, black 80px, black calc(100% - 80px), transparent);
+          -webkit-mask-image: linear-gradient(to right, transparent, black 80px, black calc(100% - 80px), transparent);
+        }
+        .carousel-track {
+          display: flex; gap: 20px;
+          animation: scrollCarousel 30s linear infinite;
+          width: max-content;
+        }
+        .carousel-track:hover { animation-play-state: paused; }
+
+        /* ── Carousel infinito — planes (solo móvil) ── */
+        @keyframes scrollPlanes {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
         @media (max-width: 768px) {
-          .scroll-dots-mobile { display: flex !important; }
+          .planes-carousel-wrap {
+            overflow: hidden;
+            mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent);
+          }
+          .planes-carousel-track {
+            display: flex !important; gap: 16px;
+            animation: scrollPlanes 20s linear infinite;
+            width: max-content;
+          }
+          .planes-carousel-track:hover { animation-play-state: paused; }
+          .planes-carousel-track .kh-plan-card { min-width: 260px !important; scroll-snap-align: unset !important; }
+        }
+        @media (min-width: 769px) {
+          .planes-carousel-track .kh-plan-card:nth-child(n+5) { display: none; }
+        }
+
+        /* ── Phones móvil fix ── */
+        @media (max-width: 768px) {
+          .kh-phones-row { gap: 16px !important; padding: 0 20px 20px !important; }
+          .kh-phone { width: 180px !important; }
         }
       `}</style>
 
@@ -1121,7 +1166,7 @@ export default function Home() {
       </section>
 
       {/* ── PARA QUIÉN ── */}
-      <section className="kh-section" style={{ background: '#fff' }}>
+      <section className="kh-section" style={{ background: 'linear-gradient(135deg, rgba(184,237,212,0.12), #fff)' }}>
         <div className="kh-section-inner">
           <motion.div
             className="kh-section-header"
@@ -1157,16 +1202,11 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-          <div className="scroll-dots-mobile" style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#9CA3AF' }} />
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
-          </div>
         </div>
       </section>
 
       {/* ── FEATURES ── */}
-      <section className="kh-section" id="funciones" style={{ background: '#F7F9FF' }}>
+      <section className="kh-section" id="funciones" style={{ background: 'linear-gradient(180deg, #F7F9FF, rgba(184,216,248,0.1))' }}>
         <div className="kh-section-inner">
           <motion.div
             className="kh-section-header"
@@ -1185,30 +1225,17 @@ export default function Home() {
             </motion.p>
           </motion.div>
 
-          <div className="kh-grid-3 features-carousel">
-            {FEATURES.map((f, i) => (
-              <motion.div
-                key={f.title}
-                className="kh-feature-card"
-                initial="hidden" whileInView="visible"
-                viewport={{ once: true, amount: 0.15 }}
-                variants={fadeUp}
-                custom={i * 0.4}
-                onMouseMove={onTileMove}
-                onMouseLeave={onTileLeave}
-              >
-                <div className="kh-feat-icon" style={{ background: f.color + '55' }}>
-                  {f.icon}
+          <div className="carousel-wrap">
+            <div className="carousel-track">
+              {[...FEATURES, ...FEATURES].map((f, i) => (
+                <div key={i} className="kh-feature-card" style={{ minWidth: 300, maxWidth: 300 }}
+                  onMouseMove={onTileMove} onMouseLeave={onTileLeave}>
+                  <div className="kh-feat-icon" style={{ background: f.color + '55' }}>{f.icon}</div>
+                  <div className="kh-feat-title">{f.title}</div>
+                  <div className="kh-feat-desc">{f.desc}</div>
                 </div>
-                <div className="kh-feat-title">{f.title}</div>
-                <div className="kh-feat-desc">{f.desc}</div>
-              </motion.div>
-            ))}
-          </div>
-          <div className="scroll-dots-mobile" style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#9CA3AF' }} />
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -1234,15 +1261,16 @@ export default function Home() {
             </motion.p>
           </motion.div>
 
-          <div className="kh-grid-4 planes-carousel">
-            {PLANES.map((p, i) => (
+          <div className="planes-carousel-wrap">
+          <div className="kh-grid-4 planes-carousel-track">
+            {[...PLANES, ...PLANES].map((p, i) => (
               <motion.div
-                key={p.nombre}
+                key={i}
                 className={`kh-plan-card${p.popular ? ' popular' : ''}`}
                 initial="hidden" whileInView="visible"
                 viewport={{ once: true, amount: 0.15 }}
                 variants={fadeUp}
-                custom={i * 0.5}
+                custom={(i % PLANES.length) * 0.5}
               >
                 <div className="kh-plan-badge" style={{ background: p.color + '66', color: p.colorDark }}>
                   {p.badge}
@@ -1271,12 +1299,7 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-          <div className="scroll-dots-mobile" style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#9CA3AF' }} />
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
           </div>
-
           {/* Compare table */}
           <motion.div
             style={{ marginTop: 56 }}
