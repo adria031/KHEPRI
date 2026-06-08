@@ -213,8 +213,13 @@ export default function Equipo() {
       setTrabajadores(prev => [...prev, data as Trabajador])
       if (datos.email) {
         try {
-          await fetch('/api/invitar-trabajador', { method:'POST', headers:{'Content-Type':'application/json'},
+          const invRes = await fetch('/api/invitar-trabajador', { method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ email:datos.email, nombreTrabajador:datos.nombre, especialidad:datos.especialidad, nombreNegocio:negocio?.nombre||'tu negocio', negocioId }) })
+          if (!invRes.ok) {
+            const invErr = await invRes.json().catch(() => ({}))
+            setError(`Trabajador guardado, pero el email falló: ${invErr?.error || invRes.status}`)
+            setGuardando(false); return
+          }
         } catch (e: unknown) { setError(`Guardado, pero el email falló: ${(e as Error).message}`); setGuardando(false); return }
       }
     }

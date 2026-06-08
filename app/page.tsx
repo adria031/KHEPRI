@@ -214,6 +214,7 @@ export default function Home() {
   const [authIsError, setAuthIsError] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')
   const carouselRef = useRef<HTMLDivElement>(null)
+  const planesRef = useRef<HTMLDivElement>(null)
 
   // Carousel drag + auto-scroll
   useEffect(() => {
@@ -228,6 +229,67 @@ export default function Home() {
     function tick() {
       if (!dragging) {
         scroller.scrollLeft += 0.8
+        if (scroller.scrollLeft >= scroller.scrollWidth / 2) scroller.scrollLeft -= scroller.scrollWidth / 2
+      }
+      animId = requestAnimationFrame(tick)
+    }
+    function onDown(e: MouseEvent) {
+      dragging = true; startX = e.pageX; startScroll = scroller.scrollLeft
+      scroller.classList.add('dragging')
+    }
+    function onMove(e: MouseEvent) {
+      if (!dragging) return
+      const dx = e.pageX - startX
+      scroller.scrollLeft = startScroll - dx
+      if (scroller.scrollLeft >= scroller.scrollWidth / 2) scroller.scrollLeft -= scroller.scrollWidth / 2
+      if (scroller.scrollLeft < 0) scroller.scrollLeft += scroller.scrollWidth / 2
+    }
+    function onUp() { dragging = false; scroller.classList.remove('dragging') }
+    function onTouchStart(e: TouchEvent) {
+      dragging = true; startX = e.touches[0].pageX; startScroll = scroller.scrollLeft
+    }
+    function onTouchMove(e: TouchEvent) {
+      if (!dragging) return
+      const dx = e.touches[0].pageX - startX
+      scroller.scrollLeft = startScroll - dx
+      if (scroller.scrollLeft >= scroller.scrollWidth / 2) scroller.scrollLeft -= scroller.scrollWidth / 2
+      if (scroller.scrollLeft < 0) scroller.scrollLeft += scroller.scrollWidth / 2
+    }
+    function onTouchEnd() { dragging = false }
+
+    scroller.addEventListener('mousedown', onDown)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    scroller.addEventListener('touchstart', onTouchStart, { passive: true })
+    scroller.addEventListener('touchmove', onTouchMove, { passive: true })
+    scroller.addEventListener('touchend', onTouchEnd)
+    animId = requestAnimationFrame(tick)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      scroller.removeEventListener('mousedown', onDown)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      scroller.removeEventListener('touchstart', onTouchStart)
+      scroller.removeEventListener('touchmove', onTouchMove)
+      scroller.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [])
+
+  // Planes carousel drag + auto-scroll (mobile only)
+  useEffect(() => {
+    const el = planesRef.current
+    if (!el) return
+    if (typeof window !== 'undefined' && window.innerWidth > 768) return
+    const scroller = el
+    let animId: number
+    let dragging = false
+    let startX = 0
+    let startScroll = 0
+
+    function tick() {
+      if (!dragging) {
+        scroller.scrollLeft += 0.6
         if (scroller.scrollLeft >= scroller.scrollWidth / 2) scroller.scrollLeft -= scroller.scrollWidth / 2
       }
       animId = requestAnimationFrame(tick)
@@ -937,23 +999,17 @@ export default function Home() {
         .carousel-scroller.dragging { cursor: grabbing; }
         .carousel-track { display: flex; gap: 20px; width: max-content; }
 
-        /* ── Carousel infinito — planes (solo móvil) ── */
-        @keyframes scrollPlanes {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
+        /* ── Carousel planes (solo móvil) ── */
         @media (max-width: 768px) {
           .planes-carousel-wrap {
-            overflow: hidden;
+            overflow-x: scroll; scrollbar-width: none; cursor: grab;
+            user-select: none; -webkit-user-select: none;
             mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent);
             -webkit-mask-image: linear-gradient(to right, transparent, black 40px, black calc(100% - 40px), transparent);
           }
-          .planes-carousel-track {
-            display: flex !important; gap: 16px;
-            animation: scrollPlanes 20s linear infinite;
-            width: max-content;
-          }
-          .planes-carousel-track:hover { animation-play-state: paused; }
+          .planes-carousel-wrap::-webkit-scrollbar { display: none; }
+          .planes-carousel-wrap.dragging { cursor: grabbing; }
+          .planes-carousel-track { display: flex !important; gap: 16px; width: max-content; }
           .planes-carousel-track .kh-plan-card { min-width: 260px !important; scroll-snap-align: unset !important; }
         }
         @media (min-width: 769px) {
@@ -1321,7 +1377,7 @@ export default function Home() {
             </motion.p>
           </motion.div>
 
-          <div className="planes-carousel-wrap">
+          <div className="planes-carousel-wrap" ref={planesRef}>
           <div className="kh-grid-4 planes-carousel-track">
             {[...PLANES, ...PLANES].map((p, i) => (
               <motion.div
