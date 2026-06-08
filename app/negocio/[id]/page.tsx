@@ -36,6 +36,7 @@ type Negocio = {
   logo_url:string; fotos:string[]; metodos_pago:string[]|null;
   color_principal:string|null; color_secundario:string|null
   horas_cancelacion:number|null; mensaje_cancelacion:string|null
+  lat:number|null; lng:number|null
 }
 type Horario = { dia:string; abierto:boolean; hora_apertura:string; hora_cierre:string; hora_apertura2:string|null; hora_cierre2:string|null }
 type Servicio = { id:string; nombre:string; duracion:number; precio:number; precio_descuento:number|null; descuento_inicio:string|null; descuento_fin:string|null; categoria?:string|null }
@@ -130,9 +131,14 @@ export default function FichaNegocio() {
     })
   }, [id])
 
-  // Geocodificar dirección para el mini mapa
+  // Coordenadas para el mini mapa — preferir lat/lng del DB, caer a geocodificación
   useEffect(() => {
-    if (!negocio?.direccion && !negocio?.ciudad) return
+    if (!negocio) return
+    if (negocio.lat && negocio.lng) {
+      setCoordenadas([negocio.lng, negocio.lat])
+      return
+    }
+    if (!negocio.direccion && !negocio.ciudad) return
     const addr = [negocio.direccion, negocio.ciudad].filter(Boolean).join(', ')
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
     if (!token) return
@@ -309,8 +315,9 @@ export default function FichaNegocio() {
   const mediaVal    = resenas.length ? resenas.reduce((a,r) => a + r.valoracion, 0) / resenas.length : 0
   const grupos      = servicios.length ? agruparServicios(servicios) : {}
   const mapToken    = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+  const mapStylePath = (process.env.NEXT_PUBLIC_MAPBOX_STYLE ?? '').replace('mapbox://styles/', '') || 'mapbox/light-v11'
   const mapSrc      = coordenadas && mapToken
-    ? `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/pin-s+6366F1(${coordenadas[0]},${coordenadas[1]})/${coordenadas[0]},${coordenadas[1]},15,0/400x180@2x?access_token=${mapToken}`
+    ? `https://api.mapbox.com/styles/v1/${mapStylePath}/static/pin-s+6366F1(${coordenadas[0]},${coordenadas[1]})/${coordenadas[0]},${coordenadas[1]},15,0/400x180@2x?access_token=${mapToken}`
     : null
   const colorPpal   = negocio?.color_principal ?? '#7C3AED'
   const colorSec    = negocio?.color_secundario ?? '#B8D8F8'

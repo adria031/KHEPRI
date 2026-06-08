@@ -301,6 +301,21 @@ export default function MiNegocio() {
     const { error: errNeg } = await supabase.from('negocios').update(camposBasicos).eq('id', negocioId)
     stepDone(!!errNeg)
 
+    // Geocodificar lat/lng en background si la dirección fue importada
+    if (!errNeg && (importData.direccion || importData.ciudad)) {
+      const geoAddr = [camposBasicos.direccion, camposBasicos.ciudad].filter(Boolean).join(', ')
+      const mapTok = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+      if (geoAddr && mapTok) {
+        fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(geoAddr)}.json?country=ES&limit=1&access_token=${mapTok}`)
+          .then(r => r.json())
+          .then(d => {
+            const coords = d?.features?.[0]?.geometry?.coordinates
+            if (coords) supabase.from('negocios').update({ lng: coords[0], lat: coords[1] }).eq('id', negocioId)
+          })
+          .catch(() => {})
+      }
+    }
+
     if (!soloBasico) {
       // Step 2: servicios
       if (importData.servicios?.length) {
