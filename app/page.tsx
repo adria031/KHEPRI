@@ -950,35 +950,38 @@ export default function Home() {
             >
               <div className="kh-phone" style={{ height: '420px' }}>
                 <div className="kh-phone-notch" />
-                <div style={{ padding: '28px 12px 12px' }}>
-                  <div className="kh-phone-bar" style={{ padding:'0 0 8px', marginBottom:6 }}>
-                    <span style={{ fontWeight:700, color:'#111827' }}>9:41</span>
-                    <span style={{ color:'#9CA3AF' }}>●●●</span>
-                  </div>
-                  <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, color:'#111827', marginBottom:4 }}>📋 Agenda hoy</div>
-                  <div style={{ fontSize:9, color:'#9CA3AF', marginBottom:10 }}>Sábado 7 jun · Barbería Marcos</div>
-                  <div style={{ display:'flex', gap:5, marginBottom:12 }}>
-                    <span style={{ background:'#EEF2FF', color:'#4F46E5', borderRadius:100, padding:'3px 8px', fontSize:9, fontWeight:700 }}>8 citas</span>
-                    <span style={{ background:'#FEF3C7', color:'#92400E', borderRadius:100, padding:'3px 8px', fontSize:9, fontWeight:700 }}>3 pendientes</span>
-                  </div>
-                  {[
-                    { hora:'10:00', nombre:'Ana López', srv:'Corte + tinte', color:'#818CF8', estado:'pendiente' },
-                    { hora:'11:00', nombre:'Carlos M.', srv:'Corte clásico', color:'#34D399', estado:'completada' },
-                    { hora:'12:30', nombre:'Sofía R.',  srv:'Peinado novia', color:'#F472B6', estado:'pendiente' },
-                    { hora:'16:00', nombre:'Daniel P.', srv:'Afeitado',      color:'#FBBF24', estado:'pendiente' },
-                  ].map((c,i) => (
-                    <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:7, marginBottom:8 }}>
-                      <span style={{ fontSize:9, fontWeight:700, color:'#6B7280', minWidth:30, paddingTop:2 }}>{c.hora}</span>
-                      <div style={{ width:3, borderRadius:2, background:c.color, alignSelf:'stretch', flexShrink:0 }} />
-                      <div style={{ flex:1, background:'#fff', borderRadius:8, padding:'6px 8px', border:'1px solid #E8ECF0' }}>
-                        <div style={{ fontSize:10, fontWeight:700, color:'#111827' }}>{c.nombre}</div>
-                        <div style={{ fontSize:9, color:'#9CA3AF' }}>{c.srv}</div>
-                      </div>
-                      <span style={{ fontSize:8, fontWeight:700, color: c.estado==='completada' ? '#065F46' : '#92400E', background: c.estado==='completada' ? '#D1FAE5' : '#FEF3C7', borderRadius:100, padding:'2px 5px', whiteSpace:'nowrap', alignSelf:'center' }}>
-                        {c.estado==='completada' ? '✓' : '●'}
-                      </span>
+                <div style={{ background:'#F7F8FF', height:'100%', borderRadius:30, padding:'28px 14px 14px', display:'flex', flexDirection:'column', gap:0 }}>
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                      <span style={{ fontSize:15 }}>📋</span>
+                      <span style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:900, color:'#0F0F1A' }}>Agenda hoy</span>
                     </div>
-                  ))}
+                    <div style={{ fontSize:9, color:'#9CA3AF', marginBottom:7 }}>Sábado 7 jun · Barbería Marcos</div>
+                    <div style={{ display:'flex', gap:5 }}>
+                      <div style={{ background:'rgba(124,58,237,0.1)', color:'#7C3AED', borderRadius:999, padding:'3px 10px', fontSize:9, fontWeight:700 }}>8 citas</div>
+                      <div style={{ background:'rgba(245,158,11,0.1)', color:'#D97706', borderRadius:999, padding:'3px 10px', fontSize:9, fontWeight:700 }}>3 pendientes</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+                    {[
+                      { time:'10:00', name:'Ana López',  service:'Corte + tinte',  color:'#7C3AED', done:false },
+                      { time:'11:00', name:'Carlos M.',  service:'Corte clásico',  color:'#16A34A', done:true  },
+                      { time:'12:30', name:'Sofía R.',   service:'Peinado novia',  color:'#F59E0B', done:false },
+                      { time:'16:00', name:'Daniel P.',  service:'Afeitado',       color:'#EC4899', done:false },
+                    ].map((c,i) => (
+                      <div key={i} style={{ background:'#fff', borderRadius:12, padding:'9px 10px', display:'flex', alignItems:'center', gap:8, boxShadow:'0 1px 6px rgba(0,0,0,0.06)' }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', minWidth:30 }}>{c.time}</div>
+                        <div style={{ width:3, height:32, borderRadius:2, background:c.color, flexShrink:0 }} />
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:11, fontWeight:700, color:'#0F0F1A' }}>{c.name}</div>
+                          <div style={{ fontSize:9, color:'#9CA3AF' }}>{c.service}</div>
+                        </div>
+                        <div style={{ fontSize:13, color: c.done ? '#16A34A' : c.color, fontWeight:700 }}>
+                          {c.done ? '✓' : '●'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="kh-phone-label">Agenda del día</div>
