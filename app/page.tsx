@@ -781,6 +781,66 @@ export default function Home() {
           .kh-footer-bot { flex-direction: column; align-items: flex-start; }
           .kh-modal { padding: 28px 20px; }
         }
+
+        /* ── Carruseles móvil ── */
+        @media (max-width: 768px) {
+          .kh-grid-3.features-carousel {
+            display: flex !important;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            gap: 16px;
+            padding-bottom: 12px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .kh-grid-3.features-carousel::-webkit-scrollbar { display: none; }
+          .kh-grid-3.features-carousel .kh-feature-card {
+            min-width: 280px;
+            scroll-snap-align: start;
+            flex-shrink: 0;
+          }
+
+          .kh-grid-4.planes-carousel {
+            display: flex !important;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            gap: 16px;
+            padding-bottom: 16px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .kh-grid-4.planes-carousel::-webkit-scrollbar { display: none; }
+          .kh-grid-4.planes-carousel .kh-plan-card {
+            min-width: 280px;
+            scroll-snap-align: start;
+            flex-shrink: 0;
+          }
+          .kh-grid-4.planes-carousel .kh-plan-card.popular {
+            transform: none;
+          }
+
+          .kh-grid-6 {
+            display: flex !important;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            gap: 12px;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .kh-grid-6::-webkit-scrollbar { display: none; }
+          .kh-grid-6 .kh-quien-card {
+            min-width: 130px;
+            scroll-snap-align: start;
+            flex-shrink: 0;
+          }
+        }
+
+        /* Scroll dots — solo móvil */
+        .scroll-dots-mobile { display: none; }
+        @media (max-width: 768px) {
+          .scroll-dots-mobile { display: flex !important; }
+        }
       `}</style>
 
       {/* ── NAVBAR ── */}
@@ -1073,6 +1133,11 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+          <div className="scroll-dots-mobile" style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#9CA3AF' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
+          </div>
         </div>
       </section>
 
@@ -1096,7 +1161,7 @@ export default function Home() {
             </motion.p>
           </motion.div>
 
-          <div className="kh-grid-3">
+          <div className="kh-grid-3 features-carousel">
             {FEATURES.map((f, i) => (
               <motion.div
                 key={f.title}
@@ -1115,6 +1180,11 @@ export default function Home() {
                 <div className="kh-feat-desc">{f.desc}</div>
               </motion.div>
             ))}
+          </div>
+          <div className="scroll-dots-mobile" style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#9CA3AF' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
           </div>
         </div>
       </section>
@@ -1140,7 +1210,7 @@ export default function Home() {
             </motion.p>
           </motion.div>
 
-          <div className="kh-grid-4">
+          <div className="kh-grid-4 planes-carousel">
             {PLANES.map((p, i) => (
               <motion.div
                 key={p.nombre}
@@ -1176,6 +1246,11 @@ export default function Home() {
                 </button>
               </motion.div>
             ))}
+          </div>
+          <div className="scroll-dots-mobile" style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#9CA3AF' }} />
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
           </div>
 
           {/* Compare table */}
