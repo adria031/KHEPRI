@@ -213,6 +213,67 @@ export default function Home() {
   const [authMsg, setAuthMsg]         = useState('')
   const [authIsError, setAuthIsError] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')
+  const carouselRef = useRef<HTMLDivElement>(null)
+
+  // Carousel drag + auto-scroll
+  useEffect(() => {
+    const el = carouselRef.current
+    if (!el) return
+    const scroller = el
+    let animId: number
+    let dragging = false
+    let startX = 0
+    let startScroll = 0
+
+    function tick() {
+      if (!dragging) {
+        scroller.scrollLeft += 0.8
+        if (scroller.scrollLeft >= scroller.scrollWidth / 2) scroller.scrollLeft -= scroller.scrollWidth / 2
+      }
+      animId = requestAnimationFrame(tick)
+    }
+    function onDown(e: MouseEvent) {
+      dragging = true; startX = e.pageX; startScroll = scroller.scrollLeft
+      scroller.classList.add('dragging')
+    }
+    function onMove(e: MouseEvent) {
+      if (!dragging) return
+      const dx = e.pageX - startX
+      scroller.scrollLeft = startScroll - dx
+      if (scroller.scrollLeft >= scroller.scrollWidth / 2) scroller.scrollLeft -= scroller.scrollWidth / 2
+      if (scroller.scrollLeft < 0) scroller.scrollLeft += scroller.scrollWidth / 2
+    }
+    function onUp() { dragging = false; scroller.classList.remove('dragging') }
+    function onTouchStart(e: TouchEvent) {
+      dragging = true; startX = e.touches[0].pageX; startScroll = scroller.scrollLeft
+    }
+    function onTouchMove(e: TouchEvent) {
+      if (!dragging) return
+      const dx = e.touches[0].pageX - startX
+      scroller.scrollLeft = startScroll - dx
+      if (scroller.scrollLeft >= scroller.scrollWidth / 2) scroller.scrollLeft -= scroller.scrollWidth / 2
+      if (scroller.scrollLeft < 0) scroller.scrollLeft += scroller.scrollWidth / 2
+    }
+    function onTouchEnd() { dragging = false }
+
+    scroller.addEventListener('mousedown', onDown)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    scroller.addEventListener('touchstart', onTouchStart, { passive: true })
+    scroller.addEventListener('touchmove', onTouchMove, { passive: true })
+    scroller.addEventListener('touchend', onTouchEnd)
+    animId = requestAnimationFrame(tick)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      scroller.removeEventListener('mousedown', onDown)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      scroller.removeEventListener('touchstart', onTouchStart)
+      scroller.removeEventListener('touchmove', onTouchMove)
+      scroller.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [])
 
   // Close modal on Escape
   useEffect(() => {
@@ -863,21 +924,18 @@ export default function Home() {
         }
 
         /* ── Carousel infinito — funciones ── */
-        @keyframes scrollCarousel {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
         .carousel-wrap {
           overflow: hidden; position: relative;
           mask-image: linear-gradient(to right, transparent, black 80px, black calc(100% - 80px), transparent);
           -webkit-mask-image: linear-gradient(to right, transparent, black 80px, black calc(100% - 80px), transparent);
         }
-        .carousel-track {
-          display: flex; gap: 20px;
-          animation: scrollCarousel 30s linear infinite;
-          width: max-content;
+        .carousel-scroller {
+          overflow-x: scroll; scrollbar-width: none; cursor: grab;
+          user-select: none; -webkit-user-select: none;
         }
-        .carousel-track:hover { animation-play-state: paused; }
+        .carousel-scroller::-webkit-scrollbar { display: none; }
+        .carousel-scroller.dragging { cursor: grabbing; }
+        .carousel-track { display: flex; gap: 20px; width: max-content; }
 
         /* ── Carousel infinito — planes (solo móvil) ── */
         @keyframes scrollPlanes {
@@ -1226,15 +1284,17 @@ export default function Home() {
           </motion.div>
 
           <div className="carousel-wrap">
-            <div className="carousel-track">
-              {[...FEATURES, ...FEATURES].map((f, i) => (
-                <div key={i} className="kh-feature-card" style={{ minWidth: 300, maxWidth: 300 }}
-                  onMouseMove={onTileMove} onMouseLeave={onTileLeave}>
-                  <div className="kh-feat-icon" style={{ background: f.color + '55' }}>{f.icon}</div>
-                  <div className="kh-feat-title">{f.title}</div>
-                  <div className="kh-feat-desc">{f.desc}</div>
-                </div>
-              ))}
+            <div className="carousel-scroller" ref={carouselRef}>
+              <div className="carousel-track">
+                {[...FEATURES, ...FEATURES].map((f, i) => (
+                  <div key={i} className="kh-feature-card" style={{ minWidth: 300, maxWidth: 300 }}
+                    onMouseMove={onTileMove} onMouseLeave={onTileLeave}>
+                    <div className="kh-feat-icon" style={{ background: f.color + '55' }}>{f.icon}</div>
+                    <div className="kh-feat-title">{f.title}</div>
+                    <div className="kh-feat-desc">{f.desc}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
