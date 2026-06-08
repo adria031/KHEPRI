@@ -249,7 +249,7 @@ export function NegocioSelector({
         const { data } = await supabase.from('horarios').select('*').eq('negocio_id', sourceId)
         if (!data?.length) return
         const rows = data.map(({ id: _id, negocio_id: _n, ...rest }: Record<string, unknown>) => ({ ...rest, negocio_id: destId }))
-        await supabase.from('horarios').insert(rows)
+        await supabase.from('horarios').upsert(rows, { onConflict: 'negocio_id,dia' })
       })())
     }
 
