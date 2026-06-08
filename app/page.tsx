@@ -1,8 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from './lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
+
+const TurnstileWidget = dynamic(() => import('../components/TurnstileWidget'), { ssr: false })
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
@@ -209,6 +212,7 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(false)
   const [authMsg, setAuthMsg]         = useState('')
   const [authIsError, setAuthIsError] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
 
   // Close modal on Escape
   useEffect(() => {
@@ -230,12 +234,13 @@ export default function Home() {
 
   function openAuth(mode: 'login' | 'registro' = 'login') {
     setAuthMode(mode); setAuthMsg(''); setAuthIsError(false)
-    setAuthOpen(true); setMenuOpen(false)
+    setTurnstileToken(''); setAuthOpen(true); setMenuOpen(false)
   }
 
   function closeAuth() {
     setAuthOpen(false); setAuthMsg('')
     setAuthEmail(''); setAuthPassword(''); setAuthNombre('')
+    setTurnstileToken('')
   }
 
   function setMsg(msg: string, isError: boolean) {
@@ -258,7 +263,15 @@ export default function Home() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!authEmail || !authPassword) { setMsg('Rellena todos los campos.', true); return }
+    if (!turnstileToken) { setMsg('Completa la verificación de seguridad.', true); return }
     setAuthLoading(true); setMsg('', false)
+    const verif = await fetch('/api/verify-turnstile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: turnstileToken }),
+    })
+    setTurnstileToken('')
+    if (!verif.ok) { setMsg('Verificación de seguridad fallida. Inténtalo de nuevo.', true); setAuthLoading(false); return }
     await supabase.auth.signOut({ scope: 'local' })
     const { error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword })
     if (error) { setMsg('Email o contraseña incorrectos.', true); setAuthLoading(false); return }
@@ -278,7 +291,15 @@ export default function Home() {
     e.preventDefault()
     if (!authEmail || !authPassword) { setMsg('Rellena todos los campos.', true); return }
     if (authPassword.length < 6) { setMsg('La contraseña debe tener al menos 6 caracteres.', true); return }
+    if (!turnstileToken) { setMsg('Completa la verificación de seguridad.', true); return }
     setAuthLoading(true); setMsg('', false)
+    const verif = await fetch('/api/verify-turnstile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: turnstileToken }),
+    })
+    setTurnstileToken('')
+    if (!verif.ok) { setMsg('Verificación de seguridad fallida. Inténtalo de nuevo.', true); setAuthLoading(false); return }
     await supabase.auth.signOut({ scope: 'local' })
     const { error } = await supabase.auth.signUp({
       email: authEmail.trim().toLowerCase(),
@@ -1428,10 +1449,10 @@ export default function Home() {
               ) : (
                 <>
                   <div className="kh-auth-tabs">
-                    <button className={`kh-auth-tab${authMode === 'login' ? ' active' : ''}`} onClick={() => { setAuthMode('login'); setAuthMsg('') }} type="button">
+                    <button className={`kh-auth-tab${authMode === 'login' ? ' active' : ''}`} onClick={() => { setAuthMode('login'); setAuthMsg(''); setTurnstileToken('') }} type="button">
                       Iniciar sesión
                     </button>
-                    <button className={`kh-auth-tab${authMode === 'registro' ? ' active' : ''}`} onClick={() => { setAuthMode('registro'); setAuthMsg('') }} type="button">
+                    <button className={`kh-auth-tab${authMode === 'registro' ? ' active' : ''}`} onClick={() => { setAuthMode('registro'); setAuthMsg(''); setTurnstileToken('') }} type="button">
                       Crear cuenta
                     </button>
                   </div>
@@ -1458,7 +1479,8 @@ export default function Home() {
                         </button>
                       </div>
                     )}
-                    <button className="kh-auth-btn" type="submit" disabled={authLoading}>
+                    <TurnstileWidget key={authMode} onSuccess={(token) => setTurnstileToken(token)} />
+                    <button className="kh-auth-btn" type="submit" disabled={authLoading || !turnstileToken}>
                       {authLoading
                         ? (authMode === 'login' ? 'Entrando...' : 'Creando cuenta...')
                         : (authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta gratis')}
