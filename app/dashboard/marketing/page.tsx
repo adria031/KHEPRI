@@ -46,7 +46,7 @@ type Resena = {
   id: string
   valoracion: number
   comentario: string | null
-  autor_nombre: string | null
+  cliente_nombre: string | null
   created_at: string
   respuesta?: string | null
 }
@@ -530,8 +530,8 @@ export default function MarketingPage() {
 
       const [{ data: svcs }, { data: res }, { data: branding }] = await Promise.all([
         db.from('servicios').select('nombre').eq('negocio_id', activo.id).eq('activo', true).order('nombre'),
-        db.from('resenas').select('id, valoracion, comentario, autor_nombre, created_at, respuesta')
-          .eq('negocio_id', activo.id).is('respuesta', null).order('created_at', { ascending: false }).limit(20),
+        db.from('resenas').select('id, valoracion, comentario, cliente_nombre, created_at, respuesta')
+          .eq('negocio_id', activo.id).or('respuesta.is.null,respuesta.eq.').order('created_at', { ascending: false }).limit(20),
         db.from('negocios').select('color_principal, color_secundario, logo_url, tono_comunicacion, palabras_clave, frase_marca').eq('id', activo.id).single(),
       ])
       if (svcs) setNegServicios(svcs.map((s: { nombre: string }) => s.nombre))
@@ -703,7 +703,7 @@ Devuelve SOLO JSON sin markdown:
     const prompt = `Eres el propietario de "${negocioNombre}", negocio de servicios en España. Responde a esta reseña de forma ${resena.valoracion >= 4 ? 'agradecida y cercana' : 'empática y constructiva'}. Respuesta máximo 3 frases, en español, natural.
 
 Reseña (${resena.valoracion}★): "${resena.comentario ?? 'Sin comentario'}"
-Autor: ${resena.autor_nombre ?? 'cliente'}
+Autor: ${resena.cliente_nombre ?? 'cliente'}
 
 Devuelve SOLO el texto de la respuesta, sin comillas ni explicaciones.`
 
@@ -1250,7 +1250,7 @@ Devuelve SOLO JSON sin markdown:
               <div key={r.id} className="mk-resena-card">
                 <div className="mk-resena-stars" style={{ color: r.valoracion >= 4 ? '#F59E0B' : '#9CA3AF' }}>{estrellas}</div>
                 <div className="mk-resena-text">"{r.comentario ?? 'Sin comentario'}"</div>
-                <div className="mk-resena-meta">{r.autor_nombre ?? 'Anónimo'} · {new Date(r.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' })}</div>
+                <div className="mk-resena-meta">{r.cliente_nombre ?? 'Anónimo'} · {new Date(r.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' })}</div>
                 <textarea
                   className="mk-resena-resp-area"
                   placeholder="Genera una respuesta con IA o escríbela manualmente…"
