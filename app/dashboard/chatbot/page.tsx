@@ -16,7 +16,7 @@ import {
 
 const GEMINI_URL = '/api/gemini' // proxy → v1beta gemini-1.5-flash
 
-type Msg = { role: 'user' | 'bot'; text: string; ts: Date }
+type Msg = { role: 'user' | 'bot'; text: string; ts: Date; slots?: string[] }
 
 type NegocioInfo = {
   id: string; nombre: string; tipo: string; descripcion: string | null
@@ -102,7 +102,14 @@ Tienes acceso a funciones para gestionar reservas. Úsalas cuando el cliente lo 
 - Para CANCELAR: pide el teléfono, llama a buscarReservas, muestra la lista y cuando el cliente
   confirme qué reserva cancelar, llama a cancelarReserva con el ID.
 
-Si no puedes ayudar con algo, indica que contacte directamente con ${negocio.nombre}${negocio.telefono ? ` al ${negocio.telefono}` : ''}.`
+Si no puedes ayudar con algo, indica que contacte directamente con ${negocio.nombre}${negocio.telefono ? ` al ${negocio.telefono}` : ''}.
+
+== SLOTS DE HORARIO SELECCIONABLES ==
+Cuando el usuario quiera reservar y necesites mostrarle horas disponibles, responde EXACTAMENTE con este JSON (sin texto adicional fuera del JSON):
+{ "mensaje": "Tu mensaje aquí", "slots": ["10:00", "11:30", "12:00"] }
+Los slots deben ser horas reales dentro del horario del negocio, en formato HH:MM, sin duplicados.
+SOLO usa este formato JSON cuando quieras mostrar horarios seleccionables al usuario.
+En todos los demás casos responde con texto normal.`
 }
 
 export default function ChatbotPage() {
@@ -199,11 +206,15 @@ export default function ChatbotPage() {
     setMensajes(prev => [...prev, msg])
   }, [])
 
-  async function enviarMensaje() {
-    const texto = input.trim()
+  function seleccionarSlot(slot: string) {
+    enviarMensaje(slot)
+  }
+
+  async function enviarMensaje(textoOverride?: string) {
+    const texto = (textoOverride ?? input).trim()
     if (!texto || enviando || !negocio || !negocioId) return
 
-    setInput('')
+    if (!textoOverride) setInput('')
     setEnviando(true)
     addMsg({ role: 'user', text: texto, ts: new Date() })
 
@@ -278,7 +289,20 @@ export default function ChatbotPage() {
 
         // Text response — done
         const textPart = parts.find((p: any) => p.text)
-        addMsg({ role: 'bot', text: textPart?.text ?? '...', ts: new Date() })
+        const rawText = textPart?.text ?? '...'
+        let displayText = rawText
+        let slots: string[] | undefined
+        try {
+          const m = rawText.match(/\{[\s\S]*\}/)
+          if (m) {
+            const parsed = JSON.parse(m[0])
+            if (parsed.mensaje && Array.isArray(parsed.slots)) {
+              displayText = parsed.mensaje
+              slots = parsed.slots.filter((s: any) => typeof s === 'string')
+            }
+          }
+        } catch {}
+        addMsg({ role: 'bot', text: displayText, ts: new Date(), slots })
         break
       }
     } catch (err: any) {
@@ -385,6 +409,9 @@ export default function ChatbotPage() {
         .chat-start-desc { font-size: 12px; line-height: 1.5; }
         .btn-start { padding: 10px 24px; background: linear-gradient(135deg, #D4C5F9, #B8D8F8); border: none; border-radius: 100px; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--lila-dark); cursor: pointer; }
         .bubble { max-width: 80%; padding: 9px 13px; border-radius: 14px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+        .slots-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; align-self: flex-start; max-width: 80%; }
+        .slot-chip { padding: 6px 14px; border-radius: 100px; background: var(--white); border: 1.5px solid var(--lila-dark); color: var(--lila-dark); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+        .slot-chip:hover { background: var(--lila); }
         .bubble-bot { background: var(--bg); color: var(--text); border-bottom-left-radius: 4px; align-self: flex-start; }
         .bubble-user { background: linear-gradient(135deg, #D4C5F9 0%, #B8D8F8 100%); color: var(--text); border-bottom-right-radius: 4px; align-self: flex-end; }
         .bubble-ts { font-size: 10px; color: var(--muted); margin-top: 2px; }
@@ -568,6 +595,15 @@ export default function ChatbotPage() {
                             <div className={`bubble bubble-${m.role === 'bot' ? 'bot' : 'user'}`}>
                               {m.text}
                             </div>
+                            {m.role === 'bot' && m.slots && m.slots.length > 0 && (
+                              <div className="slots-row">
+                                {m.slots.map(slot => (
+                                  <button key={slot} className="slot-chip" onClick={() => seleccionarSlot(slot)} disabled={enviando}>
+                                    🕐 {slot}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                             <div className={`bubble-ts bubble-ts-${m.role === 'bot' ? 'bot' : 'user'}`}>
                               {m.ts.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                             </div>
@@ -594,7 +630,7 @@ export default function ChatbotPage() {
                       onChange={e => setInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje() } }}
                     />
-                    <button className="btn-send" onClick={enviarMensaje} disabled={!chatIniciado || enviando || !input.trim()}>
+                    <button className="btn-send" onClick={() => enviarMensaje()} disabled={!chatIniciado || enviando || !input.trim()}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B4FD8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                       </svg>
