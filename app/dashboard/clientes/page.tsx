@@ -33,7 +33,7 @@ type ClienteAgrupado = {
   primera_visita: string
   ultima_visita: string
   dias_desde_ultima: number
-  nivel: 'Nuevo' | 'Habitual' | 'VIP' | 'Premium'
+  nivel: 'Nuevo' | 'Regular' | 'Habitual' | 'Fiel' | null
   media_dias: number | null
   prediccion: 'pronto' | 'riesgo' | null
   proxima_estimada: string | null
@@ -54,18 +54,19 @@ type Orden  = 'visitas' | 'reciente' | 'gasto' | 'sin_visita'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getNivel(visitas: number): ClienteAgrupado['nivel'] {
-  if (visitas >= 11) return 'Premium'
-  if (visitas >= 6)  return 'VIP'
-  if (visitas >= 2)  return 'Habitual'
-  return 'Nuevo'
+function getBadgeLabel(visitas: number, cancelaciones: number): ClienteAgrupado['nivel'] {
+  if (visitas === 0) return null
+  if (visitas === 1) return 'Nuevo'
+  if (visitas <= 4)  return 'Regular'
+  if (visitas >= 10 && cancelaciones === 0) return 'Fiel'
+  return 'Habitual'
 }
 
 const NIVEL_CFG: Record<string, { color: string; bg: string; icon: string }> = {
-  Premium: { color: '#C4860A', bg: 'rgba(196,134,10,0.12)',   icon: '⭐⭐⭐' },
-  VIP:     { color: '#6B4FD8', bg: 'rgba(107,79,216,0.12)',   icon: '⭐⭐' },
-  Habitual:{ color: '#1D4ED8', bg: 'rgba(29,78,216,0.12)',    icon: '⭐' },
-  Nuevo:   { color: '#2E8A5E', bg: 'rgba(46,138,94,0.12)',    icon: '🌱' },
+  Fiel:    { color: '#C4860A', bg: '#FDE9A2', icon: '⭐' },
+  Habitual:{ color: '#6B4FD8', bg: '#D4C5F9', icon: '💜' },
+  Regular: { color: '#1D4ED8', bg: '#B8D8F8', icon: '👤' },
+  Nuevo:   { color: '#2E8A5E', bg: '#B8EDD4', icon: '🌱' },
 }
 
 function avatarColor(key: string): { bg: string; color: string } {
@@ -176,7 +177,7 @@ function agruparClientes(reservas: ReservaRaw[]): ClienteAgrupado[] {
       primera_visita,
       ultima_visita,
       dias_desde_ultima: diasDesdeUlt,
-      nivel:            getNivel(visitas),
+      nivel:            getBadgeLabel(visitas, cancel.length),
       media_dias,
       prediccion,
       proxima_estimada,
@@ -322,7 +323,7 @@ export default function ClientesPage() {
     switch (filtro) {
       case 'nuevos':     list = list.filter(c => c.nivel === 'Nuevo'); break
       case 'habituales': list = list.filter(c => c.nivel === 'Habitual'); break
-      case 'vip':        list = list.filter(c => c.nivel === 'VIP' || c.nivel === 'Premium'); break
+      case 'vip':        list = list.filter(c => c.nivel === 'Fiel'); break
       case 'sin_visita': list = list.filter(c => c.dias_desde_ultima >= 30); break
       case 'riesgo':     list = list.filter(c => c.prediccion === 'riesgo'); break
     }
@@ -341,7 +342,7 @@ export default function ClientesPage() {
     todos:      clientes.length,
     nuevos:     clientes.filter(c => c.nivel === 'Nuevo').length,
     habituales: clientes.filter(c => c.nivel === 'Habitual').length,
-    vip:        clientes.filter(c => c.nivel === 'VIP' || c.nivel === 'Premium').length,
+    vip:        clientes.filter(c => c.nivel === 'Fiel').length,
     sin_visita: clientes.filter(c => c.dias_desde_ultima >= 30).length,
     riesgo:     clientes.filter(c => c.prediccion === 'riesgo').length,
   }), [clientes])
@@ -607,7 +608,7 @@ Responde con este JSON exacto:
                 ['todos',      'Todos'],
                 ['nuevos',     '🌱 Nuevos'],
                 ['habituales', '⭐ Habituales'],
-                ['vip',        '⭐⭐ VIP+'],
+                ['vip',        '⭐ Fieles'],
                 ['sin_visita', '⏰ +30 días'],
                 ['riesgo',     '🔴 En riesgo'],
               ] as [Filtro, string][]).map(([id, label]) => (
@@ -639,7 +640,7 @@ Responde con este JSON exacto:
                 <div style={{ fontSize:'12px' }}>Prueba otro filtro</div>
               </div>
             ) : clientesFiltrados.map(c => {
-              const cfg   = NIVEL_CFG[c.nivel]
+              const cfg   = c.nivel ? NIVEL_CFG[c.nivel] : null
               const ac    = avatarColor(c.telefono || c.nombre)
               const isAct = clienteActivo?.telefono === c.telefono
               const inicial = (c.nombre?.[0] ?? '?').toUpperCase()
@@ -659,9 +660,11 @@ Responde con este JSON exacto:
                     </div>
                   </div>
                   <div className="cli-card-meta">
-                    <span className="cli-badge" style={{ background: cfg.bg, color: cfg.color }}>
-                      {cfg.icon} {c.nivel}
-                    </span>
+                    {cfg && (
+                      <span className="cli-badge" style={{ background: cfg.bg, color: cfg.color }}>
+                        {cfg.icon} {c.nivel}
+                      </span>
+                    )}
                     {c.prediccion === 'riesgo' && (
                       <span className="cli-badge-alert" style={{ background:'rgba(239,68,68,0.08)', color:'#DC2626' }}>
                         ⚠️ En riesgo
@@ -670,11 +673,6 @@ Responde con este JSON exacto:
                     {c.dias_desde_ultima >= 30 && c.prediccion !== 'riesgo' && (
                       <span className="cli-badge-alert" style={{ background:'rgba(239,68,68,0.1)', color:'#DC2626' }}>
                         🔴 Sin visita {c.dias_desde_ultima}d
-                      </span>
-                    )}
-                    {c.cancelaciones === 0 && c.visitas >= 2 && (
-                      <span className="cli-badge-alert" style={{ background:'rgba(34,197,94,0.1)', color:'#15803D' }}>
-                        ✅ Fiel
                       </span>
                     )}
                     {c.prediccion === 'pronto' && (
@@ -692,7 +690,7 @@ Responde con este JSON exacto:
         {/* ── RIGHT PANEL: Client detail (only when selected) ── */}
         {clienteActivo && (() => {
             const c   = clienteActivo
-            const cfg = NIVEL_CFG[c.nivel]
+            const cfg = c.nivel ? NIVEL_CFG[c.nivel] : null
             const ac  = avatarColor(c.telefono || c.nombre)
             const tasa = c.reservas.length > 0 ? Math.round((c.cancelaciones / c.reservas.length) * 100) : 0
             const nota = notas[c.telefono]
@@ -709,9 +707,11 @@ Responde con este JSON exacto:
                   <div style={{ flex:1 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
                       <div className="cli-detail-name">{c.nombre}</div>
-                      <span className="cli-badge" style={{ background: cfg.bg, color: cfg.color }}>
-                        {cfg.icon} {c.nivel}
-                      </span>
+                      {cfg && (
+                        <span className="cli-badge" style={{ background: cfg.bg, color: cfg.color }}>
+                          {cfg.icon} {c.nivel}
+                        </span>
+                      )}
                       {c.prediccion === 'riesgo' && (
                         <span className="cli-badge" style={{ background:'rgba(239,68,68,0.08)', color:'#DC2626', fontSize:'11px' }}>
                           ⚠️ En riesgo de pérdida
@@ -720,11 +720,6 @@ Responde con este JSON exacto:
                       {c.dias_desde_ultima >= 30 && c.prediccion !== 'riesgo' && (
                         <span className="cli-badge" style={{ background:'rgba(239,68,68,0.1)', color:'#DC2626', fontSize:'11px' }}>
                           🔴 Sin visita +{c.dias_desde_ultima}d
-                        </span>
-                      )}
-                      {c.cancelaciones === 0 && c.visitas >= 2 && (
-                        <span className="cli-badge" style={{ background:'rgba(34,197,94,0.1)', color:'#15803D', fontSize:'11px' }}>
-                          ✅ Cliente fiel
                         </span>
                       )}
                       {c.prediccion === 'pronto' && (
