@@ -263,10 +263,14 @@ export default function MiNegocio() {
     type StepStatus = 'pending'|'running'|'done'|'error'
     const mkSteps = (): {label:string;status:StepStatus}[] => {
       const base = [{ label: 'Actualizando información básica', status: 'pending' as StepStatus }]
-      if (soloBasico) return base
-      if (importData.servicios?.length) base.push({ label: `Guardando ${importData.servicios.length} servicios`, status: 'pending' as StepStatus })
-      if (importData.horarios?.length) base.push({ label: 'Guardando horarios de apertura', status: 'pending' as StepStatus })
-      if (importData.trabajadores?.length) base.push({ label: `Guardando ${importData.trabajadores.length} trabajadores`, status: 'pending' as StepStatus })
+      if (!soloBasico) {
+        if (importData.servicios?.length) base.push({ label: `Guardando ${importData.servicios.length} servicios`, status: 'pending' as StepStatus })
+        if (importData.horarios?.length) base.push({ label: 'Guardando horarios de apertura', status: 'pending' as StepStatus })
+        if (importData.trabajadores?.length) base.push({ label: `Guardando ${importData.trabajadores.length} trabajadores`, status: 'pending' as StepStatus })
+      }
+      if (importImagenes?.foto_candidates?.length || importImagenes?.logo_candidates?.length) {
+        base.push({ label: 'Guardando fotos del local', status: 'pending' as StepStatus })
+      }
       return base
     }
     const steps = mkSteps()
@@ -344,6 +348,37 @@ export default function MiNegocio() {
         const { error: errTrab } = await supabase.from('trabajadores').insert(nuevosT)
         stepDone(!!errTrab)
       }
+    }
+
+    // Save detected fotos/logo from importImagenes
+    if (importImagenes?.foto_candidates?.length || importImagenes?.logo_candidates?.length) {
+      stepRun()
+      const fotosUpdates: Record<string, unknown> = {}
+
+      if (importImagenes!.logo_candidates?.length && !form.logo_url) {
+        const logoUrl = await descargarImagen(importImagenes!.logo_candidates[0], 'logo')
+        if (logoUrl) {
+          fotosUpdates.logo_url = logoUrl
+          setForm(prev => ({ ...prev, logo_url: logoUrl }))
+        }
+      }
+
+      const fotoUrls: string[] = []
+      for (const fotoUrl of (importImagenes!.foto_candidates ?? []).slice(0, 4)) {
+        const publicUrl = await descargarImagen(fotoUrl, 'foto')
+        if (publicUrl) fotoUrls.push(publicUrl)
+      }
+      if (fotoUrls.length > 0) {
+        const allFotos = [...form.fotos, ...fotoUrls]
+        fotosUpdates.fotos = allFotos
+        setForm(prev => ({ ...prev, fotos: allFotos }))
+      }
+
+      if (Object.keys(fotosUpdates).length > 0) {
+        const { error: errFotos } = await supabase.from('negocios').update(fotosUpdates).eq('id', negocioId)
+        if (errFotos) console.error('[importar] fotos error:', errFotos)
+      }
+      stepDone()
     }
 
     await new Promise(r => setTimeout(r, 900))
