@@ -762,13 +762,13 @@ export default function Home() {
           .kh-grid-4 { grid-template-columns: 1fr 1fr; }
 
           .kh-nav-links { display: none; }
-          .kh-nav-actions { display: none; }
           .kh-hamburger { display: flex; }
           .kh-phones-row { overflow-x: auto; padding-bottom: 8px; justify-content: flex-start; }
-          .kh-nav-inner { position: relative; }
-          .kh-logo { position: absolute; left: 50%; transform: translateX(-50%); }
         }
         @media (max-width: 600px) {
+          .kh-nav-login { display: none !important; }
+          .kh-nav-cta { display: none !important; }
+          .kh-hamburger { display: flex !important; }
           .kh-grid-3 { grid-template-columns: 1fr; }
           .kh-grid-4 { grid-template-columns: 1fr; }
           .kh-grid-6 { grid-template-columns: repeat(2, 1fr); }
