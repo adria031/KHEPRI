@@ -693,7 +693,7 @@ export default function Home() {
           font-weight: 800; color: #fff; letter-spacing: -1px; margin: 12px 0 10px;
         }
         .kh-phones-p { font-size: 15px; color: rgba(255,255,255,0.6); line-height: 1.7; }
-        .kh-phones-row { display: flex; gap: 24px; justify-content: center; align-items: flex-end; overflow-x: auto; padding: 0 24px 20px; }
+        .kh-phones-row { display: flex; gap: 24px; justify-content: center; align-items: flex-end; overflow: visible; padding: 20px 24px 20px; }
         .kh-phone-wrap {
           display: flex; flex-direction: column; align-items: center; gap: 16px;
         }
@@ -704,11 +704,7 @@ export default function Home() {
           border: 2px solid rgba(0,0,0,0.1);
           box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,58,237,0.08);
           overflow: hidden; position: relative;
-          animation: float 4s ease-in-out infinite;
         }
-        .kh-phone:nth-child(1) { animation-delay: 0s; }
-        .kh-phone:nth-child(2) { animation-delay: 0.5s; }
-        .kh-phone:nth-child(3) { animation-delay: 1s; }
         .kh-phone-notch {
           position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
           width: 70px; height: 6px; background: #D1D5DB; border-radius: 3px; z-index: 2;
