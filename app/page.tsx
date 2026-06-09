@@ -500,6 +500,9 @@ export default function Home() {
           letter-spacing: -0.5px; flex-shrink: 0; cursor: pointer;
         }
         .kh-logo em { font-style: normal; color: #7C3AED; }
+        .kh-nav-mobile-auth { display: none; gap: 6px; align-items: center; flex-shrink: 0; }
+        .kh-nav-mobile-login { background: transparent; border: 1.5px solid rgba(124,58,237,0.35); color: #7C3AED; border-radius: 8px; padding: 6px 12px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .kh-nav-mobile-cta { background: #7C3AED; color: white; border: none; border-radius: 8px; padding: 6px 12px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
         .kh-nav-links { display: flex; gap: 4px; align-items: center; }
         .kh-nav-btn {
           font-size: 14px; font-weight: 600; color: #374151;
@@ -897,6 +900,7 @@ export default function Home() {
           .kh-nav-login { display: none !important; }
           .kh-nav-cta { display: none !important; }
           .kh-hamburger { display: flex !important; }
+          .kh-nav-mobile-auth { display: flex !important; }
           .kh-grid-3 { grid-template-columns: 1fr; }
           .kh-grid-4 { grid-template-columns: 1fr; }
           .kh-grid-6 { grid-template-columns: repeat(2, 1fr); }
@@ -1016,6 +1020,10 @@ export default function Home() {
           <div className="kh-nav-actions" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button className="kh-nav-login" onClick={() => openAuth('login')}>Entrar</button>
             <button className="kh-nav-cta" onClick={() => openAuth('registro')}>Pruébalo gratis</button>
+          </div>
+          <div className="kh-nav-mobile-auth">
+            <button className="kh-nav-mobile-login" onClick={() => openAuth('login')}>Entrar</button>
+            <button className="kh-nav-mobile-cta" onClick={() => openAuth('registro')}>Registro</button>
           </div>
           <button className="kh-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menú">
             <span />
