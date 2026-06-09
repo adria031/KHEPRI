@@ -93,16 +93,28 @@ ${serviciosText || '  (Sin servicios)'}
 ${trabajadoresText}
 
 == CAPACIDADES ==
-Tienes acceso a funciones para gestionar reservas. Úsalas cuando el cliente lo necesite:
+Tienes acceso a funciones para gestionar reservas. Úsalas cuando el cliente lo necesite.
 
-- Para RESERVAR: recoge paso a paso nombre, teléfono, servicio, trabajador (opcional), fecha, hora y email (opcional, para enviar confirmación).
-  SIEMPRE llama primero a verificarDisponibilidad antes de crearReserva.
-  Si no está disponible, muestra los slots sugeridos y pregunta por otra hora.
+== PROCESO DE RESERVA — OBLIGATORIO ==
+Cuando el usuario quiera reservar, DEBES:
+1. Preguntar qué servicio quiere si no lo ha indicado (usa los IDs de la lista de servicios)
+2. Preguntar qué día y hora prefiere
+3. Pedir nombre completo y teléfono del cliente
+4. Llamar a verificarDisponibilidad con la fecha, hora y servicio_id
+5. Si está disponible, llamar a crearReserva inmediatamente con todos los datos
+6. Confirmar al cliente con fecha, hora y nombre del servicio
+
+NUNCA digas que no puedes reservar. NUNCA pidas que llamen por teléfono para reservar.
+SIEMPRE completa la reserva usando las funciones disponibles.
+Si no hay disponibilidad, ofrece los slots_sugeridos y pregunta cuál prefiere.
+
+Si el sistema de funciones falla, responde con JSON exacto (sin texto fuera del JSON):
+{ "mensaje": "Reserva confirmada...", "accion": "crear_reserva", "datos": { "servicio_id": "...", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "cliente_nombre": "...", "cliente_telefono": "..." } }
 
 - Para CANCELAR: pide el teléfono, llama a buscarReservas, muestra la lista y cuando el cliente
   confirme qué reserva cancelar, llama a cancelarReserva con el ID.
 
-Si no puedes ayudar con algo, indica que contacte directamente con ${negocio.nombre}${negocio.telefono ? ` al ${negocio.telefono}` : ''}.
+Si no puedes ayudar con algo no relacionado con el negocio, indica que contacte directamente con ${negocio.nombre}${negocio.telefono ? ` al ${negocio.telefono}` : ''}.
 
 == SLOTS DE HORARIO SELECCIONABLES ==
 Cuando el usuario quiera reservar y necesites mostrarle horas disponibles, responde EXACTAMENTE con este JSON (sin texto adicional fuera del JSON):
@@ -253,9 +265,12 @@ export default function ChatbotPage() {
         const json = await res.json()
         const parts: any[] = json.candidates?.[0]?.content?.parts ?? []
 
+        console.log('[chatbot] Respuesta Gemini:', JSON.stringify(json).slice(0, 600))
+
         const fnCallPart = parts.find((p: any) => p.functionCall)
         if (fnCallPart) {
           const { name, args } = fnCallPart.functionCall
+          console.log('[chatbot] Acción detectada (function call):', name, args)
           historial.push({ role: 'model', parts: [{ functionCall: { name, args } }] })
 
           let fnResult: any
@@ -296,9 +311,19 @@ export default function ChatbotPage() {
           const m = rawText.match(/\{[\s\S]*\}/)
           if (m) {
             const parsed = JSON.parse(m[0])
-            if (parsed.mensaje && Array.isArray(parsed.slots)) {
+            console.log('[chatbot] Respuesta JSON detectada:', JSON.stringify(parsed))
+            console.log('[chatbot] Acción detectada:', parsed.accion)
+
+            if (parsed.accion === 'crear_reserva' && parsed.datos) {
+              // Fallback: Gemini devolvió JSON en vez de usar Function Calling
+              const result = await crearReserva({ negocio_id: negocioId, ...parsed.datos })
+              console.error('[chatbot] crear_reserva fallback:', result)
+              displayText = parsed.mensaje || result.mensaje
+            } else if (parsed.mensaje && Array.isArray(parsed.slots)) {
               displayText = parsed.mensaje
               slots = parsed.slots.filter((s: any) => typeof s === 'string')
+            } else if (parsed.mensaje) {
+              displayText = parsed.mensaje
             }
           }
         } catch {}

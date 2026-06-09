@@ -112,6 +112,7 @@ export async function crearReserva(params: {
       fecha: params.fecha,
       hora: params.hora,
       estado: 'confirmada',
+      origen: 'chatbot',
     })
     .select('id')
     .single()
