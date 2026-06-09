@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { descontarCreditos } from '../../lib/creditos'
 import { LanguageSelector } from '../../components/LanguageSelector'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -102,6 +104,7 @@ export default function FichaNegocio() {
   const [chatCargando, setChatCargando] = useState(false)
   const [reservaConfirmada, setReservaConfirmada] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<HTMLDivElement>(null)
   const [chatIdioma, setChatIdioma] = useState('es')
   const [modalLogin,      setModalLogin]      = useState(false)
   const [modalServicioId, setModalServicioId] = useState<string|null>(null)
@@ -150,6 +153,22 @@ export default function FichaNegocio() {
       })
       .catch(() => {})
   }, [negocio])
+
+  useEffect(() => {
+    if (!mapRef.current || !coordenadas) return
+    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''
+    const map = new mapboxgl.Map({
+      container: mapRef.current,
+      style: process.env.NEXT_PUBLIC_MAPBOX_STYLE ?? 'mapbox://styles/mapbox/streets-v12',
+      center: coordenadas as [number, number],
+      zoom: 15,
+      interactive: false,
+    })
+    new mapboxgl.Marker({ color: negocio?.color_principal ?? '#6366F1' })
+      .setLngLat(coordenadas as [number, number])
+      .addTo(map)
+    return () => map.remove()
+  }, [coordenadas, negocio?.color_principal])
 
   useEffect(() => {
     if (!id) return
@@ -531,6 +550,10 @@ export default function FichaNegocio() {
         .chat-send:hover { transform:scale(1.08); }
         .chat-send:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
 
+        /* ── MOBILE LOCATION CARD ── */
+        .loc-main { display:none; }
+        @media (max-width: 768px) { .loc-main { display:block !important; } }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
           .nav { padding:0 16px; }
@@ -703,7 +726,7 @@ export default function FichaNegocio() {
                 </span>
               )}
               <div className="strip-meta">
-                {negocio.ciudad && <span className="meta-chip">📍 {negocio.ciudad}</span>}
+                {(negocio.direccion || negocio.ciudad) && <span className="meta-chip">📍 {[negocio.direccion, negocio.ciudad].filter(Boolean).join(', ')}</span>}
                 {negocio.telefono && <span className="meta-chip">📞 {negocio.telefono}</span>}
                 {horarioHoy && (
                   <span className={horarioHoy.abierto ? 'badge-open-strip' : 'badge-closed-strip'}>
@@ -735,7 +758,7 @@ export default function FichaNegocio() {
             {/* Star + meta strip for photo layout */}
             {fotos.length > 0 && (
               <div style={{display:'flex',alignItems:'center',gap:'14px',flexWrap:'wrap',marginBottom:'20px',paddingBottom:'18px',borderBottom:'1px solid rgba(0,0,0,0.05)'}}>
-                {negocio.ciudad && <span className="meta-chip">📍 {negocio.ciudad}</span>}
+                {(negocio.direccion || negocio.ciudad) && <span className="meta-chip">📍 {[negocio.direccion, negocio.ciudad].filter(Boolean).join(', ')}</span>}
                 {negocio.telefono && <span className="meta-chip">📞 {negocio.telefono}</span>}
                 {resenas.length > 0 && (
                   <span style={{display:'inline-flex',alignItems:'center',gap:'4px',fontSize:'13px',color:'#92400E',fontWeight:700,background:'rgba(253,230,138,0.25)',padding:'3px 10px',borderRadius:'100px'}}>
@@ -934,6 +957,21 @@ export default function FichaNegocio() {
                     {(r.texto || r.comentario) && <p className="resena-texto">{r.texto || r.comentario}</p>}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* UBICACIÓN (mobile only) */}
+            {(negocio.direccion || negocio.ciudad) && (
+              <div className="card loc-main" style={{padding:0,overflow:'hidden'}}>
+                <div ref={mapRef} style={{width:'100%',height:'200px',background:'#EEF2FF'}}/>
+                <div style={{padding:'18px 20px 20px'}}>
+                  <div className="map-label">Ubicación</div>
+                  <div className="map-addr">
+                    {negocio.direccion && <div>{negocio.direccion}</div>}
+                    {negocio.ciudad && <div>{negocio.ciudad}{negocio.codigo_postal ? `, ${negocio.codigo_postal}` : ''}</div>}
+                  </div>
+                  <button className="btn-gps" onClick={abrirGPS} style={{marginTop:'2px'}}>🗺️ Cómo llegar</button>
+                </div>
               </div>
             )}
 
