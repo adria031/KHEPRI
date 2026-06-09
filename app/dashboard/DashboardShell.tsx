@@ -69,7 +69,7 @@ const NAV_GROUPS = [
 ]
 
 const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
+  '/dashboard': 'Inicio',
   '/dashboard/mi-negocio': 'Mi negocio',
   '/dashboard/reservas': 'Reservas',
   '/dashboard/clientes': 'Clientes',
@@ -479,19 +479,44 @@ export function DashboardShell({
           .ds-sidebar.open { transform: translateX(0); }
           .ds-hamburger { display: flex; }
           .ds-main { margin-left: 0; padding-bottom: 74px; }
-          .ds-topbar { padding: 0 12px; }
           .ds-content { padding: 16px; }
           .content { padding: 16px; }
           .ds-notif-btn { display: none; }
           .ds-user-av { display: none; }
-          .ds-page-title { font-size: 14px; }
-          .ds-bc-current { font-size: 13px; }
           .ds-main, .ds-content { overflow-x: hidden; max-width: 100vw; }
           .ds-bottom-nav { display: flex; }
-          .ds-topbar { position: relative; }
-          .ds-breadcrumb-wrap { display: none; }
-          .ds-topbar-title-mobile { display: block; }
-          .ds-negsel-wrap { display: block; }
+
+          /* Topbar móvil: 2 líneas para evitar solapamiento título/negocio */
+          .ds-topbar {
+            height: auto;
+            padding: 8px 12px 6px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 2px;
+            position: sticky;
+          }
+          /* Línea 1: hamburger + título de sección (pequeño, secundario) */
+          .ds-topbar-left { width: 100%; gap: 8px; }
+          .ds-breadcrumb-wrap { display: flex; align-items: center; min-width: 0; flex: 1; overflow: hidden; }
+          .ds-topbar-title-mobile { display: none; }
+          /* En móvil solo mostramos el nodo actual, sin breadcrumb completo */
+          .ds-bc-link, .ds-bc-section, .ds-bc-sep { display: none; }
+          .ds-page-title, .ds-bc-current {
+            font-size: 12px;
+            color: var(--ds-text2);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+          }
+          /* Línea 2: selector de negocio + controles (contenido principal) */
+          .ds-topbar-right {
+            width: 100%;
+            justify-content: flex-start;
+            padding-left: 28px;
+          }
+          .ds-negsel-wrap { flex: 1; min-width: 0; }
         }
         @media (max-width: 480px) {
           .ds-content { padding: 12px; }

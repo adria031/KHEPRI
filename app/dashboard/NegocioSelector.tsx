@@ -388,7 +388,7 @@ export function NegocioSelector({
         @media (min-width: 769px) { .ns-dt { display: block; } }
 
         /* Mobile trigger — only shown ≤768px */
-        .ns-mb { display: none; align-items: center; gap: 7px; padding: 6px 10px 6px 8px; background: #F7F9FC; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: #111827; white-space: nowrap; transition: all 0.15s; max-width: 160px; }
+        .ns-mb { display: none; align-items: center; gap: 7px; padding: 6px 10px 6px 8px; background: #F7F9FC; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; color: #0F0F1A; white-space: nowrap; transition: all 0.15s; max-width: 100%; }
         @media (max-width: 768px) { .ns-mb { display: flex; } }
 
         @keyframes ns-in { from { opacity: 0; transform: translateY(-8px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -464,8 +464,8 @@ export function NegocioSelector({
           ? <span style={{ fontSize: 16 }}>📊</span>
           : <NegInitials nombre={activo.nombre} size={22} />
         }
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100 }}>
-          {esTodos ? 'Todos' : activo.nombre}
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+          {esTodos ? 'Todos mis negocios' : activo.nombre}
         </span>
         <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
           <path d="M2 4l4 4 4-4" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
