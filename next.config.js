@@ -2,6 +2,9 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_META_APP_ID: process.env.NEXT_PUBLIC_META_APP_ID || '1006980128417758',
+  },
   async headers() {
     const securityHeaders = [
       { key: 'X-Frame-Options',       value: 'DENY' },

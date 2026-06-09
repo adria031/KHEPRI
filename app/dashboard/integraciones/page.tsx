@@ -5,7 +5,7 @@ import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { DashboardShell } from '../DashboardShell'
 
-const META_APP_ID  = process.env.NEXT_PUBLIC_META_APP_ID ?? ''
+const META_APP_ID  = process.env.NEXT_PUBLIC_META_APP_ID || '1006980128417758'
 const APP_URL      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khepria.app'
 const CALLBACK_URI = `${APP_URL}/api/meta/callback`
 
