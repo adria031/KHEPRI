@@ -476,6 +476,7 @@ export default function MarketingPage() {
     titulo: string; subtitulo: string; dato: string | null; cta: string
     descripcion?: string; hashtags?: string[]; layout?: string
   } | null>(null)
+  const [imagenAI, setImagenAI]         = useState<string | null>(null)
   const [generandoImg, setGenerandoImg] = useState(false)
   const [imgError, setImgError]       = useState('')
   const [imgDescargando, setImgDescargando] = useState(false)
@@ -578,53 +579,42 @@ export default function MarketingPage() {
     }
     const esHistoria = formato === 'historia'
     const serviciosStr = negServicios.slice(0, 8).join(', ') || 'servicios generales'
+    const dimensiones = esHistoria ? '1080x1920px (vertical)' : '1080x1080px (cuadrada)'
 
-    const layoutGuide: Record<string, string> = {
-      promocion: 'bold o estatico',
-      nuevo_servicio: 'diagonal o elegante',
-      consejo: 'minimalista',
-      oferta: 'bold o diagonal',
-      presentacion: 'elegante o estatico',
-    }
-
-    const prompt = `Eres el community manager de "${negocioNombre}", un negocio de ${negocio?.tipo ?? 'servicios'} en España.
-Tono: ${tonoLabel[negTono] ?? negTono}.
+    const prompt = `Crea una imagen de Instagram ${dimensiones} para el negocio "${negocioNombre}" (${negocio?.tipo ?? 'servicios'}, España).
+Tipo de publicación: ${tipoLabel[tipoContenido]}${servicio ? ` destacando "${servicio}"` : ''}.
+Tono visual: ${tonoLabel[negTono] ?? negTono}.
+Colores de marca: ${colorPpal} (principal) y ${colorSec} (secundario).
 ${negPalabras.length ? `Palabras clave: ${negPalabras.join(', ')}.` : ''}
 ${negFrase ? `Frase de marca: "${negFrase}".` : ''}
 Servicios: ${serviciosStr}.
-Formato: ${esHistoria ? 'historia vertical Instagram' : 'publicación cuadrada Instagram'}.
-Tipo de post: "${tipoLabel[tipoContenido]}"${servicio ? ` — destacando "${servicio}"` : ''}.
-Layout sugerido: ${layoutGuide[tipoContenido] ?? 'estatico'}.
 
-Genera un post ${tipoLabel[tipoContenido]} ORIGINAL y con CARÁCTER.
-NUNCA uses frases genéricas como "Descubre", "Transforma", "Potencia", "Eleva" o similares.
-El título debe sorprender. La descripción debe sonar humana, no de plantilla.
-Si hay dato, que sea concreto y creíble (porcentaje, número de clientes, años, minutos…).
+La imagen debe ser profesional, moderna y llamativa para Instagram.
+Incluye el nombre del negocio "${negocioNombre}" como texto en la imagen.
+Usa los colores de marca indicados como paleta dominante.
+El diseño debe transmitir el tono "${tonoLabel[negTono] ?? negTono}".
 
-Devuelve SOLO JSON sin markdown:
-{
-  "titulo": "máximo 5 palabras impactantes",
-  "subtitulo": "frase memorable máximo 10 palabras",
-  "dato": "cifra específica o null",
-  "cta": "llamada acción urgente máximo 5 palabras",
-  "descripcion": "texto Instagram 150 palabras emotivo con personalidad, tono ${tonoLabel[negTono] ?? negTono}",
-  "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5"],
-  "layout": "uno de: estatico|diagonal|minimalista|bold|elegante"
-}`
+Además del visual, devuelve en texto plano (NO dentro de la imagen) un JSON con:
+{"descripcion":"caption emotivo 120 palabras tono ${tonoLabel[negTono] ?? negTono} para acompañar el post","hashtags":["#tag1","#tag2","#tag3","#tag4","#tag5"]}`
 
     try {
-      const res = await fetch('/api/ai', {
+      const res = await fetch('/api/marketing/generar-imagen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       })
-      const { text } = await res.json()
-      const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
-      setImgContenido(parsed)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `HTTP ${res.status}`)
+      }
+      const { imagen, descripcion, hashtags } = await res.json()
+      setImagenAI(imagen)
+      setImgContenido({ titulo: '', subtitulo: '', dato: null, cta: '', descripcion, hashtags })
       await descontarCreditos(negocioId, 10, 'crear_contenido_marketing')
       setPaso(3)
-    } catch {
-      setImgError('Error al generar el contenido. Inténtalo de nuevo.')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error desconocido'
+      setImgError(`Error al generar la imagen: ${msg}`)
     }
     setGenerandoImg(false)
   }
@@ -634,6 +624,16 @@ Devuelve SOLO JSON sin markdown:
     if (!imgContenido) return
     setImgDescargando(true)
     setImgError('')
+
+    // Descarga directa cuando hay imagen generada por IA
+    if (imagenAI) {
+      const link = document.createElement('a')
+      link.download = `khepria-${formato}-${Date.now()}.png`
+      link.href = imagenAI
+      link.click()
+      setImgDescargando(false)
+      return
+    }
     const html2canvas = (await import('html2canvas')).default
     let intentos = 0
     while (intentos < 3) {
@@ -959,7 +959,7 @@ Devuelve SOLO JSON sin markdown:
 
           {/* Steps indicator */}
           <div className="mk-steps">
-            <button className={`mk-step${paso === 1 ? ' active' : ''}`} onClick={() => { setPaso(1); setImgContenido(null) }}>
+            <button className={`mk-step${paso === 1 ? ' active' : ''}`} onClick={() => { setPaso(1); setImgContenido(null); setImagenAI(null) }}>
               1 · Formato
             </button>
             <button className={`mk-step${paso === 2 ? ' active' : ''}`} onClick={() => paso >= 2 && setPaso(2)}>
@@ -1146,42 +1146,15 @@ Devuelve SOLO JSON sin markdown:
           {/* PASO 3: Resultado */}
           {paso === 3 && imgContenido && (
             <div>
-              {/* Quick-adjustments toolbar */}
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:16, padding:'10px 14px',
-                background:'#F8FAFC', borderRadius:12, border:'1px solid #E5E7EB', alignItems:'center' }}>
-                <span style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:0.5, marginRight:2 }}>Ajustar:</span>
-                {(['marca','oscuro','claro'] as EstiloType[]).map(e => {
-                  const sel = estilo === e
-                  const overrd = sel ? (
-                    e === 'oscuro' ? { background:'#080810', color:'white', borderColor:'#080810' } :
-                    e === 'claro'  ? { background:'#F7F9FC', color:'#111827', borderColor:'#4F46E5' } :
-                    { background:`linear-gradient(135deg,${colorPpal},${colorSec})`, color:'white', borderColor:'transparent' }
-                  ) : undefined
-                  return <PillBtn key={e} active={sel} colorOverride={overrd} onClick={() => setEstilo(e)}>
-                    {e === 'marca' ? '🎨' : e === 'oscuro' ? '🌙' : '☀️'} {e === 'marca' ? 'Marca' : e === 'oscuro' ? 'Oscuro' : 'Claro'}
-                  </PillBtn>
-                })}
-                <div style={{ width:1, height:16, background:'#E5E7EB', margin:'0 2px' }} />
-                {(['moderna','elegante','bold'] as FuenteType[]).map(f => (
-                  <PillBtn key={f} active={fuente === f} onClick={() => setFuente(f)}>
-                    {f === 'moderna' ? 'Moderna' : f === 'elegante' ? 'Elegante' : 'Bold'}
-                  </PillBtn>
-                ))}
-                <div style={{ width:1, height:16, background:'#E5E7EB', margin:'0 2px' }} />
-                <PillBtn active={mostrarLogo} colorOverride={mostrarLogo ? { background:'#ECFDF5', color:'#059669', borderColor:'#6EE7B7' } : undefined} onClick={() => setMostrarLogo(prev => !prev)}>
-                  {mostrarLogo ? '✓' : '○'} Logo
-                </PillBtn>
-                <PillBtn active={mostrarUrl} colorOverride={mostrarUrl ? { background:'#ECFDF5', color:'#059669', borderColor:'#6EE7B7' } : undefined} onClick={() => setMostrarUrl(prev => !prev)}>
-                  {mostrarUrl ? '✓' : '○'} Nombre
-                </PillBtn>
-              </div>
-
               <div className="mk-preview-wrap">
-                {/* Preview miniatura visible */}
-                <div className="mk-preview-img" style={{ transform: formato === 'historia' ? 'scale(0.6)' : 'scale(0.55)', transformOrigin:'top left', marginBottom: formato === 'historia' ? -215 : -8 }}>
-                  {formato === 'publicacion'
-                    ? <TemplatePublicacion {...tplProps(imgContenido)} />
-                    : <TemplateHistoria   {...tplProps(imgContenido)} />}
+                {/* Preview: imagen AI o template HTML */}
+                <div className="mk-preview-img" style={imagenAI ? { marginBottom: 0 } : { transform: formato === 'historia' ? 'scale(0.6)' : 'scale(0.55)', transformOrigin:'top left', marginBottom: formato === 'historia' ? -215 : -8 }}>
+                  {imagenAI
+                    ? <img src={imagenAI} alt="Post generado por IA"
+                        style={{ width: formato === 'historia' ? '280px' : '300px', height: 'auto', borderRadius: 12, display: 'block', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }} />
+                    : formato === 'publicacion'
+                      ? <TemplatePublicacion {...tplProps(imgContenido)} />
+                      : <TemplateHistoria   {...tplProps(imgContenido)} />}
                 </div>
 
                 {/* Actions + text */}
@@ -1214,7 +1187,7 @@ Devuelve SOLO JSON sin markdown:
                     </div>
                   )}
 
-                  <button className="mk-restart-btn" style={{ marginTop:14 }} onClick={() => { setPaso(1); setImgContenido(null); setImgError('') }}>
+                  <button className="mk-restart-btn" style={{ marginTop:14 }} onClick={() => { setPaso(1); setImgContenido(null); setImagenAI(null); setImgError('') }}>
                     ↩ Crear otro contenido
                   </button>
                 </div>
