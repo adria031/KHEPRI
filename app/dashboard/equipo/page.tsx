@@ -207,6 +207,17 @@ export default function Equipo() {
       const { error: err } = await dbMutation({ op:'update', table:'trabajadores', id:editando.id, negocioId:negocioId!, data:datos })
       if (err) { setError(err); setGuardando(false); return }
       setTrabajadores(prev => prev.map(t => t.id === editando.id ? { ...t, ...datos } : t))
+      if (datos.email && !editando.email) {
+        try {
+          const invRes = await fetch('/api/invitar-trabajador', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ email:datos.email, nombreTrabajador:datos.nombre, especialidad:datos.especialidad, nombreNegocio:negocio?.nombre||'tu negocio', negocioId }) })
+          if (!invRes.ok) {
+            const invErr = await invRes.json().catch(() => ({}))
+            setError(`Guardado, pero el email falló: ${invErr?.error || invRes.status}`)
+            setGuardando(false); return
+          }
+        } catch (e: unknown) { setError(`Guardado, pero el email falló: ${(e as Error).message}`); setGuardando(false); return }
+      }
     } else {
       const { data, error: err } = await dbMutation({ op:'insert', table:'trabajadores', negocioId:negocioId!, data:{ ...datos, negocio_id:negocioId, activo:true } })
       if (err || !data) { setError(err || 'No se pudo guardar.'); setGuardando(false); return }
