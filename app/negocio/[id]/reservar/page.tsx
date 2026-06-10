@@ -112,6 +112,12 @@ export default function Reservar() {
   const [listaEsperaEnviada, setListaEsperaEnviada] = useState(false)
   const [enviandoEspera, setEnviandoEspera] = useState(false)
 
+  // Tap vs scroll detection
+  const [touchStart, setTouchStart] = useState<{x:number, y:number} | null>(null)
+  // Confirm double-tap
+  const [confirmPending, setConfirmPending] = useState(false)
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Captcha
   const [captchaToken, setCaptchaToken] = useState('')
   const captchaRef = useRef<HCaptcha>(null)
@@ -480,6 +486,34 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     )
   }
 
+  function handleTouchStart(e: React.TouchEvent) {
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY })
+  }
+
+  function handleTouchEnd(e: React.TouchEvent, action: () => void) {
+    if (!touchStart) return
+    const deltaX = Math.abs(e.changedTouches[0].clientX - touchStart.x)
+    const deltaY = Math.abs(e.changedTouches[0].clientY - touchStart.y)
+    if (deltaX < 8 && deltaY < 8) {
+      e.preventDefault()
+      action()
+    }
+    setTouchStart(null)
+  }
+
+  function handleConfirmarTap() {
+    if (enviando) return
+    if (!confirmPending) {
+      setConfirmPending(true)
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+      confirmTimerRef.current = setTimeout(() => setConfirmPending(false), 3000)
+    } else {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+      setConfirmPending(false)
+      confirmar()
+    }
+  }
+
   function avanzarServicios() {
     if (serviciosSeleccionados.length === 0) return
     if (trabajadores.length <= 1) {
@@ -711,8 +745,9 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                         return (
                           <div key={s.id}
                             className={`opcion ${sel ? 'selected' : ''}`}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={(e) => handleTouchEnd(e, () => toggleServicio(s))}
                             onClick={() => toggleServicio(s)}
-                            onTouchEnd={(e) => { e.preventDefault(); toggleServicio(s) }}
                             style={{ cursor: 'pointer' }}
                           >
                             <div style={{ width: '22px', height: '22px', borderRadius: '6px', border: `2px solid ${sel ? '#1D4ED8' : 'rgba(0,0,0,0.15)'}`, background: sel ? '#1D4ED8' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all .15s' }}>
@@ -759,8 +794,9 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 </div>
                 <div className="opcion-lista">
                   <div className={`opcion ${!trabajador ? 'selected' : ''}`}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={(e) => handleTouchEnd(e, () => { setTrabajador(null); setPaso(2) })}
                     onClick={() => { setTrabajador(null); setPaso(2) }}
-                    onTouchEnd={(e) => { e.preventDefault(); setTrabajador(null); setPaso(2) }}
                   >
                     <div className="worker-circle" style={{background:'rgba(156,163,175,0.15)', color:'#6B7280', fontSize:'20px'}}>🎲</div>
                     <div>
@@ -772,8 +808,9 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                     const initials = t.nombre.split(' ').map((w: string) => w[0]).slice(0,2).join('').toUpperCase()
                     return (
                       <div key={t.id} className={`opcion ${trabajador?.id === t.id ? 'selected' : ''}`}
+                        onTouchStart={handleTouchStart}
+                        onTouchEnd={(e) => handleTouchEnd(e, () => { setTrabajador(t); setPaso(2) })}
                         onClick={() => { setTrabajador(t); setPaso(2) }}
-                        onTouchEnd={(e) => { e.preventDefault(); setTrabajador(t); setPaso(2) }}
                       >
                         <div className="worker-circle" style={{background: trabajadorBg(t, idx), color: trabajadorColor(t, idx)}}>
                           {initials}
@@ -817,13 +854,13 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                         <div
                           key={fechaISO}
                           className={`day-chip ${disp ? 'disponible' : 'cerrado'} ${selec ? 'seleccionado' : ''} ${esHoy ? 'es-hoy' : ''}`}
-                          onClick={() => {
+                          onTouchStart={handleTouchStart}
+                          onTouchEnd={(e) => handleTouchEnd(e, () => {
                             if (!disp) return
                             setFecha(fechaISO); setHora(''); setListaEsperaMode(false); setListaEsperaEnviada(false); setPaso(3)
-                          }}
-                          onTouchEnd={(e) => {
+                          })}
+                          onClick={() => {
                             if (!disp) return
-                            e.preventDefault()
                             setFecha(fechaISO); setHora(''); setListaEsperaMode(false); setListaEsperaEnviada(false); setPaso(3)
                           }}
                         >
@@ -859,8 +896,9 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                           <div
                             key={s}
                             className={`slot-item ${ocupado ? 'ocupado' : ''} ${hora === s ? 'selected' : ''}`}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={(e) => handleTouchEnd(e, () => { if (!ocupado) { setHora(s); setPaso(4) } })}
                             onClick={() => { if (!ocupado) { setHora(s); setPaso(4) } }}
-                            onTouchEnd={(e) => { if (!ocupado) { e.preventDefault(); setHora(s); setPaso(4) } }}
                           >
                             <span className="slot-dot" />
                             <span className="slot-hora">{s}</span>
@@ -907,8 +945,9 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                               style={{padding:'12px 14px', border:'1.5px solid rgba(0,0,0,0.1)', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', outline:'none'}}
                             />
                             <button
+                              onTouchStart={handleTouchStart}
+                              onTouchEnd={(e) => handleTouchEnd(e, inscribirEspera)}
                               onClick={inscribirEspera}
-                              onTouchEnd={(e) => { e.preventDefault(); inscribirEspera() }}
                               disabled={enviandoEspera || !nombre.trim() || !email.trim()}
                               style={{padding:'13px', background:'#92400E', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor:'pointer', opacity: enviandoEspera ? 0.6 : 1, minHeight:'44px'}}
                             >
@@ -917,8 +956,9 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                           </div>
                         ) : (
                           <button
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={(e) => handleTouchEnd(e, () => setListaEsperaMode(true))}
                             onClick={() => setListaEsperaMode(true)}
-                            onTouchEnd={(e) => { e.preventDefault(); setListaEsperaMode(true) }}
                             style={{width:'100%', padding:'13px', background:'#92400E', color:'white', border:'none', borderRadius:'10px', fontFamily:'inherit', fontSize:'14px', fontWeight:700, cursor:'pointer', minHeight:'44px'}}
                           >
                             ⏳ Apuntarme a la lista de espera
@@ -997,12 +1037,17 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 {error && <div className="error-msg">{error}</div>}
 
                 <button className="btn-primary"
-                  onClick={confirmar}
-                  onTouchEnd={(e) => { e.preventDefault(); if (!enviando) confirmar() }}
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={(e) => handleTouchEnd(e, handleConfirmarTap)}
+                  onClick={handleConfirmarTap}
                   disabled={enviando}
-                  style={{ minHeight: '48px', width: '100%' }}
+                  style={{
+                    minHeight: '48px', width: '100%',
+                    background: confirmPending ? 'linear-gradient(135deg,#F59E0B,#D97706)' : undefined,
+                    transition: 'background 0.2s',
+                  }}
                 >
-                  {enviando ? 'Confirmando...' : '✓ Confirmar reserva'}
+                  {enviando ? 'Confirmando...' : confirmPending ? '¿Confirmar reserva? Pulsa de nuevo' : '✓ Confirmar reserva'}
                 </button>
               </>
             )}
