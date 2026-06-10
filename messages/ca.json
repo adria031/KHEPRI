@@ -95,7 +95,8 @@
       "analytics": "Analítica",
       "settings": "Configuració",
       "integrations": "Integracions",
-      "upgrade": "Millora el pla"
+      "upgrade": "Millora el pla",
+      "credits": "Crèdits"
     },
     "titles": {
       "dashboard": "Tauler",
@@ -115,7 +116,8 @@
       "payroll": "Nòmines",
       "analytics": "Analítica",
       "settings": "Configuració",
-      "integrations": "Integracions"
+      "integrations": "Integracions",
+      "credits": "Crèdits"
     },
     "logout": "Tanca la sessió",
     "allBusinesses": "Tots els negocis",

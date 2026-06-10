@@ -95,7 +95,8 @@
       "analytics": "Analytics",
       "settings": "Settings",
       "integrations": "Integrations",
-      "upgrade": "Upgrade plan"
+      "upgrade": "Upgrade plan",
+      "credits": "Credits"
     },
     "titles": {
       "dashboard": "Dashboard",
@@ -115,7 +116,8 @@
       "payroll": "Payroll",
       "analytics": "Analytics",
       "settings": "Settings",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "credits": "Credits"
     },
     "logout": "Sign out",
     "allBusinesses": "All businesses",

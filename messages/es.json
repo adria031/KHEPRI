@@ -95,7 +95,8 @@
       "analytics": "Analytics",
       "settings": "Ajustes",
       "integrations": "Integraciones",
-      "upgrade": "Upgrade plan"
+      "upgrade": "Upgrade plan",
+      "credits": "Créditos"
     },
     "titles": {
       "dashboard": "Inicio",
@@ -115,7 +116,8 @@
       "payroll": "Nóminas",
       "analytics": "Analytics",
       "settings": "Ajustes",
-      "integrations": "Integraciones"
+      "integrations": "Integraciones",
+      "credits": "Créditos"
     },
     "logout": "Cerrar sesión",
     "allBusinesses": "Todos los negocios",

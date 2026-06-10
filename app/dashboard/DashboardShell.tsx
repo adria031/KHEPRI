@@ -63,7 +63,8 @@ const NAV_GROUPS = [
     items: [
       { icon: '⚙️', label: 'Ajustes',       href: '/dashboard/ajustes' },
       { icon: '🔌', label: 'Integraciones', href: '/dashboard/integraciones' },
-      { icon: '⚡', label: 'Upgrade plan',  href: '/upgrade' },
+      { icon: '⚡', label: 'Créditos',      href: '/dashboard/creditos' },
+      { icon: '🚀', label: 'Upgrade plan',  href: '/upgrade' },
     ],
   },
 ]
@@ -153,6 +154,7 @@ export function DashboardShell({
     '/dashboard/analytics':    t('nav.analytics'),
     '/dashboard/ajustes':      t('nav.settings'),
     '/dashboard/integraciones':t('nav.integrations'),
+    '/dashboard/creditos':     t('nav.credits'),
     '/upgrade':                t('nav.upgrade'),
   }
 
@@ -184,6 +186,7 @@ export function DashboardShell({
     '/dashboard/analytics':    t('titles.analytics'),
     '/dashboard/ajustes':      t('titles.settings'),
     '/dashboard/integraciones':t('titles.integrations'),
+    '/dashboard/creditos':     t('titles.credits'),
   }
 
   const router = useRouter()
