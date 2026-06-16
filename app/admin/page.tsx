@@ -94,6 +94,14 @@ export default function AdminPage() {
   const router = useRouter()
   const [cargando,    setCargando]    = useState(true)
   const [tabActiva,   setTabActiva]   = useState<TabActiva>('overview')
+
+  // ── PIN guard ─────────────────────────────────────────────────────────────
+  const [pin,   setPin]   = useState('')
+  const [pinOk, setPinOk] = useState(false)
+
+  useEffect(() => {
+    if (sessionStorage.getItem('admin_pin_ok') === 'true') setPinOk(true)
+  }, [])
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // KPIs
@@ -337,6 +345,45 @@ export default function AdminPage() {
     { id: 'invitar',    icon: '📩', label: 'Invitar' },
     { id: 'actividad',  icon: '🕐', label: 'Actividad' },
   ]
+
+  function verificarPin() {
+    if (pin === process.env.NEXT_PUBLIC_ADMIN_PIN) {
+      sessionStorage.setItem('admin_pin_ok', 'true')
+      setPinOk(true)
+    } else {
+      alert('PIN incorrecto')
+      setPin('')
+    }
+  }
+
+  if (!pinOk) return (
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F9FF', fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: 36, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: 320, width: '100%' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔐</div>
+          <h2 style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 8, color: '#111827' }}>Panel Admin</h2>
+          <p style={{ fontSize: 14, color: '#6B7280', marginBottom: 24 }}>Introduce el PIN de acceso</p>
+          <input
+            type="password"
+            value={pin}
+            onChange={e => setPin(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && verificarPin()}
+            placeholder="••••"
+            maxLength={6}
+            style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E5E7EB', fontSize: 20, textAlign: 'center', letterSpacing: 8, marginBottom: 16, outline: 'none', fontFamily: 'inherit' }}
+            autoFocus
+          />
+          <button
+            onClick={verificarPin}
+            style={{ width: '100%', padding: 13, borderRadius: 12, background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Acceder →
+          </button>
+        </div>
+      </div>
+    </>
+  )
 
   if (cargando) {
     return (
