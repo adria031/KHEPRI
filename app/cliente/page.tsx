@@ -1359,14 +1359,14 @@ function ClienteContent(){
 
           <div className="perf-menu">
             {[
-              {icon:'📅',label:'Mis reservas',sub:'Ver historial completo',bg:'#EFF6FF',tab:'reservas'},
-              {icon:'❤️',label:'Favoritos',sub:`${favs.length} negocios guardados`,bg:'#FDF2F8',tab:'favoritos'},
-              {icon:'⭐',label:'Mis reseñas',sub:'Valora tus visitas',bg:'#FFFBEB',tab:''},
-              {icon:'🎁',label:'Puntos y cupones',sub:'Tus beneficios',bg:'#F0FDF4',tab:''},
-              {icon:'🔔',label:'Notificaciones',sub:'Avisos y recordatorios',bg:'#F5F3FF',tab:''},
-              {icon:'⚙️',label:'Configuración',sub:'Cuenta y privacidad',bg:'#F8FAFC',tab:''},
+              {icon:'📅',label:'Mis reservas',sub:'Ver historial completo',bg:'#EFF6FF',href:'/cliente/perfil?s=reservas'},
+              {icon:'❤️',label:'Favoritos',sub:`${favs.length} negocios guardados`,bg:'#FDF2F8',href:'/cliente/perfil?s=favoritos'},
+              {icon:'⭐',label:'Mis reseñas',sub:'Valora tus visitas',bg:'#FFFBEB',href:'/cliente/perfil?s=resenas'},
+              {icon:'🎁',label:'Puntos y cupones',sub:'Tus beneficios',bg:'#F0FDF4',href:'/cliente/perfil?s=puntos'},
+              {icon:'🔔',label:'Notificaciones',sub:'Avisos y recordatorios',bg:'#F5F3FF',href:'/cliente/perfil?s=notifs'},
+              {icon:'⚙️',label:'Configuración',sub:'Cuenta y privacidad',bg:'#F8FAFC',href:'/cliente/perfil'},
             ].map((item,i)=>(
-              <Link key={i} href={item.tab?`/cliente?tab=${item.tab}`:'#'} className="perf-item" style={{textDecoration:'none'}}>
+              <Link key={i} href={item.href} className="perf-item" style={{textDecoration:'none'}}>
                 <div style={{width:'40px',height:'40px',borderRadius:'12px',background:item.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',flexShrink:0}}>{item.icon}</div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:'14px',fontWeight:700,color:'#0F172A',marginBottom:'1px'}}>{item.label}</div>

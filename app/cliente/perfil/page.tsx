@@ -28,6 +28,16 @@ type NegFav = {
   fotos: string[] | null
 }
 
+type MiResena = {
+  id: string
+  negocio_id: string
+  reserva_id: string | null
+  valoracion: number
+  comentario: string | null
+  created_at: string
+  negocios: { nombre: string; tipo: string; logo_url: string | null } | null
+}
+
 const tipoEmoji: Record<string, string> = {
   peluqueria: '💈', barberia: '✂️', estetica: '💅', spa: '💆',
   clinica: '🏥', yoga: '🧘', gimnasio: '🏋️', dentista: '🦷',
@@ -61,7 +71,7 @@ export default function PerfilCliente() {
   const [form, setForm] = useState({ nombre: '', email: '', telefono: '', ciudad: '', avatar_url: '' })
 
   // Sección activa
-  const [seccion, setSeccion] = useState<'datos' | 'reservas' | 'favoritos' | 'puntos' | 'notifs'>('datos')
+  const [seccion, setSeccion] = useState<'datos' | 'reservas' | 'favoritos' | 'puntos' | 'notifs' | 'resenas'>('datos')
 
   // Tab dentro de reservas
   const [tabReservas, setTabReservas] = useState<'proximas' | 'pasadas' | 'canceladas'>('proximas')
@@ -81,6 +91,10 @@ export default function PerfilCliente() {
   const [negsFavs,     setNegsFavs]     = useState<NegFav[]>([])
   const [cargandoFavs, setCargandoFavs] = useState(false)
 
+  // Reseñas
+  const [misResenas,       setMisResenas]       = useState<MiResena[]>([])
+  const [cargandoResenas,  setCargandoResenas]  = useState(false)
+
   // Notificaciones
   const [notifRecordatorios, setNotifRecordatorios] = useState(true)
   const [notifNovedades,     setNotifNovedades]     = useState(true)
@@ -91,6 +105,15 @@ export default function PerfilCliente() {
   const [confirmCierre, setConfirmCierre] = useState(false)
 
   // ── Init ──────────────────────────────────────────────────────────────────
+
+  // Read ?s= param on mount to deep-link into a section
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const s = new URLSearchParams(window.location.search).get('s')
+    if (s && ['datos','reservas','favoritos','puntos','notifs','resenas'].includes(s)) {
+      setSeccion(s as 'datos' | 'reservas' | 'favoritos' | 'puntos' | 'notifs' | 'resenas')
+    }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -115,9 +138,9 @@ export default function PerfilCliente() {
     })
   }, [])
 
-  // Cargar reservas
+  // Cargar reservas (también para puntos y reseñas)
   useEffect(() => {
-    if ((seccion !== 'reservas' && seccion !== 'puntos') || (!userId && !form.email)) return
+    if ((seccion !== 'reservas' && seccion !== 'puntos' && seccion !== 'resenas') || (!userId && !form.email)) return
     setCargandoReservas(true)
     let filter = `cliente_email.eq.${form.email}`
     if (userId) filter = `user_id.eq.${userId},${filter}`
@@ -173,6 +196,23 @@ export default function PerfilCliente() {
         setCargandoFavs(false)
       })
   }, [seccion, userId])
+
+  // Cargar mis reseñas escritas
+  useEffect(() => {
+    if (seccion !== 'resenas' || !userId || cargandoReservas) return
+    const completadasIds = reservas.filter(r => r.estado === 'completada').map(r => r.id)
+    if (completadasIds.length === 0) return
+    setCargandoResenas(true)
+    supabase
+      .from('resenas')
+      .select('id, negocio_id, reserva_id, valoracion, comentario, created_at, negocios(nombre, tipo, logo_url)')
+      .in('reserva_id', completadasIds)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setMisResenas((data as unknown as MiResena[]) || [])
+        setCargandoResenas(false)
+      })
+  }, [seccion, userId, reservas, cargandoReservas])
 
   // ── Acciones ──────────────────────────────────────────────────────────────
 
@@ -272,8 +312,9 @@ export default function PerfilCliente() {
         .avatar-init { width: 84px; height: 84px; border-radius: 50%; background: linear-gradient(135deg,#B8D8F8,#D4C5F9); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: #1D4ED8; border: 3px solid white; box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
         .avatar-edit { position: absolute; bottom: 0; right: 0; width: 26px; height: 26px; background: #111827; border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; }
 
-        .sec-tabs { display: flex; background: #F3F4F6; border-radius: 12px; padding: 3px; margin-bottom: 20px; gap: 2px; }
-        .sec-tab  { flex: 1; padding: 8px 4px; background: none; border: none; border-radius: 9px; font-family: inherit; font-size: 12px; font-weight: 600; color: #6B7280; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .sec-tabs { display: flex; background: #F3F4F6; border-radius: 12px; padding: 3px; margin-bottom: 20px; gap: 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .sec-tabs::-webkit-scrollbar { display: none; }
+        .sec-tab  { flex: 0 0 auto; padding: 8px 10px; background: none; border: none; border-radius: 9px; font-family: inherit; font-size: 12px; font-weight: 600; color: #6B7280; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
         .sec-tab.active { background: white; color: #111827; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 
         .res-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
@@ -377,6 +418,7 @@ export default function PerfilCliente() {
             { key: 'reservas',  label: '📅 Reservas' },
             { key: 'favoritos', label: '❤️ Favs' },
             { key: 'puntos',    label: '⭐ Puntos' },
+            { key: 'resenas',   label: '💬 Reseñas' },
             { key: 'notifs',    label: '🔔 Avisos' },
           ] as const).map(t => (
             <button key={t.key} className={`sec-tab ${seccion === t.key ? 'active' : ''}`} onClick={() => setSeccion(t.key)}>
@@ -660,6 +702,106 @@ export default function PerfilCliente() {
                         </div>
                         <div style={{ fontSize: '17px', fontWeight: 800, color: '#92400E', flexShrink: 0 }}>+{r.puntos_ganados} ⭐</div>
                       </div>
+                    </div>
+                  )
+                })
+              )}
+            </>
+          )
+        })()}
+
+        {/* ══ MIS RESEÑAS ══ */}
+        {seccion === 'resenas' && (() => {
+          const resenasPorReservaId = new Set(misResenas.map(r => r.reserva_id))
+          const pendientes = reservas.filter(r => r.estado === 'completada' && !resenasPorReservaId.has(r.id))
+          const isLoading = cargandoReservas || cargandoResenas
+          return (
+            <>
+              {/* Reseñas pendientes */}
+              {!isLoading && pendientes.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#374151', marginBottom: '10px' }}>
+                    Pendientes de valorar
+                  </div>
+                  {pendientes.map(r => {
+                    const neg   = r.negocios
+                    const emoji = tipoEmoji[neg?.tipo?.toLowerCase() ?? ''] ?? '🏪'
+                    return (
+                      <div key={r.id} className="res-card">
+                        <div className="res-header" style={{ marginBottom: 0 }}>
+                          <div className="res-icon">
+                            {neg?.logo_url
+                              ? <img src={neg.logo_url} alt={neg.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : emoji
+                            }
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {neg?.nombre ?? 'Negocio'}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                              {r.servicios?.nombre ?? '—'} · {formatFecha(r.fecha)}
+                            </div>
+                          </div>
+                          {neg?.id && (
+                            <Link href={`/negocio/${neg.id}/resena?reserva_id=${r.id}`} className="btn-action btn-green" style={{ flexShrink: 0 }}>
+                              ⭐ Valorar
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Reseñas escritas */}
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#374151', marginBottom: '10px' }}>
+                {misResenas.length > 0 ? `${misResenas.length} reseña${misResenas.length > 1 ? 's' : ''} escritas` : 'Mis reseñas'}
+              </div>
+
+              {isLoading ? (
+                <div style={{ textAlign: 'center', padding: '52px 20px', color: '#9CA3AF', fontSize: '14px' }}>Cargando...</div>
+              ) : misResenas.length === 0 ? (
+                <div className="empty">
+                  <div className="empty-emoji">💬</div>
+                  <div className="empty-title">
+                    {pendientes.length > 0 ? 'Aún no has escrito reseñas' : 'Sin reseñas todavía'}
+                  </div>
+                  <div className="empty-sub">
+                    Cuando completes una cita podrás valorar el servicio.
+                  </div>
+                </div>
+              ) : (
+                misResenas.map(res => {
+                  const neg   = res.negocios
+                  const emoji = tipoEmoji[neg?.tipo?.toLowerCase() ?? ''] ?? '🏪'
+                  return (
+                    <div key={res.id} className="res-card">
+                      <div className="res-header" style={{ marginBottom: '8px' }}>
+                        <div className="res-icon">
+                          {neg?.logo_url
+                            ? <img src={neg.logo_url} alt={neg?.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : emoji
+                          }
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {neg?.nombre ?? 'Negocio'}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                            {new Date(res.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '15px', flexShrink: 0 }}>
+                          {'⭐'.repeat(res.valoracion)}
+                        </div>
+                      </div>
+                      {res.comentario && (
+                        <div style={{ fontSize: '13px', color: '#374151', lineHeight: 1.6, padding: '10px 12px', background: '#F9FAFB', borderRadius: '10px' }}>
+                          &ldquo;{res.comentario}&rdquo;
+                        </div>
+                      )}
                     </div>
                   )
                 })
