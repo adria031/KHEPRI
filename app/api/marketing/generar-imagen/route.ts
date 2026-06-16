@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, getIP } from '../../../lib/rateLimit'
+import { geminiGenerate } from '../../../lib/gemini'
 
 export async function POST(req: NextRequest) {
   const rl = rateLimit(getIP(req), 10)
@@ -9,30 +10,26 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'API key no configurada' }, { status: 500 })
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
-      }),
-    }
+  const { ok, data, triedModels } = await geminiGenerate(
+    { contents: [{ parts: [{ text: prompt }] }] },
+    apiKey
   )
 
-  const data = await response.json()
-  console.error('Respuesta Gemini imagen:', JSON.stringify(data).slice(0, 800))
+  if (!ok) {
+    console.error('[generar-imagen] All models failed. Tried:', triedModels)
+    const msg = (data as { error?: { message?: string } })?.error?.message ?? 'Error de IA'
+    return NextResponse.json({ error: msg }, { status: 503 })
+  }
 
-  const parts: Array<{ text?: string; inlineData?: { data?: string; mimeType?: string } }> =
-    data.candidates?.[0]?.content?.parts ?? []
-
+  const d = data as { candidates?: { content?: { parts?: { text?: string; inlineData?: { data?: string; mimeType?: string } }[] } }[] }
+  const parts = d.candidates?.[0]?.content?.parts ?? []
   const imagePart = parts.find(p => p.inlineData?.data)
   const textPart  = parts.find(p => p.text)
 
+  // If no image part, return text content (model returned text only)
   if (!imagePart) {
-    const errMsg = data.error?.message || 'No se generó imagen'
-    return NextResponse.json({ error: errMsg }, { status: 500 })
+    const text = textPart?.text ?? ''
+    return NextResponse.json({ text, descripcion: text.slice(0, 400), hashtags: [] })
   }
 
   const mimeType = imagePart.inlineData!.mimeType || 'image/png'

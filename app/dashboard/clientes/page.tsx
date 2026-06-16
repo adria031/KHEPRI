@@ -402,18 +402,14 @@ Responde con este JSON exacto:
 {"frecuencia":"...","proxima_visita":"...","servicio_recomendado":"...","oferta_sugerida":"..."}`
 
     try {
-      const GEMINI_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        }
-      )
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
       const data = await res.json()
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-      const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim())
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Error de IA')
+      const json = JSON.parse(data.text.replace(/```json\n?|\n?```/g, '').trim())
       setAiResult(json as AiResult)
     } catch {
       setAiError('Error al generar el análisis. Inténtalo de nuevo.')
