@@ -2,20 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../../../lib/supabase'
 import { sanitizeField } from '../../../lib/sanitize'
-
-const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
-
-async function verifyCaptcha(token: string): Promise<boolean> {
-  const res = await fetch('/api/verify-captcha', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
-  })
-  return res.ok
-}
 import {
   verificarDisponibilidad,
   crearReserva,
@@ -117,10 +105,6 @@ export default function Reservar() {
   // Confirm double-tap
   const [confirmPending, setConfirmPending] = useState(false)
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Captcha
-  const [captchaToken, setCaptchaToken] = useState('')
-  const captchaRef = useRef<HCaptcha>(null)
 
   // Chat widget
   const [chatOpen, setChatOpen] = useState(false)
@@ -403,10 +387,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     if (!telefono.trim()) { setError('Introduce tu teléfono'); return }
     if (serviciosSeleccionados.length === 0) { setError('Selecciona al menos un servicio'); return }
     if (!id) { setError('Error: negocio no identificado'); return }
-    if (!captchaToken) { setError('Por favor completa la verificación de seguridad'); return }
     setError(''); setEnviando(true); setReservando(true)
-    const captchaOk = await verifyCaptcha(captchaToken)
-    if (!captchaOk) { setError('Verificación de seguridad fallida. Inténtalo de nuevo.'); setEnviando(false); setReservando(false); captchaRef.current?.resetCaptcha(); setCaptchaToken(''); return }
 
     const nombreSanitized   = sanitizeField(nombre, 100)
     const telefonoSanitized = sanitizeField(telefono, 20)
@@ -452,16 +433,12 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
         setError(`Error al guardar: ${err?.message ?? 'sin respuesta'}`)
         console.error('[reservar] insert error:', err)
         setEnviando(false); setReservando(false)
-        captchaRef.current?.resetCaptcha(); setCaptchaToken('')
         return
       }
 
       if (!primeraId) primeraId = nueva.id
       minutosAcum += svc.duracion
     }
-
-    captchaRef.current?.resetCaptcha()
-    setCaptchaToken('')
 
     // Guardar teléfono en el perfil si hay sesión
     if (session?.user && telefono.trim()) {
@@ -1022,16 +999,6 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                 <div className="field">
                   <label>Email <span style={{fontSize:'11px', color:'#6366F1', fontWeight:600}}>(para confirmación y ver tu historial)</span></label>
                   <input type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" inputMode="email" />
-                </div>
-
-                <div style={{ margin: '16px 0 4px', display: 'flex', justifyContent: 'center' }}>
-                  <HCaptcha
-                    ref={captchaRef}
-                    sitekey={HCAPTCHA_SITEKEY}
-                    onVerify={(token) => setCaptchaToken(token)}
-                    onExpire={() => setCaptchaToken('')}
-                    onError={() => setCaptchaToken('')}
-                  />
                 </div>
 
                 {error && <div className="error-msg">{error}</div>}
