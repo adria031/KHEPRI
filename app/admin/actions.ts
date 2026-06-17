@@ -31,7 +31,7 @@ async function verifyAdmin() {
 
 export type NegocioAdmin = {
   id: string; nombre: string; tipo: string | null; ciudad: string | null
-  created_at: string; activo: boolean | null; user_id: string
+  updated_at: string; activo: boolean | null; user_id: string
   plan: string | null; creditos_totales: number | null; creditos_usados: number | null
   owner_email: string | null; owner_nombre: string | null
 }
@@ -59,8 +59,8 @@ export async function getAdminNegocios(): Promise<{ data: NegocioAdmin[]; error:
 
   const [{ data: negs, error: negError }, { data: profs, error: profError }] = await Promise.all([
     sb().from('negocios')
-      .select('id, nombre, tipo, ciudad, created_at, activo, user_id, plan, creditos_totales, creditos_usados')
-      .order('created_at', { ascending: false }),
+      .select('id, nombre, tipo, ciudad, updated_at, activo, user_id, plan, creditos_totales, creditos_usados')
+      .order('updated_at', { ascending: false }),
     sb().from('profiles').select('id, email, nombre'),
   ])
 
@@ -125,13 +125,13 @@ export async function getAdminDashboard() {
     return { negocios: [], totalClientes: 0, totalWaitlist: 0, error: String(e) }
   }
   const [{ data: negs }, { count: cProfiles }, { count: cWaitlist }] = await Promise.all([
-    sb().from('negocios').select('id, created_at, plan, activo').order('created_at', { ascending: false }),
+    sb().from('negocios').select('id, updated_at, plan, activo').order('updated_at', { ascending: false }),
     sb().from('profiles').select('*', { count: 'exact', head: true }),
     sb().from('waitlist').select('*', { count: 'exact', head: true }),
   ])
   console.log('[admin] dashboard negs:', negs?.length, 'profiles:', cProfiles, 'waitlist:', cWaitlist)
   return {
-    negocios:     (negs ?? []) as { id: string; created_at: string; plan: string | null; activo: boolean | null }[],
+    negocios:     (negs ?? []) as { id: string; updated_at: string; plan: string | null; activo: boolean | null }[],
     totalClientes: cProfiles ?? 0,
     totalWaitlist: cWaitlist ?? 0,
     error: null,

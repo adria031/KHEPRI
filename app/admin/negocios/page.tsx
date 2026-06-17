@@ -218,7 +218,7 @@ export default function NegociosPage() {
                 ['Email propietario', detalleModal.owner_email ?? '—'],
                 ['Nombre propietario', detalleModal.owner_nombre ?? '—'],
                 ['Créditos', `${(detalleModal.creditos_totales ?? 0) - (detalleModal.creditos_usados ?? 0)} / ${detalleModal.creditos_totales ?? 0}`],
-                ['Registro', fmtFecha(detalleModal.created_at)],
+                ['Registro', fmtFecha(detalleModal.updated_at)],
                 ['ID', <span key="id" style={{ fontSize:11, color:'#9CA3AF', fontFamily:'monospace' }}>{detalleModal.id}</span>],
               ] as [string, React.ReactNode][]).map(([label, value], i) => (
                 <div key={i} className="detalle-row">
@@ -256,7 +256,7 @@ export default function NegociosPage() {
             filtrados.map(n => ({
               nombre: n.nombre, ciudad: n.ciudad, tipo: n.tipo, plan: n.plan, activo: n.activo,
               creditos_disponibles: (n.creditos_totales ?? 0) - (n.creditos_usados ?? 0),
-              creditos_totales: n.creditos_totales, email: n.owner_email, creado: n.created_at,
+              creditos_totales: n.creditos_totales, email: n.owner_email, creado: n.updated_at,
             })), 'negocios.csv')}>
             📥 Exportar CSV
           </button>
@@ -298,7 +298,7 @@ export default function NegociosPage() {
                           {activo ? 'Activo' : 'Inactivo'}
                         </span>
                       </td>
-                      <td style={{ fontSize: 12, color: '#9CA3AF' }}>{fmtFecha(n.created_at)}</td>
+                      <td style={{ fontSize: 12, color: '#9CA3AF' }}>{fmtFecha(n.updated_at)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           <button className="btn-xs" onClick={() => setDetalleModal(n)}>👁 Ver</button>

@@ -54,7 +54,7 @@ export default function AdminDashboard() {
   const { negocios, totalClientes, totalWaitlist } = datos
   const ahora    = new Date()
   const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`
-  const negsMes   = negocios.filter(n => n.created_at.startsWith(mesActual)).length
+  const negsMes   = negocios.filter(n => n.updated_at.startsWith(mesActual)).length
   const mrr       = negocios.reduce((s, n) => s + (PRECIOS[n.plan ?? 'starter'] ?? 0), 0)
 
   const planCount: Record<string, number> = {}
@@ -64,13 +64,13 @@ export default function AdminDashboard() {
   const chartBar = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - (5 - i), 1)
     const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    return { mes: MESES[d.getMonth()], negocios: negocios.filter(n => n.created_at.startsWith(prefix)).length }
+    return { mes: MESES[d.getMonth()], negocios: negocios.filter(n => n.updated_at.startsWith(prefix)).length }
   })
 
   const chartLine = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(ahora.getFullYear(), ahora.getMonth() - (11 - i), 1)
     const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    return { mes: MESES[d.getMonth()], total: negocios.filter(n => n.created_at.slice(0, 7) <= prefix).length }
+    return { mes: MESES[d.getMonth()], total: negocios.filter(n => n.updated_at.slice(0, 7) <= prefix).length }
   })
 
   return (
