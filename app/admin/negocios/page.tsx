@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import {
   getAdminNegocios, adminCambiarPlan, adminAnadirCreditos, adminToggleActivo,
-  type NegocioAdmin,
+  getAdminNegocioFicha, type NegocioAdmin, type NegocioFicha,
 } from '../actions'
 
 const CREDITOS_POR_PLAN: Record<string, number> = {
@@ -83,6 +83,18 @@ const CSS = `
   .btn-confirm:disabled { opacity:0.45; cursor:not-allowed; }
   .detalle-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.05); font-size:13px; }
   .detalle-row:last-child { border-bottom:none; }
+  .drawer-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.25); z-index:300; backdrop-filter:blur(2px); }
+  .drawer { position:fixed; top:0; right:0; bottom:0; width:460px; max-width:100vw; background:white; z-index:301; box-shadow:-8px 0 40px rgba(0,0,0,0.12); display:flex; flex-direction:column; overflow:hidden; }
+  .drawer-head { padding:20px 22px 16px; border-bottom:1px solid rgba(0,0,0,0.06); display:flex; align-items:flex-start; gap:12px; flex-shrink:0; }
+  .drawer-body { flex:1; overflow-y:auto; padding:20px 22px; }
+  .drawer-kpis { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px; }
+  .drawer-kpi { background:#F7F9FF; border-radius:12px; padding:12px 14px; }
+  .drawer-kpi-val { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:#111827; letter-spacing:-0.5px; line-height:1; margin-bottom:3px; }
+  .drawer-kpi-label { font-size:11px; color:#9CA3AF; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; }
+  .mes-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .mes-bar-track { flex:1; height:7px; background:#F1F5F9; border-radius:100px; overflow:hidden; }
+  tbody tr { cursor:pointer; }
+  @media(max-width:600px){ .drawer { width:100vw; } .drawer-kpis { grid-template-columns:1fr 1fr; } }
 `
 
 export default function NegociosPage() {
@@ -102,6 +114,15 @@ export default function NegociosPage() {
 
   const [detalleModal, setDetalleModal] = useState<NegocioAdmin | null>(null)
   const [bloqueando,   setBloqueando]   = useState<string | null>(null)
+
+  const [fichaneg,     setFichaneg]     = useState<NegocioAdmin | null>(null)
+  const [fichaData,    setFichaData]    = useState<NegocioFicha | null>(null)
+  const [fichaCargando,setFichaCargando]= useState(false)
+
+  function abrirFicha(n: NegocioAdmin) {
+    setFichaData(null); setFichaneg(n); setFichaCargando(true)
+    getAdminNegocioFicha(n.id).then(d => { setFichaData(d); setFichaCargando(false) }).catch(() => setFichaCargando(false))
+  }
 
   useEffect(() => {
     getAdminNegocios()
@@ -278,7 +299,7 @@ export default function NegociosPage() {
                   const credBajo = credTot > 0 && credDis < credTot * 0.1
                   const activo   = n.activo !== false
                   return (
-                    <tr key={n.id}>
+                    <tr key={n.id} onClick={() => abrirFicha(n)}>
                       <td>
                         <div className="cell-name">{n.nombre}</div>
                         <div className="cell-sub">{n.tipo || '—'} · {n.ciudad || '—'}</div>
@@ -300,8 +321,7 @@ export default function NegociosPage() {
                       </td>
                       <td style={{ fontSize: 12, color: '#9CA3AF' }}>{fmtFecha(n.updated_at)}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                          <button className="btn-xs" onClick={() => setDetalleModal(n)}>👁 Ver</button>
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                           <button className="btn-xs" onClick={() => { setPlanModal({ negId: n.id, userId: n.user_id, nombre: n.nombre, planActual: n.plan ?? 'starter' }); setPlanNuevo(n.plan ?? '') }}>
                             📋 Plan
                           </button>
@@ -324,6 +344,127 @@ export default function NegociosPage() {
           </div>
         )}
       </div>
+
+      {/* ── Drawer ficha negocio ── */}
+      {fichaneg && (
+        <>
+          <div className="drawer-backdrop" onClick={() => setFichaneg(null)} />
+          <div className="drawer">
+            {/* Header */}
+            <div className="drawer-head">
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 18, fontWeight: 800, color: '#111827' }}>{fichaneg.nombre}</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
+                    background: fichaneg.activo !== false ? '#F0FDF4' : '#FEF2F2',
+                    color: fichaneg.activo !== false ? '#16A34A' : '#DC2626',
+                  }}>
+                    {fichaneg.activo !== false ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: '#9CA3AF' }}>{fichaneg.tipo || '—'} · {fichaneg.ciudad || '—'}</div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  {planBadge(fichaneg.plan)}
+                  <a
+                    href={`/negocio/${fichaneg.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 11, fontWeight: 700, color: '#4F46E5', background: '#EEF2FF', padding: '3px 10px', borderRadius: 8, textDecoration: 'none' }}
+                  >
+                    🔗 Ver ficha pública
+                  </a>
+                </div>
+              </div>
+              <button
+                onClick={() => setFichaneg(null)}
+                style={{ background: '#F3F4F6', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#6B7280', flexShrink: 0 }}
+              >✕</button>
+            </div>
+
+            {/* Body */}
+            <div className="drawer-body">
+              {fichaCargando ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF', fontSize: 13 }}>Cargando datos…</div>
+              ) : fichaData?.error ? (
+                <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 10, padding: '12px 16px', fontSize: 12, color: '#991B1B' }}>
+                  {fichaData.error}
+                </div>
+              ) : fichaData ? (
+                <>
+                  {/* KPIs */}
+                  <div className="drawer-kpis">
+                    <div className="drawer-kpi">
+                      <div className="drawer-kpi-val">{fichaData.totalIngresos.toFixed(0)} €</div>
+                      <div className="drawer-kpi-label">Ingresos totales</div>
+                    </div>
+                    <div className="drawer-kpi">
+                      <div className="drawer-kpi-val">{fichaData.totalReservas}</div>
+                      <div className="drawer-kpi-label">Reservas</div>
+                    </div>
+                    <div className="drawer-kpi">
+                      <div className="drawer-kpi-val">{(fichaneg.creditos_totales ?? 0) - (fichaneg.creditos_usados ?? 0)}</div>
+                      <div className="drawer-kpi-label">Créditos disp.</div>
+                    </div>
+                  </div>
+
+                  {/* Ingresos por mes */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      Ingresos últimos 6 meses
+                    </div>
+                    {(() => {
+                      const maxIng = Math.max(...fichaData.meses.map(m => m.ingresos), 1)
+                      return fichaData.meses.map((m, i) => (
+                        <div key={i} className="mes-row">
+                          <div style={{ width: 32, fontSize: 11, color: '#9CA3AF', fontWeight: 600, textAlign: 'right', flexShrink: 0 }}>{m.label}</div>
+                          <div className="mes-bar-track">
+                            <div style={{ height: '100%', width: `${(m.ingresos / maxIng) * 100}%`, background: 'linear-gradient(90deg,#6366F1,#8B5CF6)', borderRadius: 100, minWidth: m.ingresos > 0 ? 4 : 0 }} />
+                          </div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#111827', width: 64, textAlign: 'right', flexShrink: 0 }}>
+                            {m.ingresos > 0 ? `${m.ingresos.toFixed(0)} €` : '—'}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#9CA3AF', width: 28, textAlign: 'right', flexShrink: 0 }}>{m.reservas > 0 ? `×${m.reservas}` : ''}</div>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+
+                  {/* Info del negocio */}
+                  <div style={{ background: '#F7F9FF', borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Info del negocio</div>
+                    {[
+                      ['Email propietario', fichaneg.owner_email ?? '—'],
+                      ['Nombre propietario', fichaneg.owner_nombre ?? '—'],
+                      ['Créditos', `${(fichaneg.creditos_totales ?? 0) - (fichaneg.creditos_usados ?? 0)} / ${fichaneg.creditos_totales ?? 0}`],
+                      ['Última actividad', fmtFecha(fichaneg.updated_at)],
+                      ['ID', fichaneg.id],
+                    ].map(([label, val]) => (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', fontSize: 12 }}>
+                        <span style={{ color: '#9CA3AF', fontWeight: 600 }}>{label}</span>
+                        <span style={{ color: '#374151', fontFamily: label === 'ID' ? 'monospace' : 'inherit', fontSize: label === 'ID' ? 10 : 12 }}>{val}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Acciones rápidas */}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+                    <button className="btn-xs" onClick={() => { setPlanModal({ negId: fichaneg.id, userId: fichaneg.user_id, nombre: fichaneg.nombre, planActual: fichaneg.plan ?? 'starter' }); setPlanNuevo(fichaneg.plan ?? '') }}>
+                      📋 Cambiar plan
+                    </button>
+                    <button className="btn-xs green" onClick={() => setCreditosModal({ negId: fichaneg.id, userId: fichaneg.user_id, nombre: fichaneg.nombre, disponibles: (fichaneg.creditos_totales ?? 0) - (fichaneg.creditos_usados ?? 0), totales: fichaneg.creditos_totales ?? 0 })}>
+                      ⚡ Añadir créditos
+                    </button>
+                    <button className={`btn-xs ${fichaneg.activo !== false ? 'red' : 'green'}`} onClick={() => toggleActivo(fichaneg)}>
+                      {fichaneg.activo !== false ? '🔒 Bloquear' : '🔓 Activar'}
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }

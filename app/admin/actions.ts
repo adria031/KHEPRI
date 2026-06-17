@@ -136,6 +136,40 @@ export async function getAdminDashboard() {
   }
 }
 
+export type NegocioFicha = {
+  negocio: Record<string, unknown>
+  meses: { label: string; ingresos: number; reservas: number }[]
+  totalIngresos: number
+  totalReservas: number
+  error: string | null
+}
+
+export async function getAdminNegocioFicha(negId: string): Promise<NegocioFicha> {
+  try { await verifyAdmin() } catch (e) { return { negocio: {}, meses: [], totalIngresos: 0, totalReservas: 0, error: String(e) } }
+
+  const [{ data: neg }, { data: reservas }] = await Promise.all([
+    sb().from('negocios').select('*').eq('id', negId).single(),
+    sb().from('reservas')
+      .select('precio_total, estado, fecha')
+      .eq('negocio_id', negId)
+      .neq('estado', 'cancelada'),
+  ])
+
+  const ahora = new Date()
+  const meses = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - (5 - i), 1)
+    const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const label = d.toLocaleDateString('es-ES', { month: 'short' })
+    const mes = (reservas ?? []).filter(r => (r.fecha as string)?.startsWith(prefix))
+    return { label, ingresos: mes.reduce((s, r) => s + ((r.precio_total as number) ?? 0), 0), reservas: mes.length }
+  })
+
+  const totalIngresos = (reservas ?? []).reduce((s, r) => s + ((r.precio_total as number) ?? 0), 0)
+  const totalReservas = (reservas ?? []).length
+  console.log('[admin] ficha negId:', negId, 'totalReservas:', totalReservas, 'totalIngresos:', totalIngresos)
+  return { negocio: (neg ?? {}) as Record<string, unknown>, meses, totalIngresos, totalReservas, error: null }
+}
+
 // ─── Writes ───────────────────────────────────────────────────────────────────
 
 export async function adminCambiarPlan(negId: string, userId: string, plan: string, creditos: number) {
