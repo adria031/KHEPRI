@@ -5,6 +5,7 @@ import { CookieBanner } from "./components/CookieBanner";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { LocaleProvider } from "./components/LocaleProvider";
 import { PWAInstallBanner } from "./components/PWAInstallBanner";
+import StagingBanner from "./components/StagingBanner";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -77,6 +78,7 @@ export default function RootLayout({
         `}} />
       </head>
       <body>
+        <StagingBanner />
         <LocaleProvider>
           <ThemeProvider>
             {children}

@@ -1,5 +1,18 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Entornos
+
+| Entorno | URL | Rama | Variables |
+|---------|-----|------|-----------|
+| Producción | khepria.app | `main` | `NEXT_PUBLIC_ENV=production` |
+| Staging | khepria-staging.vercel.app | `staging` | `NEXT_PUBLIC_ENV=staging` |
+
+**Flujo de trabajo:**
+1. Desarrolla en `feature/nombre-feature`
+2. Merge a `staging` → despliega automáticamente en khepria-staging.vercel.app
+3. Prueba en staging (banner naranja visible)
+4. Si todo OK → merge a `main` → despliega en khepria.app (producción)
+
 ## Getting Started
 
 First, run the development server:
