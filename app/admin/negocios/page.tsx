@@ -1,6 +1,9 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../lib/supabase'
+import { useState, useEffect } from 'react'
+import {
+  getAdminNegocios, adminCambiarPlan, adminAnadirCreditos, adminToggleActivo,
+  type NegocioAdmin,
+} from '../actions'
 
 const CREDITOS_POR_PLAN: Record<string, number> = {
   starter: 100, basico: 300, pro: 1000, plus: 5000, beta: 2000,
@@ -9,17 +12,6 @@ const PLAN_PRECIOS: Record<string, string> = {
   starter: 'Gratis · 100 cr', basico: '29,99 €/mes · 300 cr',
   pro: '59,99 €/mes · 1.000 cr', plus: '99,99 €/mes · 5.000 cr', beta: 'Gratis · 2.000 cr',
 }
-
-type NegProfile = { email?: string | null; nombre?: string | null }
-type Negocio = {
-  id: string; nombre: string; tipo: string | null; ciudad: string | null
-  created_at: string; activo: boolean | null; user_id: string
-  plan: string | null; creditos_totales: number | null; creditos_usados: number | null
-  profiles?: NegProfile | null
-}
-type PlanModal    = { negId: string; userId: string; nombre: string; planActual: string }
-type CreditosModal = { negId: string; userId: string; nombre: string; disponibles: number; totales: number }
-type DetalleModal  = Negocio
 
 function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -50,6 +42,9 @@ function planBadge(plan: string | null | undefined) {
     </span>
   )
 }
+
+type PlanModal     = { negId: string; userId: string; nombre: string; planActual: string }
+type CreditosModal = { negId: string; userId: string; nombre: string; disponibles: number; totales: number }
 
 const CSS = `
   .ng-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
@@ -91,42 +86,33 @@ const CSS = `
 `
 
 export default function NegociosPage() {
-  const [cargando,  setCargando]  = useState(true)
-  const [negocios,  setNegocios]  = useState<Negocio[]>([])
-  const [busq,      setBusq]      = useState('')
-  const [filtroPlan, setFiltroPlan] = useState('todos')
+  const [cargando,    setCargando]    = useState(true)
+  const [negocios,    setNegocios]    = useState<NegocioAdmin[]>([])
+  const [busq,        setBusq]        = useState('')
+  const [filtroPlan,  setFiltroPlan]  = useState('todos')
 
   const [planModal,     setPlanModal]     = useState<PlanModal | null>(null)
   const [planNuevo,     setPlanNuevo]     = useState('')
   const [cambiandoPlan, setCambiandoPlan] = useState(false)
 
-  const [creditosModal,  setCreditosModal]  = useState<CreditosModal | null>(null)
-  const [creditosExtra,  setCreditosExtra]  = useState('')
-  const [anadiendoCred,  setAnadiendoCred]  = useState(false)
+  const [creditosModal, setCreditosModal] = useState<CreditosModal | null>(null)
+  const [creditosExtra, setCreditosExtra] = useState('')
+  const [anadiendoCred, setAnadiendoCred] = useState(false)
 
-  const [detalleModal, setDetalleModal] = useState<DetalleModal | null>(null)
+  const [detalleModal, setDetalleModal] = useState<NegocioAdmin | null>(null)
   const [bloqueando,   setBloqueando]   = useState<string | null>(null)
 
-  const cargarDatos = useCallback(async () => {
-    const { data } = await supabase
-      .from('negocios')
-      .select('id, nombre, tipo, ciudad, created_at, activo, user_id, plan, creditos_totales, creditos_usados, profiles!user_id(email, nombre)')
-      .order('created_at', { ascending: false })
-    setNegocios((data ?? []) as Negocio[])
-    setCargando(false)
+  useEffect(() => {
+    getAdminNegocios().then(data => { setNegocios(data); setCargando(false) }).catch(console.error)
   }, [])
-
-  useEffect(() => { cargarDatos() }, [cargarDatos])
 
   async function cambiarPlan() {
     if (!planModal || !planNuevo) return
     setCambiandoPlan(true)
     const creditos = CREDITOS_POR_PLAN[planNuevo] ?? 100
-    await Promise.all([
-      supabase.from('negocios').update({ plan: planNuevo, creditos_totales: creditos, creditos_usados: 0 }).eq('id', planModal.negId),
-      supabase.from('profiles').update({ plan: planNuevo, creditos_totales: creditos, creditos_usados: 0 }).eq('id', planModal.userId),
-    ])
-    setNegocios(prev => prev.map(n => n.id === planModal.negId ? { ...n, plan: planNuevo, creditos_totales: creditos, creditos_usados: 0 } : n))
+    await adminCambiarPlan(planModal.negId, planModal.userId, planNuevo, creditos)
+    setNegocios(prev => prev.map(n => n.id === planModal.negId
+      ? { ...n, plan: planNuevo, creditos_totales: creditos, creditos_usados: 0 } : n))
     setCambiandoPlan(false)
     setPlanModal(null)
     setPlanNuevo('')
@@ -138,31 +124,27 @@ export default function NegociosPage() {
     if (isNaN(extra) || extra <= 0) return
     setAnadiendoCred(true)
     const nuevoTotal = creditosModal.totales + extra
-    await Promise.all([
-      supabase.from('negocios').update({ creditos_totales: nuevoTotal }).eq('id', creditosModal.negId),
-      supabase.from('profiles').update({ creditos_totales: nuevoTotal }).eq('id', creditosModal.userId),
-    ])
+    await adminAnadirCreditos(creditosModal.negId, creditosModal.userId, nuevoTotal)
     setNegocios(prev => prev.map(n => n.id === creditosModal.negId ? { ...n, creditos_totales: nuevoTotal } : n))
     setAnadiendoCred(false)
     setCreditosModal(null)
     setCreditosExtra('')
   }
 
-  async function toggleActivo(n: Negocio) {
+  async function toggleActivo(n: NegocioAdmin) {
     setBloqueando(n.id)
-    const nuevoActivo = !n.activo
-    await supabase.from('negocios').update({ activo: nuevoActivo }).eq('id', n.id)
-    setNegocios(prev => prev.map(x => x.id === n.id ? { ...x, activo: nuevoActivo } : x))
+    const nuevo = !n.activo
+    await adminToggleActivo(n.id, nuevo)
+    setNegocios(prev => prev.map(x => x.id === n.id ? { ...x, activo: nuevo } : x))
     setBloqueando(null)
   }
 
   const filtrados = negocios.filter(n => {
-    const pf = n.profiles as NegProfile | null
     const matchPlan = filtroPlan === 'todos' || (n.plan ?? 'starter') === filtroPlan
     const matchBusq = !busq ||
       n.nombre.toLowerCase().includes(busq.toLowerCase()) ||
       (n.ciudad ?? '').toLowerCase().includes(busq.toLowerCase()) ||
-      (pf?.email ?? '').toLowerCase().includes(busq.toLowerCase())
+      (n.owner_email ?? '').toLowerCase().includes(busq.toLowerCase())
     return matchPlan && matchBusq
   })
 
@@ -170,7 +152,6 @@ export default function NegociosPage() {
     <>
       <style>{CSS}</style>
 
-      {/* Plan modal */}
       {planModal && (
         <div className="overlay" onClick={() => setPlanModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -198,7 +179,6 @@ export default function NegociosPage() {
         </div>
       )}
 
-      {/* Créditos modal */}
       {creditosModal && (
         <div className="overlay" onClick={() => setCreditosModal(null)}>
           <div className="modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
@@ -219,22 +199,21 @@ export default function NegociosPage() {
         </div>
       )}
 
-      {/* Detalle modal */}
       {detalleModal && (
         <div className="overlay" onClick={() => setDetalleModal(null)}>
           <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
             <h3>{detalleModal.nombre}</h3>
             <p className="modal-sub" style={{ marginBottom: 16 }}>{detalleModal.tipo || '—'} · {detalleModal.ciudad || '—'}</p>
             <div>
-              {[
+              {([
                 ['Plan',        planBadge(detalleModal.plan)],
                 ['Estado',      <span key="est" style={{ fontSize:13, fontWeight:700, color: detalleModal.activo !== false ? '#16A34A' : '#DC2626' }}>{detalleModal.activo !== false ? 'Activo' : 'Inactivo'}</span>],
-                ['Propietario', (detalleModal.profiles as NegProfile | null)?.email ?? '—'],
-                ['Nombre prop.', (detalleModal.profiles as NegProfile | null)?.nombre ?? '—'],
-                ['Créditos',    `${(detalleModal.creditos_totales ?? 0) - (detalleModal.creditos_usados ?? 0)} / ${detalleModal.creditos_totales ?? 0}`],
-                ['Registro',    fmtFecha(detalleModal.created_at)],
-                ['ID',          <span key="id" style={{ fontSize:11, color:'#9CA3AF', fontFamily:'monospace' }}>{detalleModal.id}</span>],
-              ].map(([label, value], i) => (
+                ['Email propietario', detalleModal.owner_email ?? '—'],
+                ['Nombre propietario', detalleModal.owner_nombre ?? '—'],
+                ['Créditos', `${(detalleModal.creditos_totales ?? 0) - (detalleModal.creditos_usados ?? 0)} / ${detalleModal.creditos_totales ?? 0}`],
+                ['Registro', fmtFecha(detalleModal.created_at)],
+                ['ID', <span key="id" style={{ fontSize:11, color:'#9CA3AF', fontFamily:'monospace' }}>{detalleModal.id}</span>],
+              ] as [string, React.ReactNode][]).map(([label, value], i) => (
                 <div key={i} className="detalle-row">
                   <span style={{ color: '#9CA3AF', fontSize: 12, fontWeight: 600 }}>{label}</span>
                   <span>{value}</span>
@@ -261,9 +240,9 @@ export default function NegociosPage() {
           </div>
           <button className="act-btn" onClick={() => exportCSV(
             filtrados.map(n => ({
-              nombre: n.nombre, ciudad: n.ciudad, tipo: n.tipo, plan: n.plan,
-              activo: n.activo, creditos_disponibles: (n.creditos_totales ?? 0) - (n.creditos_usados ?? 0),
-              creditos_totales: n.creditos_totales, email: (n.profiles as NegProfile | null)?.email ?? '', creado: n.created_at,
+              nombre: n.nombre, ciudad: n.ciudad, tipo: n.tipo, plan: n.plan, activo: n.activo,
+              creditos_disponibles: (n.creditos_totales ?? 0) - (n.creditos_usados ?? 0),
+              creditos_totales: n.creditos_totales, email: n.owner_email, creado: n.created_at,
             })), 'negocios.csv')}>
             📥 Exportar CSV
           </button>
@@ -275,26 +254,22 @@ export default function NegociosPage() {
           <div className="tbl-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Negocio</th><th>Email</th><th>Plan</th>
-                  <th>Créditos</th><th>Estado</th><th>Registro</th><th>Acciones</th>
-                </tr>
+                <tr><th>Negocio</th><th>Email</th><th>Plan</th><th>Créditos</th><th>Estado</th><th>Registro</th><th>Acciones</th></tr>
               </thead>
               <tbody>
                 {filtrados.map(n => {
-                  const pf        = n.profiles as NegProfile | null
-                  const credTot   = n.creditos_totales ?? 0
-                  const credUsd   = n.creditos_usados  ?? 0
-                  const credDis   = credTot - credUsd
-                  const credBajo  = credTot > 0 && credDis < credTot * 0.1
-                  const activo    = n.activo !== false
+                  const credTot  = n.creditos_totales ?? 0
+                  const credUsd  = n.creditos_usados  ?? 0
+                  const credDis  = credTot - credUsd
+                  const credBajo = credTot > 0 && credDis < credTot * 0.1
+                  const activo   = n.activo !== false
                   return (
                     <tr key={n.id}>
                       <td>
                         <div className="cell-name">{n.nombre}</div>
                         <div className="cell-sub">{n.tipo || '—'} · {n.ciudad || '—'}</div>
                       </td>
-                      <td style={{ fontSize: 12, color: '#6B7280' }}>{pf?.email || '—'}</td>
+                      <td style={{ fontSize: 12, color: '#6B7280' }}>{n.owner_email || '—'}</td>
                       <td>{planBadge(n.plan)}</td>
                       <td>
                         <span style={{ fontSize: 12, color: credBajo ? '#DC2626' : '#6B7280', fontWeight: credBajo ? 700 : 400 }}>

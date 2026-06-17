@@ -1,11 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../lib/supabase'
-
-type WaitlistItem = {
-  id: string; nombre?: string | null; email: string
-  tipo_negocio?: string | null; ciudad?: string | null; created_at: string
-}
+import { useState, useEffect } from 'react'
+import { getAdminWaitlist, type WaitlistAdmin } from '../actions'
 
 function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -38,24 +33,17 @@ const CSS = `
 
 export default function WaitlistPage() {
   const [cargando,      setCargando]      = useState(true)
-  const [waitlist,      setWaitlist]      = useState<WaitlistItem[]>([])
+  const [waitlist,      setWaitlist]      = useState<WaitlistAdmin[]>([])
   const [waitlistError, setWaitlistError] = useState(false)
   const [busq,          setBusq]          = useState('')
 
-  const cargarDatos = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('waitlist')
-      .select('id, nombre, email, tipo_negocio, ciudad, created_at')
-      .order('created_at', { ascending: false })
-    if (error) {
-      setWaitlistError(true)
-    } else {
-      setWaitlist((data ?? []) as WaitlistItem[])
-    }
-    setCargando(false)
-  }, [])
+  const cargar = () => {
+    getAdminWaitlist()
+      .then(({ data, error }) => { setWaitlist(data); setWaitlistError(error); setCargando(false) })
+      .catch(() => { setWaitlistError(true); setCargando(false) })
+  }
 
-  useEffect(() => { cargarDatos() }, [cargarDatos])
+  useEffect(() => { cargar() }, [])
 
   const filtrados = waitlist.filter(w =>
     !busq ||
@@ -74,10 +62,9 @@ export default function WaitlistPage() {
 
         {waitlistError ? (
           <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 14, padding: '20px 24px', maxWidth: 600 }}>
-            <div style={{ fontWeight: 700, color: '#B45309', marginBottom: 6 }}>⚠ Acceso restringido</div>
+            <div style={{ fontWeight: 700, color: '#B45309', marginBottom: 6 }}>⚠ Error al cargar la waitlist</div>
             <p style={{ fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
-              La tabla <code>waitlist</code> tiene RLS que requiere <code>service_role</code>.
-              Aplica en Supabase SQL Editor:
+              Puede que la tabla <code>waitlist</code> tenga RLS restrictivo. Aplica en SQL Editor:
             </p>
             <pre style={{ marginTop: 12, fontSize: 12, background: '#FEF9C3', padding: '10px 14px', borderRadius: 8, overflowX: 'auto' }}>
               {`CREATE POLICY "admin_read_waitlist" ON waitlist\nFOR SELECT USING (true);`}
@@ -88,7 +75,7 @@ export default function WaitlistPage() {
             <div className="wl-header">
               <input className="wl-search" placeholder="🔍 Nombre, email o tipo…" value={busq} onChange={e => setBusq(e.target.value)}/>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="act-btn" onClick={cargarDatos}>🔄 Actualizar</button>
+                <button className="act-btn" onClick={cargar}>🔄 Actualizar</button>
                 <button className="act-btn" onClick={() => exportCSV(
                   filtrados.map(w => ({ nombre: w.nombre, email: w.email, tipo_negocio: w.tipo_negocio, ciudad: w.ciudad, fecha: w.created_at })),
                   'waitlist.csv')}>
@@ -103,13 +90,12 @@ export default function WaitlistPage() {
               <div style={{ textAlign: 'center', padding: '80px 20px', color: '#9CA3AF' }}>
                 <div style={{ fontSize: 44, marginBottom: 12 }}>📋</div>
                 <p style={{ fontWeight: 600, color: '#374151', fontSize: 15 }}>Waitlist vacía</p>
-                <p style={{ fontSize: 13, marginTop: 4 }}>Nadie se ha registrado todavía</p>
               </div>
             ) : (
               <div className="tbl-wrap">
                 <table>
                   <thead>
-                    <tr><th>Nombre</th><th>Email</th><th>Tipo negocio</th><th>Ciudad</th><th>Fecha registro</th></tr>
+                    <tr><th>Nombre</th><th>Email</th><th>Tipo negocio</th><th>Ciudad</th><th>Fecha</th></tr>
                   </thead>
                   <tbody>
                     {filtrados.map(w => (
@@ -121,7 +107,7 @@ export default function WaitlistPage() {
                         <td style={{ fontSize: 12, color: '#9CA3AF' }}>{fmtFecha(w.created_at)}</td>
                       </tr>
                     ))}
-                    {filtrados.length === 0 && (
+                    {filtrados.length === 0 && busq && (
                       <tr><td colSpan={5} style={{ textAlign: 'center', color: '#9CA3AF', padding: 40 }}>Sin resultados para &quot;{busq}&quot;</td></tr>
                     )}
                   </tbody>

@@ -1,13 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../lib/supabase'
-
-type Perfil = {
-  id: string; nombre?: string | null; email?: string | null
-  tipo?: string | null; plan?: string | null
-  creditos_totales?: number | null; creditos_usados?: number | null
-  created_at: string
-}
+import { useState, useEffect } from 'react'
+import { getAdminClientes, type PerfilAdmin } from '../actions'
 
 function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -43,21 +36,13 @@ const CSS = `
 
 export default function ClientesPage() {
   const [cargando,   setCargando]   = useState(true)
-  const [perfiles,   setPerfiles]   = useState<Perfil[]>([])
+  const [perfiles,   setPerfiles]   = useState<PerfilAdmin[]>([])
   const [busq,       setBusq]       = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
 
-  const cargarDatos = useCallback(async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, nombre, email, tipo, plan, creditos_totales, creditos_usados, created_at')
-      .order('created_at', { ascending: false })
-      .limit(500)
-    setPerfiles((data ?? []) as Perfil[])
-    setCargando(false)
+  useEffect(() => {
+    getAdminClientes().then(data => { setPerfiles(data); setCargando(false) }).catch(console.error)
   }, [])
-
-  useEffect(() => { cargarDatos() }, [cargarDatos])
 
   const tipos = ['todos', ...Array.from(new Set(perfiles.map(p => p.tipo ?? 'sin tipo'))).sort()]
 
@@ -102,8 +87,8 @@ export default function ClientesPage() {
               </thead>
               <tbody>
                 {filtrados.map(p => {
-                  const cTot = p.creditos_totales ?? 0
-                  const cUsd = p.creditos_usados  ?? 0
+                  const cTot    = p.creditos_totales ?? 0
+                  const cUsd    = p.creditos_usados  ?? 0
                   const inicial = (p.nombre ?? p.email ?? '?').charAt(0).toUpperCase()
                   return (
                     <tr key={p.id}>
@@ -120,11 +105,9 @@ export default function ClientesPage() {
                         </span>
                       </td>
                       <td>
-                        {p.plan ? (
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 8, background: '#F5F3FF', color: '#7C3AED' }}>
-                            {p.plan}
-                          </span>
-                        ) : <span style={{ color: '#D1D5DB' }}>—</span>}
+                        {p.plan
+                          ? <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 8, background: '#F5F3FF', color: '#7C3AED' }}>{p.plan}</span>
+                          : <span style={{ color: '#D1D5DB' }}>—</span>}
                       </td>
                       <td style={{ fontSize: 12, color: '#6B7280' }}>
                         {cTot > 0 ? `${cTot - cUsd} / ${cTot}` : '—'}

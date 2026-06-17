@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '../lib/supabase'
+import { useState, useEffect, useRef } from 'react'
+import { getAdminDashboard } from './actions'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts'
 
 const PRECIOS: Record<string, number> = { starter: 0, basico: 29.99, pro: 59.99, plus: 99.99, beta: 0 }
@@ -12,43 +12,28 @@ const PLAN_LABELS: Record<string, string> = {
 }
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
-type Negocio = { id: string; created_at: string; plan: string | null; activo: boolean | null }
+type DashboardData = Awaited<ReturnType<typeof getAdminDashboard>>
 
 export default function AdminDashboard() {
-  const [cargando,      setCargando]      = useState(true)
-  const [negocios,      setNegocios]      = useState<Negocio[]>([])
-  const [totalClientes, setTotalClientes] = useState(0)
-  const [totalWaitlist, setTotalWaitlist] = useState(0)
-  const [countdown,     setCountdown]     = useState(60)
+  const [datos,     setDatos]     = useState<DashboardData | null>(null)
+  const [countdown, setCountdown] = useState(60)
   const barRef  = useRef<HTMLDivElement | null>(null)
   const lineRef = useRef<HTMLDivElement | null>(null)
   const [barW,  setBarW]  = useState(0)
   const [lineW, setLineW] = useState(0)
 
-  const cargarDatos = useCallback(async () => {
-    const [{ data: negsData }, { count: cClientes }, waitlistRes] = await Promise.all([
-      supabase.from('negocios').select('id, created_at, plan, activo').order('created_at', { ascending: false }),
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
-      supabase.from('waitlist').select('*', { count: 'exact', head: true }),
-    ])
-    setNegocios((negsData ?? []) as Negocio[])
-    setTotalClientes(cClientes ?? 0)
-    setTotalWaitlist(waitlistRes.count ?? 0)
-    setCountdown(60)
-    setCargando(false)
+  useEffect(() => {
+    const load = () => getAdminDashboard().then(d => { setDatos(d); setCountdown(60) }).catch(console.error)
+    load()
+    const iv = setInterval(load, 60000)
+    return () => clearInterval(iv)
   }, [])
 
   useEffect(() => {
-    cargarDatos()
-    const iv = setInterval(cargarDatos, 60000)
-    return () => clearInterval(iv)
-  }, [cargarDatos])
-
-  useEffect(() => {
-    if (cargando) return
+    if (!datos) return
     const iv = setInterval(() => setCountdown(c => Math.max(0, c - 1)), 1000)
     return () => clearInterval(iv)
-  }, [cargando])
+  }, [datos])
 
   useEffect(() => {
     const update = () => {
@@ -58,14 +43,15 @@ export default function AdminDashboard() {
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
-  }, [cargando])
+  }, [datos])
 
-  if (cargando) return (
+  if (!datos) return (
     <div className="admin-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
       <p style={{ color: '#9CA3AF', fontSize: 14 }}>Cargando datos…</p>
     </div>
   )
 
+  const { negocios, totalClientes, totalWaitlist } = datos
   const ahora    = new Date()
   const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`
   const negsMes   = negocios.filter(n => n.created_at.startsWith(mesActual)).length
@@ -111,10 +97,10 @@ export default function AdminDashboard() {
 
         <div className="db-kpi-grid">
           {[
-            { icon: '🆕', label: 'Negocios este mes', value: negsMes,          sub: `${MESES[ahora.getMonth()]} ${ahora.getFullYear()}`,                  bg: '#EFF6FF' },
-            { icon: '🏢', label: 'Total negocios',    value: negocios.length,  sub: `${negocios.filter(n => n.activo !== false).length} activos`,           bg: '#F5F3FF' },
-            { icon: '👥', label: 'Clientes / perfiles', value: totalClientes,  sub: 'En tabla profiles',                                                    bg: '#F0FDF4' },
-            { icon: '📋', label: 'Waitlist',           value: totalWaitlist,   sub: 'En lista de espera',                                                   bg: '#FFFBEB' },
+            { icon: '🆕', label: 'Negocios este mes',    value: negsMes,          sub: `${MESES[ahora.getMonth()]} ${ahora.getFullYear()}`,                 bg: '#EFF6FF' },
+            { icon: '🏢', label: 'Total negocios',       value: negocios.length,  sub: `${negocios.filter(n => n.activo !== false).length} activos`,          bg: '#F5F3FF' },
+            { icon: '👥', label: 'Clientes / perfiles',  value: totalClientes,    sub: 'En tabla profiles',                                                   bg: '#F0FDF4' },
+            { icon: '📋', label: 'Waitlist',             value: totalWaitlist,    sub: 'En lista de espera',                                                  bg: '#FFFBEB' },
           ].map((k, i) => (
             <div key={i} className="db-kpi" style={{ background: k.bg }}>
               <div className="db-kpi-icon">{k.icon}</div>
