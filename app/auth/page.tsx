@@ -89,6 +89,8 @@ function AuthForm() {
       else {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) return
+        const ADMIN_EMAILS = ['adria.gaitan.sola@gmail.com']
+        if (ADMIN_EMAILS.includes(session.user.email ?? '')) { router.push('/admin'); return }
         const { data: perfil } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
         if (perfil?.tipo === 'empleado') { router.push('/empleado'); return }
         if (perfil?.tipo === 'negocio') { router.push('/dashboard'); return }

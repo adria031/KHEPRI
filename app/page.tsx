@@ -390,6 +390,11 @@ export default function Home() {
     if (error) { setMsg('Email o contraseña incorrectos.', true); setAuthLoading(false); return }
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
+      const ADMIN_EMAILS = ['adria.gaitan.sola@gmail.com']
+      if (ADMIN_EMAILS.includes(session.user.email ?? '')) {
+        window.location.href = window.location.origin + '/admin'
+        return
+      }
       const { data: profile } = await supabase.from('profiles').select('tipo').eq('id', session.user.id).single()
       const dest = profile?.tipo === 'negocio' ? '/dashboard'
         : profile?.tipo === 'cliente' ? '/cliente'

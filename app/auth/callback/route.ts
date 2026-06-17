@@ -49,6 +49,11 @@ export async function GET(request: NextRequest) {
     return makeResponse(new URL('/onboarding', request.url))
   }
 
+  const ADMIN_EMAILS = ['adria.gaitan.sola@gmail.com']
+  if (ADMIN_EMAILS.includes(user.email ?? '')) {
+    return makeResponse(new URL('/admin', request.url))
+  }
+
   const rol         = searchParams.get('rol')
   const negocioParam = searchParams.get('negocio')
 
