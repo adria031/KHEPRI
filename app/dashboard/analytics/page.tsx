@@ -25,7 +25,7 @@ const K = {
   pink:   '#FBCFE8', orange: '#FED7AA',
   indigo: '#C7D2FE', mint: '#A7F3D0',
 }
-const PIE_COLORS = [K.blue, K.lila, K.green, K.yellow, K.pink, K.orange, K.indigo, K.mint]
+const PIE_COLORS = ['#B8D8F8','#D4C5F9','#B8EDD4','#FDE9A2','#FBCFE8']
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ReservaRaw = {
@@ -70,6 +70,7 @@ export default function Analytics() {
   const [modalDescuento, setModalDescuento] = useState<{ dia: string; diaCorto: string } | null>(null)
   const [pctDescuentoModal, setPctDescuentoModal] = useState(15)
   const [guardandoDescuento, setGuardandoDescuento] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   // ── Raw data ─────────────────────────────────────────────────────────────
   const [reservas, setReservas] = useState<ReservaRaw[]>([])
@@ -433,6 +434,13 @@ export default function Analytics() {
     if (negocioId) cargarDatos(negocioId, periodo)
   }, [negocioId, periodo, cargarDatos])
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   // ── CSV export ────────────────────────────────────────────────────────────
   function exportarCSV() {
     const rows = [
@@ -475,24 +483,39 @@ export default function Analytics() {
   }
 
   // ── KPI card ──────────────────────────────────────────────────────────────
-  function KpiCard({ label, value, sub, color = '#111827' }: { label: string; value: string; sub?: string; color?: string }) {
+  function KpiCard({ label, value, sub, color = '#111827', borderColor, trend }: {
+    label: string; value: string; sub?: string; color?: string; borderColor?: string; trend?: number | null
+  }) {
+    const up = trend != null && trend > 0
+    const dn = trend != null && trend < 0
+    const bColor = borderColor || color
     return (
-      <div style={{ background:'white', border:'1px solid var(--border)', borderRadius:16, padding:'18px 20px', width:'100%', minWidth:0, overflow:'hidden' }}>
+      <div style={{ background:'white', border:'1px solid var(--border)', borderLeft:`4px solid ${bColor}`, borderRadius:16, padding:'18px 20px', width:'100%', minWidth:0, overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
         <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:6, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
-        <div style={{ fontSize:'clamp(18px,4.5vw,28px)', fontWeight:800, color, letterSpacing:'-1px', marginBottom:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{value}</div>
+        <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:4, flexWrap:'wrap' }}>
+          <div style={{ fontSize:'clamp(1.8rem,3vw,2.4rem)', fontWeight:800, color, letterSpacing:'-1.5px', lineHeight:1 }}>{value}</div>
+          {trend != null && (
+            <span style={{ fontSize:12, fontWeight:700, color: up ? '#16A34A' : dn ? '#DC2626' : '#9CA3AF', flexShrink:0 }}>
+              {up ? '↑' : dn ? '↓' : '→'}{Math.abs(trend)}%
+            </span>
+          )}
+        </div>
         {sub && <div style={{ fontSize:'clamp(10px,2.5vw,12px)', color:'var(--muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sub}</div>}
       </div>
     )
   }
 
-  // ── Custom tooltip ────────────────────────────────────────────────────────
+  // ── Custom tooltips ───────────────────────────────────────────────────────
   function BarTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null
     return (
-      <div style={{ background:'white', border:'1px solid #E5E7EB', borderRadius:10, padding:'10px 14px', fontSize:13 }}>
-        <div style={{ fontWeight:700, marginBottom:4 }}>{label}</div>
+      <div style={{ background:'#fff', border:'1px solid #F1F5F9', borderRadius:12, padding:'10px 14px', boxShadow:'0 4px 16px rgba(0,0,0,0.08)' }}>
+        <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:6 }}>{label}</div>
         {payload.map((p: any) => (
-          <div key={p.name} style={{ color: p.color }}>{p.name === 'reservas' ? 'Reservas' : 'Ingresos'}: {p.name === 'ingresos' ? fmtEur(p.value) + ' €' : p.value}</div>
+          <div key={p.name} style={{ fontSize:13, fontWeight:700, color: p.name === 'reservas' ? '#4FACFE' : '#7C3AED', display:'flex', gap:8 }}>
+            <span>{p.name === 'reservas' ? '📅' : '💰'}</span>
+            <span>{p.name}: {p.name === 'ingresos' ? fmtEur(p.value) + ' €' : p.value}</span>
+          </div>
         ))}
       </div>
     )
@@ -616,10 +639,10 @@ export default function Analytics() {
           {/* ── KPIs ── */}
           <div className="an-section">
             <div className="kpis-grid">
-              <KpiCard label="Ingresos periodo" value={`${fmtEur(ingresos)} €`} sub={`${completadas.length} servicios completados`} color={K.greenDark} />
-              <KpiCard label="Reservas completadas" value={String(completadas.length)} sub={`${reservas.length} totales · ${canceladas.length} cancel.`} />
-              <KpiCard label="Tasa ocupación" value={`${tasaOcupacion}%`} sub="Completadas / Total activas" color={tasaOcupacion >= 70 ? K.greenDark : tasaOcupacion >= 40 ? K.yellowDark : '#DC2626'} />
-              <KpiCard label="Tasa cancelación" value={`${tasaCancelacion}%`} sub={`${canceladas.length} cancelaciones`} color={tasaCancelacion <= 10 ? K.greenDark : tasaCancelacion <= 25 ? K.yellowDark : '#DC2626'} />
+              <KpiCard label="Ingresos periodo" value={`${fmtEur(ingresos)} €`} sub={`${completadas.length} servicios completados`} color={K.greenDark} borderColor="#2E8A5E" trend={pctIngresos} />
+              <KpiCard label="Reservas completadas" value={String(completadas.length)} sub={`${reservas.length} totales · ${canceladas.length} cancel.`} borderColor="#6366F1" trend={pctReservas} />
+              <KpiCard label="Tasa ocupación" value={`${tasaOcupacion}%`} sub="Completadas / Total activas" color={tasaOcupacion >= 70 ? K.greenDark : tasaOcupacion >= 40 ? K.yellowDark : '#DC2626'} borderColor={tasaOcupacion >= 70 ? '#2E8A5E' : tasaOcupacion >= 40 ? '#C4860A' : '#DC2626'} />
+              <KpiCard label="Tasa cancelación" value={`${tasaCancelacion}%`} sub={`${canceladas.length} cancelaciones`} color={tasaCancelacion <= 10 ? K.greenDark : tasaCancelacion <= 25 ? K.yellowDark : '#DC2626'} borderColor={tasaCancelacion <= 10 ? '#2E8A5E' : tasaCancelacion <= 25 ? '#C4860A' : '#DC2626'} />
             </div>
           </div>
 
@@ -794,21 +817,33 @@ export default function Analytics() {
               <div className="an-card">
                 <div className="an-card-title">Reservas e ingresos por día</div>
                 <div className="an-chart-wrap">
-                <ChartBox height={220}>{(w) => (
-                  <BarChart width={w} height={220} data={reservasPorDia} margin={{ top:4, right:4, bottom:0, left:0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                    <XAxis dataKey="fecha" tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                    <YAxis yAxisId="r" orientation="left" tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} width={24} />
-                    <YAxis yAxisId="i" orientation="right" tick={{ fontSize:10, fill:'#9CA3AF' }} tickLine={false} axisLine={false} width={40} tickFormatter={v => `${v}€`} />
+                <div style={{ background:'rgba(124,92,239,0.02)', borderRadius:10, padding:'4px 0' }}>
+                <ChartBox height={isMobile ? 200 : 240}>{(w) => (
+                  <BarChart width={w} height={isMobile ? 200 : 240} data={reservasPorDia} margin={{ top:4, right:4, bottom:0, left:0 }}>
+                    <defs>
+                      <linearGradient id="gradReservas" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#4FACFE"/>
+                        <stop offset="100%" stopColor="#B8D8F8"/>
+                      </linearGradient>
+                      <linearGradient id="gradIngresos" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#7C3AED"/>
+                        <stop offset="100%" stopColor="#D4C5F9"/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                    <XAxis dataKey="fecha" tick={{ fontSize:11, fill:'#9CA3AF' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                    <YAxis yAxisId="r" orientation="left" tick={{ fontSize:11, fill:'#9CA3AF' }} tickLine={false} axisLine={false} width={24} />
+                    <YAxis yAxisId="i" orientation="right" tick={{ fontSize:11, fill:'#9CA3AF' }} tickLine={false} axisLine={false} width={40} tickFormatter={v => `${v}€`} />
                     <Tooltip content={<BarTooltip />} />
-                    <Bar yAxisId="r" dataKey="reservas" fill={K.blue} radius={[4,4,0,0]} maxBarSize={28} />
-                    <Bar yAxisId="i" dataKey="ingresos" fill={K.lila} radius={[4,4,0,0]} maxBarSize={28} />
+                    <Bar yAxisId="r" dataKey="reservas" fill="url(#gradReservas)" radius={[6,6,0,0]} maxBarSize={isMobile ? 14 : 20} animationDuration={800} animationEasing="ease-out" />
+                    <Bar yAxisId="i" dataKey="ingresos" fill="url(#gradIngresos)" radius={[6,6,0,0]} maxBarSize={isMobile ? 14 : 20} animationDuration={800} animationEasing="ease-out" />
                   </BarChart>
                 )}</ChartBox>
                 </div>
+                </div>
                 <div style={{ display:'flex', gap:16, marginTop:8, justifyContent:'center' }}>
-                  <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text2)' }}><span style={{ width:10, height:10, borderRadius:2, background:K.blue, display:'inline-block' }}/>Reservas</span>
-                  <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text2)' }}><span style={{ width:10, height:10, borderRadius:2, background:K.lila, display:'inline-block' }}/>Ingresos</span>
+                  <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text2)' }}><span style={{ width:10, height:10, borderRadius:2, background:'linear-gradient(135deg,#4FACFE,#B8D8F8)', display:'inline-block' }}/>Reservas</span>
+                  <span style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'var(--text2)' }}><span style={{ width:10, height:10, borderRadius:2, background:'linear-gradient(135deg,#7C3AED,#D4C5F9)', display:'inline-block' }}/>Ingresos</span>
                 </div>
               </div>
 
@@ -819,19 +854,35 @@ export default function Analytics() {
                   <div style={{ textAlign:'center', padding:'40px 0', color:'var(--muted)', fontSize:13 }}>Sin datos</div>
                 ) : (
                   <>
-                    <ChartBox height={160}>{(w) => (
-                      <PieChart width={w} height={160}>
-                        <Pie data={distribServs} cx="50%" cy="50%" innerRadius={45} outerRadius={72} dataKey="value" paddingAngle={2}>
+                    <ChartBox height={isMobile ? 220 : 280}>{(w) => (
+                      <PieChart width={w} height={isMobile ? 220 : 280}>
+                        <Pie
+                          data={distribServs} cx="50%" cy="50%"
+                          innerRadius={isMobile ? 44 : 60} outerRadius={isMobile ? 72 : 100}
+                          dataKey="value" paddingAngle={3}
+                          isAnimationActive={true} animationDuration={800} animationEasing="ease-out"
+                          label={({ cx, cy, midAngle, innerRadius, outerRadius, pct }: any) => {
+                            if (pct < 6) return null
+                            const RADIAN = Math.PI / 180
+                            const r = innerRadius + (outerRadius - innerRadius) * 0.5
+                            const x = cx + r * Math.cos(-midAngle * RADIAN)
+                            const y = cy + r * Math.sin(-midAngle * RADIAN)
+                            return (
+                              <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">{`${pct}%`}</text>
+                            )
+                          }}
+                          labelLine={false}
+                        >
                           {distribServs.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                         </Pie>
                         <Tooltip content={<PieTooltip />} />
                       </PieChart>
                     )}</ChartBox>
-                    <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:4 }}>
-                      {distribServs.slice(0, 4).map((s, i) => (
-                        <div key={i} style={{ display:'flex', alignItems:'center', gap:6, fontSize:11 }}>
-                          <span style={{ width:8, height:8, borderRadius:'50%', background:PIE_COLORS[i % PIE_COLORS.length], flexShrink:0 }}/>
-                          <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'var(--text2)' }}>{s.name}</span>
+                    <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:8 }}>
+                      {distribServs.slice(0, 5).map((s, i) => (
+                        <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12 }}>
+                          <span style={{ width:10, height:10, borderRadius:'50%', background:PIE_COLORS[i % PIE_COLORS.length], flexShrink:0 }}/>
+                          <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'var(--text2)', fontWeight:500 }}>{s.name}</span>
                           <span style={{ fontWeight:700, color:'var(--text)', flexShrink:0 }}>{s.pct}%</span>
                         </div>
                       ))}
