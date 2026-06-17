@@ -94,6 +94,7 @@ export async function getAdminClientes(): Promise<{ data: PerfilAdmin[]; error: 
   const { data, error } = await sb()
     .from('profiles')
     .select('id, nombre, email, tipo, plan, creditos_totales, creditos_usados')
+    .eq('tipo', 'cliente')
     .limit(500)
 
   console.log('[admin] clientes error:', error, 'count:', data?.length)

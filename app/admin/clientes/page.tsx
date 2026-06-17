@@ -38,8 +38,7 @@ export default function ClientesPage() {
   const [cargando,   setCargando]   = useState(true)
   const [perfiles,   setPerfiles]   = useState<PerfilAdmin[]>([])
   const [debugError, setDebugError] = useState<string | null>(null)
-  const [busq,       setBusq]       = useState('')
-  const [filtroTipo, setFiltroTipo] = useState('todos')
+  const [busq, setBusq] = useState('')
 
   useEffect(() => {
     getAdminClientes()
@@ -51,15 +50,11 @@ export default function ClientesPage() {
       .catch(e => { setDebugError(String(e)); setCargando(false) })
   }, [])
 
-  const tipos = ['todos', ...Array.from(new Set(perfiles.map(p => p.tipo ?? 'sin tipo'))).sort()]
-
-  const filtrados = perfiles.filter(p => {
-    const matchTipo = filtroTipo === 'todos' || (p.tipo ?? 'sin tipo') === filtroTipo
-    const matchBusq = !busq ||
-      (p.nombre ?? '').toLowerCase().includes(busq.toLowerCase()) ||
-      (p.email ?? '').toLowerCase().includes(busq.toLowerCase())
-    return matchTipo && matchBusq
-  })
+  const filtrados = perfiles.filter(p =>
+    !busq ||
+    (p.nombre ?? '').toLowerCase().includes(busq.toLowerCase()) ||
+    (p.email ?? '').toLowerCase().includes(busq.toLowerCase())
+  )
 
   return (
     <>
@@ -78,11 +73,6 @@ export default function ClientesPage() {
         <div className="cl-header">
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input className="cl-search" placeholder="🔍 Nombre o email…" value={busq} onChange={e => setBusq(e.target.value)}/>
-            {tipos.map(t => (
-              <button key={t} className={`f-btn ${filtroTipo === t ? 'act' : ''}`} onClick={() => setFiltroTipo(t)}>
-                {t === 'todos' ? 'Todos' : t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
           </div>
           <button className="act-btn" onClick={() => exportCSV(
             filtrados.map(p => ({ nombre: p.nombre, email: p.email, tipo: p.tipo, plan: p.plan })),
