@@ -39,7 +39,6 @@ export type NegocioAdmin = {
 export type PerfilAdmin = {
   id: string; nombre?: string | null; email?: string | null; tipo?: string | null
   plan?: string | null; creditos_totales?: number | null; creditos_usados?: number | null
-  created_at: string
 }
 
 export type WaitlistAdmin = {
@@ -94,8 +93,7 @@ export async function getAdminClientes(): Promise<{ data: PerfilAdmin[]; error: 
 
   const { data, error } = await sb()
     .from('profiles')
-    .select('id, nombre, email, tipo, plan, creditos_totales, creditos_usados, created_at')
-    .order('created_at', { ascending: false })
+    .select('id, nombre, email, tipo, plan, creditos_totales, creditos_usados')
     .limit(500)
 
   console.log('[admin] clientes error:', error, 'count:', data?.length)

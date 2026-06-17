@@ -85,7 +85,7 @@ export default function ClientesPage() {
             ))}
           </div>
           <button className="act-btn" onClick={() => exportCSV(
-            filtrados.map(p => ({ nombre: p.nombre, email: p.email, tipo: p.tipo, plan: p.plan, registro: p.created_at })),
+            filtrados.map(p => ({ nombre: p.nombre, email: p.email, tipo: p.tipo, plan: p.plan })),
             'clientes.csv')}>
             📥 Exportar CSV
           </button>
@@ -97,7 +97,7 @@ export default function ClientesPage() {
           <div className="tbl-wrap">
             <table>
               <thead>
-                <tr><th>Usuario</th><th>Email</th><th>Tipo</th><th>Plan</th><th>Créditos</th><th>Registro</th></tr>
+                <tr><th>Usuario</th><th>Email</th><th>Tipo</th><th>Plan</th><th>Créditos</th></tr>
               </thead>
               <tbody>
                 {filtrados.map(p => {
@@ -126,12 +126,11 @@ export default function ClientesPage() {
                       <td style={{ fontSize: 12, color: '#6B7280' }}>
                         {cTot > 0 ? `${cTot - cUsd} / ${cTot}` : '—'}
                       </td>
-                      <td style={{ fontSize: 12, color: '#9CA3AF' }}>{fmtFecha(p.created_at)}</td>
                     </tr>
                   )
                 })}
                 {filtrados.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', color: '#9CA3AF', padding: 40 }}>Sin resultados</td></tr>
+                  <tr><td colSpan={5} style={{ textAlign: 'center', color: '#9CA3AF', padding: 40 }}>Sin resultados</td></tr>
                 )}
               </tbody>
             </table>
