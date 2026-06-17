@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import AdminShell from './AdminShell'
 
 const ADMIN_EMAILS = ['adria.gaitan.sola@gmail.com']
 
@@ -24,5 +25,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/')
   }
 
-  return <>{children}</>
+  return <AdminShell>{children}</AdminShell>
 }
