@@ -19,8 +19,12 @@ async function verifyAdmin() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   )
-  const { data: { session } } = await client.auth.getSession()
-  if (!session || session.user.email !== ADMIN_EMAIL) throw new Error('No autorizado')
+  // getUser() hace round-trip al servidor — más fiable que getSession() en producción
+  const { data: { user }, error } = await client.auth.getUser()
+  console.log('[admin] verifyAdmin user:', user?.email, 'error:', error?.message)
+  if (error || !user || user.email !== ADMIN_EMAIL) {
+    throw new Error('No autorizado: ' + (error?.message ?? user?.email ?? 'sin sesión'))
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,38 +49,67 @@ export type WaitlistAdmin = {
 
 // ─── Reads ────────────────────────────────────────────────────────────────────
 
-export async function getAdminNegocios(): Promise<NegocioAdmin[]> {
-  await verifyAdmin()
-  const [{ data: negs }, { data: profs }] = await Promise.all([
+export async function getAdminNegocios(): Promise<{ data: NegocioAdmin[]; error: string | null }> {
+  try {
+    await verifyAdmin()
+  } catch (e) {
+    console.error('[admin] getAdminNegocios verifyAdmin failed:', e)
+    return { data: [], error: String(e) }
+  }
+
+  const [{ data: negs, error: negError }, { data: profs, error: profError }] = await Promise.all([
     sb().from('negocios')
       .select('id, nombre, tipo, ciudad, created_at, activo, user_id, plan, creditos_totales, creditos_usados')
       .order('created_at', { ascending: false }),
     sb().from('profiles').select('id, email, nombre'),
   ])
+
+  console.log('[admin] negocios error:', negError, 'count:', negs?.length)
+  console.log('[admin] profiles error:', profError, 'count:', profs?.length)
+
+  if (negError) return { data: [], error: `negocios: ${JSON.stringify(negError)}` }
+
   const pm = new Map((profs ?? []).map(p => [p.id as string, p as { email: string | null; nombre: string | null }]))
-  return (negs ?? []).map(n => ({
-    ...n,
-    activo: n.activo as boolean | null,
-    plan: n.plan as string | null,
-    creditos_totales: n.creditos_totales as number | null,
-    creditos_usados: n.creditos_usados as number | null,
-    owner_email:  pm.get(n.user_id)?.email  ?? null,
-    owner_nombre: pm.get(n.user_id)?.nombre ?? null,
-  }))
+  return {
+    data: (negs ?? []).map(n => ({
+      ...n,
+      activo: n.activo as boolean | null,
+      plan: n.plan as string | null,
+      creditos_totales: n.creditos_totales as number | null,
+      creditos_usados: n.creditos_usados as number | null,
+      owner_email:  pm.get(n.user_id)?.email  ?? null,
+      owner_nombre: pm.get(n.user_id)?.nombre ?? null,
+    })),
+    error: null,
+  }
 }
 
-export async function getAdminClientes(): Promise<PerfilAdmin[]> {
-  await verifyAdmin()
-  const { data } = await sb()
+export async function getAdminClientes(): Promise<{ data: PerfilAdmin[]; error: string | null }> {
+  try {
+    await verifyAdmin()
+  } catch (e) {
+    console.error('[admin] getAdminClientes verifyAdmin failed:', e)
+    return { data: [], error: String(e) }
+  }
+
+  const { data, error } = await sb()
     .from('profiles')
     .select('id, nombre, email, tipo, plan, creditos_totales, creditos_usados, created_at')
     .order('created_at', { ascending: false })
     .limit(500)
-  return (data ?? []) as PerfilAdmin[]
+
+  console.log('[admin] clientes error:', error, 'count:', data?.length)
+
+  if (error) return { data: [], error: `profiles: ${JSON.stringify(error)}` }
+  return { data: (data ?? []) as PerfilAdmin[], error: null }
 }
 
 export async function getAdminWaitlist(): Promise<{ data: WaitlistAdmin[]; error: boolean }> {
-  await verifyAdmin()
+  try {
+    await verifyAdmin()
+  } catch {
+    return { data: [], error: true }
+  }
   const { data, error } = await sb()
     .from('waitlist')
     .select('id, nombre, email, tipo_negocio, ciudad, created_at')
@@ -85,16 +118,23 @@ export async function getAdminWaitlist(): Promise<{ data: WaitlistAdmin[]; error
 }
 
 export async function getAdminDashboard() {
-  await verifyAdmin()
+  try {
+    await verifyAdmin()
+  } catch (e) {
+    console.error('[admin] getAdminDashboard verifyAdmin failed:', e)
+    return { negocios: [], totalClientes: 0, totalWaitlist: 0, error: String(e) }
+  }
   const [{ data: negs }, { count: cProfiles }, { count: cWaitlist }] = await Promise.all([
     sb().from('negocios').select('id, created_at, plan, activo').order('created_at', { ascending: false }),
     sb().from('profiles').select('*', { count: 'exact', head: true }),
     sb().from('waitlist').select('*', { count: 'exact', head: true }),
   ])
+  console.log('[admin] dashboard negs:', negs?.length, 'profiles:', cProfiles, 'waitlist:', cWaitlist)
   return {
     negocios:     (negs ?? []) as { id: string; created_at: string; plan: string | null; activo: boolean | null }[],
     totalClientes: cProfiles ?? 0,
     totalWaitlist: cWaitlist ?? 0,
+    error: null,
   }
 }
 

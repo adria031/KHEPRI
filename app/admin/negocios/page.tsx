@@ -88,6 +88,7 @@ const CSS = `
 export default function NegociosPage() {
   const [cargando,    setCargando]    = useState(true)
   const [negocios,    setNegocios]    = useState<NegocioAdmin[]>([])
+  const [debugError,  setDebugError]  = useState<string | null>(null)
   const [busq,        setBusq]        = useState('')
   const [filtroPlan,  setFiltroPlan]  = useState('todos')
 
@@ -103,7 +104,13 @@ export default function NegociosPage() {
   const [bloqueando,   setBloqueando]   = useState<string | null>(null)
 
   useEffect(() => {
-    getAdminNegocios().then(data => { setNegocios(data); setCargando(false) }).catch(console.error)
+    getAdminNegocios()
+      .then(({ data, error }) => {
+        if (error) setDebugError(error)
+        setNegocios(data)
+        setCargando(false)
+      })
+      .catch(e => { setDebugError(String(e)); setCargando(false) })
   }, [])
 
   async function cambiarPlan() {
@@ -228,6 +235,13 @@ export default function NegociosPage() {
       <div className="admin-content">
         <div className="page-title">Negocios</div>
         <div className="page-sub">{filtrados.length} de {negocios.length} negocios</div>
+
+        {debugError && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: 6, fontSize: 13 }}>⚠ Error al cargar (debug):</div>
+            <pre style={{ fontSize: 11, color: '#991B1B', overflow: 'auto', margin: 0, whiteSpace: 'pre-wrap' }}>{debugError}</pre>
+          </div>
+        )}
 
         <div className="ng-header">
           <div className="ng-filters">

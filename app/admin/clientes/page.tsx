@@ -37,11 +37,18 @@ const CSS = `
 export default function ClientesPage() {
   const [cargando,   setCargando]   = useState(true)
   const [perfiles,   setPerfiles]   = useState<PerfilAdmin[]>([])
+  const [debugError, setDebugError] = useState<string | null>(null)
   const [busq,       setBusq]       = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
 
   useEffect(() => {
-    getAdminClientes().then(data => { setPerfiles(data); setCargando(false) }).catch(console.error)
+    getAdminClientes()
+      .then(({ data, error }) => {
+        if (error) setDebugError(error)
+        setPerfiles(data)
+        setCargando(false)
+      })
+      .catch(e => { setDebugError(String(e)); setCargando(false) })
   }, [])
 
   const tipos = ['todos', ...Array.from(new Set(perfiles.map(p => p.tipo ?? 'sin tipo'))).sort()]
@@ -60,6 +67,13 @@ export default function ClientesPage() {
       <div className="admin-content">
         <div className="page-title">Clientes</div>
         <div className="page-sub">{filtrados.length} de {perfiles.length} perfiles registrados</div>
+
+        {debugError && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: 6, fontSize: 13 }}>⚠ Error al cargar (debug):</div>
+            <pre style={{ fontSize: 11, color: '#991B1B', overflow: 'auto', margin: 0, whiteSpace: 'pre-wrap' }}>{debugError}</pre>
+          </div>
+        )}
 
         <div className="cl-header">
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
