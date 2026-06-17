@@ -5,6 +5,27 @@ import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { DashboardShell } from '../DashboardShell'
 
+const COLORES_PROFESIONALES = [
+  { nombre: 'Índigo',    valor: '#4F46E5' },
+  { nombre: 'Morado',    valor: '#7C3AED' },
+  { nombre: 'Violeta',   valor: '#8B5CF6' },
+  { nombre: 'Azul',      valor: '#2563EB' },
+  { nombre: 'Cian',      valor: '#0891B2' },
+  { nombre: 'Cielo',     valor: '#0284C7' },
+  { nombre: 'Esmeralda', valor: '#059669' },
+  { nombre: 'Verde',     valor: '#16A34A' },
+  { nombre: 'Lima',      valor: '#65A30D' },
+  { nombre: 'Menta',     valor: '#10B981' },
+  { nombre: 'Ámbar',     valor: '#D97706' },
+  { nombre: 'Naranja',   valor: '#EA580C' },
+  { nombre: 'Rosa',      valor: '#DB2777' },
+  { nombre: 'Rojo',      valor: '#DC2626' },
+  { nombre: 'Coral',     valor: '#E11D48' },
+  { nombre: 'Slate',     valor: '#475569' },
+  { nombre: 'Grafito',   valor: '#374151' },
+  { nombre: 'Marrón',    valor: '#92400E' },
+]
+
 
 
 export default function MiNegocio() {
@@ -778,40 +799,73 @@ export default function MiNegocio() {
                   <p style={{fontSize:'13px', color:'var(--muted)', marginBottom:'20px', lineHeight:1.6}}>
                     Elige los colores de tu negocio. Aparecerán en tu ficha pública y en los materiales de marketing.
                   </p>
-                  <div className="grid2" style={{marginBottom:'20px'}}>
-                    <div className="field">
-                      <label>Color principal</label>
-                      <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                        <input
-                          type="color"
-                          value={form.color_principal}
-                          onChange={e => setForm({...form, color_principal: e.target.value})}
-                          style={{width:'48px', height:'42px', padding:'2px 4px', borderRadius:'8px', border:'1.5px solid var(--border)', cursor:'pointer', background:'none'}}
+                  {/* Color principal — paleta profesional */}
+                  <div className="field" style={{marginBottom:'20px'}}>
+                    <label>Color principal</label>
+                    <div style={{display:'flex', flexWrap:'wrap', gap:10, marginTop:12}}>
+                      {COLORES_PROFESIONALES.map(c => (
+                        <button
+                          key={c.valor}
+                          type="button"
+                          onClick={() => setForm({...form, color_principal: c.valor})}
+                          title={c.nombre}
+                          style={{
+                            width:36, height:36, borderRadius:'50%',
+                            background:c.valor, border:'none', cursor:'pointer',
+                            boxShadow: form.color_principal === c.valor
+                              ? `0 0 0 3px #fff, 0 0 0 5px ${c.valor}`
+                              : '0 2px 6px rgba(0,0,0,0.15)',
+                            transform: form.color_principal === c.valor ? 'scale(1.15)' : 'scale(1)',
+                            transition: 'all 0.2s'
+                          }}
                         />
-                        <input
-                          type="text"
-                          value={form.color_principal}
-                          onChange={e => setForm({...form, color_principal: e.target.value})}
-                          style={{flex:1}}
-                        />
+                      ))}
+                    </div>
+                    <div style={{marginTop:16, display:'flex', alignItems:'center', gap:12}}>
+                      <span style={{fontSize:13, color:'#6B7280'}}>Color personalizado:</span>
+                      <input
+                        type="color"
+                        value={form.color_principal}
+                        onChange={e => setForm({...form, color_principal: e.target.value})}
+                        style={{width:40, height:40, border:'none', borderRadius:8, cursor:'pointer', padding:2}}
+                      />
+                      <span style={{fontSize:12, color:'#9CA3AF', fontFamily:'monospace'}}>{form.color_principal}</span>
+                    </div>
+                  </div>
+
+                  {/* Mini preview card */}
+                  <div style={{marginBottom:20, padding:16, borderRadius:14, background:'#F7F9FF', border:'1px solid #E5E7EB'}}>
+                    <div style={{fontSize:12, color:'#9CA3AF', marginBottom:10}}>Vista previa:</div>
+                    <div style={{display:'flex', alignItems:'center', gap:10}}>
+                      <div style={{width:44, height:44, borderRadius:12, background:form.color_principal, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20}}>
+                        🏪
+                      </div>
+                      <div>
+                        <div style={{fontWeight:700, color:'#0F0F1A'}}>{form.nombre || 'Tu negocio'}</div>
+                        <div style={{fontSize:12, color:form.color_principal, fontWeight:600}}>● Disponible ahora</div>
+                      </div>
+                      <div style={{marginLeft:'auto', background:form.color_principal, color:'#fff', borderRadius:8, padding:'6px 14px', fontSize:12, fontWeight:700}}>
+                        Reservar
                       </div>
                     </div>
-                    <div className="field">
-                      <label>Color secundario</label>
-                      <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                        <input
-                          type="color"
-                          value={form.color_secundario}
-                          onChange={e => setForm({...form, color_secundario: e.target.value})}
-                          style={{width:'48px', height:'42px', padding:'2px 4px', borderRadius:'8px', border:'1.5px solid var(--border)', cursor:'pointer', background:'none'}}
-                        />
-                        <input
-                          type="text"
-                          value={form.color_secundario}
-                          onChange={e => setForm({...form, color_secundario: e.target.value})}
-                          style={{flex:1}}
-                        />
-                      </div>
+                  </div>
+
+                  {/* Color secundario */}
+                  <div className="field" style={{marginBottom:'20px'}}>
+                    <label>Color secundario</label>
+                    <div style={{display:'flex', alignItems:'center', gap:10, marginTop:8}}>
+                      <input
+                        type="color"
+                        value={form.color_secundario}
+                        onChange={e => setForm({...form, color_secundario: e.target.value})}
+                        style={{width:'48px', height:'42px', padding:'2px 4px', borderRadius:'8px', border:'1.5px solid var(--border)', cursor:'pointer', background:'none'}}
+                      />
+                      <input
+                        type="text"
+                        value={form.color_secundario}
+                        onChange={e => setForm({...form, color_secundario: e.target.value})}
+                        style={{flex:1}}
+                      />
                     </div>
                   </div>
                   <div style={{borderRadius:'14px', overflow:'hidden', boxShadow:'0 4px 16px rgba(0,0,0,0.08)', fontFamily:'inherit'}}>

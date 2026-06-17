@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { HexColorPicker } from 'react-colorful'
 import { supabase, getSessionClient } from '../../lib/supabase'
 import { descontarCreditos, obtenerCreditos } from '../../lib/creditos'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
@@ -12,15 +11,25 @@ type EstiloType = 'marca' | 'oscuro' | 'claro'
 type FuenteType = 'moderna' | 'elegante' | 'bold'
 type LayoutType = 'estatico' | 'diagonal' | 'minimalista' | 'bold' | 'elegante'
 
-const PALETAS = [
-  { name: 'Índigo',    ppal: '#6B4FD8', sec: '#818CF8' },
-  { name: 'Rosa',      ppal: '#EC4899', sec: '#F9A8D4' },
-  { name: 'Esmeralda', ppal: '#10B981', sec: '#6EE7B7' },
-  { name: 'Ámbar',     ppal: '#F59E0B', sec: '#FCD34D' },
-  { name: 'Escarlata', ppal: '#EF4444', sec: '#F87171' },
-  { name: 'Cielo',     ppal: '#0EA5E9', sec: '#7DD3FC' },
-  { name: 'Nude',      ppal: '#C4860A', sec: '#D4C5F9' },
-  { name: 'Noche',     ppal: '#1E293B', sec: '#475569' },
+const COLORES_PROFESIONALES = [
+  { nombre: 'Índigo',    valor: '#4F46E5' },
+  { nombre: 'Morado',    valor: '#7C3AED' },
+  { nombre: 'Violeta',   valor: '#8B5CF6' },
+  { nombre: 'Azul',      valor: '#2563EB' },
+  { nombre: 'Cian',      valor: '#0891B2' },
+  { nombre: 'Cielo',     valor: '#0284C7' },
+  { nombre: 'Esmeralda', valor: '#059669' },
+  { nombre: 'Verde',     valor: '#16A34A' },
+  { nombre: 'Lima',      valor: '#65A30D' },
+  { nombre: 'Menta',     valor: '#10B981' },
+  { nombre: 'Ámbar',     valor: '#D97706' },
+  { nombre: 'Naranja',   valor: '#EA580C' },
+  { nombre: 'Rosa',      valor: '#DB2777' },
+  { nombre: 'Rojo',      valor: '#DC2626' },
+  { nombre: 'Coral',     valor: '#E11D48' },
+  { nombre: 'Slate',     valor: '#475569' },
+  { nombre: 'Grafito',   valor: '#374151' },
+  { nombre: 'Marrón',    valor: '#92400E' },
 ]
 
 const FONT_MAP: Record<FuenteType, string> = {
@@ -919,15 +928,8 @@ Devuelve SOLO JSON sin markdown:
         .mk-color-trigger:hover { border-color:#C7D2FE; }
         .mk-color-swatch { width:22px; height:22px; border-radius:5px; border:1.5px solid rgba(0,0,0,0.1); flex-shrink:0; }
         .mk-color-popup { position:absolute; top:calc(100% + 8px); left:0; z-index:200; background:white; border:1px solid #E5E7EB; border-radius:16px; padding:14px; box-shadow:0 12px 40px rgba(0,0,0,0.15); width:240px; }
-        .mk-color-popup .react-colorful { width:100% !important; height:160px !important; border-radius:10px; margin-bottom:12px; }
-        .mk-color-popup .react-colorful__saturation { border-radius:10px 10px 0 0; }
-        .mk-color-popup .react-colorful__hue { border-radius:0 0 6px 6px; height:14px; }
-        .mk-color-popup .react-colorful__pointer { width:18px; height:18px; }
-        .mk-paletas-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
-        .mk-paleta-chip { width:26px; height:26px; border-radius:6px; border:1.5px solid rgba(0,0,0,0.1); cursor:pointer; flex-shrink:0; transition:transform .1s; }
-        .mk-paleta-chip:hover { transform:scale(1.15); border-color:rgba(0,0,0,0.2); }
-        .mk-paleta-chip.sel { border:2px solid #111827; transform:scale(1.1); }
-        .mk-color-hex { width:100%; margin-top:10px; padding:7px 10px; border:1.5px solid #E5E7EB; border-radius:8px; font-size:13px; font-family:inherit; outline:none; text-transform:uppercase; }
+        .mk-paletas-grid { display:flex; flex-wrap:wrap; gap:7px; }
+        .mk-color-hex { width:100%; padding:7px 10px; border:1.5px solid #E5E7EB; border-radius:8px; font-size:13px; font-family:inherit; outline:none; text-transform:uppercase; flex:1; }
         .mk-color-hex:focus { border-color:#4F46E5; }
       `}</style>
 
@@ -1091,16 +1093,25 @@ Devuelve SOLO JSON sin markdown:
                       </button>
                       {colorPickerOpen === 'ppal' && (
                         <div className="mk-color-popup">
-                          <HexColorPicker color={colorPpal} onChange={setColorPpal} />
                           <div className="mk-paletas-grid">
-                            {PALETAS.map(p => (
-                              <button key={p.name} title={`${p.name} — ${p.ppal}`}
-                                className={`mk-paleta-chip${colorPpal === p.ppal ? ' sel' : ''}`}
-                                style={{ background:p.ppal }}
-                                onClick={() => { setColorPpal(p.ppal); setColorSec(p.sec) }} />
+                            {COLORES_PROFESIONALES.map(c => (
+                              <button key={c.valor} title={c.nombre}
+                                type="button"
+                                style={{
+                                  width:28, height:28, borderRadius:'50%', background:c.valor,
+                                  border:'none', cursor:'pointer', flexShrink:0,
+                                  boxShadow: colorPpal === c.valor ? `0 0 0 2px #fff, 0 0 0 4px ${c.valor}` : '0 2px 4px rgba(0,0,0,0.15)',
+                                  transform: colorPpal === c.valor ? 'scale(1.15)' : 'scale(1)',
+                                  transition: 'all 0.2s',
+                                }}
+                                onClick={() => setColorPpal(c.valor)} />
                             ))}
                           </div>
-                          <input className="mk-color-hex" value={colorPpal} onChange={e => setColorPpal(e.target.value)} placeholder="#6B4FD8" />
+                          <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8 }}>
+                            <input type="color" value={colorPpal} onChange={e => setColorPpal(e.target.value)}
+                              style={{ width:32, height:32, border:'none', borderRadius:6, cursor:'pointer', padding:2, flexShrink:0 }} />
+                            <input className="mk-color-hex" value={colorPpal} onChange={e => setColorPpal(e.target.value)} placeholder="#6B4FD8" />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1112,16 +1123,25 @@ Devuelve SOLO JSON sin markdown:
                       </button>
                       {colorPickerOpen === 'sec' && (
                         <div className="mk-color-popup">
-                          <HexColorPicker color={colorSec} onChange={setColorSec} />
                           <div className="mk-paletas-grid">
-                            {PALETAS.map(p => (
-                              <button key={p.name} title={`${p.name} — ${p.sec}`}
-                                className={`mk-paleta-chip${colorSec === p.sec ? ' sel' : ''}`}
-                                style={{ background:p.sec }}
-                                onClick={() => setColorSec(p.sec)} />
+                            {COLORES_PROFESIONALES.map(c => (
+                              <button key={c.valor} title={c.nombre}
+                                type="button"
+                                style={{
+                                  width:28, height:28, borderRadius:'50%', background:c.valor,
+                                  border:'none', cursor:'pointer', flexShrink:0,
+                                  boxShadow: colorSec === c.valor ? `0 0 0 2px #fff, 0 0 0 4px ${c.valor}` : '0 2px 4px rgba(0,0,0,0.15)',
+                                  transform: colorSec === c.valor ? 'scale(1.15)' : 'scale(1)',
+                                  transition: 'all 0.2s',
+                                }}
+                                onClick={() => setColorSec(c.valor)} />
                             ))}
                           </div>
-                          <input className="mk-color-hex" value={colorSec} onChange={e => setColorSec(e.target.value)} placeholder="#818CF8" />
+                          <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8 }}>
+                            <input type="color" value={colorSec} onChange={e => setColorSec(e.target.value)}
+                              style={{ width:32, height:32, border:'none', borderRadius:6, cursor:'pointer', padding:2, flexShrink:0 }} />
+                            <input className="mk-color-hex" value={colorSec} onChange={e => setColorSec(e.target.value)} placeholder="#818CF8" />
+                          </div>
                         </div>
                       )}
                     </div>
