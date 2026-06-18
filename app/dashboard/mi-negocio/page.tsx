@@ -5,25 +5,48 @@ import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
 import { DashboardShell } from '../DashboardShell'
 
-const COLORES_PROFESIONALES = [
-  { nombre: 'Índigo',    valor: '#4F46E5' },
-  { nombre: 'Morado',    valor: '#7C3AED' },
-  { nombre: 'Violeta',   valor: '#8B5CF6' },
-  { nombre: 'Azul',      valor: '#2563EB' },
-  { nombre: 'Cian',      valor: '#0891B2' },
-  { nombre: 'Cielo',     valor: '#0284C7' },
-  { nombre: 'Esmeralda', valor: '#059669' },
-  { nombre: 'Verde',     valor: '#16A34A' },
-  { nombre: 'Lima',      valor: '#65A30D' },
-  { nombre: 'Menta',     valor: '#10B981' },
-  { nombre: 'Ámbar',     valor: '#D97706' },
-  { nombre: 'Naranja',   valor: '#EA580C' },
-  { nombre: 'Rosa',      valor: '#DB2777' },
-  { nombre: 'Rojo',      valor: '#DC2626' },
-  { nombre: 'Coral',     valor: '#E11D48' },
-  { nombre: 'Slate',     valor: '#475569' },
-  { nombre: 'Grafito',   valor: '#374151' },
-  { nombre: 'Marrón',    valor: '#92400E' },
+type Plantilla = {
+  id: string; nombre: string; tipo: string; tag?: string;
+  color?: string; colorSecundario?: string; gradient?: string; textColor: string;
+}
+
+const PLANTILLAS: Plantilla[] = [
+  // ── SÓLIDOS ──
+  { id:'khepria',    nombre:'Khepria',     tipo:'solido',    color:'#7C3AED', colorSecundario:'#4F46E5', textColor:'#fff', tag:'⭐ Por defecto' },
+  { id:'oceano',     nombre:'Océano',      tipo:'solido',    color:'#2563EB', colorSecundario:'#0891B2', textColor:'#fff' },
+  { id:'esmeralda',  nombre:'Esmeralda',   tipo:'solido',    color:'#059669', colorSecundario:'#10B981', textColor:'#fff' },
+  { id:'sunset',     nombre:'Sunset',      tipo:'solido',    color:'#EA580C', colorSecundario:'#DB2777', textColor:'#fff' },
+  { id:'rosa',       nombre:'Rosa',        tipo:'solido',    color:'#DB2777', colorSecundario:'#E11D48', textColor:'#fff' },
+  { id:'dorado',     nombre:'Dorado',      tipo:'solido',    color:'#D97706', colorSecundario:'#92400E', textColor:'#fff' },
+  { id:'carbon',     nombre:'Carbón',      tipo:'solido',    color:'#111827', colorSecundario:'#374151', textColor:'#fff' },
+  { id:'blanco',     nombre:'Minimal',     tipo:'solido',    color:'#F9FAFB', colorSecundario:'#F3F4F6', textColor:'#111827' },
+  // ── DEGRADADOS ──
+  { id:'aurora',     nombre:'Aurora',      tipo:'gradiente', gradient:'linear-gradient(135deg,#7C3AED,#4FACFE)', textColor:'#fff' },
+  { id:'fuego',      nombre:'Fuego',       tipo:'gradiente', gradient:'linear-gradient(135deg,#EA580C,#FBBF24)', textColor:'#fff' },
+  { id:'bosque',     nombre:'Bosque',      tipo:'gradiente', gradient:'linear-gradient(135deg,#059669,#65A30D)', textColor:'#fff' },
+  { id:'cielo',      nombre:'Cielo',       tipo:'gradiente', gradient:'linear-gradient(135deg,#2563EB,#7C3AED)', textColor:'#fff' },
+  { id:'flamingo',   nombre:'Flamingo',    tipo:'gradiente', gradient:'linear-gradient(135deg,#DB2777,#F59E0B)', textColor:'#fff' },
+  { id:'medianoche', nombre:'Medianoche',  tipo:'gradiente', gradient:'linear-gradient(135deg,#0F0F1A,#4F46E5)', textColor:'#fff' },
+  { id:'pastel',     nombre:'Pastel',      tipo:'gradiente', gradient:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', textColor:'#374151' },
+  { id:'naturaleza', nombre:'Naturaleza',  tipo:'gradiente', gradient:'linear-gradient(135deg,#B8EDD4,#B8D8F8)', textColor:'#374151' },
+  // ── ABSTRACTOS ──
+  { id:'cosmos',     nombre:'Cosmos',      tipo:'abstracto', gradient:'radial-gradient(ellipse at 20% 50%,#7C3AED 0%,#0F0F1A 60%)', textColor:'#fff' },
+  { id:'aurora2',    nombre:'Aurora Borealis', tipo:'abstracto', gradient:'radial-gradient(ellipse at 80% 20%,#4FACFE 0%,#7C3AED 40%,#40DCA5 100%)', textColor:'#fff' },
+  { id:'nebula',     nombre:'Nebulosa',    tipo:'abstracto', gradient:'radial-gradient(ellipse at 30% 70%,#DB2777 0%,#7C3AED 50%,#2563EB 100%)', textColor:'#fff' },
+  { id:'lava',       nombre:'Lava',        tipo:'abstracto', gradient:'radial-gradient(ellipse at 50% 0%,#EA580C 0%,#DC2626 50%,#111827 100%)', textColor:'#fff' },
+  // ── PSYCHEDELIC ──
+  { id:'acid',       nombre:'Acid',        tipo:'psycho',    gradient:'linear-gradient(45deg,#FF006E,#8338EC,#3A86FF,#06D6A0,#FFB700)', textColor:'#fff' },
+  { id:'retrowave',  nombre:'Retrowave',   tipo:'psycho',    gradient:'linear-gradient(135deg,#FF0080,#7928CA,#0070F3)', textColor:'#fff' },
+  { id:'glitch',     nombre:'Glitch',      tipo:'psycho',    gradient:'linear-gradient(135deg,#00FF87,#60EFFF,#FF6B6B,#FFE66D)', textColor:'#111' },
+  { id:'neon',       nombre:'Neon',        tipo:'psycho',    gradient:'linear-gradient(135deg,#0FF,#F0F,#FF0)', textColor:'#111' },
+]
+
+const CATEGORIAS = [
+  { id:'solido',    nombre:'Sólidos',     emoji:'🎨' },
+  { id:'gradiente', nombre:'Degradados',  emoji:'🌈' },
+  { id:'abstracto', nombre:'Abstracto',   emoji:'🌌' },
+  { id:'psycho',    nombre:'Psychedelic', emoji:'🔮' },
+  { id:'custom',    nombre:'Mi color',    emoji:'✏️' },
 ]
 
 
@@ -38,6 +61,30 @@ export default function MiNegocio() {
   const [negocioId, setNegocioId] = useState<string | null>(null)
   const [copiado,   setCopiado]   = useState(false)
   const [subiendo, setSubiendo] = useState(false)
+
+  // Apariencia
+  const [categoriaActiva, setCategoriaActiva] = useState('solido')
+  const [plantillaActual, setPlantillaActual] = useState('khepria')
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<Plantilla | null>(
+    PLANTILLAS.find(p => p.id === 'khepria') ?? null
+  )
+  const [colorCustom, setColorCustom] = useState('#7C3AED')
+  const [colorCustom2, setColorCustom2] = useState('#4FACFE')
+  const [savingColor, setSavingColor] = useState(false)
+  const [msgColor, setMsgColor] = useState<{ text: string; ok: boolean } | null>(null)
+
+  function seleccionarPlantilla(p: Plantilla) {
+    setPlantillaActual(p.id)
+    setPlantillaSeleccionada(p)
+  }
+
+  function aplicarCustom() {
+    seleccionarPlantilla({
+      id: 'custom', nombre: 'Personalizado', tipo: 'custom',
+      gradient: `linear-gradient(135deg,${colorCustom},${colorCustom2})`,
+      color: colorCustom, textColor: '#fff',
+    })
+  }
 
   // Importar desde otra app
   const [importModal, setImportModal] = useState(false)
@@ -126,6 +173,13 @@ export default function MiNegocio() {
           palabras_clave: data.palabras_clave || [],
           frase_marca: data.frase_marca || '',
         })
+        // Inicializar plantilla
+        const savedId = data.plantilla || 'khepria'
+        setPlantillaActual(savedId)
+        const found = PLANTILLAS.find(p => p.id === savedId)
+        if (found) setPlantillaSeleccionada(found)
+        setColorCustom(data.color || '#7C3AED')
+        setColorCustom2(data.color_secundario || '#4FACFE')
       }
       setCargando(false)
     })()
@@ -215,6 +269,24 @@ export default function MiNegocio() {
     setGuardando(false)
     setGuardado(true)
     setTimeout(() => setGuardado(false), 3000)
+  }
+
+  async function guardarColor() {
+    if (!negocioId) return
+    setSavingColor(true)
+    setMsgColor(null)
+    const colorPrincipal = plantillaSeleccionada?.color || colorCustom
+    const { error } = await supabase.from('negocios').update({
+      plantilla: plantillaActual,
+      color: colorPrincipal,
+      color_secundario: colorCustom2,
+      color_gradient: plantillaSeleccionada?.gradient || null,
+      color_text: plantillaSeleccionada?.textColor || '#fff',
+      color_principal: colorPrincipal,
+    }).eq('id', negocioId)
+    setSavingColor(false)
+    if (error) setMsgColor({ text: 'Error: ' + error.message, ok: false })
+    else setMsgColor({ text: 'Apariencia guardada correctamente ✨', ok: true })
   }
 
   async function subirFoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -795,134 +867,145 @@ export default function MiNegocio() {
 
                 {/* PERSONALIZACIÓN DE MARCA */}
                 <div className="section">
-                  <div className="section-title">🎨 Personalización de marca</div>
+                  <div className="section-title">🎨 Apariencia del negocio</div>
                   <p style={{fontSize:'13px', color:'var(--muted)', marginBottom:'20px', lineHeight:1.6}}>
-                    Elige los colores de tu negocio. Aparecerán en tu ficha pública y en los materiales de marketing.
+                    Elige el estilo visual de tu ficha pública. Aparecerá en tu página de reservas y materiales de marketing.
                   </p>
-                  {/* Color principal — paleta profesional */}
-                  <div className="field" style={{marginBottom:'20px'}}>
-                    <label>Color principal</label>
-                    <div style={{display:'flex', flexWrap:'wrap', gap:10, marginTop:12}}>
-                      {COLORES_PROFESIONALES.map(c => (
-                        <button
-                          key={c.valor}
-                          type="button"
-                          onClick={() => setForm({...form, color_principal: c.valor})}
-                          title={c.nombre}
+
+                  {/* Tabs de categoría */}
+                  <div style={{display:'flex', gap:8, marginBottom:20, overflowX:'auto', paddingBottom:4}}>
+                    {CATEGORIAS.map(cat => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setCategoriaActiva(cat.id)}
+                        style={{
+                          padding:'8px 16px', borderRadius:999, border:'none', cursor:'pointer',
+                          background: categoriaActiva === cat.id ? '#7C3AED' : '#F3F4F6',
+                          color: categoriaActiva === cat.id ? '#fff' : '#374151',
+                          fontWeight:700, fontSize:13, whiteSpace:'nowrap', flexShrink:0,
+                          transition:'all 0.2s', fontFamily:'inherit',
+                        }}
+                      >
+                        {cat.emoji} {cat.nombre}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Grid de plantillas */}
+                  {categoriaActiva !== 'custom' && (
+                    <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:12, marginBottom:20}}>
+                      {PLANTILLAS.filter(p => p.tipo === categoriaActiva).map(plantilla => (
+                        <div
+                          key={plantilla.id}
+                          onClick={() => seleccionarPlantilla(plantilla)}
                           style={{
-                            width:36, height:36, borderRadius:'50%',
-                            background:c.valor, border:'none', cursor:'pointer',
-                            boxShadow: form.color_principal === c.valor
-                              ? `0 0 0 3px #fff, 0 0 0 5px ${c.valor}`
-                              : '0 2px 6px rgba(0,0,0,0.15)',
-                            transform: form.color_principal === c.valor ? 'scale(1.15)' : 'scale(1)',
-                            transition: 'all 0.2s'
+                            borderRadius:14, overflow:'hidden', cursor:'pointer',
+                            border: plantillaActual === plantilla.id ? '3px solid #7C3AED' : '2px solid transparent',
+                            boxShadow: plantillaActual === plantilla.id
+                              ? '0 0 0 2px rgba(124,58,237,0.3)'
+                              : '0 2px 8px rgba(0,0,0,0.08)',
+                            transition:'all 0.2s', position:'relative',
                           }}
-                        />
+                        >
+                          {plantillaActual === plantilla.id && (
+                            <div style={{
+                              position:'absolute', top:6, right:6, zIndex:2,
+                              width:20, height:20, borderRadius:'50%', background:'#7C3AED',
+                              color:'#fff', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800,
+                            }}>✓</div>
+                          )}
+                          <div style={{
+                            height:70,
+                            background: plantilla.gradient || plantilla.color,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                          }}>
+                            <span style={{fontSize:20}}>{form.tipo?.split(' ')[0] || '🏪'}</span>
+                          </div>
+                          <div style={{padding:'8px 10px', background:'#fff'}}>
+                            <div style={{fontSize:12, fontWeight:700, color:'#0F0F1A'}}>{plantilla.nombre}</div>
+                            {plantilla.tag && <div style={{fontSize:10, color:'#7C3AED', fontWeight:600}}>{plantilla.tag}</div>}
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    <div style={{marginTop:16, display:'flex', alignItems:'center', gap:12}}>
-                      <span style={{fontSize:13, color:'#6B7280'}}>Color personalizado:</span>
-                      <input
-                        type="color"
-                        value={form.color_principal}
-                        onChange={e => setForm({...form, color_principal: e.target.value})}
-                        style={{width:40, height:40, border:'none', borderRadius:8, cursor:'pointer', padding:2}}
-                      />
-                      <span style={{fontSize:12, color:'#9CA3AF', fontFamily:'monospace'}}>{form.color_principal}</span>
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Mini preview card */}
-                  <div style={{marginBottom:20, padding:16, borderRadius:14, background:'#F7F9FF', border:'1px solid #E5E7EB'}}>
-                    <div style={{fontSize:12, color:'#9CA3AF', marginBottom:10}}>Vista previa:</div>
-                    <div style={{display:'flex', alignItems:'center', gap:10}}>
-                      <div style={{width:44, height:44, borderRadius:12, background:form.color_principal, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20}}>
-                        🏪
+                  {/* Panel Mi color */}
+                  {categoriaActiva === 'custom' && (
+                    <div style={{padding:20, background:'#F9FAFB', borderRadius:14, border:'1px solid #E5E7EB', marginBottom:20}}>
+                      <div style={{marginBottom:16}}>
+                        <div style={{fontSize:13, fontWeight:600, color:'#374151', marginBottom:8}}>Color principal</div>
+                        <div style={{display:'flex', alignItems:'center', gap:10}}>
+                          <input type="color" value={colorCustom} onChange={e => setColorCustom(e.target.value)}
+                            style={{width:44, height:44, border:'none', borderRadius:10, cursor:'pointer', padding:2}} />
+                          <span style={{fontSize:12, color:'#9CA3AF', fontFamily:'monospace'}}>{colorCustom}</span>
+                        </div>
                       </div>
-                      <div>
-                        <div style={{fontWeight:700, color:'#0F0F1A'}}>{form.nombre || 'Tu negocio'}</div>
-                        <div style={{fontSize:12, color:form.color_principal, fontWeight:600}}>● Disponible ahora</div>
+                      <div style={{marginBottom:16}}>
+                        <div style={{fontSize:13, fontWeight:600, color:'#374151', marginBottom:8}}>Color secundario (degradado)</div>
+                        <div style={{display:'flex', alignItems:'center', gap:10}}>
+                          <input type="color" value={colorCustom2} onChange={e => setColorCustom2(e.target.value)}
+                            style={{width:44, height:44, border:'none', borderRadius:10, cursor:'pointer', padding:2}} />
+                          <span style={{fontSize:12, color:'#9CA3AF', fontFamily:'monospace'}}>{colorCustom2}</span>
+                        </div>
                       </div>
-                      <div style={{marginLeft:'auto', background:form.color_principal, color:'#fff', borderRadius:8, padding:'6px 14px', fontSize:12, fontWeight:700}}>
-                        Reservar
-                      </div>
+                      <div style={{height:60, borderRadius:12, background:`linear-gradient(135deg,${colorCustom},${colorCustom2})`, marginBottom:16}} />
+                      <button
+                        type="button"
+                        onClick={aplicarCustom}
+                        style={{width:'100%', padding:12, borderRadius:10, background:colorCustom, color:'#fff', border:'none', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}
+                      >
+                        Aplicar mi color →
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Color secundario */}
-                  <div className="field" style={{marginBottom:'20px'}}>
-                    <label>Color secundario</label>
-                    <div style={{display:'flex', alignItems:'center', gap:10, marginTop:8}}>
-                      <input
-                        type="color"
-                        value={form.color_secundario}
-                        onChange={e => setForm({...form, color_secundario: e.target.value})}
-                        style={{width:'48px', height:'42px', padding:'2px 4px', borderRadius:'8px', border:'1.5px solid var(--border)', cursor:'pointer', background:'none'}}
-                      />
-                      <input
-                        type="text"
-                        value={form.color_secundario}
-                        onChange={e => setForm({...form, color_secundario: e.target.value})}
-                        style={{flex:1}}
-                      />
+                  )}
+                  {/* Vista previa de la ficha */}
+                  <div style={{borderRadius:16, overflow:'hidden', border:'1px solid #E5E7EB', marginBottom:20}}>
+                    <div style={{fontSize:11, color:'#9CA3AF', padding:'8px 14px', background:'#F9FAFB', fontWeight:600}}>
+                      VISTA PREVIA DE TU FICHA
                     </div>
-                  </div>
-                  <div style={{borderRadius:'14px', overflow:'hidden', boxShadow:'0 4px 16px rgba(0,0,0,0.08)', fontFamily:'inherit'}}>
-                    {/* Hero */}
-                    <div style={{background:`linear-gradient(135deg,${form.color_principal},${form.color_secundario})`, padding:'22px 24px'}}>
-                      {form.tipo && (
-                        <span style={{display:'inline-block', background:form.color_secundario, color:'#111827', fontSize:'10px', fontWeight:700, padding:'2px 10px', borderRadius:'100px', marginBottom:'8px', border:'1px solid rgba(255,255,255,0.3)'}}>
-                          {form.tipo}
-                        </span>
-                      )}
-                      <div style={{fontSize:'17px', fontWeight:800, color:'white', textShadow:'0 1px 4px rgba(0,0,0,0.2)', marginBottom:'12px', letterSpacing:'-0.3px'}}>
-                        {form.nombre || 'Tu negocio'}
-                      </div>
-                      <div style={{display:'inline-flex', alignItems:'center', gap:'7px', background:'white', color:form.color_principal, padding:'9px 20px', borderRadius:'100px', fontSize:'13px', fontWeight:700, boxShadow:'0 2px 8px rgba(0,0,0,0.12)'}}>
-                        📅 Reservar cita
-                      </div>
-                    </div>
-                    {/* Body preview */}
-                    <div style={{background:'white', padding:'16px 20px'}}>
-                      {/* Horario hoy */}
-                      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', borderRadius:'10px', background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.09)', marginBottom:'12px'}}>
-                        <span style={{fontSize:'12px', fontWeight:600, color:form.color_principal, display:'flex', alignItems:'center', gap:'7px'}}>
-                          Hoy
-                          <span style={{background:form.color_principal, color:'white', fontSize:'9px', fontWeight:700, padding:'2px 7px', borderRadius:'100px'}}>Hoy</span>
-                        </span>
-                        <span style={{fontSize:'12px', color:'#4B5563', fontWeight:500}}>09:00 – 20:00</span>
-                      </div>
-                      {/* Equipo */}
-                      <div style={{display:'flex', gap:'10px', marginBottom:'12px'}}>
-                        {['A','B','C'].map(l => (
-                          <div key={l} style={{width:'40px', height:'40px', borderRadius:'50%', background:`linear-gradient(135deg,${form.color_principal},${form.color_secundario})`, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:'14px', fontWeight:800}}>
-                            {l}
+                    <div style={{background: plantillaSeleccionada?.gradient || plantillaSeleccionada?.color || '#7C3AED', padding:'24px 20px'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:12}}>
+                        <div style={{width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26}}>
+                          {form.tipo?.split(' ')[0] || '🏪'}
+                        </div>
+                        <div>
+                          <div style={{fontSize:18, fontWeight:800, color: plantillaSeleccionada?.textColor || '#fff'}}>
+                            {form.nombre || 'Tu negocio'}
                           </div>
-                        ))}
-                      </div>
-                      {/* Estrellas */}
-                      <div style={{display:'flex', gap:'3px', marginBottom:'10px'}}>
-                        {[1,2,3,4,5].map(i => (
-                          <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill={i <= 4 ? form.color_principal : '#E5E7EB'}>
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                          </svg>
-                        ))}
-                        <span style={{fontSize:'11px', color:'#6B7280', marginLeft:'4px', fontWeight:500}}>4.0 · 12 reseñas</span>
-                      </div>
-                      {/* Pago */}
-                      <div style={{display:'flex', gap:'6px', flexWrap:'wrap'}}>
-                        {['💵 Efectivo','💳 Datáfono','📱 App'].map(m => (
-                          <span key={m} style={{display:'inline-flex', alignItems:'center', gap:'4px', background:form.color_secundario, padding:'4px 10px', borderRadius:'100px', fontSize:'11px', fontWeight:600, color:'#111827'}}>
-                            {m}
-                          </span>
-                        ))}
+                          <div style={{fontSize:12, color:`${plantillaSeleccionada?.textColor || '#fff'}99`}}>
+                            ⭐ 4.9 · Disponible ahora
+                          </div>
+                        </div>
+                        <div style={{marginLeft:'auto', background:'rgba(255,255,255,0.2)', color: plantillaSeleccionada?.textColor || '#fff', borderRadius:10, padding:'8px 16px', fontWeight:700, fontSize:13}}>
+                          Reservar →
+                        </div>
                       </div>
                     </div>
-                    {/* CTA */}
-                    <div style={{background:`linear-gradient(135deg,${form.color_principal},${form.color_secundario})`, padding:'14px 20px', display:'flex', justifyContent:'center'}}>
-                      <span style={{fontSize:'11px', color:'rgba(255,255,255,0.8)', fontWeight:600}}>🗺️ Cómo llegar · 📅 Pedir cita</span>
-                    </div>
+                  </div>
+
+                  {/* Botón guardar apariencia */}
+                  <div>
+                    {msgColor && (
+                      <p style={{fontSize:'13px', color: msgColor.ok ? '#2E8A5E' : '#DC2626', marginBottom:'12px'}}>
+                        {msgColor.ok ? '✅' : '❌'} {msgColor.text}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={guardarColor}
+                      disabled={savingColor}
+                      style={{
+                        padding:'10px 22px', borderRadius:10, border:'none',
+                        background:'linear-gradient(135deg,#6B4FD8,#4F46E5)', color:'#fff',
+                        fontWeight:700, fontSize:14, cursor: savingColor ? 'not-allowed' : 'pointer',
+                        opacity: savingColor ? 0.7 : 1, fontFamily:'inherit',
+                        boxShadow:'0 3px 10px rgba(79,70,229,0.25)',
+                      }}
+                    >
+                      {savingColor ? 'Guardando...' : 'Guardar apariencia'}
+                    </button>
                   </div>
                 </div>
 
