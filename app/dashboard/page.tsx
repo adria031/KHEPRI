@@ -535,10 +535,7 @@ export default function Dashboard() {
 
   return (
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
-      <div style={{ background: '#7C3AED', color: '#fff', padding: '10px 16px', borderRadius: 10, marginBottom: 20, fontWeight: 700, fontSize: 14 }}>
-        ✅ PRUEBA CORRECTA — deploy funcionando
-      </div>
-      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" rel="stylesheet" />
       <style>{`
         @keyframes shimmer { 0%,100%{background-position:200% 0} 50%{background-position:-200% 0} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
