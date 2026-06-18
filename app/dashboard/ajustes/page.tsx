@@ -121,6 +121,12 @@ export default function Ajustes() {
   // Zona horaria
   const [timezone, setTimezone] = useState('Europe/Madrid')
 
+  // Color del negocio
+  const [colorSeleccionado, setColorSeleccionado] = useState('#7C3AED')
+  const [mostrarPersonalizar, setMostrarPersonalizar] = useState(false)
+  const [savingColor, setSavingColor] = useState(false)
+  const [msgColor, setMsgColor] = useState<{ text: string; ok: boolean } | null>(null)
+
   // Eliminar cuenta
   const [showDelete, setShowDelete] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
@@ -135,7 +141,10 @@ export default function Ajustes() {
       setNuevoEmail(email)
 
       const { activo, todos } = await getNegocioActivo(session.user.id)
-      if (activo) setNegocio(activo)
+      if (activo) {
+        setNegocio(activo)
+        setColorSeleccionado(activo.color_principal || '#7C3AED')
+      }
       setTodosNegocios(todos)
 
       try {
@@ -178,6 +187,16 @@ export default function Ajustes() {
   function actualizarTimezone(tz: string) {
     setTimezone(tz)
     localStorage.setItem('khepria_timezone', tz)
+  }
+
+  async function guardarColor() {
+    if (!negocio) return
+    setSavingColor(true)
+    setMsgColor(null)
+    const { error } = await supabase.from('negocios').update({ color_principal: colorSeleccionado }).eq('id', negocio.id)
+    setSavingColor(false)
+    if (error) setMsgColor({ text: 'Error: ' + error.message, ok: false })
+    else setMsgColor({ text: 'Color guardado correctamente', ok: true })
   }
 
   async function eliminarCuenta() {
@@ -273,6 +292,99 @@ export default function Ajustes() {
           <p style={{ fontSize: '12px', color: 'var(--ds-muted)' }}>
             Zona horaria actual del dispositivo: <strong>{Intl.DateTimeFormat().resolvedOptions().timeZone}</strong>
           </p>
+        </Section>
+
+        {/* ── Color del negocio ── */}
+        <Section title="🎨 Color del negocio">
+          <div style={{ marginBottom: 20 }}>
+            <div
+              onClick={() => setColorSeleccionado('#7C3AED')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 16px', borderRadius: 12,
+                border: colorSeleccionado === '#7C3AED' ? '2px solid #7C3AED' : '1.5px solid var(--ds-border)',
+                background: colorSeleccionado === '#7C3AED' ? 'rgba(124,58,237,0.05)' : 'var(--ds-bg)',
+                cursor: 'pointer', marginBottom: 10, transition: 'all 0.2s'
+              }}
+            >
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: '#7C3AED', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ds-text)' }}>Predeterminado Khepria</div>
+                <div style={{ fontSize: 12, color: 'var(--ds-muted)' }}>Recomendado · #7C3AED</div>
+              </div>
+              {colorSeleccionado === '#7C3AED' && (
+                <div style={{ marginLeft: 'auto', color: '#7C3AED', fontWeight: 800 }}>✓</div>
+              )}
+            </div>
+            <button
+              onClick={() => setMostrarPersonalizar(!mostrarPersonalizar)}
+              style={{
+                width: '100%', padding: '11px 16px', borderRadius: 12,
+                border: '1.5px dashed var(--ds-border)', background: 'transparent',
+                fontSize: 13, fontWeight: 600, color: 'var(--ds-text2)',
+                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: 8, transition: 'all 0.2s', fontFamily: 'inherit',
+              }}
+            >
+              🎨 Personalizar color {mostrarPersonalizar ? '▲' : '▼'}
+            </button>
+          </div>
+
+          {mostrarPersonalizar && (
+            <div style={{ marginBottom: 20, padding: 16, background: 'var(--ds-bg)', borderRadius: 14, border: '1px solid var(--ds-border)' }}>
+              <div style={{ fontSize: 12, color: 'var(--ds-muted)', marginBottom: 10, fontWeight: 600 }}>COLORES PROFESIONALES</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {['#4F46E5','#7C3AED','#8B5CF6','#2563EB','#0891B2','#059669','#16A34A','#65A30D','#10B981','#D97706','#EA580C','#DB2777','#DC2626','#E11D48','#475569','#374151'].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setColorSeleccionado(c)}
+                    style={{
+                      width: 32, height: 32, borderRadius: '50%', background: c,
+                      border: 'none', cursor: 'pointer',
+                      boxShadow: colorSeleccionado === c ? `0 0 0 3px var(--ds-white), 0 0 0 5px ${c}` : '0 2px 6px rgba(0,0,0,0.15)',
+                      transform: colorSeleccionado === c ? 'scale(1.15)' : 'scale(1)',
+                      transition: 'all 0.2s',
+                    }}
+                  />
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--ds-muted)', marginBottom: 8, fontWeight: 600 }}>COLOR PERSONALIZADO</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input
+                  type="color"
+                  value={colorSeleccionado}
+                  onChange={e => setColorSeleccionado(e.target.value)}
+                  style={{ width: 40, height: 40, border: 'none', borderRadius: 8, cursor: 'pointer', padding: 2 }}
+                />
+                <span style={{ fontSize: 12, color: 'var(--ds-muted)', fontFamily: 'monospace' }}>{colorSeleccionado}</span>
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginBottom: 20, padding: 14, borderRadius: 12, background: 'var(--ds-bg)', border: '1px solid var(--ds-border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--ds-muted)', marginBottom: 8, fontWeight: 600 }}>VISTA PREVIA</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: colorSeleccionado, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                {negocio?.tipo?.split(' ')[0] || '🏪'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: 'var(--ds-text)', fontSize: 14 }}>{negocio?.nombre || 'Tu negocio'}</div>
+                <div style={{ fontSize: 12, color: colorSeleccionado, fontWeight: 600 }}>● Disponible ahora</div>
+              </div>
+              <div style={{ background: colorSeleccionado, color: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700 }}>
+                Reservar
+              </div>
+            </div>
+          </div>
+
+          {msgColor && (
+            <p style={{ fontSize: '13px', color: msgColor.ok ? '#2E8A5E' : '#DC2626', marginBottom: '12px' }}>
+              {msgColor.ok ? '✅' : '❌'} {msgColor.text}
+            </p>
+          )}
+          <Btn onClick={guardarColor} disabled={savingColor || !negocio}>
+            {savingColor ? 'Guardando...' : 'Guardar color'}
+          </Btn>
         </Section>
 
         {/* ── Zona de peligro ── */}

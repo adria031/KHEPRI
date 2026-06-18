@@ -92,6 +92,8 @@ export default function Onboarding() {
   const [nombreNegocio, setNombreNegocio] = useState('')
   const [tipoNegocio, setTipoNegocio] = useState('')
   const [planSeleccionado, setPlanSeleccionado] = useState('pro')
+  const [colorNegocio, setColorNegocio] = useState('#7C3AED')
+  const [mostrarPersonalizarColor, setMostrarPersonalizarColor] = useState(false)
 
   // Cliente
   const [nombreCliente, setNombreCliente] = useState('')
@@ -152,7 +154,8 @@ export default function Onboarding() {
       const { data: negocioData, error: negocioError } = await supabase.from('negocios').insert({
         user_id: user.id, nombre: nombreNegocio, tipo: tipoNegocio,
         plan: planSeleccionado, visible: true,
-        creditos_totales, creditos_usados: 0, creditos_reset_date: hoy
+        creditos_totales, creditos_usados: 0, creditos_reset_date: hoy,
+        color_principal: colorNegocio,
       }).select('id').single()
       if (negocioError) throw new Error(`Error al crear el negocio: ${negocioError.message}`)
 
@@ -372,6 +375,91 @@ export default function Onboarding() {
                   ))}
                 </div>
               </div>
+              {/* ── Color del negocio ── */}
+              <div className="field">
+                <label>Color del negocio</label>
+                <div
+                  onClick={() => setColorNegocio('#7C3AED')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 16px', borderRadius: 12,
+                    border: colorNegocio === '#7C3AED' ? '2px solid #7C3AED' : '1.5px solid rgba(0,0,0,0.1)',
+                    background: colorNegocio === '#7C3AED' ? 'rgba(124,58,237,0.05)' : '#fff',
+                    cursor: 'pointer', marginBottom: 10, transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#7C3AED', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>Predeterminado Khepria</div>
+                    <div style={{ fontSize: 12, color: '#9CA3AF' }}>Recomendado · #7C3AED</div>
+                  </div>
+                  {colorNegocio === '#7C3AED' && (
+                    <div style={{ marginLeft: 'auto', color: '#7C3AED', fontWeight: 800 }}>✓</div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMostrarPersonalizarColor(!mostrarPersonalizarColor)}
+                  style={{
+                    width: '100%', padding: '11px 16px', borderRadius: 12,
+                    border: '1.5px dashed rgba(0,0,0,0.12)', background: 'transparent',
+                    fontSize: 13, fontWeight: 600, color: '#6B7280',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', gap: 8, transition: 'all 0.2s', fontFamily: 'inherit',
+                  }}
+                >
+                  🎨 Personalizar color {mostrarPersonalizarColor ? '▲' : '▼'}
+                </button>
+
+                {mostrarPersonalizarColor && (
+                  <div style={{ marginTop: 12, padding: 16, background: '#F7F9FF', borderRadius: 14, border: '1px solid rgba(0,0,0,0.08)' }}>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 10, fontWeight: 600 }}>COLORES PROFESIONALES</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                      {['#4F46E5','#7C3AED','#8B5CF6','#2563EB','#0891B2','#059669','#16A34A','#65A30D','#10B981','#D97706','#EA580C','#DB2777','#DC2626','#E11D48','#475569','#374151'].map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setColorNegocio(c)}
+                          style={{
+                            width: 32, height: 32, borderRadius: '50%', background: c,
+                            border: 'none', cursor: 'pointer',
+                            boxShadow: colorNegocio === c ? `0 0 0 3px #fff, 0 0 0 5px ${c}` : '0 2px 6px rgba(0,0,0,0.15)',
+                            transform: colorNegocio === c ? 'scale(1.15)' : 'scale(1)',
+                            transition: 'all 0.2s',
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 8, fontWeight: 600 }}>COLOR PERSONALIZADO</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input
+                        type="color"
+                        value={colorNegocio}
+                        onChange={e => setColorNegocio(e.target.value)}
+                        style={{ width: 40, height: 40, border: 'none', borderRadius: 8, cursor: 'pointer', padding: 2 }}
+                      />
+                      <span style={{ fontSize: 12, color: '#9CA3AF', fontFamily: 'monospace' }}>{colorNegocio}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: '#F7F9FF', border: '1px solid rgba(0,0,0,0.08)' }}>
+                  <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 8, fontWeight: 600 }}>VISTA PREVIA</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: colorNegocio, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                      {tipoNegocio.split(' ')[0] || '🏪'}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, color: '#0F0F1A', fontSize: 14 }}>{nombreNegocio || 'Tu negocio'}</div>
+                      <div style={{ fontSize: 12, color: colorNegocio, fontWeight: 600 }}>● Disponible ahora</div>
+                    </div>
+                    <div style={{ background: colorNegocio, color: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700 }}>
+                      Reservar
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="btns">
                 <button className="btn-secondary" onClick={() => setPaso(0)}>← Atrás</button>
                 <button className="btn-primary" onClick={() => setPaso(2)} disabled={!nombreNegocio || !tipoNegocio}>
