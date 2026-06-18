@@ -6,17 +6,49 @@ import { DashboardShell } from '../DashboardShell'
 
 type Notifs = { reservas: boolean; recordatorios: boolean; resenas: boolean }
 
-const TEMAS = [
-  { id: 'khepria',      nombre: 'Khepria',      descripcion: 'El clásico de Khepria', primario: '#7C3AED', secundario: '#4F46E5', emoji: '✨', porDefecto: true },
-  { id: 'oceano',       nombre: 'Océano',        descripcion: 'Azul profesional',       primario: '#2563EB', secundario: '#0891B2', emoji: '🌊' },
-  { id: 'esmeralda',    nombre: 'Esmeralda',     descripcion: 'Verde natural',           primario: '#059669', secundario: '#10B981', emoji: '🌿' },
-  { id: 'sunset',       nombre: 'Sunset',        descripcion: 'Cálido y vibrante',      primario: '#EA580C', secundario: '#DB2777', emoji: '🌅' },
-  { id: 'dorado',       nombre: 'Dorado',        descripcion: 'Lujo y elegancia',       primario: '#D97706', secundario: '#92400E', emoji: '✨' },
-  { id: 'rosa',         nombre: 'Rosa',          descripcion: 'Suave y moderno',        primario: '#DB2777', secundario: '#E11D48', emoji: '🌸' },
-  { id: 'personalizado', nombre: 'Personalizado', descripcion: 'Elige tu color',        primario: null,      secundario: null,      emoji: '🎨' },
-] as const
+type Plantilla = {
+  id: string; nombre: string; tipo: string; tag?: string;
+  color?: string; colorSecundario?: string; gradient?: string; textColor: string;
+}
 
-type TemaId = typeof TEMAS[number]['id']
+const PLANTILLAS: Plantilla[] = [
+  // ── SÓLIDOS ──
+  { id:'khepria',    nombre:'Khepria',     tipo:'solido',    color:'#7C3AED', colorSecundario:'#4F46E5', textColor:'#fff', tag:'⭐ Por defecto' },
+  { id:'oceano',     nombre:'Océano',      tipo:'solido',    color:'#2563EB', colorSecundario:'#0891B2', textColor:'#fff' },
+  { id:'esmeralda',  nombre:'Esmeralda',   tipo:'solido',    color:'#059669', colorSecundario:'#10B981', textColor:'#fff' },
+  { id:'sunset',     nombre:'Sunset',      tipo:'solido',    color:'#EA580C', colorSecundario:'#DB2777', textColor:'#fff' },
+  { id:'rosa',       nombre:'Rosa',        tipo:'solido',    color:'#DB2777', colorSecundario:'#E11D48', textColor:'#fff' },
+  { id:'dorado',     nombre:'Dorado',      tipo:'solido',    color:'#D97706', colorSecundario:'#92400E', textColor:'#fff' },
+  { id:'carbon',     nombre:'Carbón',      tipo:'solido',    color:'#111827', colorSecundario:'#374151', textColor:'#fff' },
+  { id:'blanco',     nombre:'Minimal',     tipo:'solido',    color:'#F9FAFB', colorSecundario:'#F3F4F6', textColor:'#111827' },
+  // ── DEGRADADOS ──
+  { id:'aurora',     nombre:'Aurora',      tipo:'gradiente', gradient:'linear-gradient(135deg,#7C3AED,#4FACFE)', textColor:'#fff' },
+  { id:'fuego',      nombre:'Fuego',       tipo:'gradiente', gradient:'linear-gradient(135deg,#EA580C,#FBBF24)', textColor:'#fff' },
+  { id:'bosque',     nombre:'Bosque',      tipo:'gradiente', gradient:'linear-gradient(135deg,#059669,#65A30D)', textColor:'#fff' },
+  { id:'cielo',      nombre:'Cielo',       tipo:'gradiente', gradient:'linear-gradient(135deg,#2563EB,#7C3AED)', textColor:'#fff' },
+  { id:'flamingo',   nombre:'Flamingo',    tipo:'gradiente', gradient:'linear-gradient(135deg,#DB2777,#F59E0B)', textColor:'#fff' },
+  { id:'medianoche', nombre:'Medianoche',  tipo:'gradiente', gradient:'linear-gradient(135deg,#0F0F1A,#4F46E5)', textColor:'#fff' },
+  { id:'pastel',     nombre:'Pastel',      tipo:'gradiente', gradient:'linear-gradient(135deg,#B8D8F8,#D4C5F9)', textColor:'#374151' },
+  { id:'naturaleza', nombre:'Naturaleza',  tipo:'gradiente', gradient:'linear-gradient(135deg,#B8EDD4,#B8D8F8)', textColor:'#374151' },
+  // ── ABSTRACTOS ──
+  { id:'cosmos',     nombre:'Cosmos',      tipo:'abstracto', gradient:'radial-gradient(ellipse at 20% 50%,#7C3AED 0%,#0F0F1A 60%)', textColor:'#fff' },
+  { id:'aurora2',    nombre:'Aurora Borealis', tipo:'abstracto', gradient:'radial-gradient(ellipse at 80% 20%,#4FACFE 0%,#7C3AED 40%,#40DCA5 100%)', textColor:'#fff' },
+  { id:'nebula',     nombre:'Nebulosa',    tipo:'abstracto', gradient:'radial-gradient(ellipse at 30% 70%,#DB2777 0%,#7C3AED 50%,#2563EB 100%)', textColor:'#fff' },
+  { id:'lava',       nombre:'Lava',        tipo:'abstracto', gradient:'radial-gradient(ellipse at 50% 0%,#EA580C 0%,#DC2626 50%,#111827 100%)', textColor:'#fff' },
+  // ── PSYCHEDELIC ──
+  { id:'acid',       nombre:'Acid',        tipo:'psycho',    gradient:'linear-gradient(45deg,#FF006E,#8338EC,#3A86FF,#06D6A0,#FFB700)', textColor:'#fff' },
+  { id:'retrowave',  nombre:'Retrowave',   tipo:'psycho',    gradient:'linear-gradient(135deg,#FF0080,#7928CA,#0070F3)', textColor:'#fff' },
+  { id:'glitch',     nombre:'Glitch',      tipo:'psycho',    gradient:'linear-gradient(135deg,#00FF87,#60EFFF,#FF6B6B,#FFE66D)', textColor:'#111' },
+  { id:'neon',       nombre:'Neon',        tipo:'psycho',    gradient:'linear-gradient(135deg,#0FF,#F0F,#FF0)', textColor:'#111' },
+]
+
+const CATEGORIAS = [
+  { id:'solido',    nombre:'Sólidos',     emoji:'🎨' },
+  { id:'gradiente', nombre:'Degradados',  emoji:'🌈' },
+  { id:'abstracto', nombre:'Abstracto',   emoji:'🌌' },
+  { id:'psycho',    nombre:'Psychedelic', emoji:'🔮' },
+  { id:'custom',    nombre:'Mi color',    emoji:'✏️' },
+]
 
 const TIMEZONES = [
   'Europe/Madrid', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
@@ -133,24 +165,28 @@ export default function Ajustes() {
   // Zona horaria
   const [timezone, setTimezone] = useState('Europe/Madrid')
 
-  // Tema de color
-  const [temaActual, setTemaActual] = useState<TemaId>('khepria')
-  const [colorPersonalizado, setColorPersonalizado] = useState('#7C3AED')
-  const [mostrarPersonalizar, setMostrarPersonalizar] = useState(false)
+  // Apariencia
+  const [categoriaActiva, setCategoriaActiva] = useState('solido')
+  const [plantillaActual, setPlantillaActual] = useState('khepria')
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<Plantilla | null>(
+    PLANTILLAS.find(p => p.id === 'khepria') ?? null
+  )
+  const [colorCustom, setColorCustom] = useState('#7C3AED')
+  const [colorCustom2, setColorCustom2] = useState('#4FACFE')
   const [savingColor, setSavingColor] = useState(false)
   const [msgColor, setMsgColor] = useState<{ text: string; ok: boolean } | null>(null)
 
-  const colorActivo = temaActual === 'personalizado'
-    ? colorPersonalizado
-    : (TEMAS.find(t => t.id === temaActual)?.primario ?? '#7C3AED')
-  const colorActivoSecundario = temaActual === 'personalizado'
-    ? colorPersonalizado
-    : (TEMAS.find(t => t.id === temaActual)?.secundario ?? '#4F46E5')
+  function seleccionarPlantilla(p: Plantilla) {
+    setPlantillaActual(p.id)
+    setPlantillaSeleccionada(p)
+  }
 
-  function seleccionarTema(tema: { id: string; primario: string | null; secundario: string | null }) {
-    setTemaActual(tema.id as TemaId)
-    if (tema.id === 'personalizado') setMostrarPersonalizar(true)
-    else setMostrarPersonalizar(false)
+  function aplicarCustom() {
+    seleccionarPlantilla({
+      id: 'custom', nombre: 'Personalizado', tipo: 'custom',
+      gradient: `linear-gradient(135deg,${colorCustom},${colorCustom2})`,
+      color: colorCustom, textColor: '#fff',
+    })
   }
 
   // Eliminar cuenta
@@ -169,8 +205,12 @@ export default function Ajustes() {
       const { activo, todos } = await getNegocioActivo(session.user.id)
       if (activo) {
         setNegocio(activo)
-        setTemaActual((activo.tema as TemaId) || 'khepria')
-        setColorPersonalizado(activo.color || '#7C3AED')
+        const savedId = activo.plantilla || 'khepria'
+        setPlantillaActual(savedId)
+        const found = PLANTILLAS.find(p => p.id === savedId)
+        if (found) setPlantillaSeleccionada(found)
+        setColorCustom(activo.color || '#7C3AED')
+        setColorCustom2(activo.color_secundario || '#4FACFE')
       }
       setTodosNegocios(todos)
 
@@ -220,15 +260,18 @@ export default function Ajustes() {
     if (!negocio) return
     setSavingColor(true)
     setMsgColor(null)
+    const colorPrincipal = plantillaSeleccionada?.color || colorCustom
     const { error } = await supabase.from('negocios').update({
-      color: colorActivo,
-      color_secundario: colorActivoSecundario,
-      tema: temaActual,
-      color_principal: colorActivo,
+      plantilla: plantillaActual,
+      color: colorPrincipal,
+      color_secundario: colorCustom2,
+      color_gradient: plantillaSeleccionada?.gradient || null,
+      color_text: plantillaSeleccionada?.textColor || '#fff',
+      color_principal: colorPrincipal,
     }).eq('id', negocio.id)
     setSavingColor(false)
     if (error) setMsgColor({ text: 'Error: ' + error.message, ok: false })
-    else setMsgColor({ text: 'Tema guardado correctamente', ok: true })
+    else setMsgColor({ text: 'Apariencia guardada correctamente', ok: true })
   }
 
   async function eliminarCuenta() {
@@ -326,119 +369,116 @@ export default function Ajustes() {
           </p>
         </Section>
 
-        {/* ── Tema de color ── */}
-        <Section title="🎨 Tema de color">
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ds-text)', marginBottom: 16 }}>Tema de color</div>
-
-          {/* Grid de temas predefinidos */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-            {TEMAS.filter(t => t.id !== 'personalizado').map(t => (
-              <div
-                key={t.id}
-                onClick={() => seleccionarTema(t)}
+        {/* ── Apariencia del negocio ── */}
+        <Section title="🎨 Apariencia del negocio">
+          {/* Tabs de categoría */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto', paddingBottom: 4 }}>
+            {CATEGORIAS.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setCategoriaActiva(cat.id)}
                 style={{
-                  padding: 14, borderRadius: 14, cursor: 'pointer', position: 'relative',
-                  border: temaActual === t.id ? `2px solid ${t.primario}` : '1.5px solid var(--ds-border)',
-                  background: temaActual === t.id ? `${t.primario}08` : 'var(--ds-white)',
-                  transition: 'all 0.2s',
+                  padding: '8px 16px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                  background: categoriaActiva === cat.id ? '#7C3AED' : 'var(--ds-bg)',
+                  color: categoriaActiva === cat.id ? '#fff' : 'var(--ds-text2)',
+                  fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0,
+                  transition: 'all 0.2s', fontFamily: 'inherit',
                 }}
               >
-                {temaActual === t.id && (
-                  <div style={{
-                    position: 'absolute', top: 8, right: 8,
-                    width: 18, height: 18, borderRadius: '50%',
-                    background: t.primario!, color: '#fff',
-                    fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 800,
-                  }}>✓</div>
-                )}
-                <div style={{ height: 32, borderRadius: 8, marginBottom: 10, background: `linear-gradient(135deg, ${t.primario}, ${t.secundario})` }} />
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ds-text)' }}>{t.emoji} {t.nombre}</div>
-                <div style={{ fontSize: 11, color: 'var(--ds-muted)', marginTop: 2 }}>{t.descripcion}</div>
-                {'porDefecto' in t && t.porDefecto && (
-                  <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: t.primario!, background: `${t.primario}15`, borderRadius: 999, padding: '2px 8px', display: 'inline-block' }}>
-                    Por defecto
-                  </div>
-                )}
-              </div>
+                {cat.emoji} {cat.nombre}
+              </button>
             ))}
           </div>
 
-          {/* Opción personalizado */}
-          <div
-            onClick={() => seleccionarTema({ id: 'personalizado', primario: colorPersonalizado, secundario: colorPersonalizado })}
-            style={{
-              padding: 14, borderRadius: 14, cursor: 'pointer', marginBottom: 0,
-              border: temaActual === 'personalizado' ? `2px solid ${colorPersonalizado}` : '1.5px dashed var(--ds-border)',
-              background: 'var(--ds-white)', transition: 'all 0.2s',
-              display: 'flex', alignItems: 'center', gap: 12,
-            }}
-          >
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-              background: temaActual === 'personalizado' ? colorPersonalizado : 'linear-gradient(135deg,#f3f4f6,#e5e7eb)',
-            }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ds-text)' }}>🎨 Color personalizado</div>
-              <div style={{ fontSize: 11, color: 'var(--ds-muted)' }}>Elige tu propio color</div>
-            </div>
-            <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--ds-muted)' }}>
-              {mostrarPersonalizar ? '▲' : '▼'}
-            </div>
-          </div>
-
-          {/* Panel personalizado */}
-          {mostrarPersonalizar && (
-            <div style={{ marginTop: 12, padding: 16, background: 'var(--ds-bg)', borderRadius: 12, border: '1px solid var(--ds-border)' }}>
-              <div style={{ fontSize: 12, color: 'var(--ds-muted)', marginBottom: 10, fontWeight: 600 }}>PALETA RÁPIDA</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-                {['#4F46E5','#7C3AED','#2563EB','#0891B2','#059669','#16A34A','#D97706','#EA580C','#DB2777','#DC2626','#475569','#374151'].map(c => (
-                  <button
-                    key={c}
-                    onClick={() => setColorPersonalizado(c)}
-                    style={{
-                      width: 28, height: 28, borderRadius: '50%', background: c, border: 'none', cursor: 'pointer',
-                      boxShadow: colorPersonalizado === c ? `0 0 0 2px var(--ds-white), 0 0 0 4px ${c}` : '0 1px 4px rgba(0,0,0,0.2)',
-                      transform: colorPersonalizado === c ? 'scale(1.2)' : 'scale(1)', transition: 'all 0.2s',
-                    }}
-                  />
-                ))}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <input
-                  type="color"
-                  value={colorPersonalizado}
-                  onChange={e => setColorPersonalizado(e.target.value)}
-                  style={{ width: 36, height: 36, border: 'none', borderRadius: 8, cursor: 'pointer', padding: 2 }}
-                />
-                <span style={{ fontSize: 12, color: 'var(--ds-muted)', fontFamily: 'monospace' }}>{colorPersonalizado}</span>
-                <button
-                  onClick={() => seleccionarTema({ id: 'personalizado', primario: colorPersonalizado, secundario: colorPersonalizado })}
+          {/* Grid de plantillas */}
+          {categoriaActiva !== 'custom' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 12, marginBottom: 20 }}>
+              {PLANTILLAS.filter(p => p.tipo === categoriaActiva).map(plantilla => (
+                <div
+                  key={plantilla.id}
+                  onClick={() => seleccionarPlantilla(plantilla)}
                   style={{
-                    marginLeft: 'auto', padding: '7px 14px', borderRadius: 8,
-                    background: colorPersonalizado, color: '#fff', border: 'none',
-                    fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    borderRadius: 14, overflow: 'hidden', cursor: 'pointer',
+                    border: plantillaActual === plantilla.id ? '3px solid #7C3AED' : '2px solid transparent',
+                    boxShadow: plantillaActual === plantilla.id
+                      ? '0 0 0 2px rgba(124,58,237,0.3)'
+                      : '0 2px 8px rgba(0,0,0,0.08)',
+                    transition: 'all 0.2s', position: 'relative',
                   }}
                 >
-                  Aplicar
-                </button>
-              </div>
+                  {plantillaActual === plantilla.id && (
+                    <div style={{
+                      position: 'absolute', top: 6, right: 6, zIndex: 2,
+                      width: 20, height: 20, borderRadius: '50%', background: '#7C3AED',
+                      color: '#fff', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800,
+                    }}>✓</div>
+                  )}
+                  <div style={{
+                    height: 70,
+                    background: plantilla.gradient || plantilla.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ fontSize: 20 }}>{negocio?.tipo?.split(' ')[0] || '🏪'}</span>
+                  </div>
+                  <div style={{ padding: '8px 10px', background: 'var(--ds-white)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ds-text)' }}>{plantilla.nombre}</div>
+                    {plantilla.tag && <div style={{ fontSize: 10, color: '#7C3AED', fontWeight: 600 }}>{plantilla.tag}</div>}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Vista previa */}
-          <div style={{ marginTop: 16, padding: 14, borderRadius: 12, background: 'var(--ds-bg)', border: '1px solid var(--ds-border)' }}>
-            <div style={{ fontSize: 11, color: 'var(--ds-muted)', marginBottom: 8, fontWeight: 600 }}>VISTA PREVIA</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: `linear-gradient(135deg,${colorActivo},${colorActivoSecundario})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                {negocio?.tipo?.split(' ')[0] || '🏪'}
+          {/* Panel Mi color */}
+          {categoriaActiva === 'custom' && (
+            <div style={{ padding: 20, background: 'var(--ds-bg)', borderRadius: 14, border: '1px solid var(--ds-border)', marginBottom: 20 }}>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ds-text2)', marginBottom: 8 }}>Color principal</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="color" value={colorCustom} onChange={e => setColorCustom(e.target.value)}
+                    style={{ width: 44, height: 44, border: 'none', borderRadius: 10, cursor: 'pointer', padding: 2 }} />
+                  <span style={{ fontSize: 12, color: 'var(--ds-muted)', fontFamily: 'monospace' }}>{colorCustom}</span>
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, color: 'var(--ds-text)', fontSize: 14 }}>{negocio?.nombre || 'Tu negocio'}</div>
-                <div style={{ fontSize: 12, color: colorActivo, fontWeight: 600 }}>● Disponible ahora</div>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ds-text2)', marginBottom: 8 }}>Color secundario (degradado)</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="color" value={colorCustom2} onChange={e => setColorCustom2(e.target.value)}
+                    style={{ width: 44, height: 44, border: 'none', borderRadius: 10, cursor: 'pointer', padding: 2 }} />
+                  <span style={{ fontSize: 12, color: 'var(--ds-muted)', fontFamily: 'monospace' }}>{colorCustom2}</span>
+                </div>
               </div>
-              <div style={{ background: `linear-gradient(135deg,${colorActivo},${colorActivoSecundario})`, color: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700 }}>
-                Reservar
+              <div style={{ height: 60, borderRadius: 12, background: `linear-gradient(135deg,${colorCustom},${colorCustom2})`, marginBottom: 16 }} />
+              <button
+                onClick={aplicarCustom}
+                style={{ width: '100%', padding: 12, borderRadius: 10, background: colorCustom, color: '#fff', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Aplicar mi color →
+              </button>
+            </div>
+          )}
+
+          {/* Vista previa de la ficha */}
+          <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid var(--ds-border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--ds-muted)', padding: '8px 14px', background: 'var(--ds-bg)', fontWeight: 600 }}>
+              VISTA PREVIA DE TU FICHA
+            </div>
+            <div style={{ background: plantillaSeleccionada?.gradient || plantillaSeleccionada?.color || '#7C3AED', padding: '24px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>
+                  {negocio?.tipo?.split(' ')[0] || '🏪'}
+                </div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: plantillaSeleccionada?.textColor || '#fff' }}>
+                    {negocio?.nombre || 'Tu negocio'}
+                  </div>
+                  <div style={{ fontSize: 12, color: `${plantillaSeleccionada?.textColor || '#fff'}99` }}>
+                    ⭐ 4.9 · Disponible ahora
+                  </div>
+                </div>
+                <div style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.2)', color: plantillaSeleccionada?.textColor || '#fff', borderRadius: 10, padding: '8px 16px', fontWeight: 700, fontSize: 13 }}>
+                  Reservar →
+                </div>
               </div>
             </div>
           </div>
@@ -450,7 +490,7 @@ export default function Ajustes() {
               </p>
             )}
             <Btn onClick={guardarColor} disabled={savingColor || !negocio}>
-              {savingColor ? 'Guardando...' : 'Guardar tema'}
+              {savingColor ? 'Guardando...' : 'Guardar apariencia'}
             </Btn>
           </div>
         </Section>

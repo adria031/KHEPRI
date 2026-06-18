@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { setNegocioActivo } from './negocio-activo'
 
-export type NegMin = { id: string; nombre: string; plan: string; logo_url?: string | null; tipo?: string | null; ciudad?: string | null; color_principal?: string | null; color?: string | null; color_secundario?: string | null; tema?: string | null }
+export type NegMin = { id: string; nombre: string; plan: string; logo_url?: string | null; tipo?: string | null; ciudad?: string | null; color_principal?: string | null; color?: string | null; color_secundario?: string | null; tema?: string | null; plantilla?: string | null; color_gradient?: string | null; color_text?: string | null }
 
 export async function getNegocioActivo(userId: string, _accessToken?: string): Promise<{
   activo: NegMin | null
@@ -12,7 +12,7 @@ export async function getNegocioActivo(userId: string, _accessToken?: string): P
 
   const { data: d1, error: e1 } = await supabase
     .from('negocios')
-    .select('id, nombre, plan, logo_url, tipo, ciudad, color_principal, color, color_secundario, tema')
+    .select('id, nombre, plan, logo_url, tipo, ciudad, color_principal, color, color_secundario, tema, plantilla, color_gradient, color_text')
     .eq('user_id', userId)
     .order('creado_en', { ascending: true })
 

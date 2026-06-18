@@ -37,6 +37,7 @@ type Negocio = {
   instagram:string; whatsapp:string; facebook:string;
   logo_url:string; fotos:string[]; metodos_pago:string[]|null;
   color_principal:string|null; color_secundario:string|null
+  plantilla:string|null; color_gradient:string|null; color_text:string|null
   horas_cancelacion:number|null; mensaje_cancelacion:string|null
   lat:number|null; lng:number|null
 }
@@ -338,8 +339,10 @@ export default function FichaNegocio() {
   const mapSrc      = coordenadas && mapToken
     ? `https://api.mapbox.com/styles/v1/${mapStylePath}/static/pin-s+6366F1(${coordenadas[0]},${coordenadas[1]})/${coordenadas[0]},${coordenadas[1]},15,0/400x180@2x?access_token=${mapToken}`
     : null
-  const colorPpal   = negocio?.color_principal ?? '#7C3AED'
-  const colorSec    = negocio?.color_secundario ?? '#B8D8F8'
+  const colorPpal     = negocio?.color_principal ?? '#7C3AED'
+  const colorSec      = negocio?.color_secundario ?? '#B8D8F8'
+  const colorGradient = negocio?.color_gradient ?? `linear-gradient(135deg,${colorPpal},${colorSec})`
+  const colorText     = negocio?.color_text ?? '#fff'
 
   // ─── Loading / Not found ───────────────────────────────────────────────────
   if (cargando) return (
@@ -710,7 +713,7 @@ export default function FichaNegocio() {
       {/* ── PROFILE STRIP (for no-photo layout) ── */}
       {fotos.length === 0 && (
         <>
-          <div style={{height:'120px', background:`linear-gradient(135deg,${colorPpal},${colorSec})`}} />
+          <div style={{height:'120px', background: colorGradient}} />
         </>
       )}
       {fotos.length === 0 && (
