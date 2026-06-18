@@ -192,9 +192,10 @@ export function DashboardShell({
   const router = useRouter()
   const esTodos = negocio === null && todosNegocios.length > 1
 
-  // Brand color for active nav items
-  const navActiveColor = negocio?.color_principal || '#4F46E5'
-  const navActiveBg    = navActiveColor + '1f'  // ~12% opacity via 8-char hex
+  // Brand color: prefer new color/color_secundario, fall back to color_principal
+  const navActiveColor    = negocio?.color           || negocio?.color_principal || '#4F46E5'
+  const navSecondaryColor = negocio?.color_secundario || navActiveColor
+  const navActiveBg       = navActiveColor + '1f'  // ~12% opacity via 8-char hex
   // Usar el plan del negocio activo; en modo "todos" usar localStorage para no perder accesos
   const planActual = (negocio?.plan?.toLowerCase()) ?? planFromStorage ?? 'starter'
   const planCfg = PLAN_CFG[planActual] ?? PLAN_CFG.basico
@@ -228,8 +229,10 @@ export function DashboardShell({
   }
 
   const brandVars = {
-    '--ds-active':    navActiveColor,
-    '--ds-active-bg': navActiveBg,
+    '--ds-active':        navActiveColor,
+    '--ds-active-bg':     navActiveBg,
+    '--color-primary':    navActiveColor,
+    '--color-secondary':  navSecondaryColor,
   } as React.CSSProperties
 
   return (

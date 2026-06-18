@@ -6,6 +6,18 @@ import { DashboardShell } from '../DashboardShell'
 
 type Notifs = { reservas: boolean; recordatorios: boolean; resenas: boolean }
 
+const TEMAS = [
+  { id: 'khepria',      nombre: 'Khepria',      descripcion: 'El clásico de Khepria', primario: '#7C3AED', secundario: '#4F46E5', emoji: '✨', porDefecto: true },
+  { id: 'oceano',       nombre: 'Océano',        descripcion: 'Azul profesional',       primario: '#2563EB', secundario: '#0891B2', emoji: '🌊' },
+  { id: 'esmeralda',    nombre: 'Esmeralda',     descripcion: 'Verde natural',           primario: '#059669', secundario: '#10B981', emoji: '🌿' },
+  { id: 'sunset',       nombre: 'Sunset',        descripcion: 'Cálido y vibrante',      primario: '#EA580C', secundario: '#DB2777', emoji: '🌅' },
+  { id: 'dorado',       nombre: 'Dorado',        descripcion: 'Lujo y elegancia',       primario: '#D97706', secundario: '#92400E', emoji: '✨' },
+  { id: 'rosa',         nombre: 'Rosa',          descripcion: 'Suave y moderno',        primario: '#DB2777', secundario: '#E11D48', emoji: '🌸' },
+  { id: 'personalizado', nombre: 'Personalizado', descripcion: 'Elige tu color',        primario: null,      secundario: null,      emoji: '🎨' },
+] as const
+
+type TemaId = typeof TEMAS[number]['id']
+
 const TIMEZONES = [
   'Europe/Madrid', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
   'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
@@ -121,11 +133,25 @@ export default function Ajustes() {
   // Zona horaria
   const [timezone, setTimezone] = useState('Europe/Madrid')
 
-  // Color del negocio
-  const [colorSeleccionado, setColorSeleccionado] = useState('#7C3AED')
+  // Tema de color
+  const [temaActual, setTemaActual] = useState<TemaId>('khepria')
+  const [colorPersonalizado, setColorPersonalizado] = useState('#7C3AED')
   const [mostrarPersonalizar, setMostrarPersonalizar] = useState(false)
   const [savingColor, setSavingColor] = useState(false)
   const [msgColor, setMsgColor] = useState<{ text: string; ok: boolean } | null>(null)
+
+  const colorActivo = temaActual === 'personalizado'
+    ? colorPersonalizado
+    : (TEMAS.find(t => t.id === temaActual)?.primario ?? '#7C3AED')
+  const colorActivoSecundario = temaActual === 'personalizado'
+    ? colorPersonalizado
+    : (TEMAS.find(t => t.id === temaActual)?.secundario ?? '#4F46E5')
+
+  function seleccionarTema(tema: { id: string; primario: string | null; secundario: string | null }) {
+    setTemaActual(tema.id as TemaId)
+    if (tema.id === 'personalizado') setMostrarPersonalizar(true)
+    else setMostrarPersonalizar(false)
+  }
 
   // Eliminar cuenta
   const [showDelete, setShowDelete] = useState(false)
@@ -143,7 +169,8 @@ export default function Ajustes() {
       const { activo, todos } = await getNegocioActivo(session.user.id)
       if (activo) {
         setNegocio(activo)
-        setColorSeleccionado(activo.color_principal || '#7C3AED')
+        setTemaActual((activo.tema as TemaId) || 'khepria')
+        setColorPersonalizado(activo.color || '#7C3AED')
       }
       setTodosNegocios(todos)
 
@@ -193,10 +220,15 @@ export default function Ajustes() {
     if (!negocio) return
     setSavingColor(true)
     setMsgColor(null)
-    const { error } = await supabase.from('negocios').update({ color_principal: colorSeleccionado }).eq('id', negocio.id)
+    const { error } = await supabase.from('negocios').update({
+      color: colorActivo,
+      color_secundario: colorActivoSecundario,
+      tema: temaActual,
+      color_principal: colorActivo,
+    }).eq('id', negocio.id)
     setSavingColor(false)
     if (error) setMsgColor({ text: 'Error: ' + error.message, ok: false })
-    else setMsgColor({ text: 'Color guardado correctamente', ok: true })
+    else setMsgColor({ text: 'Tema guardado correctamente', ok: true })
   }
 
   async function eliminarCuenta() {
@@ -294,97 +326,133 @@ export default function Ajustes() {
           </p>
         </Section>
 
-        {/* ── Color del negocio ── */}
-        <Section title="🎨 Color del negocio">
-          <div style={{ marginBottom: 20 }}>
-            <div
-              onClick={() => setColorSeleccionado('#7C3AED')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '12px 16px', borderRadius: 12,
-                border: colorSeleccionado === '#7C3AED' ? '2px solid #7C3AED' : '1.5px solid var(--ds-border)',
-                background: colorSeleccionado === '#7C3AED' ? 'rgba(124,58,237,0.05)' : 'var(--ds-bg)',
-                cursor: 'pointer', marginBottom: 10, transition: 'all 0.2s'
-              }}
-            >
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: '#7C3AED', flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ds-text)' }}>Predeterminado Khepria</div>
-                <div style={{ fontSize: 12, color: 'var(--ds-muted)' }}>Recomendado · #7C3AED</div>
+        {/* ── Tema de color ── */}
+        <Section title="🎨 Tema de color">
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ds-text)', marginBottom: 16 }}>Tema de color</div>
+
+          {/* Grid de temas predefinidos */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+            {TEMAS.filter(t => t.id !== 'personalizado').map(t => (
+              <div
+                key={t.id}
+                onClick={() => seleccionarTema(t)}
+                style={{
+                  padding: 14, borderRadius: 14, cursor: 'pointer', position: 'relative',
+                  border: temaActual === t.id ? `2px solid ${t.primario}` : '1.5px solid var(--ds-border)',
+                  background: temaActual === t.id ? `${t.primario}08` : 'var(--ds-white)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {temaActual === t.id && (
+                  <div style={{
+                    position: 'absolute', top: 8, right: 8,
+                    width: 18, height: 18, borderRadius: '50%',
+                    background: t.primario!, color: '#fff',
+                    fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 800,
+                  }}>✓</div>
+                )}
+                <div style={{ height: 32, borderRadius: 8, marginBottom: 10, background: `linear-gradient(135deg, ${t.primario}, ${t.secundario})` }} />
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ds-text)' }}>{t.emoji} {t.nombre}</div>
+                <div style={{ fontSize: 11, color: 'var(--ds-muted)', marginTop: 2 }}>{t.descripcion}</div>
+                {'porDefecto' in t && t.porDefecto && (
+                  <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: t.primario!, background: `${t.primario}15`, borderRadius: 999, padding: '2px 8px', display: 'inline-block' }}>
+                    Por defecto
+                  </div>
+                )}
               </div>
-              {colorSeleccionado === '#7C3AED' && (
-                <div style={{ marginLeft: 'auto', color: '#7C3AED', fontWeight: 800 }}>✓</div>
-              )}
-            </div>
-            <button
-              onClick={() => setMostrarPersonalizar(!mostrarPersonalizar)}
-              style={{
-                width: '100%', padding: '11px 16px', borderRadius: 12,
-                border: '1.5px dashed var(--ds-border)', background: 'transparent',
-                fontSize: 13, fontWeight: 600, color: 'var(--ds-text2)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', gap: 8, transition: 'all 0.2s', fontFamily: 'inherit',
-              }}
-            >
-              🎨 Personalizar color {mostrarPersonalizar ? '▲' : '▼'}
-            </button>
+            ))}
           </div>
 
+          {/* Opción personalizado */}
+          <div
+            onClick={() => seleccionarTema({ id: 'personalizado', primario: colorPersonalizado, secundario: colorPersonalizado })}
+            style={{
+              padding: 14, borderRadius: 14, cursor: 'pointer', marginBottom: 0,
+              border: temaActual === 'personalizado' ? `2px solid ${colorPersonalizado}` : '1.5px dashed var(--ds-border)',
+              background: 'var(--ds-white)', transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}
+          >
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              background: temaActual === 'personalizado' ? colorPersonalizado : 'linear-gradient(135deg,#f3f4f6,#e5e7eb)',
+            }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ds-text)' }}>🎨 Color personalizado</div>
+              <div style={{ fontSize: 11, color: 'var(--ds-muted)' }}>Elige tu propio color</div>
+            </div>
+            <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--ds-muted)' }}>
+              {mostrarPersonalizar ? '▲' : '▼'}
+            </div>
+          </div>
+
+          {/* Panel personalizado */}
           {mostrarPersonalizar && (
-            <div style={{ marginBottom: 20, padding: 16, background: 'var(--ds-bg)', borderRadius: 14, border: '1px solid var(--ds-border)' }}>
-              <div style={{ fontSize: 12, color: 'var(--ds-muted)', marginBottom: 10, fontWeight: 600 }}>COLORES PROFESIONALES</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                {['#4F46E5','#7C3AED','#8B5CF6','#2563EB','#0891B2','#059669','#16A34A','#65A30D','#10B981','#D97706','#EA580C','#DB2777','#DC2626','#E11D48','#475569','#374151'].map(c => (
+            <div style={{ marginTop: 12, padding: 16, background: 'var(--ds-bg)', borderRadius: 12, border: '1px solid var(--ds-border)' }}>
+              <div style={{ fontSize: 12, color: 'var(--ds-muted)', marginBottom: 10, fontWeight: 600 }}>PALETA RÁPIDA</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {['#4F46E5','#7C3AED','#2563EB','#0891B2','#059669','#16A34A','#D97706','#EA580C','#DB2777','#DC2626','#475569','#374151'].map(c => (
                   <button
                     key={c}
-                    onClick={() => setColorSeleccionado(c)}
+                    onClick={() => setColorPersonalizado(c)}
                     style={{
-                      width: 32, height: 32, borderRadius: '50%', background: c,
-                      border: 'none', cursor: 'pointer',
-                      boxShadow: colorSeleccionado === c ? `0 0 0 3px var(--ds-white), 0 0 0 5px ${c}` : '0 2px 6px rgba(0,0,0,0.15)',
-                      transform: colorSeleccionado === c ? 'scale(1.15)' : 'scale(1)',
-                      transition: 'all 0.2s',
+                      width: 28, height: 28, borderRadius: '50%', background: c, border: 'none', cursor: 'pointer',
+                      boxShadow: colorPersonalizado === c ? `0 0 0 2px var(--ds-white), 0 0 0 4px ${c}` : '0 1px 4px rgba(0,0,0,0.2)',
+                      transform: colorPersonalizado === c ? 'scale(1.2)' : 'scale(1)', transition: 'all 0.2s',
                     }}
                   />
                 ))}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--ds-muted)', marginBottom: 8, fontWeight: 600 }}>COLOR PERSONALIZADO</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <input
                   type="color"
-                  value={colorSeleccionado}
-                  onChange={e => setColorSeleccionado(e.target.value)}
-                  style={{ width: 40, height: 40, border: 'none', borderRadius: 8, cursor: 'pointer', padding: 2 }}
+                  value={colorPersonalizado}
+                  onChange={e => setColorPersonalizado(e.target.value)}
+                  style={{ width: 36, height: 36, border: 'none', borderRadius: 8, cursor: 'pointer', padding: 2 }}
                 />
-                <span style={{ fontSize: 12, color: 'var(--ds-muted)', fontFamily: 'monospace' }}>{colorSeleccionado}</span>
+                <span style={{ fontSize: 12, color: 'var(--ds-muted)', fontFamily: 'monospace' }}>{colorPersonalizado}</span>
+                <button
+                  onClick={() => seleccionarTema({ id: 'personalizado', primario: colorPersonalizado, secundario: colorPersonalizado })}
+                  style={{
+                    marginLeft: 'auto', padding: '7px 14px', borderRadius: 8,
+                    background: colorPersonalizado, color: '#fff', border: 'none',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Aplicar
+                </button>
               </div>
             </div>
           )}
 
-          <div style={{ marginBottom: 20, padding: 14, borderRadius: 12, background: 'var(--ds-bg)', border: '1px solid var(--ds-border)' }}>
+          {/* Vista previa */}
+          <div style={{ marginTop: 16, padding: 14, borderRadius: 12, background: 'var(--ds-bg)', border: '1px solid var(--ds-border)' }}>
             <div style={{ fontSize: 11, color: 'var(--ds-muted)', marginBottom: 8, fontWeight: 600 }}>VISTA PREVIA</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: colorSeleccionado, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: `linear-gradient(135deg,${colorActivo},${colorActivoSecundario})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
                 {negocio?.tipo?.split(' ')[0] || '🏪'}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, color: 'var(--ds-text)', fontSize: 14 }}>{negocio?.nombre || 'Tu negocio'}</div>
-                <div style={{ fontSize: 12, color: colorSeleccionado, fontWeight: 600 }}>● Disponible ahora</div>
+                <div style={{ fontSize: 12, color: colorActivo, fontWeight: 600 }}>● Disponible ahora</div>
               </div>
-              <div style={{ background: colorSeleccionado, color: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700 }}>
+              <div style={{ background: `linear-gradient(135deg,${colorActivo},${colorActivoSecundario})`, color: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700 }}>
                 Reservar
               </div>
             </div>
           </div>
 
-          {msgColor && (
-            <p style={{ fontSize: '13px', color: msgColor.ok ? '#2E8A5E' : '#DC2626', marginBottom: '12px' }}>
-              {msgColor.ok ? '✅' : '❌'} {msgColor.text}
-            </p>
-          )}
-          <Btn onClick={guardarColor} disabled={savingColor || !negocio}>
-            {savingColor ? 'Guardando...' : 'Guardar color'}
-          </Btn>
+          <div style={{ marginTop: 20 }}>
+            {msgColor && (
+              <p style={{ fontSize: '13px', color: msgColor.ok ? '#2E8A5E' : '#DC2626', marginBottom: '12px' }}>
+                {msgColor.ok ? '✅' : '❌'} {msgColor.text}
+              </p>
+            )}
+            <Btn onClick={guardarColor} disabled={savingColor || !negocio}>
+              {savingColor ? 'Guardando...' : 'Guardar tema'}
+            </Btn>
+          </div>
         </Section>
 
         {/* ── Zona de peligro ── */}
