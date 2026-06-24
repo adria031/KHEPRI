@@ -17,14 +17,9 @@ function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function exportCSV(rows: Record<string, unknown>[], filename: string) {
-  if (!rows.length) return
-  const keys = Object.keys(rows[0])
-  const csv = [keys.join(','), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
-  URL.revokeObjectURL(url)
+async function exportXLSX(titulo: string, negocioNombre: string, columnas: string[], dados: unknown[][], filename: string) {
+  const { crearYDescargarExcel } = await import('../../lib/documentos')
+  await crearYDescargarExcel(titulo, negocioNombre, new Date().toLocaleDateString('es-ES'), columnas, dados, filename)
 }
 
 function planBadge(plan: string | null | undefined) {
@@ -273,13 +268,16 @@ export default function NegociosPage() {
               </button>
             ))}
           </div>
-          <button className="act-btn" onClick={() => exportCSV(
-            filtrados.map(n => ({
-              nombre: n.nombre, ciudad: n.ciudad, tipo: n.tipo, plan: n.plan, activo: n.activo,
-              creditos_disponibles: (n.creditos_totales ?? 0) - (n.creditos_usados ?? 0),
-              creditos_totales: n.creditos_totales, email: n.owner_email, creado: n.updated_at,
-            })), 'negocios.csv')}>
-            📥 Exportar CSV
+          <button className="act-btn" onClick={async () => await exportXLSX(
+            'Negocios', 'Admin',
+            ['NOMBRE', 'CIUDAD', 'TIPO', 'PLAN', 'ACTIVO', 'CRÉDITOS DISP.', 'CRÉDITOS TOT.', 'EMAIL', 'CREADO'],
+            filtrados.map(n => [
+              n.nombre, n.ciudad, n.tipo, n.plan, n.activo ? 'sí' : 'no',
+              (n.creditos_totales ?? 0) - (n.creditos_usados ?? 0),
+              n.creditos_totales, n.owner_email, n.updated_at,
+            ]),
+            'negocios.xlsx')}>
+            📥 Exportar Excel
           </button>
         </div>
 

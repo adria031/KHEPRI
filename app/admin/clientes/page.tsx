@@ -6,14 +6,9 @@ function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function exportCSV(rows: Record<string, unknown>[], filename: string) {
-  if (!rows.length) return
-  const keys = Object.keys(rows[0])
-  const csv = [keys.join(','), ...rows.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a'); a.href = url; a.download = filename; a.click()
-  URL.revokeObjectURL(url)
+async function exportXLSX(titulo: string, negocioNombre: string, columnas: string[], dados: unknown[][], filename: string) {
+  const { crearYDescargarExcel } = await import('../../lib/documentos')
+  await crearYDescargarExcel(titulo, negocioNombre, new Date().toLocaleDateString('es-ES'), columnas, dados, filename)
 }
 
 const CSS = `
@@ -74,10 +69,12 @@ export default function ClientesPage() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input className="cl-search" placeholder="🔍 Nombre o email…" value={busq} onChange={e => setBusq(e.target.value)}/>
           </div>
-          <button className="act-btn" onClick={() => exportCSV(
-            filtrados.map(p => ({ nombre: p.nombre, email: p.email, tipo: p.tipo, plan: p.plan })),
-            'clientes.csv')}>
-            📥 Exportar CSV
+          <button className="act-btn" onClick={async () => await exportXLSX(
+            'Clientes', 'Admin',
+            ['NOMBRE', 'EMAIL', 'TIPO', 'PLAN'],
+            filtrados.map(p => [p.nombre, p.email, p.tipo, p.plan]),
+            'clientes.xlsx')}>
+            📥 Exportar Excel
           </button>
         </div>
 

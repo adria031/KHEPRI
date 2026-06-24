@@ -442,21 +442,23 @@ export default function Analytics() {
   }, [])
 
   // ── CSV export ────────────────────────────────────────────────────────────
-  function exportarCSV() {
-    const rows = [
-      ['Fecha', 'Estado', 'Cliente', 'Teléfono', 'Servicio', 'Precio (€)', 'Trabajador'],
-      ...reservas.map(r => [
-        r.fecha, r.estado, r.cliente_nombre, r.cliente_telefono ?? '',
-        r.servicios?.nombre ?? '', String(r.servicios?.precio ?? 0),
-        r.trabajadores?.nombre ?? '',
-      ]),
-    ]
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url
-    a.download = `analytics-${negocio?.nombre?.toLowerCase().replace(/\s+/g,'-')}-${periodoDesde(periodo)}.csv`
-    a.click(); URL.revokeObjectURL(url)
+  async function exportarXLSX() {
+    const { crearYDescargarExcel } = await import('../../lib/documentos')
+    const cols = ['Fecha', 'Estado', 'Cliente', 'Teléfono', 'Servicio', 'Precio (€)', 'Trabajador']
+    const datos = reservas.map(r => [
+      r.fecha, r.estado, r.cliente_nombre, r.cliente_telefono ?? '',
+      r.servicios?.nombre ?? '', String(r.servicios?.precio ?? 0),
+      r.trabajadores?.nombre ?? '',
+    ])
+    const nombre = negocio?.nombre ?? 'negocio'
+    await crearYDescargarExcel(
+      'Reservas',
+      nombre,
+      periodoDesde(periodo),
+      cols,
+      datos,
+      `analytics-${nombre.toLowerCase().replace(/\s+/g, '-')}-${periodoDesde(periodo)}.xlsx`
+    )
   }
 
   // ── Comparativa card ──────────────────────────────────────────────────────
@@ -602,8 +604,8 @@ export default function Analytics() {
               </button>
             ))}
           </div>
-          <button onClick={exportarCSV} style={{ padding:'9px 16px', background:'var(--text)', color:'white', border:'none', borderRadius:10, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-            📊 Exportar CSV
+          <button onClick={exportarXLSX} style={{ padding:'9px 16px', background:'var(--text)', color:'white', border:'none', borderRadius:10, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+            📊 Exportar Excel
           </button>
         </div>
       </div>

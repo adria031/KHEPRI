@@ -265,9 +265,9 @@ export default function Nominas() {
     const _cOtrosDesc    = opts?.compOtrosDesc ?? ''
 
     // Cabecera
-    doc.setFillColor(17, 24, 39); doc.rect(0, 0, W, 22, 'F')
+    doc.setFillColor(124, 58, 237); doc.rect(0, 0, W, 22, 'F')
     doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(15)
-    doc.text('KHEPRIA', mL, 13)
+    doc.text('Khepria', mL, 13)
     doc.setFontSize(9); doc.setFont('helvetica', 'normal')
     doc.text('RECIBO DE SALARIO — BORRADOR ORIENTATIVO', 105, 9, { align: 'center' })
     doc.setFontSize(8)
@@ -296,7 +296,7 @@ export default function Nominas() {
 
     // Helpers
     const seccion = (titulo: string) => {
-      doc.setFillColor(17, 24, 39); doc.rect(mL, y, mR - mL, 8, 'F')
+      doc.setFillColor(124, 58, 237); doc.rect(mL, y, mR - mL, 8, 'F')
       doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
       doc.text(titulo, mL + 3, y + 5.5); doc.text('IMPORTE', mR - 3, y + 5.5, { align: 'right' })
       y += 8
@@ -426,11 +426,11 @@ Pregunta: ${msg}`
       : '—'
 
     // ── CABECERA ──
-    doc.setFillColor(17,24,39); doc.rect(0,0,W,28,'F')
+    doc.setFillColor(124,58,237); doc.rect(0,0,W,28,'F')
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(14)
     doc.text('CONTRATO DE TRABAJO', mL, 13)
     doc.setFontSize(8); doc.setFont('helvetica','normal')
-    doc.text('SEPE — Servicio Público de Empleo Estatal', mL, 21)
+    doc.text('Generado con Khepria · khepria.app', mL, 21)
     doc.setFontSize(9); doc.setFont('helvetica','bold')
     doc.text(tipoLabel.toUpperCase(), mR, 12, {align:'right'})
     doc.setFontSize(8); doc.setFont('helvetica','normal')

@@ -315,10 +315,12 @@ export default function Facturacion() {
     const dir = [negocioDatos.direccion, negocioDatos.codigo_postal, negocioDatos.ciudad].filter(Boolean).join(', ')
     let y = 0
 
-    doc.setFillColor(17,24,39); doc.rect(0,0,W,26,'F')
+    doc.setFillColor(124,58,237); doc.rect(0,0,W,26,'F')
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16)
     doc.text('FACTURA', mL, 16)
-    doc.setFontSize(9); doc.setFont('helvetica','normal')
+    doc.setFontSize(8); doc.setFont('helvetica','normal')
+    doc.text('khepria.app', mL, 22)
+    doc.setFontSize(9)
     doc.text(`Nº ${f.numero}`, mR, 16, { align:'right' })
     y = 34
 
@@ -380,10 +382,12 @@ export default function Facturacion() {
     const irpfCuota = +(f.base_imponible * f.irpf / 100).toFixed(2)
     let y = 0
 
-    doc.setFillColor(17,24,39); doc.rect(0,0,W,26,'F')
+    doc.setFillColor(124,58,237); doc.rect(0,0,W,26,'F')
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16)
     doc.text('FACTURA', mL, 16)
-    doc.setFontSize(9); doc.setFont('helvetica','normal')
+    doc.setFontSize(8); doc.setFont('helvetica','normal')
+    doc.text('khepria.app', mL, 22)
+    doc.setFontSize(9)
     doc.text(`Nº ${f.numero}  ·  ${new Date(f.fecha+'T12:00').toLocaleDateString('es-ES')}`, mR, 16, {align:'right'})
     y = 34
 
@@ -455,262 +459,98 @@ export default function Facturacion() {
 
   async function generarPDF303() {
     if (!datosTrim) return
-    const { jsPDF } = await import('jspdf')
-    const doc = new jsPDF({ unit:'mm', format:'a4' })
-    const W = 210, mL = 14, mR = 196
+    const { crearPDF, añadirTablaConEstilo } = await import('../../lib/documentos')
     const d = datosTrim
     const resultado = d.ivaRepercutido - d.ivaSoportado
-    let y = 0
+    const nifLabel = negocioNif ? `  ·  NIF: ${negocioNif}` : ''
 
-    // Header oficial
-    doc.setFillColor(17,24,39); doc.rect(0,0,W,32,'F')
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11)
-    doc.text('AGENCIA TRIBUTARIA', mL, 11)
-    doc.setFontSize(9); doc.setFont('helvetica','normal')
-    doc.text('Administración Electrónica de la AEAT', mL, 18)
-    doc.setFontSize(18); doc.setFont('helvetica','bold')
-    doc.text('MODELO 303', mR, 14, {align:'right'})
-    doc.setFontSize(9); doc.setFont('helvetica','normal')
-    doc.text('Autoliquidación IVA — Régimen General', mR, 21, {align:'right'})
-    doc.setFontSize(8)
-    doc.text('Ejercicio 2026', mR, 28, {align:'right'})
-    y = 40
+    const doc = await crearPDF(
+      'Modelo 303 — Autoliquidación IVA',
+      `${negocioNombre}${nifLabel}  ·  Régimen: ${negocioRegimenIva === 'general' ? 'General' : 'Simplificado'}`,
+      `${trimestreLabel}  ·  ${mesesTrimestre}`
+    )
 
-    // Identificación
-    doc.setFillColor(247,249,252); doc.setDrawColor(229,231,235)
-    doc.roundedRect(mL, y, mR-mL, 22, 3, 3, 'FD')
-    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(153,153,153)
-    doc.text('IDENTIFICACIÓN DEL DECLARANTE', mL+4, y+7)
-    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(17,24,39)
-    doc.text(negocioNombre, mL+4, y+15)
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(75,85,99)
-    doc.text(`Período: ${trimestreLabel} (${mesesTrimestre})`, mR-4, y+9, {align:'right'})
-    doc.text(`NIF: ${negocioNif||'________________'}  ·  Régimen: ${negocioRegimenIva==='general'?'General':'Simplificado'}`, mR-4, y+17, {align:'right'})
-    y += 30
+    añadirTablaConEstilo(doc as any, ['Concepto', 'Importe (€)'], [
+      ['Base imponible total (ventas/prestaciones)', `${fmt(d.baseIngresos)} €`],
+      ['Cuota IVA repercutida (Sec. 1)', `${fmt(d.ivaRepercutido)} €`],
+      ['Base imponible gastos deducibles', `${fmt(d.totalGastoBase)} €`],
+      ['Cuota IVA soportada deducible (Sec. 2)', `${fmt(d.ivaSoportado)} €`],
+      [resultado >= 0 ? 'RESULTADO A INGRESAR' : 'RESULTADO A DEVOLVER', `${fmt(Math.abs(resultado))} €`],
+    ])
 
-    const seccion = (titulo: string) => {
-      doc.setFillColor(29,78,216); doc.rect(mL, y, mR-mL, 7, 'F')
-      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8)
-      doc.text(titulo, mL+3, y+5)
-      y += 7
-    }
-    const fila = (label: string, val: string, bold=false, color=[17,24,39] as [number,number,number]) => {
-      doc.setFillColor(255,255,255); doc.rect(mL, y, mR-mL, 9, 'F')
-      doc.setDrawColor(229,231,235); doc.line(mL, y+9, mR, y+9)
-      doc.setTextColor(75,85,99); doc.setFont('helvetica','normal'); doc.setFontSize(9)
-      doc.text(label, mL+3, y+6)
-      doc.setFont('helvetica', bold ? 'bold' : 'normal')
-      doc.setTextColor(...color)
-      doc.text(val, mR-3, y+6, {align:'right'})
-      y += 9
-    }
+    const finalY: number = (doc as any).lastAutoTable?.finalY ?? 150
+    doc.setFillColor(255, 251, 235); doc.setDrawColor(253, 230, 138)
+    doc.roundedRect(14, finalY + 8, 182, 14, 3, 3, 'FD')
+    doc.setTextColor(146, 64, 14); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
+    doc.text('⚠  AVISO LEGAL', 18, finalY + 15)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Documento orientativo. Verifique con su gestor antes de presentar en Sede Electrónica AEAT.', 18, finalY + 21)
 
-    seccion('SECCIÓN 1 — IVA DEVENGADO (repercutido a clientes)')
-    fila('Base imponible total (ventas/prestaciones)', `${fmt(d.baseIngresos)} €`)
-    fila('Cuota IVA repercutida (21% / 10% / 4%)', `${fmt(d.ivaRepercutido)} €`)
-    y += 4
-
-    seccion('SECCIÓN 2 — IVA DEDUCIBLE (soportado en gastos)')
-    fila('Base imponible gastos deducibles', `${fmt(d.totalGastoBase)} €`)
-    fila('Cuota IVA soportada', `${fmt(d.ivaSoportado)} €`)
-    y += 4
-
-    seccion('RESULTADO DE LA AUTOLIQUIDACIÓN')
-    fila('IVA repercutido (Sec. 1)', `${fmt(d.ivaRepercutido)} €`)
-    fila('IVA deducible (Sec. 2)', `${fmt(d.ivaSoportado)} €`)
-
-    doc.setFillColor(resultado >= 0 ? 254 : 184, resultado >= 0 ? 226 : 237, resultado >= 0 ? 226 : 212)
-    doc.rect(mL, y, mR-mL, 13, 'F')
-    doc.setTextColor(resultado >= 0 ? 220 : 46, resultado >= 0 ? 38 : 138, resultado >= 0 ? 38 : 94)
-    doc.setFont('helvetica','bold'); doc.setFontSize(12)
-    doc.text(resultado >= 0 ? 'RESULTADO A INGRESAR' : 'RESULTADO A DEVOLVER', mL+3, y+9)
-    doc.text(`${fmt(Math.abs(resultado))} €`, mR-3, y+9, {align:'right'})
-    y += 22
-
-    // Aviso
-    doc.setFillColor(255,251,235); doc.setDrawColor(253,230,138)
-    doc.roundedRect(mL, y, mR-mL, 16, 3, 3, 'FD')
-    doc.setTextColor(146,64,14); doc.setFontSize(7.5); doc.setFont('helvetica','bold')
-    doc.text('⚠  AVISO LEGAL', mL+4, y+7)
-    doc.setFont('helvetica','normal')
-    doc.text('Este documento es orientativo. Verifique los datos con su gestor antes de presentar en Sede Electrónica AEAT.', mL+4, y+13)
-    y += 24
-
-    // Firma
-    doc.setDrawColor(180,180,180)
-    doc.line(mL, y+22, mL+72, y+22)
-    doc.setTextColor(120,120,120); doc.setFontSize(8); doc.setFont('helvetica','normal')
-    doc.text('Firma del declarante', mL+36, y+27, {align:'center'})
-
-    doc.setFillColor(247,249,252); doc.rect(0,285,W,12,'F')
-    doc.setTextColor(153,153,153); doc.setFontSize(7)
-    doc.text(`Generado con Khepria · Modelo 303 · ${trimestreLabel} · ${new Date().toLocaleDateString('es-ES')}`, 105, 292, {align:'center'})
-
-    doc.save(`modelo-303-${trimestreLabel.replace(' ','-')}.pdf`)
+    doc.save(`modelo-303-${trimestreLabel.replace(' ', '-')}.pdf`)
   }
 
   async function generarPDF130() {
     if (!datosTrim) return
-    const { jsPDF } = await import('jspdf')
-    const doc = new jsPDF({ unit:'mm', format:'a4' })
-    const W = 210, mL = 14, mR = 196
+    const { crearPDF, añadirTablaConEstilo } = await import('../../lib/documentos')
     const d = datosTrim
     const rendNeto = Math.max(0, d.baseIngresos - d.totalGastoBase)
     const irpf20 = rendNeto * 0.20
-    const resultado = irpf20  // sin retenciones previas en trimestres anteriores (simplificado)
-    let y = 0
+    const nifLabel = negocioNif ? `  ·  NIF: ${negocioNif}` : ''
 
-    doc.setFillColor(17,24,39); doc.rect(0,0,W,32,'F')
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11)
-    doc.text('AGENCIA TRIBUTARIA', mL, 11)
-    doc.setFontSize(9); doc.setFont('helvetica','normal')
-    doc.text('Administración Electrónica de la AEAT', mL, 18)
-    doc.setFontSize(18); doc.setFont('helvetica','bold')
-    doc.text('MODELO 130', mR, 14, {align:'right'})
-    doc.setFontSize(9); doc.setFont('helvetica','normal')
-    doc.text('Pago fraccionado IRPF — Autónomos estimación directa', mR, 21, {align:'right'})
-    doc.setFontSize(8); doc.text('Ejercicio 2026', mR, 28, {align:'right'})
-    y = 40
+    const doc = await crearPDF(
+      'Modelo 130 — Pago Fraccionado IRPF',
+      `${negocioNombre}${nifLabel}  ·  Estimación directa`,
+      `${trimestreLabel}  ·  ${mesesTrimestre}`
+    )
 
-    doc.setFillColor(247,249,252); doc.setDrawColor(229,231,235)
-    doc.roundedRect(mL,y,mR-mL,22,3,3,'FD')
-    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(153,153,153)
-    doc.text('IDENTIFICACIÓN DEL DECLARANTE', mL+4, y+7)
-    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(17,24,39)
-    doc.text(negocioNombre, mL+4, y+15)
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(75,85,99)
-    doc.text(`Período: ${trimestreLabel} (${mesesTrimestre})`, mR-4, y+9, {align:'right'})
-    doc.text(`NIF: ${negocioNif||'________________'}  ·  Estimación directa`, mR-4, y+17, {align:'right'})
-    y += 30
+    añadirTablaConEstilo(doc as any, ['Concepto', 'Importe (€)'], [
+      ['Ingresos del trimestre (base imponible ventas)', `${fmt(d.baseIngresos)} €`],
+      ['Gastos deducibles del trimestre', `${fmt(d.totalGastoBase)} €`],
+      ['Rendimiento neto (ingresos − gastos)', `${fmt(rendNeto)} €`],
+      ['20% del rendimiento neto', `${fmt(irpf20)} €`],
+      ['IMPORTE A INGRESAR', `${fmt(Math.max(0, irpf20))} €`],
+    ])
 
-    const seccion = (t: string) => {
-      doc.setFillColor(29,78,216); doc.rect(mL,y,mR-mL,7,'F')
-      doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8)
-      doc.text(t, mL+3, y+5); y += 7
-    }
-    const fila = (l: string, v: string) => {
-      doc.setFillColor(255,255,255); doc.rect(mL,y,mR-mL,9,'F')
-      doc.setDrawColor(229,231,235); doc.line(mL,y+9,mR,y+9)
-      doc.setTextColor(75,85,99); doc.setFont('helvetica','normal'); doc.setFontSize(9)
-      doc.text(l, mL+3, y+6)
-      doc.setFont('helvetica','bold'); doc.setTextColor(17,24,39)
-      doc.text(v, mR-3, y+6, {align:'right'}); y += 9
-    }
+    const finalY: number = (doc as any).lastAutoTable?.finalY ?? 150
+    doc.setFillColor(255, 251, 235); doc.setDrawColor(253, 230, 138)
+    doc.roundedRect(14, finalY + 8, 182, 14, 3, 3, 'FD')
+    doc.setTextColor(146, 64, 14); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
+    doc.text('⚠  AVISO LEGAL', 18, finalY + 15)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Documento orientativo. Deducciones adicionales requieren consulta con gestor fiscal.', 18, finalY + 21)
 
-    seccion('APARTADO 1 — ACTIVIDADES ECONÓMICAS')
-    fila('Ingresos del trimestre (base imponible ventas)', `${fmt(d.baseIngresos)} €`)
-    fila('Gastos deducibles del trimestre', `${fmt(d.totalGastoBase)} €`)
-    y += 4
-
-    seccion('APARTADO 2 — CÁLCULO DEL PAGO FRACCIONADO')
-    fila('Rendimiento neto (ingresos − gastos)', `${fmt(rendNeto)} €`)
-    fila('20% del rendimiento neto', `${fmt(irpf20)} €`)
-    y += 4
-
-    seccion('RESULTADO')
-    doc.setFillColor(resultado > 0 ? 254 : 184, resultado > 0 ? 226 : 237, resultado > 0 ? 226 : 212)
-    doc.rect(mL,y,mR-mL,13,'F')
-    doc.setTextColor(resultado > 0 ? 220 : 46, resultado > 0 ? 38 : 138, resultado > 0 ? 38 : 94)
-    doc.setFont('helvetica','bold'); doc.setFontSize(12)
-    doc.text('IMPORTE A INGRESAR', mL+3, y+9)
-    doc.text(`${fmt(Math.max(0, resultado))} €`, mR-3, y+9, {align:'right'})
-    y += 22
-
-    doc.setFillColor(235,242,255); doc.setDrawColor(184,216,248)
-    doc.roundedRect(mL,y,mR-mL,18,3,3,'FD')
-    doc.setTextColor(29,78,216); doc.setFont('helvetica','bold'); doc.setFontSize(8)
-    doc.text('Referencia 2026', mL+4, y+7)
-    doc.setFont('helvetica','normal'); doc.setTextColor(75,85,99); doc.setFontSize(8)
-    doc.text(`SMI 2026: 1.184 €/mes  ·  Período: ${mesesTrimestre}  ·  Tasa: 20% rendimiento neto`, mL+4, y+14)
-    y += 26
-
-    doc.setFillColor(255,251,235); doc.setDrawColor(253,230,138)
-    doc.roundedRect(mL,y,mR-mL,16,3,3,'FD')
-    doc.setTextColor(146,64,14); doc.setFontSize(7.5); doc.setFont('helvetica','bold')
-    doc.text('⚠  AVISO LEGAL', mL+4, y+7)
-    doc.setFont('helvetica','normal')
-    doc.text('Documento orientativo. Deducciones adicionales y retenciones de ejercicios anteriores requieren consulta con gestor.', mL+4, y+13)
-
-    doc.setFillColor(247,249,252); doc.rect(0,285,W,12,'F')
-    doc.setTextColor(153,153,153); doc.setFontSize(7)
-    doc.text(`Generado con Khepria · Modelo 130 · ${trimestreLabel} · ${new Date().toLocaleDateString('es-ES')}`, 105, 292, {align:'center'})
-
-    doc.save(`modelo-130-${trimestreLabel.replace(' ','-')}.pdf`)
+    doc.save(`modelo-130-${trimestreLabel.replace(' ', '-')}.pdf`)
   }
 
   async function generarPDF111() {
     if (!datosTrim) return
-    const { jsPDF } = await import('jspdf')
-    const doc = new jsPDF({ unit:'mm', format:'a4' })
-    const W = 210, mL = 14, mR = 196
+    const { crearPDF, añadirTablaConEstilo } = await import('../../lib/documentos')
     const d = datosTrim
-    let y = 0
+    const brutoEstimado = d.retenciones > 0 ? d.retenciones / 0.15 : 0
+    const nifLabel = negocioNif ? `  ·  NIF: ${negocioNif}` : ''
 
-    doc.setFillColor(17,24,39); doc.rect(0,0,W,32,'F')
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11)
-    doc.text('AGENCIA TRIBUTARIA', mL, 11)
-    doc.setFontSize(9); doc.setFont('helvetica','normal')
-    doc.text('Administración Electrónica de la AEAT', mL, 18)
-    doc.setFontSize(18); doc.setFont('helvetica','bold')
-    doc.text('MODELO 111', mR, 14, {align:'right'})
-    doc.setFontSize(9); doc.setFont('helvetica','normal')
-    doc.text('Retenciones IRPF — Rendimientos del Trabajo', mR, 21, {align:'right'})
-    doc.setFontSize(8); doc.text('Ejercicio 2026', mR, 28, {align:'right'})
-    y = 40
+    const doc = await crearPDF(
+      'Modelo 111 — Retenciones IRPF',
+      `${negocioNombre}${nifLabel}`,
+      `${trimestreLabel}  ·  ${mesesTrimestre}`
+    )
 
-    doc.setFillColor(247,249,252); doc.setDrawColor(229,231,235)
-    doc.roundedRect(mL,y,mR-mL,22,3,3,'FD')
-    doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(153,153,153)
-    doc.text('IDENTIFICACIÓN DEL RETENEDOR', mL+4, y+7)
-    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(17,24,39)
-    doc.text(negocioNombre, mL+4, y+15)
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(75,85,99)
-    doc.text(`Período: ${trimestreLabel} (${mesesTrimestre})`, mR-4, y+9, {align:'right'})
-    doc.text(`NIF: ${negocioNif||'________________'}`, mR-4, y+17, {align:'right'})
-    y += 30
+    añadirTablaConEstilo(doc as any, ['Concepto', 'Importe (€)'], [
+      ['Número de perceptores', d.retenciones > 0 ? '(ver nóminas)' : '0'],
+      ['Retribuciones íntegras estimadas', `${fmt(brutoEstimado)} €`],
+      ['Retenciones IRPF sobre rendimientos del trabajo', `${fmt(d.retenciones)} €`],
+      ['TOTAL A INGRESAR', `${fmt(d.retenciones)} €`],
+    ])
 
-    doc.setFillColor(29,78,216); doc.rect(mL,y,mR-mL,7,'F')
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8)
-    doc.text('RENDIMIENTOS DEL TRABAJO PERSONAL', mL+3, y+5); y += 7
+    const finalY: number = (doc as any).lastAutoTable?.finalY ?? 150
+    doc.setFillColor(255, 251, 235); doc.setDrawColor(253, 230, 138)
+    doc.roundedRect(14, finalY + 8, 182, 14, 3, 3, 'FD')
+    doc.setTextColor(146, 64, 14); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
+    doc.text('⚠  AVISO LEGAL', 18, finalY + 15)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Las retenciones se calculan desde nóminas de Khepria. Verifique con su gestor antes de presentar en AEAT.', 18, finalY + 21)
 
-    const fila = (l: string, v: string) => {
-      doc.setFillColor(255,255,255); doc.rect(mL,y,mR-mL,9,'F')
-      doc.setDrawColor(229,231,235); doc.line(mL,y+9,mR,y+9)
-      doc.setTextColor(75,85,99); doc.setFont('helvetica','normal'); doc.setFontSize(9)
-      doc.text(l, mL+3, y+6)
-      doc.setFont('helvetica','bold'); doc.setTextColor(17,24,39)
-      doc.text(v, mR-3, y+6, {align:'right'}); y += 9
-    }
-
-    // Estimated bruto from retenciones (retenciones/irpf_avg ≈ bruto)
-    const brutoEstimado = d.retenciones > 0 ? d.retenciones / 0.15 : 0 // 15% avg estimation
-    fila('Número de perceptores', `${d.retenciones > 0 ? '(ver nóminas)' : '0'}`)
-    fila('Importe retribuciones íntegras (estimado)', `${fmt(brutoEstimado)} €`)
-    fila('Importe retenciones e ingresos a cuenta (IRPF)', `${fmt(d.retenciones)} €`)
-    y += 4
-
-    doc.setFillColor(29,78,216); doc.rect(mL,y,mR-mL,7,'F')
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8)
-    doc.text('RESULTADO', mL+3, y+5); y += 7
-
-    doc.setFillColor(254,226,226); doc.rect(mL,y,mR-mL,13,'F')
-    doc.setTextColor(220,38,38); doc.setFont('helvetica','bold'); doc.setFontSize(12)
-    doc.text('TOTAL A INGRESAR', mL+3, y+9)
-    doc.text(`${fmt(d.retenciones)} €`, mR-3, y+9, {align:'right'})
-    y += 22
-
-    doc.setFillColor(255,251,235); doc.setDrawColor(253,230,138)
-    doc.roundedRect(mL,y,mR-mL,16,3,3,'FD')
-    doc.setTextColor(146,64,14); doc.setFontSize(7.5); doc.setFont('helvetica','bold')
-    doc.text('⚠  AVISO LEGAL', mL+4, y+7)
-    doc.setFont('helvetica','normal')
-    doc.text('Las retenciones se calculan a partir de las nóminas registradas en Khepria. Verifique con su gestor antes de presentar.', mL+4, y+13)
-
-    doc.setFillColor(247,249,252); doc.rect(0,285,W,12,'F')
-    doc.setTextColor(153,153,153); doc.setFontSize(7)
-    doc.text(`Generado con Khepria · Modelo 111 · ${trimestreLabel} · ${new Date().toLocaleDateString('es-ES')}`, 105, 292, {align:'center'})
-
-    doc.save(`modelo-111-${trimestreLabel.replace(' ','-')}.pdf`)
+    doc.save(`modelo-111-${trimestreLabel.replace(' ', '-')}.pdf`)
   }
 
   // Legacy (used by modelos fiscales section if datosTrim loaded)
@@ -775,22 +615,47 @@ export default function Facturacion() {
       const rendNeto = Math.max(0, baseIngresos - baseGastos)
       const irpfEstimado = rendNeto * 0.20
 
-      const rows: (string | number)[][] = [
-        [`Kit para Gestor — Khepria`, `Período: ${labelT} (${mesesT})`],
-        [`Generado`, new Date().toLocaleDateString('es-ES')],
+      const XLSX = await import('xlsx')
+      const wb = XLSX.utils.book_new()
+
+      // Hoja: Ingresos
+      const wsIn = XLSX.utils.aoa_to_sheet([
+        ['KHEPRIA — Kit para Gestor'],
+        [`Negocio: ${negocioNombre}`],
+        [`Período: ${labelT} (${mesesT})`],
+        [`Generado: ${new Date().toLocaleDateString('es-ES')}`],
+        ['khepria.app'],
         [],
-        ['=== INGRESOS DEL TRIMESTRE ==='],
-        ['Fecha', 'Cliente', 'Servicio', 'Base imponible (€)', 'IVA %', 'Cuota IVA (€)', 'Total (€)'],
+        ['FECHA', 'CLIENTE', 'SERVICIO', 'BASE IMPONIBLE (€)', 'IVA %', 'CUOTA IVA (€)', 'TOTAL (€)'],
         ...ingresoRows,
-        ['', '', 'TOTALES INGRESOS', baseIngresos.toFixed(2), '', ivaRepercutido.toFixed(2), totalIngresos.toFixed(2)],
+        ['', '', 'TOTALES', baseIngresos.toFixed(2), '', ivaRepercutido.toFixed(2), totalIngresos.toFixed(2)],
+      ])
+      wsIn['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 26 }, { wch: 20 }, { wch: 8 }, { wch: 16 }, { wch: 12 }]
+      XLSX.utils.book_append_sheet(wb, wsIn, 'Ingresos')
+
+      // Hoja: Gastos
+      const wsGas = XLSX.utils.aoa_to_sheet([
+        ['KHEPRIA — Kit para Gestor'],
+        [`Negocio: ${negocioNombre}`],
+        [`Período: ${labelT} (${mesesT})`],
+        [`Generado: ${new Date().toLocaleDateString('es-ES')}`],
+        ['khepria.app'],
         [],
-        ['=== GASTOS DEL TRIMESTRE ==='],
-        ['Fecha', 'Proveedor', 'Concepto', 'Base imponible (€)', 'IVA %', 'IVA soportado (€)', 'Total (€)'],
+        ['FECHA', 'PROVEEDOR', 'CONCEPTO', 'BASE IMPONIBLE (€)', 'IVA %', 'CUOTA IVA (€)', 'TOTAL (€)'],
         ...gastoRows,
-        ['', '', 'TOTALES GASTOS', baseGastos.toFixed(2), '', ivaSoportado.toFixed(2), totalGastos.toFixed(2)],
+        ['', '', 'TOTALES', baseGastos.toFixed(2), '', ivaSoportado.toFixed(2), totalGastos.toFixed(2)],
+      ])
+      wsGas['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 26 }, { wch: 20 }, { wch: 8 }, { wch: 16 }, { wch: 12 }]
+      XLSX.utils.book_append_sheet(wb, wsGas, 'Gastos')
+
+      // Hoja: Resumen Fiscal
+      const wsRes = XLSX.utils.aoa_to_sheet([
+        ['KHEPRIA — Resumen Fiscal'],
+        [`Negocio: ${negocioNombre}`],
+        [`Período: ${labelT} (${mesesT})`],
+        ['khepria.app'],
         [],
-        ['=== RESUMEN FISCAL ==='],
-        ['Concepto', 'Importe (€)'],
+        ['CONCEPTO', 'IMPORTE (€)'],
         ['Base imponible total ingresos', baseIngresos.toFixed(2)],
         ['IVA repercutido (cobrado a clientes)', ivaRepercutido.toFixed(2)],
         ['Base imponible total gastos', baseGastos.toFixed(2)],
@@ -798,22 +663,11 @@ export default function Facturacion() {
         ['IVA a pagar Hacienda (M.303)', ivaDiferencia.toFixed(2)],
         ['Rendimiento neto (ingresos − gastos)', rendNeto.toFixed(2)],
         ['IRPF estimado 20% (M.130)', irpfEstimado.toFixed(2)],
-        [],
-        ['=== REFERENCIA ==='],
-        ['Período', labelT],
-        ['Meses incluidos', mesesT],
-        ['Nº ingresos', ingresoRows.length],
-        ['Nº gastos', gastoRows.length],
-      ]
+      ])
+      wsRes['!cols'] = [{ wch: 40 }, { wch: 18 }]
+      XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen Fiscal')
 
-      const csv = rows.map(r => r.join(';')).join('\n')
-      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `khepria-gestor-T${t}-${a}.csv`
-      link.click()
-      URL.revokeObjectURL(url)
+      XLSX.writeFile(wb, `khepria-gestor-T${t}-${a}.xlsx`)
     } finally {
       setExportando(false)
     }
