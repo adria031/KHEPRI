@@ -45,7 +45,9 @@ type Trabajador = {
   salario_anual: number | null; num_pagas: number | null
   complementos: { plus_transporte?: number; plus_productividad?: number; dietas?: number; otros?: number; otros_descripcion?: string } | null
   tipo_contrato: string | null; fecha_inicio: string | null
+  esDueno?: boolean
 }
+type Perfil = { id: string; nombre: string | null; email: string | null; avatar_url: string | null }
 type FormState = {
   nombre: string; especialidad: string; foto_url: string | null
   email: string; telefono: string; dni: string; direccion: string
@@ -83,6 +85,7 @@ export default function Equipo() {
   const [negocioDatos, setNegocioDatos] = useState<NegocioDatos>({ nombre:'', direccion:null, ciudad:null, codigo_postal:null, telefono:null })
   const [trabajadores, setTrabajadores] = useState<Trabajador[]>([])
   const [cargando, setCargando] = useState(true)
+  const [duenoProfile, setDuenoProfile] = useState<Perfil | null>(null)
 
   // Modal trabajador
   const [modal, setModal] = useState(false)
@@ -129,6 +132,8 @@ export default function Equipo() {
     ;(async () => {
       const { session, db } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
+      const { data: perfil } = await db.from('profiles').select('id, nombre, email, avatar_url').eq('id', session.user.id).single()
+      if (perfil) setDuenoProfile(perfil as Perfil)
       const { activo: neg, todos: todosNegs } = await getNegocioActivo(session.user.id, session.access_token)
       if (!neg) { window.location.href = '/onboarding'; return }
       setTodosNegocios(todosNegs); setNegocio(neg); setNegocioId(neg.id)
@@ -501,6 +506,22 @@ export default function Equipo() {
     }
   })
 
+  const listaFinal: Trabajador[] = [
+    ...(duenoProfile ? [{
+      id: duenoProfile.id,
+      nombre: duenoProfile.nombre || 'Tú (propietario)',
+      especialidad: 'Propietario',
+      foto_url: duenoProfile.avatar_url,
+      email: duenoProfile.email,
+      telefono: null, activo: true,
+      dni: null, direccion: null,
+      salario_anual: null, num_pagas: null,
+      complementos: null, tipo_contrato: null, fecha_inicio: null,
+      esDueno: true,
+    } as Trabajador] : []),
+    ...trabajadores,
+  ]
+
   return (
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
       <style>{`
@@ -521,6 +542,8 @@ export default function Equipo() {
         .trabajador-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: box-shadow 0.2s; }
         .trabajador-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
         .trabajador-card.inactivo { opacity: 0.55; }
+        .trabajador-card.dueno { border-color: rgba(124,58,237,0.3); background: rgba(124,58,237,0.02); }
+        .trabajador-card.dueno:hover { box-shadow: 0 4px 16px rgba(124,58,237,0.12); }
         .card-top { padding: 20px 18px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
         .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
         .btn-icon { background: var(--bg); border: none; border-radius: 8px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; }
@@ -595,99 +618,112 @@ export default function Equipo() {
 
       {cargando ? (
         <div style={{textAlign:'center', padding:'60px', color:'var(--muted)', fontSize:'14px'}}>Cargando...</div>
-      ) : trabajadores.length === 0 ? (
-        <div className="empty">
-          <div className="empty-emoji">👥</div>
-          <div className="empty-title">Sin miembros en el equipo</div>
-          <div className="empty-sub">Añade a los profesionales de tu negocio para asignarlos a reservas</div>
-        </div>
       ) : (
-        <div className="equipo-grid">
-          {trabajadores.map(t => {
-            const contratos = contratosTrab[t.id] || []
-            const expandido = vistaContrato === t.id
-            const st = statsPorTrabajador.find(s => s.id === t.id)
-            return (
-              <div key={t.id} className={`trabajador-card ${!t.activo ? 'inactivo' : ''}`}>
-                <div className="card-top">
-                  <div className="card-actions">
-                    <button className="btn-icon" onClick={() => abrirModal(t)} title="Editar">✏️</button>
-                    <button className="btn-icon" onClick={() => toggleActivo(t)} title={t.activo ? 'Desactivar' : 'Activar'}>
-                      {t.activo ? '👁️' : '🙈'}
-                    </button>
-                    <button className="btn-icon" onClick={() => eliminar(t)} title="Eliminar">🗑️</button>
-                  </div>
-                  {t.foto_url
-                    ? <img src={t.foto_url} alt={t.nombre} className="avatar" />
-                    : <div className="avatar-placeholder">{iniciales(t.nombre)}</div>
-                  }
-                  <div className="trabajador-nombre">{t.nombre}</div>
-                  <div className="trabajador-esp">{t.especialidad || '—'}</div>
-                  {t.email && <div style={{fontSize:'12px', color:'var(--muted)', marginBottom:8, wordBreak:'break-all'}}>{t.email}</div>}
-                  <span className={`badge ${t.activo ? 'badge-activo' : 'badge-inactivo'}`}>
-                    {t.activo ? 'Activo' : 'Inactivo'}
-                  </span>
-                  {st && (
-                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginTop:12, width:'100%'}}>
-                      <div style={{background:'#F0F9FF', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
-                        <div style={{fontSize:16, fontWeight:800, color:'#1D4ED8'}}>{st.reservasMes}</div>
-                        <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>citas/mes</div>
+        <>
+          <div className="equipo-grid">
+            {listaFinal.map(t => {
+              const contratos = t.esDueno ? [] : (contratosTrab[t.id] || [])
+              const expandido = !t.esDueno && vistaContrato === t.id
+              const st = !t.esDueno ? statsPorTrabajador.find(s => s.id === t.id) : null
+              return (
+                <div key={t.id} className={`trabajador-card${!t.activo ? ' inactivo' : ''}${t.esDueno ? ' dueno' : ''}`}>
+                  <div className="card-top">
+                    {!t.esDueno && (
+                      <div className="card-actions">
+                        <button className="btn-icon" onClick={() => abrirModal(t)} title="Editar">✏️</button>
+                        <button className="btn-icon" onClick={() => toggleActivo(t)} title={t.activo ? 'Desactivar' : 'Activar'}>
+                          {t.activo ? '👁️' : '🙈'}
+                        </button>
+                        <button className="btn-icon" onClick={() => eliminar(t)} title="Eliminar">🗑️</button>
                       </div>
-                      <div style={{background:'#F0FDF4', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
-                        <div style={{fontSize:16, fontWeight:800, color:'#065F46'}}>{st.ingresosMes}€</div>
-                        <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>ingresos</div>
-                      </div>
-                      <div style={{background:'#FAF5FF', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
-                        <div style={{fontSize:14, fontWeight:800, color:'#6D28D9'}}>
-                          {st.proximaCita ? new Date(st.proximaCita+'T12:00').toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'}) : '—'}
-                        </div>
-                        <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>próx. cita</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Contratos footer */}
-                <div className="card-footer">
-                  <span style={{fontSize:11, color:'var(--muted)', fontWeight:600}}>
-                    {contratos.length > 0 ? `${contratos.length} contrato${contratos.length !== 1 ? 's' : ''}` : 'Sin contratos'}
-                  </span>
-                  <div style={{display:'flex', gap:6}}>
-                    {contratos.length > 0 && (
-                      <button className="btn-contratos" onClick={() => setVistaContrato(expandido ? null : t.id)}>
-                        {expandido ? '▲ Ocultar' : '📋 Ver contratos'}
-                      </button>
                     )}
-                    <button className="btn-contratos" style={{background:'var(--text)', color:'white', border:'none'}} onClick={() => abrirContratoModal(t)}>
-                      + Contrato
-                    </button>
-                  </div>
-                </div>
-
-                {/* Panel contratos expandido */}
-                {expandido && contratos.length > 0 && (
-                  <div className="contratos-panel">
-                    {contratos.map(c => {
-                      const tipoInfo = TIPOS_CONTRATO.find(x => x.id === c.tipo_contrato)
-                      return (
-                        <div key={c.id} className="contrato-item">
-                          <div style={{flex:1, minWidth:0}}>
-                            <div className="contrato-tipo">{tipoInfo?.label || c.tipo_contrato}</div>
-                            <div className="contrato-fecha">Inicio: {fmtFecha(c.fecha_inicio)}{c.fecha_fin ? ` · Fin: ${fmtFecha(c.fecha_fin)}` : ' · Indefinido'}</div>
-                            <div className="contrato-fecha">{fmt(c.salario_bruto)} €/mes · {c.jornada}</div>
+                    {t.foto_url
+                      ? <img src={t.foto_url} alt={t.nombre} className="avatar" />
+                      : <div className="avatar-placeholder" style={t.esDueno ? {background:'linear-gradient(135deg,#D4C5F9,#B8D8F8)', color:'#6B4FD8'} : undefined}>{iniciales(t.nombre)}</div>
+                    }
+                    <div className="trabajador-nombre">{t.nombre}</div>
+                    <div className="trabajador-esp">{t.especialidad || '—'}</div>
+                    {t.email && <div style={{fontSize:'12px', color:'var(--muted)', marginBottom:8, wordBreak:'break-all'}}>{t.email}</div>}
+                    {t.esDueno ? (
+                      <div style={{background:'rgba(124,58,237,0.1)', color:'#7C3AED', borderRadius:999, padding:'2px 8px', fontSize:10, fontWeight:700}}>
+                        👑 Propietario
+                      </div>
+                    ) : (
+                      <span className={`badge ${t.activo ? 'badge-activo' : 'badge-inactivo'}`}>
+                        {t.activo ? 'Activo' : 'Inactivo'}
+                      </span>
+                    )}
+                    {!t.esDueno && st && (
+                      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginTop:12, width:'100%'}}>
+                        <div style={{background:'#F0F9FF', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
+                          <div style={{fontSize:16, fontWeight:800, color:'#1D4ED8'}}>{st.reservasMes}</div>
+                          <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>citas/mes</div>
+                        </div>
+                        <div style={{background:'#F0FDF4', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
+                          <div style={{fontSize:16, fontWeight:800, color:'#065F46'}}>{st.ingresosMes}€</div>
+                          <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>ingresos</div>
+                        </div>
+                        <div style={{background:'#FAF5FF', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
+                          <div style={{fontSize:14, fontWeight:800, color:'#6D28D9'}}>
+                            {st.proximaCita ? new Date(st.proximaCita+'T12:00').toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'}) : '—'}
                           </div>
-                          <button className="btn-dl" onClick={() => generarContratoPDF(c, t)}>
-                            📄 PDF
+                          <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>próx. cita</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Contratos footer — solo para empleados */}
+                  {!t.esDueno && (
+                    <>
+                      <div className="card-footer">
+                        <span style={{fontSize:11, color:'var(--muted)', fontWeight:600}}>
+                          {contratos.length > 0 ? `${contratos.length} contrato${contratos.length !== 1 ? 's' : ''}` : 'Sin contratos'}
+                        </span>
+                        <div style={{display:'flex', gap:6}}>
+                          {contratos.length > 0 && (
+                            <button className="btn-contratos" onClick={() => setVistaContrato(expandido ? null : t.id)}>
+                              {expandido ? '▲ Ocultar' : '📋 Ver contratos'}
+                            </button>
+                          )}
+                          <button className="btn-contratos" style={{background:'var(--text)', color:'white', border:'none'}} onClick={() => abrirContratoModal(t)}>
+                            + Contrato
                           </button>
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+                      </div>
+
+                      {/* Panel contratos expandido */}
+                      {expandido && contratos.length > 0 && (
+                        <div className="contratos-panel">
+                          {contratos.map(c => {
+                            const tipoInfo = TIPOS_CONTRATO.find(x => x.id === c.tipo_contrato)
+                            return (
+                              <div key={c.id} className="contrato-item">
+                                <div style={{flex:1, minWidth:0}}>
+                                  <div className="contrato-tipo">{tipoInfo?.label || c.tipo_contrato}</div>
+                                  <div className="contrato-fecha">Inicio: {fmtFecha(c.fecha_inicio)}{c.fecha_fin ? ` · Fin: ${fmtFecha(c.fecha_fin)}` : ' · Indefinido'}</div>
+                                  <div className="contrato-fecha">{fmt(c.salario_bruto)} €/mes · {c.jornada}</div>
+                                </div>
+                                <button className="btn-dl" onClick={() => generarContratoPDF(c, t)}>
+                                  📄 PDF
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          {trabajadores.length === 0 && (
+            <div style={{textAlign:'center', padding:'20px 0', color:'var(--muted)', fontSize:13}}>
+              Aún no tienes empleados. Usa el botón de arriba para añadir el primero.
+            </div>
+          )}
+        </>
       )}
 
       {/* ── ESTADÍSTICAS POR TRABAJADOR ── */}

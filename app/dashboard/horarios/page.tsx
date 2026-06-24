@@ -21,6 +21,9 @@ const DIAS_CAL = ['L','M','X','J','V','S','D']
 
 type Horario = { id?: string; dia: string; estado: 'abierto' | 'partido' | 'cerrado'; apertura: string; cierre: string; apertura2: string; cierre2: string }
 type Excepcion = { id?: string; fecha: string; abierto: boolean; hora_apertura: string; hora_cierre: string; hora_apertura2: string; hora_cierre2: string; nota: string }
+type BloqueoEquipo = { id: string; trabajador_id: string; negocio_id: string; fecha: string; hora_inicio: string | null; hora_fin: string | null; motivo: string | null; dia_completo: boolean }
+type BloqueoForm = { dia_completo: boolean; hora_inicio: string; hora_fin: string; motivo: string }
+type TrabMin = { id: string; nombre: string }
 
 const defaultHorario = (dia: string): Horario => ({
   dia, estado: dia === 'domingo' ? 'cerrado' : 'abierto',
@@ -57,10 +60,24 @@ export default function Horarios() {
   const [excepciones, setExcepciones] = useState<Record<string, Excepcion>>({})
   const [cargandoCal, setCargandoCal] = useState(false)
 
-  // Modal
+  // Modal excepción negocio
   const [modalFecha, setModalFecha] = useState<string | null>(null)
   const [modalData, setModalData] = useState<Excepcion | null>(null)
   const [guardandoModal, setGuardandoModal] = useState(false)
+
+  // Selector sección
+  const [seccion, setSeccion] = useState<'mios' | 'equipo'>('mios')
+
+  // Equipo — lista de trabajadores
+  const [trabEquipo, setTrabEquipo] = useState<TrabMin[]>([])
+  const [trabSeleccionado, setTrabSeleccionado] = useState<string | null>(null)
+  const [bloqueosEquipo, setBloqueosEquipo] = useState<Record<string, BloqueoEquipo[]>>({})
+  const [cargandoBloqueosEq, setCargandoBloqueosEq] = useState(false)
+
+  // Modal bloqueo equipo
+  const [blModalFecha, setBlModalFecha] = useState<string | null>(null)
+  const [blModalData, setBlModalData] = useState<BloqueoForm | null>(null)
+  const [guardandoBlModal, setGuardandoBlModal] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -90,6 +107,9 @@ export default function Horarios() {
           setHorarios(map)
         }
       }
+      const { data: twData } = await db.from('trabajadores').select('id, nombre').eq('negocio_id', negocio.id).eq('activo', true).order('nombre')
+      if (twData) setTrabEquipo(twData as TrabMin[])
+
       setCargando(false)
     })()
   }, [])
@@ -123,8 +143,34 @@ export default function Horarios() {
   }, [])
 
   useEffect(() => {
-    if (negocioId) cargarExcepciones(negocioId, calAnio, calMes)
-  }, [negocioId, calAnio, calMes, cargarExcepciones])
+    if (negocioId && seccion === 'mios') cargarExcepciones(negocioId, calAnio, calMes)
+  }, [negocioId, calAnio, calMes, cargarExcepciones, seccion])
+
+  const cargarBloqueosEquipo = useCallback(async (nid: string, trabId: string, anio: number, mes: number) => {
+    setCargandoBloqueosEq(true)
+    const desde = isoFecha(anio, mes, 1)
+    const hasta = isoFecha(anio, mes, new Date(anio, mes + 1, 0).getDate())
+    const { data } = await supabase
+      .from('bloqueos_trabajador')
+      .select('*')
+      .eq('negocio_id', nid)
+      .eq('trabajador_id', trabId)
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
+    const map: Record<string, BloqueoEquipo[]> = {}
+    for (const b of (data ?? []) as BloqueoEquipo[]) {
+      if (!map[b.fecha]) map[b.fecha] = []
+      map[b.fecha].push(b)
+    }
+    setBloqueosEquipo(map)
+    setCargandoBloqueosEq(false)
+  }, [])
+
+  useEffect(() => {
+    if (seccion === 'equipo' && negocioId && trabSeleccionado) {
+      cargarBloqueosEquipo(negocioId, trabSeleccionado, calAnio, calMes)
+    }
+  }, [seccion, negocioId, trabSeleccionado, calAnio, calMes, cargarBloqueosEquipo])
 
   function updateHorario(dia: string, campo: string, valor: string) {
     setHorarios(prev => ({ ...prev, [dia]: { ...prev[dia], [campo]: valor } }))
@@ -205,11 +251,69 @@ export default function Horarios() {
     cerrarModal()
   }
 
+  function iniciales(n: string) { return n.split(' ').map(p => p[0]).join('').toUpperCase().slice(0,2) }
+
+  function abrirBlModal(fecha: string) {
+    const existing = bloqueosEquipo[fecha]?.[0]
+    setBlModalFecha(fecha)
+    setBlModalData(existing
+      ? { dia_completo: existing.dia_completo, hora_inicio: existing.hora_inicio || '09:00', hora_fin: existing.hora_fin || '18:00', motivo: existing.motivo || '' }
+      : { dia_completo: false, hora_inicio: '09:00', hora_fin: '18:00', motivo: '' }
+    )
+  }
+
+  async function guardarBloqueoEquipo() {
+    if (!negocioId || !trabSeleccionado || !blModalFecha || !blModalData) return
+    setGuardandoBlModal(true)
+    const existing = bloqueosEquipo[blModalFecha]?.[0]
+    const datos = {
+      trabajador_id: trabSeleccionado,
+      negocio_id: negocioId,
+      fecha: blModalFecha,
+      dia_completo: blModalData.dia_completo,
+      hora_inicio: blModalData.dia_completo ? null : blModalData.hora_inicio,
+      hora_fin: blModalData.dia_completo ? null : blModalData.hora_fin,
+      motivo: blModalData.motivo || null,
+    }
+    if (existing?.id) {
+      await supabase.from('bloqueos_trabajador').update(datos).eq('id', existing.id)
+      setBloqueosEquipo(prev => ({ ...prev, [blModalFecha]: [{ ...existing, ...datos }] }))
+    } else {
+      const { data: newB } = await supabase.from('bloqueos_trabajador').insert(datos).select().single()
+      if (newB) setBloqueosEquipo(prev => ({ ...prev, [blModalFecha]: [newB as BloqueoEquipo] }))
+    }
+    setGuardandoBlModal(false)
+    setBlModalFecha(null); setBlModalData(null)
+  }
+
+  async function eliminarBloqueoEquipo() {
+    if (!blModalFecha) return
+    const existing = bloqueosEquipo[blModalFecha]?.[0]
+    if (existing?.id) {
+      await supabase.from('bloqueos_trabajador').delete().eq('id', existing.id)
+      setBloqueosEquipo(prev => { const next = { ...prev }; delete next[blModalFecha!]; return next })
+    }
+    setBlModalFecha(null); setBlModalData(null)
+  }
+
   function getDiaSemana(y: number, m: number, d: number): string {
     const js = new Date(y, m, d).getDay() // 0=dom..6=sab
     const map = [6, 0, 1, 2, 3, 4, 5] // domingo→6, lunes→0...
     const idx = map[js]
     return diasSemana[idx]
+  }
+
+  function getDayColorEquipo(fechaStr: string, y: number, m: number, d: number): { bg: string; color: string; label?: string } {
+    const blqs = bloqueosEquipo[fechaStr]
+    if (blqs && blqs.length > 0) {
+      const b = blqs[0]
+      const rangoLabel = b.dia_completo ? 'Día completo' : `${b.hora_inicio?.slice(0,5)||''}–${b.hora_fin?.slice(0,5)||''}`
+      return { bg: '#FEE2E2', color: '#DC2626', label: b.motivo || rangoLabel }
+    }
+    const diaNombre = getDiaSemana(y, m - 1, d)
+    const h = horarios[diaNombre]
+    if (!h || h.estado === 'cerrado') return { bg: '#F3F4F6', color: '#9CA3AF' }
+    return { bg: '#D1FAE5', color: '#065F46' }
   }
 
   function getDayColor(fechaStr: string, y: number, m: number, d: number): { bg: string; color: string; label?: string } {
@@ -276,6 +380,17 @@ export default function Horarios() {
         .topbar-left { display: flex; align-items: center; gap: 12px; }
         .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 10px; margin: -10px; }
         .content { padding: 24px 28px; flex: 1; }
+        /* Selector sección */
+        .seccion-selector { display: flex; gap: 8px; margin-bottom: 24px; }
+        .seccion-btn { padding: 8px 20px; border-radius: 999px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .seccion-btn.active { background: var(--blue-soft); border: 2px solid var(--blue-dark); color: var(--blue-dark); }
+        .seccion-btn.inactive { background: white; border: 1.5px solid var(--border); color: var(--muted); }
+        /* Equipo */
+        .trab-pill { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .trab-pill.active { background: rgba(124,58,237,0.08); border: 2px solid #7C3AED; color: #7C3AED; }
+        .trab-pill.inactive { background: white; border: 1.5px solid var(--border); color: var(--text2); }
+        .trab-pill:hover:not(.active) { border-color: #9CA3AF; }
+        .trab-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg,#7C3AED,#4FACFE); display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 800; flex-shrink: 0; }
         /* Section headers */
         .section-title { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; margin-bottom: 4px; }
         .section-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
@@ -362,6 +477,19 @@ export default function Horarios() {
           .modal-body { padding: 16px; }
         }
       `}</style>
+
+            {/* ── SELECTOR SECCIÓN ── */}
+            <div className="seccion-selector">
+              <button className={`seccion-btn ${seccion === 'mios' ? 'active' : 'inactive'}`} onClick={() => setSeccion('mios')}>
+                🙋 Mis horarios
+              </button>
+              <button className={`seccion-btn ${seccion === 'equipo' ? 'active' : 'inactive'}`} onClick={() => setSeccion('equipo')}>
+                👥 Horarios del equipo
+              </button>
+            </div>
+
+            {/* ── SECCIÓN: MIS HORARIOS ── */}
+            {seccion === 'mios' && (<>
 
             {/* ── SECCIÓN 1: HORARIO SEMANAL ── */}
             <div className="section-title">Horario semanal</div>
@@ -485,6 +613,166 @@ export default function Horarios() {
                 <div className="leyenda-item"><div className="leyenda-dot" style={{background:'#FEE2E2'}} /><span>Cerrado (excepción)</span></div>
               </div>
             </div>
+
+            </>)} {/* fin seccion === 'mios' */}
+
+            {/* ── SECCIÓN: HORARIOS DEL EQUIPO ── */}
+            {seccion === 'equipo' && (
+              <div>
+                {trabEquipo.length === 0 ? (
+                  <div style={{textAlign:'center', padding:'60px 20px', background:'var(--white)', border:'1px solid var(--border)', borderRadius:16}}>
+                    <div style={{fontSize:40, marginBottom:12}}>👥</div>
+                    <div style={{fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:6}}>Sin trabajadores</div>
+                    <div style={{fontSize:13, color:'var(--muted)'}}>Añade empleados desde la sección "Mi equipo"</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Selector de trabajador */}
+                    <div style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:20}}>
+                      {trabEquipo.map(t => (
+                        <button
+                          key={t.id}
+                          className={`trab-pill ${trabSeleccionado === t.id ? 'active' : 'inactive'}`}
+                          onClick={() => setTrabSeleccionado(prev => prev === t.id ? null : t.id)}
+                        >
+                          <div className="trab-avatar">{iniciales(t.nombre)}</div>
+                          {t.nombre}
+                        </button>
+                      ))}
+                    </div>
+
+                    {!trabSeleccionado ? (
+                      <div style={{textAlign:'center', padding:'48px 20px', color:'var(--muted)', background:'var(--white)', border:'1px solid var(--border)', borderRadius:16}}>
+                        <div style={{fontSize:32, marginBottom:10}}>👆</div>
+                        <div style={{fontSize:14, fontWeight:600, color:'var(--text2)'}}>Selecciona un trabajador</div>
+                        <div style={{fontSize:13, marginTop:4}}>para ver y gestionar su disponibilidad</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{fontSize:13, color:'var(--muted)', marginBottom:16, padding:'10px 14px', background:'rgba(184,216,248,0.2)', borderRadius:10, border:'1px solid rgba(184,216,248,0.5)'}}>
+                          ℹ️ El horario base es el del negocio. Marca días bloqueados (vacaciones, bajas…) haciendo clic en el calendario.
+                        </div>
+
+                        <div className="cal-card">
+                          <div className="cal-nav">
+                            <button className="cal-nav-btn" onClick={prevMes}>&#8249;</button>
+                            <span className="cal-mes-label">{MESES[calMes]} {calAnio}</span>
+                            <button className="cal-nav-btn" onClick={nextMes}>&#8250;</button>
+                          </div>
+
+                          {cargandoBloqueosEq ? (
+                            <div style={{textAlign:'center', padding:'40px', color:'var(--muted)'}}>Cargando...</div>
+                          ) : (
+                            <div className="cal-grid">
+                              {DIAS_CAL.map(d => (
+                                <div key={d} className="cal-header-cell">{d}</div>
+                              ))}
+                              {celdas.map((d, i) => {
+                                if (!d) return <div key={`e-${i}`} />
+                                const fecha = isoFecha(calAnio, calMes, d)
+                                const esHoy = calAnio === hoy.getFullYear() && calMes === hoy.getMonth() && d === hoy.getDate()
+                                const { bg, color, label } = getDayColorEquipo(fecha, calAnio, calMes + 1, d)
+                                const tieneBloqueo = !!bloqueosEquipo[fecha]
+                                return (
+                                  <div
+                                    key={fecha}
+                                    className={`cal-cell ${esHoy ? 'hoy' : ''}`}
+                                    style={{ background: bg, color }}
+                                    onClick={() => abrirBlModal(fecha)}
+                                    title={label}
+                                  >
+                                    {d}
+                                    {tieneBloqueo && label && (
+                                      <span className="cal-cell-nota">{label}</span>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          <div className="leyenda">
+                            <div className="leyenda-item"><div className="leyenda-dot" style={{background:'#D1FAE5'}} /><span>Disponible</span></div>
+                            <div className="leyenda-item"><div className="leyenda-dot" style={{background:'#F3F4F6'}} /><span>Negocio cerrado</span></div>
+                            <div className="leyenda-item"><div className="leyenda-dot" style={{background:'#FEE2E2'}} /><span>Bloqueado</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+      {/* ── MODAL BLOQUEO EQUIPO ── */}
+      {blModalFecha && blModalData && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setBlModalFecha(null); setBlModalData(null) } }}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">
+                {new Date(blModalFecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </div>
+              <button className="modal-close" onClick={() => { setBlModalFecha(null); setBlModalData(null) }}>×</button>
+            </div>
+            <div className="modal-body">
+              <div>
+                <div className="modal-label">Estado ese día para {trabEquipo.find(t => t.id === trabSeleccionado)?.nombre}</div>
+                <div className="modal-toggle">
+                  <button
+                    className={`modal-toggle-btn ${!bloqueosEquipo[blModalFecha] ? 'active-open' : ''}`}
+                    onClick={() => eliminarBloqueoEquipo()}
+                  >✓ Disponible</button>
+                  <button
+                    className={`modal-toggle-btn ${bloqueosEquipo[blModalFecha] ? 'active-closed' : ''}`}
+                    onClick={() => setBlModalData(d => d ? { ...d } : d)}
+                    style={bloqueosEquipo[blModalFecha] ? { background:'#FEE2E2', borderColor:'#FCA5A5', color:'#DC2626' } : {}}
+                  >🚫 Bloqueado</button>
+                </div>
+              </div>
+              <div>
+                <div className="modal-label">Tipo de bloqueo</div>
+                <div className="modal-toggle">
+                  <button
+                    className={`modal-toggle-btn ${!blModalData.dia_completo ? 'active-open' : ''}`}
+                    onClick={() => setBlModalData(d => d ? { ...d, dia_completo: false } : d)}
+                  >Horas concretas</button>
+                  <button
+                    className={`modal-toggle-btn ${blModalData.dia_completo ? 'active-closed' : ''}`}
+                    onClick={() => setBlModalData(d => d ? { ...d, dia_completo: true } : d)}
+                  >Día completo</button>
+                </div>
+              </div>
+              {!blModalData.dia_completo && (
+                <div>
+                  <div className="modal-label">Horario bloqueado</div>
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <input type="time" className="time-input" value={blModalData.hora_inicio} onChange={e => setBlModalData(d => d ? {...d, hora_inicio: e.target.value} : d)} />
+                    <span style={{fontSize:'13px', color:'var(--muted)'}}>a</span>
+                    <input type="time" className="time-input" value={blModalData.hora_fin} onChange={e => setBlModalData(d => d ? {...d, hora_fin: e.target.value} : d)} />
+                  </div>
+                </div>
+              )}
+              <div>
+                <div className="modal-label">Motivo (opcional)</div>
+                <textarea
+                  className="modal-textarea"
+                  placeholder="Ej: Vacaciones, Baja médica..."
+                  value={blModalData.motivo}
+                  onChange={e => setBlModalData(d => d ? {...d, motivo: e.target.value} : d)}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              {bloqueosEquipo[blModalFecha] && (
+                <button className="btn-danger" onClick={eliminarBloqueoEquipo}>Eliminar bloqueo</button>
+              )}
+              <button className="btn-primary" onClick={guardarBloqueoEquipo} disabled={guardandoBlModal}>
+                {guardandoBlModal ? 'Guardando...' : 'Guardar bloqueo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── MODAL EXCEPCIÓN ── */}
       {modalFecha && modalData && (
