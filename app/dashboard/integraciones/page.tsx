@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import QRCode from 'qrcode'
 import { supabase, getSessionClient } from '../../lib/supabase'
 import { getNegocioActivo, type NegMin } from '../../lib/negocioActivo'
@@ -9,40 +9,13 @@ const META_APP_ID  = process.env.NEXT_PUBLIC_META_APP_ID || '1006980128417758'
 const APP_URL      = process.env.NEXT_PUBLIC_APP_URL ?? 'https://khepria.app'
 const CALLBACK_URI = `${APP_URL}/api/meta/callback`
 
-async function buildQR(url: string, color: string, logoUrl?: string | null): Promise<string> {
-  const canvas = document.createElement('canvas')
-  await QRCode.toCanvas(canvas, url, {
-    width: 400,
-    margin: 2,
-    color: { dark: color || '#1a1a2e', light: '#ffffff' },
-  })
-  const ctx = canvas.getContext('2d')!
-  if (logoUrl) {
-    await new Promise<void>(resolve => {
-      const logo = new Image()
-      logo.crossOrigin = 'anonymous'
-      logo.src = logoUrl
-      logo.onload = () => {
-        const logoSize = canvas.width * 0.2
-        const cx = canvas.width / 2
-        const cy = canvas.height / 2
-        ctx.beginPath()
-        ctx.arc(cx, cy, logoSize / 2 + 8, 0, Math.PI * 2)
-        ctx.fillStyle = 'white'
-        ctx.fill()
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(cx, cy, logoSize / 2, 0, Math.PI * 2)
-        ctx.clip()
-        ctx.drawImage(logo, cx - logoSize / 2, cy - logoSize / 2, logoSize, logoSize)
-        ctx.restore()
-        resolve()
-      }
-      logo.onerror = () => resolve()
-    })
-  }
-  return canvas.toDataURL('image/png')
-}
+type QrEstilo = 'cuadrado' | 'redondeado' | 'puntos' | 'cristal'
+const ESTILOS_QR: { id: QrEstilo; label: string; icon: string }[] = [
+  { id: 'cuadrado',   label: 'Cuadrado',  icon: '⬛' },
+  { id: 'redondeado', label: 'Suave',     icon: '🔲' },
+  { id: 'puntos',     label: 'Puntos',    icon: '⚫' },
+  { id: 'cristal',    label: 'Cristal',   icon: '✦'  },
+]
 
 const WEBHOOK_URL   = 'https://khepria.app/api/whatsapp/webhook'
 const VERIFY_TOKEN  = process.env.NEXT_PUBLIC_META_VERIFY_TOKEN ?? 'khepria_webhook_2026'
@@ -52,8 +25,13 @@ export default function Integraciones() {
   const [todosNegocios, setTodosNegocios] = useState<NegMin[]>([])
   const [negocioId,     setNegocioId]     = useState<string | null>(null)
   const [colorPpal,     setColorPpal]     = useState('#1a1a2e')
-  const [qrUrl,         setQrUrl]         = useState<string | null>(null)
-  const [generando,     setGenerando]     = useState(false)
+  const [qrUrl,      setQrUrl]      = useState<string | null>(null)
+  const [generando,  setGenerando]  = useState(false)
+  const [qrColor,    setQrColor]    = useState('#1a1a2e')
+  const [qrBgColor,  setQrBgColor]  = useState('#ffffff')
+  const [qrEstilo,   setQrEstilo]   = useState<QrEstilo>('cuadrado')
+  const [qrConLogo,  setQrConLogo]  = useState(true)
+  const [qrSize,     setQrSize]     = useState(400)
   const [copiado,           setCopiado]           = useState(false)
   const [copiadoWidget,     setCopiadoWidget]     = useState(false)
   const [showWidgetPreview, setShowWidgetPreview] = useState(false)
@@ -111,7 +89,7 @@ export default function Integraciones() {
         .eq('id', activo.id)
         .single()
 
-      if (negData?.color_principal)    { color = negData.color_principal; setColorPpal(color) }
+      if (negData?.color_principal)    { color = negData.color_principal; setColorPpal(color); setQrColor(color) }
       if (negData?.whatsapp_token)      setWaToken(negData.whatsapp_token)
       if (negData?.whatsapp_phone_id)   setWaPhoneId(negData.whatsapp_phone_id)
       if (negData?.whatsapp_activo)     setWaActivo(true)
@@ -119,14 +97,6 @@ export default function Integraciones() {
       if (negData?.instagram_activo)    setIgActivo(true)
       if (negData?.instagram_username)  setIgUsername(negData.instagram_username)
       else if (negData?.instagram_user_id) setIgUsername(negData.instagram_user_id)
-
-      setGenerando(true)
-      try {
-        const url = `https://khepria.app/negocio/${activo.id}`
-        const dataUrl = await buildQR(url, color, activo.logo_url)
-        setQrUrl(dataUrl)
-      } catch { /* silencioso */ }
-      setGenerando(false)
     }
     init()
   }, [])
@@ -201,22 +171,125 @@ export default function Integraciones() {
     ? `<iframe src="https://khepria.app/widget/${negocioId}" width="100%" height="600px" frameborder="0" style="border:none;border-radius:12px;"></iframe>`
     : ''
 
-  async function regenerarQR() {
-    if (!urlNegocio || generando) return
+  const generarQR = useCallback(async () => {
+    if (!negocioId) return
+    const url = `https://khepria.app/negocio/${negocioId}`
     setGenerando(true)
     try {
-      const dataUrl = await buildQR(urlNegocio, colorPpal, negocio?.logo_url)
-      setQrUrl(dataUrl)
+      const qr = QRCode.create(url, { errorCorrectionLevel: 'H' })
+      const canvas = document.createElement('canvas')
+      canvas.width = qrSize
+      canvas.height = qrSize
+      const ctx = canvas.getContext('2d')!
+      const n = qr.modules.size
+      const margin = Math.floor(qrSize * 0.04)
+      const cell = (qrSize - margin * 2) / n
+
+      ctx.fillStyle = qrBgColor
+      ctx.fillRect(0, 0, qrSize, qrSize)
+      ctx.fillStyle = qrColor
+
+      for (let row = 0; row < n; row++) {
+        for (let col = 0; col < n; col++) {
+          if (!qr.modules.data[row * n + col]) continue
+          const x = margin + col * cell
+          const y = margin + row * cell
+          if (qrEstilo === 'puntos') {
+            ctx.beginPath()
+            ctx.arc(x + cell / 2, y + cell / 2, cell * 0.42, 0, Math.PI * 2)
+            ctx.fill()
+          } else if (qrEstilo === 'redondeado') {
+            const r = cell * 0.3
+            ctx.beginPath()
+            ctx.moveTo(x + r, y); ctx.lineTo(x + cell - r, y)
+            ctx.quadraticCurveTo(x + cell, y, x + cell, y + r)
+            ctx.lineTo(x + cell, y + cell - r)
+            ctx.quadraticCurveTo(x + cell, y + cell, x + cell - r, y + cell)
+            ctx.lineTo(x + r, y + cell)
+            ctx.quadraticCurveTo(x, y + cell, x, y + cell - r)
+            ctx.lineTo(x, y + r)
+            ctx.quadraticCurveTo(x, y, x + r, y)
+            ctx.closePath(); ctx.fill()
+          } else if (qrEstilo === 'cristal') {
+            const pad = cell * 0.12
+            const pw = cell - pad * 2
+            const r = pw * 0.45
+            const px = x + pad, py = y + pad
+            ctx.beginPath()
+            ctx.moveTo(px + r, py); ctx.lineTo(px + pw - r, py)
+            ctx.quadraticCurveTo(px + pw, py, px + pw, py + r)
+            ctx.lineTo(px + pw, py + pw - r)
+            ctx.quadraticCurveTo(px + pw, py + pw, px + pw - r, py + pw)
+            ctx.lineTo(px + r, py + pw)
+            ctx.quadraticCurveTo(px, py + pw, px, py + pw - r)
+            ctx.lineTo(px, py + r)
+            ctx.quadraticCurveTo(px, py, px + r, py)
+            ctx.closePath(); ctx.fill()
+          } else {
+            ctx.fillRect(x, y, cell, cell)
+          }
+        }
+      }
+
+      if (qrConLogo && negocio?.logo_url) {
+        await new Promise<void>(resolve => {
+          const logo = new Image()
+          logo.crossOrigin = 'anonymous'
+          logo.src = negocio!.logo_url!
+          logo.onload = () => {
+            const ls = qrSize * 0.18
+            const cx = qrSize / 2, cy = qrSize / 2
+            ctx.beginPath()
+            ctx.arc(cx, cy, ls / 2 + 8, 0, Math.PI * 2)
+            ctx.fillStyle = qrBgColor
+            ctx.fill()
+            ctx.save()
+            ctx.beginPath()
+            ctx.arc(cx, cy, ls / 2, 0, Math.PI * 2)
+            ctx.clip()
+            ctx.drawImage(logo, cx - ls / 2, cy - ls / 2, ls, ls)
+            ctx.restore()
+            resolve()
+          }
+          logo.onerror = () => resolve()
+        })
+      }
+
+      setQrUrl(canvas.toDataURL('image/png'))
     } catch { /* silencioso */ }
     setGenerando(false)
-  }
+  }, [negocioId, qrColor, qrBgColor, qrEstilo, qrConLogo, qrSize, negocio])
 
-  function descargarQR() {
+  useEffect(() => {
+    if (negocioId) generarQR()
+  }, [negocioId, generarQR])
+
+  function descargarPNG() {
     if (!qrUrl || !negocioId) return
     const a = document.createElement('a')
     a.download = `qr-${negocioId}.png`
     a.href = qrUrl
     a.click()
+  }
+
+  async function descargarSVG() {
+    if (!negocioId) return
+    try {
+      const url = `https://khepria.app/negocio/${negocioId}`
+      const svgStr = await QRCode.toString(url, {
+        type: 'svg',
+        color: { dark: qrColor, light: qrBgColor },
+        errorCorrectionLevel: 'H',
+        margin: 2,
+      } as Parameters<typeof QRCode.toString>[1])
+      const blob = new Blob([svgStr as string], { type: 'image/svg+xml' })
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.download = `qr-${negocioId}.svg`
+      a.href = blobUrl
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch { /* silencioso */ }
   }
 
   async function compartir() {
@@ -314,6 +387,7 @@ export default function Integraciones() {
           </p>
 
           <div style={{ display: 'flex', gap: '28px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {/* Preview */}
             <div style={{
               background: 'linear-gradient(135deg,#F8F9FF,#F3F0FF)',
               border: '1px solid rgba(107,79,216,0.15)',
@@ -340,16 +414,19 @@ export default function Integraciones() {
                   <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--ds-text)', textAlign: 'center', letterSpacing: '-0.2px' }}>
                     {negocio.nombre}
                   </div>
-                  <div style={{ fontSize: '10px', color: 'var(--ds-text2)', fontFamily: 'monospace', textAlign: 'center', wordBreak: 'break-all', lineHeight: 1.4 }}>
+                  <div style={{ fontSize: '10px', color: 'var(--ds-text2)', fontFamily: 'monospace', textAlign: 'center', wordBreak: 'break-all' as const, lineHeight: 1.4 }}>
                     khepria.app/negocio/{negocioId}
                   </div>
                 </>
               )}
             </div>
 
-            <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Controles */}
+            <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+              {/* Enlace */}
               <div>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ds-text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ds-text2)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.6px' }}>
                   Enlace de reserva
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -357,7 +434,7 @@ export default function Integraciones() {
                     flex: 1, padding: '10px 12px',
                     background: 'var(--ds-bg)', border: '1px solid var(--ds-border)', borderRadius: '10px',
                     fontSize: '12px', color: 'var(--ds-text)', fontFamily: 'monospace',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
                   }}>
                     {urlNegocio || 'Cargando...'}
                   </div>
@@ -368,7 +445,7 @@ export default function Integraciones() {
                       padding: '10px 14px', borderRadius: '10px', border: 'none',
                       background: copiado ? '#059669' : 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
                       color: 'white', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
-                      cursor: urlNegocio ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap',
+                      cursor: urlNegocio ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' as const,
                       transition: 'background 0.2s', flexShrink: 0,
                     }}
                   >
@@ -377,51 +454,115 @@ export default function Integraciones() {
                 </div>
               </div>
 
-              <button
-                onClick={descargarQR}
-                disabled={!qrUrl}
-                style={{
-                  padding: '12px 18px', borderRadius: '10px', border: 'none',
-                  background: qrUrl ? 'linear-gradient(135deg,#6B4FD8,#4F46E5)' : 'var(--ds-bg)',
-                  color: qrUrl ? 'white' : 'var(--ds-text2)',
-                  fontFamily: 'inherit', fontSize: '13px', fontWeight: 700,
-                  cursor: qrUrl ? 'pointer' : 'not-allowed',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  boxShadow: qrUrl ? '0 4px 12px rgba(107,79,216,0.25)' : 'none',
-                  transition: 'opacity 0.15s',
-                }}
-              >
-                ⬇️ Descargar QR (PNG alta resolución)
-              </button>
+              {/* Estilo */}
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ds-text2)', marginBottom: '8px', textTransform: 'uppercase' as const, letterSpacing: '0.6px' }}>
+                  Estilo
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
+                  {ESTILOS_QR.map(est => (
+                    <button key={est.id} onClick={() => setQrEstilo(est.id)}
+                      style={{
+                        padding: '6px 12px', borderRadius: '8px', border: '1.5px solid',
+                        borderColor: qrEstilo === est.id ? '#6B4FD8' : 'var(--ds-border)',
+                        background: qrEstilo === est.id ? 'rgba(107,79,216,0.08)' : 'var(--ds-bg)',
+                        color: qrEstilo === est.id ? '#6B4FD8' : 'var(--ds-text2)',
+                        fontFamily: 'inherit', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {est.icon} {est.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-              <button
-                onClick={compartir}
-                disabled={!urlNegocio}
-                style={{
-                  padding: '12px 18px', borderRadius: '10px',
-                  border: '1.5px solid var(--ds-border)', background: 'var(--ds-bg)',
-                  color: 'var(--ds-text)', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
-                  cursor: urlNegocio ? 'pointer' : 'not-allowed',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                }}
-              >
-                📤 Compartir enlace
-              </button>
+              {/* Colores */}
+              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' as const }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ds-text2)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.6px' }}>
+                    Color QR
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input type="color" value={qrColor} onChange={e => setQrColor(e.target.value)}
+                      style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1.5px solid var(--ds-border)', cursor: 'pointer', padding: '2px', background: 'none' }}
+                    />
+                    <span style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--ds-text2)' }}>{qrColor}</span>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ds-text2)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.6px' }}>
+                    Fondo
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input type="color" value={qrBgColor} onChange={e => setQrBgColor(e.target.value)}
+                      style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1.5px solid var(--ds-border)', cursor: 'pointer', padding: '2px', background: 'none' }}
+                    />
+                    <span style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--ds-text2)' }}>{qrBgColor}</span>
+                  </div>
+                </div>
+              </div>
 
-              <button
-                onClick={regenerarQR}
-                disabled={!negocioId || generando}
-                style={{
-                  padding: '12px 18px', borderRadius: '10px',
-                  border: '1.5px solid rgba(107,79,216,0.2)',
-                  background: 'rgba(107,79,216,0.06)',
-                  color: '#6B4FD8', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
-                  cursor: negocioId && !generando ? 'pointer' : 'not-allowed',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                }}
-              >
-                🔄 {generando ? 'Generando…' : 'Regenerar QR'}
-              </button>
+              {/* Tamaño y Logo */}
+              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' as const, alignItems: 'flex-end' }}>
+                <div style={{ flex: 1, minWidth: '140px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ds-text2)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.6px' }}>
+                    Tamaño: {qrSize}px
+                  </div>
+                  <input type="range" min={200} max={600} step={50} value={qrSize}
+                    onChange={e => setQrSize(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: '#6B4FD8' }}
+                  />
+                </div>
+                {negocio?.logo_url && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer', paddingBottom: '4px' }}>
+                    <input type="checkbox" checked={qrConLogo} onChange={e => setQrConLogo(e.target.checked)}
+                      style={{ accentColor: '#6B4FD8', width: '15px', height: '15px' }}
+                    />
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ds-text2)' }}>Logo</span>
+                  </label>
+                )}
+              </div>
+
+              {/* Acciones */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={descargarPNG} disabled={!qrUrl}
+                    style={{
+                      flex: 1, padding: '11px 14px', borderRadius: '10px', border: 'none',
+                      background: qrUrl ? 'linear-gradient(135deg,#6B4FD8,#4F46E5)' : 'var(--ds-bg)',
+                      color: qrUrl ? 'white' : 'var(--ds-text2)',
+                      fontFamily: 'inherit', fontSize: '13px', fontWeight: 700,
+                      cursor: qrUrl ? 'pointer' : 'not-allowed',
+                      boxShadow: qrUrl ? '0 4px 12px rgba(107,79,216,0.25)' : 'none',
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    ⬇️ PNG
+                  </button>
+                  <button onClick={descargarSVG} disabled={!urlNegocio}
+                    style={{
+                      flex: 1, padding: '11px 14px', borderRadius: '10px',
+                      border: '1.5px solid var(--ds-border)', background: 'var(--ds-bg)',
+                      color: 'var(--ds-text)', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
+                      cursor: urlNegocio ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    ⬇️ SVG
+                  </button>
+                </div>
+                <button onClick={compartir} disabled={!urlNegocio}
+                  style={{
+                    padding: '11px 14px', borderRadius: '10px',
+                    border: '1.5px solid var(--ds-border)', background: 'var(--ds-bg)',
+                    color: 'var(--ds-text)', fontFamily: 'inherit', fontSize: '13px', fontWeight: 600,
+                    cursor: urlNegocio ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  }}
+                >
+                  📤 Compartir enlace
+                </button>
+              </div>
             </div>
           </div>
         </div>
