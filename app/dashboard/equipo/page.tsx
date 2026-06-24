@@ -107,6 +107,11 @@ export default function Equipo() {
   })
   const [guardandoContrato, setGuardandoContrato] = useState(false)
 
+  // Estadísticas por trabajador
+  type StatsRow = { trabajador_id: string; estado: string; precio: number | null; fecha: string }
+  const [statsWorker, setStatsWorker] = useState<StatsRow[]>([])
+  const [trabajadorSeleccionado, setTrabajadorSeleccionado] = useState<string | null>(null)
+
   // ── Data loaders ─────────────────────────────────────────────────────────────
 
   const cargarContratos = useCallback(async (nid: string) => {
@@ -132,6 +137,12 @@ export default function Equipo() {
       const { data } = await db.from('trabajadores').select('*').eq('negocio_id', neg.id).order('nombre')
       setTrabajadores((data || []) as Trabajador[])
       await cargarContratos(neg.id)
+      const { data: sw } = await db
+        .from('reservas')
+        .select('trabajador_id, estado, precio, fecha')
+        .eq('negocio_id', neg.id)
+        .not('trabajador_id', 'is', null)
+      setStatsWorker((sw || []) as StatsRow[])
       setCargando(false)
     })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -463,6 +474,32 @@ export default function Equipo() {
   }
 
   const activos = trabajadores.filter(t => t.activo).length
+  const hoyISO = new Date().toISOString().split('T')[0]
+  const mesActual = hoyISO.slice(0, 7)
+
+  const statsPorTrabajador = trabajadores.map(t => {
+    const rw = statsWorker.filter(r => r.trabajador_id === t.id)
+    const completadas = rw.filter(r => r.estado === 'completada')
+    const canceladas  = rw.filter(r => r.estado === 'cancelada')
+    const ingresos    = completadas.reduce((s, r) => s + (r.precio || 0), 0)
+    const rwMes       = rw.filter(r => r.fecha?.startsWith(mesActual))
+    const compMes     = rwMes.filter(r => r.estado === 'completada')
+    const ingresosMes = compMes.reduce((s, r) => s + (r.precio || 0), 0)
+    const futuras     = rw
+      .filter(r => r.fecha >= hoyISO && r.estado !== 'cancelada')
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    return {
+      ...t,
+      totalReservas: rw.length,
+      completadas:   completadas.length,
+      canceladas:    canceladas.length,
+      ingresos,
+      tasaExito: rw.length > 0 ? Math.round((completadas.length / rw.length) * 100) : 0,
+      reservasMes:  rwMes.length,
+      ingresosMes,
+      proximaCita:  futuras[0]?.fecha || null,
+    }
+  })
 
   return (
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
@@ -569,6 +606,7 @@ export default function Equipo() {
           {trabajadores.map(t => {
             const contratos = contratosTrab[t.id] || []
             const expandido = vistaContrato === t.id
+            const st = statsPorTrabajador.find(s => s.id === t.id)
             return (
               <div key={t.id} className={`trabajador-card ${!t.activo ? 'inactivo' : ''}`}>
                 <div className="card-top">
@@ -589,6 +627,24 @@ export default function Equipo() {
                   <span className={`badge ${t.activo ? 'badge-activo' : 'badge-inactivo'}`}>
                     {t.activo ? 'Activo' : 'Inactivo'}
                   </span>
+                  {st && (
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginTop:12, width:'100%'}}>
+                      <div style={{background:'#F0F9FF', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
+                        <div style={{fontSize:16, fontWeight:800, color:'#1D4ED8'}}>{st.reservasMes}</div>
+                        <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>citas/mes</div>
+                      </div>
+                      <div style={{background:'#F0FDF4', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
+                        <div style={{fontSize:16, fontWeight:800, color:'#065F46'}}>{st.ingresosMes}€</div>
+                        <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>ingresos</div>
+                      </div>
+                      <div style={{background:'#FAF5FF', borderRadius:10, padding:'8px 6px', textAlign:'center'}}>
+                        <div style={{fontSize:14, fontWeight:800, color:'#6D28D9'}}>
+                          {st.proximaCita ? new Date(st.proximaCita+'T12:00').toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'}) : '—'}
+                        </div>
+                        <div style={{fontSize:10, color:'#9CA3AF', marginTop:2}}>próx. cita</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Contratos footer */}
@@ -631,6 +687,71 @@ export default function Equipo() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── ESTADÍSTICAS POR TRABAJADOR ── */}
+      {trabajadores.length >= 2 && !cargando && (
+        <div style={{marginTop:32}}>
+          <h3 style={{fontFamily:"'Syne',sans-serif", fontSize:18, fontWeight:800, color:'#0F0F1A', marginBottom:16, letterSpacing:'-0.3px'}}>
+            📊 Estadísticas por trabajador
+          </h3>
+
+          {/* Selector */}
+          <div style={{display:'flex', gap:10, flexWrap:'wrap', marginBottom:20}}>
+            {statsPorTrabajador.map(t => (
+              <button key={t.id}
+                onClick={() => setTrabajadorSeleccionado(prev => prev === t.id ? null : t.id)}
+                style={{
+                  display:'flex', alignItems:'center', gap:8,
+                  padding:'8px 16px', borderRadius:999,
+                  border: trabajadorSeleccionado === t.id ? '2px solid #7C3AED' : '1.5px solid #E5E7EB',
+                  background: trabajadorSeleccionado === t.id ? 'rgba(124,58,237,0.08)' : '#fff',
+                  cursor:'pointer', fontWeight:600, fontSize:13,
+                  transition:'all 0.2s', fontFamily:'inherit',
+                }}>
+                <div style={{
+                  width:28, height:28, borderRadius:'50%',
+                  background:'linear-gradient(135deg,#7C3AED,#4FACFE)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  color:'#fff', fontSize:12, fontWeight:800, flexShrink:0,
+                }}>
+                  {t.nombre?.charAt(0).toUpperCase()}
+                </div>
+                {t.nombre}
+              </button>
+            ))}
+          </div>
+
+          {/* Stats del trabajador seleccionado */}
+          {trabajadorSeleccionado && (() => {
+            const stats = statsPorTrabajador.find(t => t.id === trabajadorSeleccionado)
+            if (!stats) return null
+            return (
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:14}}>
+                {[
+                  { label:'Reservas totales', valor: stats.totalReservas, icon:'📅', color:'#B8D8F8' },
+                  { label:'Completadas',      valor: stats.completadas,   icon:'✅', color:'#B8EDD4' },
+                  { label:'Canceladas',       valor: stats.canceladas,    icon:'❌', color:'#FBCFE8' },
+                  { label:'Ingresos totales', valor: stats.ingresos+'€',  icon:'💰', color:'#FDE9A2' },
+                  { label:'Tasa de éxito',    valor: stats.tasaExito+'%', icon:'🎯', color:'#D4C5F9' },
+                ].map(s => (
+                  <div key={s.label} style={{
+                    background:'#fff', borderRadius:14, padding:'16px',
+                    border:'1px solid #F1F5F9',
+                    borderLeft:`4px solid ${s.color}`,
+                    boxShadow:'0 2px 8px rgba(0,0,0,0.04)',
+                  }}>
+                    <div style={{fontSize:20, marginBottom:8}}>{s.icon}</div>
+                    <div style={{fontFamily:"'Syne',sans-serif", fontSize:22, fontWeight:800, color:'#0F0F1A'}}>
+                      {s.valor}
+                    </div>
+                    <div style={{fontSize:12, color:'#9CA3AF', marginTop:4}}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
         </div>
       )}
 
