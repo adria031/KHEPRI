@@ -367,7 +367,7 @@ export default function FichaNegocio() {
   )
 
   // ─── Render ────────────────────────────────────────────────────────────────
-  const cssVars = { '--color-primary': colorPpal, '--color-secondary': colorSec } as React.CSSProperties
+  const cssVars = { '--color-primary': colorPpal, '--color-secondary': colorSec, '--color-text': colorText } as React.CSSProperties
 
   return (
     <div style={cssVars}>
@@ -382,7 +382,7 @@ export default function FichaNegocio() {
         .btn-fav { background:white; border:1.5px solid rgba(0,0,0,0.09); border-radius:100px; width:40px; height:40px; min-height:44px; min-width:44px; display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer; transition:all 0.15s; }
         .btn-fav:hover { border-color:rgba(239,68,68,0.3); transform:scale(1.05); }
         .btn-fav.active { background:rgba(239,68,68,0.06); border-color:rgba(239,68,68,0.3); }
-        .btn-nav-cita { background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)); color:white; border:none; padding:10px 22px; border-radius:100px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:transform 0.15s,box-shadow 0.15s; white-space:nowrap; }
+        .btn-nav-cita { background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)); color:var(--color-text); border:none; padding:10px 22px; border-radius:100px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; box-shadow:0 4px 12px rgba(0,0,0,0.2); transition:transform 0.15s,box-shadow 0.15s; white-space:nowrap; }
         .btn-nav-cita:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,0.28); }
 
         /* ── HERO ── */
@@ -395,10 +395,10 @@ export default function FichaNegocio() {
         .hero-logo { width:72px; height:72px; border-radius:18px; border:3px solid rgba(255,255,255,0.9); overflow:hidden; flex-shrink:0; background:white; box-shadow:0 4px 20px rgba(0,0,0,0.2); }
         .hero-logo img { width:100%; height:100%; object-fit:cover; }
         .hero-name-block { flex:1; min-width:0; }
-        .hero-tipo-badge { display:inline-flex; align-items:center; background:var(--color-secondary); color:white; font-size:11px; font-weight:700; padding:3px 11px; border-radius:100px; letter-spacing:0.5px; text-transform:capitalize; margin-bottom:6px; border:1px solid rgba(255,255,255,0.2); }
+        .hero-tipo-badge { display:inline-flex; align-items:center; background:var(--color-secondary); color:var(--color-text); font-size:11px; font-weight:700; padding:3px 11px; border-radius:100px; letter-spacing:0.5px; text-transform:capitalize; margin-bottom:6px; border:1px solid rgba(255,255,255,0.2); }
         .hero-title { font-family:'Syne',sans-serif; font-size:clamp(24px,4vw,36px); font-weight:800; color:white; line-height:1.1; letter-spacing:-0.5px; text-shadow:0 2px 12px rgba(0,0,0,0.3); }
         .hero-badges { display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap; }
-        .badge-open { background:var(--color-primary); color:white; padding:4px 12px; border-radius:100px; font-size:11px; font-weight:700; backdrop-filter:blur(6px); }
+        .badge-open { background:var(--color-primary); color:var(--color-text); padding:4px 12px; border-radius:100px; font-size:11px; font-weight:700; backdrop-filter:blur(6px); }
         .badge-closed { background:rgba(0,0,0,0.4); color:rgba(255,255,255,0.7); padding:4px 12px; border-radius:100px; font-size:11px; font-weight:700; backdrop-filter:blur(6px); }
         /* No-photo hero */
         .hero-nofotos-circles { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
@@ -460,7 +460,7 @@ export default function FichaNegocio() {
         .horario-row.hoy { background:linear-gradient(135deg,rgba(0,0,0,0.04),rgba(0,0,0,0.04)); border:1px solid rgba(0,0,0,0.09); }
         .horario-dia { font-size:13px; font-weight:600; color:#374151; display:flex; align-items:center; gap:8px; }
         .horario-row.hoy .horario-dia { color:var(--color-primary); font-weight:700; }
-        .hoy-pill { font-size:10px; font-weight:700; background:var(--color-primary); color:white; padding:2px 8px; border-radius:100px; }
+        .hoy-pill { font-size:10px; font-weight:700; background:var(--color-primary); color:var(--color-text); padding:2px 8px; border-radius:100px; }
         .horario-hora { font-size:13px; color:#4B5563; font-weight:500; }
         .horario-cerrado { color:#D1D5DB; }
 
@@ -490,8 +490,8 @@ export default function FichaNegocio() {
         /* ── RIGHT COLUMN ── */
         .sticky-col { position:sticky; top:76px; }
         .reserve-card { background:linear-gradient(135deg,#6366F1,#8B5CF6); border-radius:22px; padding:26px; margin-bottom:14px; box-shadow:0 8px 32px rgba(99,102,241,0.28); }
-        .reserve-card-title { font-family:'Syne',sans-serif; font-size:19px; font-weight:800; color:white; margin-bottom:4px; }
-        .reserve-card-sub { font-size:13px; color:rgba(255,255,255,0.72); margin-bottom:22px; line-height:1.5; }
+        .reserve-card-title { font-family:'Syne',sans-serif; font-size:19px; font-weight:800; color:var(--color-text); margin-bottom:4px; }
+        .reserve-card-sub { font-size:13px; color:var(--color-text); opacity:0.75; margin-bottom:22px; line-height:1.5; }
         .btn-reservar { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:16px; background:white; color:#6366F1; border:none; border-radius:14px; font-family:inherit; font-size:15px; font-weight:800; cursor:pointer; text-decoration:none; box-shadow:0 4px 16px rgba(0,0,0,0.1); transition:transform 0.15s,box-shadow 0.15s; }
         .btn-reservar:hover { transform:scale(1.02); box-shadow:0 6px 22px rgba(0,0,0,0.15); }
         .btn-wa { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; background:#25D366; color:white; border:none; border-radius:14px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; text-decoration:none; margin-top:10px; transition:opacity 0.15s; }
@@ -506,17 +506,17 @@ export default function FichaNegocio() {
         .map-body { padding:18px 20px; }
         .map-label { font-size:11px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px; }
         .map-addr { font-size:13px; color:#4B5563; line-height:1.65; margin-bottom:14px; }
-        .btn-gps { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; padding:11px; background:var(--color-primary); color:white; border:none; border-radius:12px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
+        .btn-gps { display:flex; align-items:center; justify-content:center; gap:7px; width:100%; padding:11px; background:var(--color-primary); color:var(--color-text); border:none; border-radius:12px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
         .btn-gps:hover { opacity:0.88; }
 
         /* ── PAYMENT ── */
         .pago-chips { display:flex; flex-wrap:wrap; gap:7px; }
-        .pago-chip { display:inline-flex; align-items:center; gap:5px; background:var(--color-secondary); border:none; color:#111827; padding:6px 12px; border-radius:100px; font-size:12px; font-weight:600; }
+        .pago-chip { display:inline-flex; align-items:center; gap:5px; background:var(--color-secondary); border:none; color:var(--color-text); padding:6px 12px; border-radius:100px; font-size:12px; font-weight:600; }
 
         /* ── MOBILE CTA ── */
         .mobile-cta { display:none; position:fixed; bottom:0; left:0; right:0; padding:14px 20px; background:rgba(255,255,255,0.97); backdrop-filter:blur(16px); border-top:1px solid rgba(0,0,0,0.07); z-index:90; }
         .mobile-cta-inner { display:flex; gap:10px; align-items:center; }
-        .mobile-cta-reserve { display:flex; align-items:center; justify-content:center; gap:8px; flex:1; padding:15px; background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)); color:white; border-radius:14px; font-family:inherit; font-size:15px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(0,0,0,0.2); min-height:44px; }
+        .mobile-cta-reserve { display:flex; align-items:center; justify-content:center; gap:8px; flex:1; padding:15px; background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)); color:var(--color-text); border-radius:14px; font-family:inherit; font-size:15px; font-weight:800; text-decoration:none; box-shadow:0 4px 16px rgba(0,0,0,0.2); min-height:44px; }
         .mobile-cta-wa { display:flex; align-items:center; justify-content:center; gap:6px; padding:12px 16px; background:#25D366; color:white; border-radius:14px; font-family:inherit; font-size:13px; font-weight:700; text-decoration:none; min-height:44px; white-space:nowrap; }
 
         /* ── CHATBOT ── */
@@ -877,7 +877,7 @@ export default function FichaNegocio() {
                     const initial = t.nombre.charAt(0).toUpperCase()
                     return (
                       <div key={t.id} className="worker-card">
-                        <div className="worker-av" style={{background:t.foto_url ? 'transparent' : `linear-gradient(135deg,${colorPpal},${colorSec})`}}>
+                        <div className="worker-av" style={{background:t.foto_url ? 'transparent' : `linear-gradient(135deg,${colorPpal},${colorSec})`, color:t.foto_url ? undefined : colorText}}>
                           {t.foto_url ? <img src={t.foto_url} alt={t.nombre}/> : initial}
                         </div>
                         <div>
@@ -1062,7 +1062,7 @@ export default function FichaNegocio() {
           <button className={`btn-fav${esFav?' active':''}`} onClick={toggleFav} disabled={favCargando}>
             {esFav ? '❤️' : '🤍'}
           </button>
-          <button className="mobile-cta-reserve" style={{background:`linear-gradient(135deg,${colorPpal},${colorSec})`}} onClick={() => handleReservar()}>📅 Pedir cita</button>
+          <button className="mobile-cta-reserve" style={{background:`linear-gradient(135deg,${colorPpal},${colorSec})`, color:colorText}} onClick={() => handleReservar()}>📅 Pedir cita</button>
           {negocio.whatsapp && (
             <a href={`https://wa.me/${negocio.whatsapp.replace(/\s+/g,'').replace('+','')}`} target="_blank" rel="noreferrer" className="mobile-cta-wa">💬 WA</a>
           )}
