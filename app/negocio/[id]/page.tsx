@@ -79,6 +79,20 @@ const CAT_PALETTE = [
   { bg:'#F0F9FF', color:'#075985', border:'rgba(186,230,253,0.6)', dot:'#38BDF8' },
 ]
 
+function markdownToHtml(text: string): string {
+  const safe = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return safe
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/### (.*?)(\n|$)/g, '<strong style="font-size:14px;display:block">$1</strong>')
+    .replace(/## (.*?)(\n|$)/g, '<strong style="font-size:15px;display:block">$1</strong>')
+    .replace(/^- (.*)/gm, '• $1')
+    .replace(/`(.*?)`/g, '<code style="background:rgba(0,0,0,0.06);padding:2px 6px;border-radius:4px;font-size:12px">$1</code>')
+    .replace(/\n\n/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>')
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FichaNegocio() {
@@ -534,7 +548,7 @@ export default function FichaNegocio() {
         .chat-wrap { display:flex; flex-direction:column; }
         .chat-wrap.usuario { align-items:flex-end; }
         .chat-wrap.bot { align-items:flex-start; }
-        .chat-bubble { max-width:82%; padding:10px 14px; border-radius:15px; font-size:13px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+        .chat-bubble { max-width:82%; padding:10px 14px; border-radius:15px; font-size:13px; line-height:1.6; word-break:break-word; }
         .chat-bubble.usuario { background:linear-gradient(135deg,#6366F1,#8B5CF6); color:white; border-bottom-right-radius:4px; }
         .chat-bubble.bot { background:#F3F4F6; color:#111827; border-bottom-left-radius:4px; }
         .chat-opts { display:flex; flex-direction:column; gap:7px; margin-top:8px; width:100%; }
@@ -1103,15 +1117,13 @@ export default function FichaNegocio() {
               const textoLimpio = m.texto
                 .replace('[MOSTRAR_OPCIONES]', '')
                 .replace(/\[RESERVA:\{[^[\]]*\}\]/g, '')
-                .replace(/\*\*(.*?)\*\*/g, '$1')
-                .replace(/\*(.*?)\*/g, '$1')
-                .replace(/_(.*?)_/g, '$1')
-                .replace(/#{1,6}\s/g, '')
-                .replace(/`(.*?)`/g, '$1')
                 .trim()
               return (
                 <div key={i} className={`chat-wrap ${m.rol}`}>
-                  <div className={`chat-bubble ${m.rol}`}>{textoLimpio}</div>
+                  <div
+                    className={`chat-bubble ${m.rol}`}
+                    dangerouslySetInnerHTML={{ __html: markdownToHtml(textoLimpio) }}
+                  />
                   {tieneOpciones && !reservaConfirmada && (
                     <div className="chat-opts">
                       <a href={`/negocio/${id}/reservar`} className="chat-opt">🔗 <span><strong>Reservar yo mismo</strong></span></a>

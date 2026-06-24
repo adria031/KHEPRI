@@ -16,6 +16,20 @@ import {
 
 const GEMINI_URL = '/api/gemini' // proxy → v1beta gemini-1.5-flash
 
+function markdownToHtml(text: string): string {
+  const safe = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return safe
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/### (.*?)(\n|$)/g, '<strong style="font-size:14px;display:block">$1</strong>')
+    .replace(/## (.*?)(\n|$)/g, '<strong style="font-size:15px;display:block">$1</strong>')
+    .replace(/^- (.*)/gm, '• $1')
+    .replace(/`(.*?)`/g, '<code style="background:rgba(0,0,0,0.06);padding:2px 6px;border-radius:4px;font-size:12px">$1</code>')
+    .replace(/\n\n/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>')
+}
+
 type Msg = { role: 'user' | 'bot'; text: string; ts: Date; slots?: string[] }
 
 type NegocioInfo = {
@@ -68,6 +82,7 @@ function buildSystemPrompt(
   return `Eres ${config.nombreBot}, el asistente virtual de ${negocio.nombre}, un negocio de tipo ${negocio.tipo}.
 Tu tono es ${tonoDesc}.
 Responde siempre en español. Sé conciso: máximo 3-4 frases por respuesta salvo que se pida información extensa.
+IMPORTANTE: Responde siempre en texto plano sin asteriscos, sin negritas, sin markdown, sin viñetas con *, sin almohadillas #. Solo texto conversacional natural.
 
 == FECHA ACTUAL ==
 Hoy es ${fechaHoy} (${fechaISO}). Día de la semana: ${diaHoy}.
@@ -433,7 +448,7 @@ export default function ChatbotPage() {
         .chat-start-title { font-size: 14px; font-weight: 700; color: var(--text); }
         .chat-start-desc { font-size: 12px; line-height: 1.5; }
         .btn-start { padding: 10px 24px; background: linear-gradient(135deg, #D4C5F9, #B8D8F8); border: none; border-radius: 100px; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--lila-dark); cursor: pointer; }
-        .bubble { max-width: 80%; padding: 9px 13px; border-radius: 14px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+        .bubble { max-width: 80%; padding: 9px 13px; border-radius: 14px; font-size: 13px; line-height: 1.6; word-break: break-word; }
         .slots-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; align-self: flex-start; max-width: 80%; }
         .slot-chip { padding: 6px 14px; border-radius: 100px; background: var(--white); border: 1.5px solid var(--lila-dark); color: var(--lila-dark); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
         .slot-chip:hover { background: var(--lila); }
@@ -617,9 +632,10 @@ export default function ChatbotPage() {
                       <>
                         {mensajes.map((m, i) => (
                           <div key={i}>
-                            <div className={`bubble bubble-${m.role === 'bot' ? 'bot' : 'user'}`}>
-                              {m.text}
-                            </div>
+                            <div
+                              className={`bubble bubble-${m.role === 'bot' ? 'bot' : 'user'}`}
+                              dangerouslySetInnerHTML={{ __html: markdownToHtml(m.text) }}
+                            />
                             {m.role === 'bot' && m.slots && m.slots.length > 0 && (
                               <div className="slots-row">
                                 {m.slots.map(slot => (
