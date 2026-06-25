@@ -189,69 +189,132 @@ export default function Home() {
     return () => { lenis.destroy(); gsap.ticker.remove(ticker); ScrollTrigger.killAll() }
   }, [])
 
-  // All GSAP animations
+  // All GSAP animations — scroll cinematográfico
   useEffect(() => {
-    // Navbar blur on scroll
+    // Navbar: blur al scrollear desde arriba
     ScrollTrigger.create({
       start: 'top -60',
       onEnter:     () => gsap.to('.kh-nav', { background: 'rgba(245,240,255,0.92)', backdropFilter: 'blur(20px)', boxShadow: '0 1px 0 rgba(124,58,237,0.1)', duration: 0.3 }),
       onLeaveBack: () => gsap.to('.kh-nav', { background: 'transparent', backdropFilter: 'none', boxShadow: 'none', duration: 0.3 }),
     })
 
-    // Hero
-    gsap.fromTo('.hero-char',    { opacity: 0, y: 40, rotateX: -90 }, { opacity: 1, y: 0, rotateX: 0, stagger: 0.035, duration: 0.7, ease: 'back.out(1.7)', delay: 0.5 })
-    gsap.fromTo('.hero-sub',     { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.8, delay: 1.2 })
-    gsap.fromTo('.hero-chips',   { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.7, delay: 1.5 })
-    gsap.fromTo('.hero-btns',    { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.7, delay: 1.8 })
-    gsap.fromTo('.hero-logo',    { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 1.2, ease: 'back.out(1.2)', delay: 0.3 })
-    gsap.fromTo('.hero-scroll',  { opacity: 0 }, { opacity: 1, duration: 0.6, delay: 2.2 })
+    // Navbar cambia a oscuro al entrar en sección funciones
+    ScrollTrigger.create({
+      trigger: '.funciones-section',
+      start: 'top 50%',
+      end: 'bottom 50%',
+      onEnter:     () => gsap.to('.kh-nav', { background: 'rgba(15,15,26,0.92)', duration: 0.5 }),
+      onLeave:     () => gsap.to('.kh-nav', { background: 'rgba(245,240,255,0.92)', duration: 0.5 }),
+      onEnterBack: () => gsap.to('.kh-nav', { background: 'rgba(15,15,26,0.92)', duration: 0.5 }),
+      onLeaveBack: () => gsap.to('.kh-nav', { background: 'rgba(245,240,255,0.92)', duration: 0.5 }),
+    })
 
-    // Propuesta de valor
-    gsap.fromTo('.valor-title',  { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out', scrollTrigger: { trigger: '.valor-section', start: 'top 80%' } })
-    gsap.fromTo('.valor-card',   { opacity: 0, y: 60 }, { opacity: 1, y: 0, stagger: 0.15, duration: 0.8, ease: 'power3.out', scrollTrigger: { trigger: '.valor-cards', start: 'top 80%' } })
+    // Hero — animaciones inmediatas
+    gsap.fromTo('.hero-char',   { opacity: 0, y: 40, rotateX: -90 }, { opacity: 1, y: 0, rotateX: 0, stagger: 0.035, duration: 0.7, ease: 'back.out(1.7)', delay: 0.5 })
+    gsap.fromTo('.hero-sub',    { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.8, delay: 1.2 })
+    gsap.fromTo('.hero-chips',  { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.7, delay: 1.5 })
+    gsap.fromTo('.hero-btns',   { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.7, delay: 1.8 })
+    gsap.fromTo('.hero-logo',   { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 1.2, ease: 'back.out(1.2)', delay: 0.3 })
+    gsap.fromTo('.hero-scroll', { opacity: 0 }, { opacity: 1, duration: 0.6, delay: 2.2 })
 
-    // Funciones sticky scroll (desktop only)
+    // Transiciones cinematográficas entre secciones
+    const sections = gsap.utils.toArray<Element>('.scroll-section')
+    sections.forEach((section, i) => {
+      if (i === 0) return
+      gsap.fromTo(section as gsap.TweenTarget,
+        { yPercent: 8, opacity: 0, scale: 0.98 },
+        { yPercent: 0, opacity: 1, scale: 1, ease: 'power2.out',
+          scrollTrigger: { trigger: section, start: 'top 92%', end: 'top 20%', scrub: 0.8 } }
+      )
+      gsap.to(sections[i - 1] as gsap.TweenTarget, {
+        yPercent: -5, scale: 0.97, opacity: 0.6, ease: 'power2.in',
+        scrollTrigger: { trigger: section, start: 'top 80%', end: 'top top', scrub: 0.8 },
+      })
+    })
+
+    // Títulos de sección — fade + blur
+    gsap.utils.toArray<HTMLElement>('.section-title').forEach(title => {
+      gsap.fromTo(title,
+        { opacity: 0, y: 60, filter: 'blur(8px)' },
+        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 1, ease: 'power3.out',
+          scrollTrigger: { trigger: title, start: 'top 85%' } }
+      )
+    })
+
+    // Contenido de sección — stagger de hijos
+    gsap.utils.toArray<HTMLElement>('.section-content').forEach(content => {
+      if (!content.children.length) return
+      gsap.fromTo(Array.from(content.children),
+        { opacity: 0, y: 40 },
+        { opacity: 1, y: 0, stagger: 0.12, duration: 0.8, ease: 'power3.out',
+          scrollTrigger: { trigger: content, start: 'top 80%' } }
+      )
+    })
+
+    // Parallax en backgrounds
+    gsap.utils.toArray<HTMLElement>('.section-bg').forEach(bg => {
+      gsap.to(bg, {
+        yPercent: -20, ease: 'none',
+        scrollTrigger: { trigger: bg.parentElement, start: 'top bottom', end: 'bottom top', scrub: 1.5 },
+      })
+    })
+
+    // Funciones — GSAP pin (como Rockstar) solo en desktop
     const isMobile = window.innerWidth <= 768
     if (!isMobile) {
       const fnCount = FUNCIONES.length
+
+      // Estados iniciales: solo funcion-1 visible
+      gsap.set('.fn-panel',       { opacity: 0, y: 24 })
+      gsap.set('.fn-phone-screen', { opacity: 0, x: 20 })
+      gsap.set('.funcion-1',       { opacity: 1, y: 0 })
+      gsap.set('.funcion-phone-1', { opacity: 1, x: 0 })
+
+      const fnTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: '.funciones-section',
+          pin: true,
+          start: 'top top',
+          end: `+=${(fnCount - 1) * 100}%`,
+          scrub: 1,
+        },
+      })
+
+      for (let i = 0; i < fnCount - 1; i++) {
+        fnTl
+          .to(`.funcion-${i + 1}`,       { opacity: 0, y: -40, duration: 1 }, i)
+          .to(`.funcion-phone-${i + 1}`, { opacity: 0, x: -40, duration: 1 }, i)
+          .fromTo(`.funcion-${i + 2}`,       { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 1 }, i)
+          .fromTo(`.funcion-phone-${i + 2}`, { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 1 }, i)
+      }
+
+      // Actualizar tabs
       ScrollTrigger.create({
-        trigger: '.funciones-wrap',
+        trigger: '.funciones-section',
         start: 'top top',
-        end: 'bottom bottom',
+        end: `+=${(fnCount - 1) * 100}%`,
         scrub: 1,
-        onUpdate: (self) => {
-          const raw = self.progress * fnCount
-          const idx = Math.min(Math.floor(raw), fnCount - 1)
-          document.querySelectorAll<HTMLElement>('.fn-panel').forEach((el, i) => {
-            el.style.opacity = i === idx ? '1' : '0'
-            el.style.transform = i === idx ? 'translateY(0)' : i < idx ? 'translateY(-24px)' : 'translateY(24px)'
-          })
-          document.querySelectorAll<HTMLElement>('.fn-phone-screen').forEach((el, i) => {
-            el.style.opacity = i === idx ? '1' : '0'
-            el.style.transform = i === idx ? 'translateX(0)' : i < idx ? 'translateX(-20px)' : 'translateX(20px)'
-          })
+        onUpdate: self => {
+          const idx = Math.min(Math.floor(self.progress * fnCount), fnCount - 1)
           document.querySelectorAll<HTMLElement>('.fn-tab').forEach((el, i) => {
-            el.style.background = i === idx ? FUNCIONES[i].color : 'rgba(255,255,255,0.08)'
-            el.style.color = i === idx ? '#0F0F1A' : 'rgba(255,255,255,0.45)'
-            el.style.fontWeight = i === idx ? '700' : '500'
+            el.style.background  = i === idx ? FUNCIONES[i].color : 'rgba(255,255,255,0.08)'
+            el.style.color       = i === idx ? '#0F0F1A' : 'rgba(255,255,255,0.45)'
+            el.style.fontWeight  = i === idx ? '700' : '500'
           })
         },
       })
+    } else {
+      // Móvil: todos visibles
+      gsap.set('.fn-panel, .fn-phone-screen', { opacity: 1, x: 0, y: 0 })
+      ScrollTrigger.config({ ignoreMobileResize: true })
     }
 
-    // Para quién
-    gsap.fromTo('.quien-card', { opacity: 0, y: 40, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, stagger: 0.08, duration: 0.6, ease: 'back.out(1.4)', scrollTrigger: { trigger: '.quien-section', start: 'top 80%' } })
+    const mm = gsap.matchMedia()
+    mm.add('(max-width: 768px)', () => {
+      ScrollTrigger.config({ ignoreMobileResize: true })
+    })
 
-    // Planes
-    gsap.fromTo('.plan-card', { opacity: 0, y: 70 }, { opacity: 1, y: 0, stagger: 0.12, duration: 0.9, ease: 'power3.out', scrollTrigger: { trigger: '.planes-section', start: 'top 75%' } })
-
-    // CTA final
-    gsap.fromTo('.cta-inner', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.9, ease: 'power3.out', scrollTrigger: { trigger: '.cta-section', start: 'top 80%' } })
-
-    // Para clientes
-    gsap.fromTo('.clientes-inner', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out', scrollTrigger: { trigger: '.clientes-inner', start: 'top 85%' } })
-
-    return () => ScrollTrigger.killAll()
+    return () => { ScrollTrigger.killAll(); mm.revert() }
   }, [])
 
   // Planes mobile carousel drag
@@ -365,8 +428,14 @@ export default function Home() {
       <style>{`
         :root { --purple:#7C3AED; --blue:#4FACFE; --green:#40DCA5; --bg:#F5F0FF; --text:#0F0F1A; }
         *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-        html { scroll-behavior:auto; overflow-x:hidden; max-width:100vw; }
+        html { scroll-behavior:auto!important; overflow-x:hidden; max-width:100vw; }
         body { font-family:'DM Sans',sans-serif!important; background:#F5F0FF; color:#0F0F1A; overflow-x:hidden; max-width:100vw; }
+
+        /* ── Scroll cinematográfico ── */
+        .scroll-section { position:relative; overflow:hidden; will-change:transform; transform-origin:center top; }
+        .section-bg { position:absolute; inset:-20%; width:140%; height:140%; z-index:0; pointer-events:none; }
+        .section-content { position:relative; z-index:1; }
+        .section-title { opacity:0; }
         @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; } }
 
         /* ── Animations ── */
@@ -382,17 +451,11 @@ export default function Home() {
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
         @keyframes fnGlow { 0%,100%{opacity:.4} 50%{opacity:.8} }
 
-        /* GSAP initial states */
+        /* GSAP initial states — solo hero (el resto via scroll-section / section-title / section-content) */
         .hero-char { display:inline-block; opacity:0; perspective:400px; }
         .hero-sub,.hero-chips,.hero-btns { opacity:0; }
         .hero-logo { opacity:0; }
         .hero-scroll { opacity:0; }
-        .valor-title { opacity:0; }
-        .valor-card { opacity:0; }
-        .quien-card { opacity:0; }
-        .plan-card { opacity:0; }
-        .cta-inner { opacity:0; }
-        .clientes-inner { opacity:0; }
 
         /* ── Nav ── */
         .kh-nav { position:fixed; top:0; left:0; right:0; z-index:200; background:transparent; transition:background .35s,backdrop-filter .35s,box-shadow .35s; }
@@ -457,22 +520,20 @@ export default function Home() {
         .valor-title-card { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#111827; margin-bottom:10px; }
         .valor-desc { font-size:14px; color:#6B7280; line-height:1.75; }
 
-        /* ── Funciones sticky scroll ── */
-        .funciones-wrap { height:700vh; background:#0F0F1A; position:relative; }
-        .funciones-sticky { position:sticky; top:0; height:100svh; overflow:hidden; display:grid; grid-template-columns:1fr 1fr; }
+        /* ── Funciones — GSAP pin (pin lo maneja GSAP, no CSS sticky) ── */
+        .funciones-wrap { background:#0F0F1A; position:relative; }
+        .funciones-sticky { height:100svh; overflow:hidden; display:grid; grid-template-columns:1fr 1fr; }
         .funciones-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 50% 60% at 30% 50%, rgba(124,58,237,.12) 0%, transparent 70%); animation:fnGlow 4s ease-in-out infinite; }
         .fn-tabs-row { position:absolute; top:0; left:0; right:50%; display:flex; gap:8px; padding:24px 60px; flex-wrap:wrap; z-index:3; }
         .fn-tab { font-size:12px; font-weight:500; padding:5px 12px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.45); cursor:default; transition:background .3s,color .3s,font-weight .3s; white-space:nowrap; letter-spacing:.2px; }
         .funciones-left { position:relative; height:100%; overflow:hidden; }
         .funciones-right { position:relative; height:100%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.02); }
-        .fn-panel { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; padding:80px 60px; opacity:0; transform:translateY(24px); transition:opacity .5s ease,transform .5s ease; pointer-events:none; }
-        .fn-panel:first-child { opacity:1; transform:translateY(0); }
+        .fn-panel { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; padding:80px 60px; pointer-events:none; }
         .fn-panel-icon { font-size:56px; margin-bottom:20px; display:block; }
         .fn-panel-label { font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px; }
         .fn-panel-title { font-family:'Syne',sans-serif; font-size:clamp(1.6rem,3vw,2.4rem); font-weight:800; color:#fff; line-height:1.12; letter-spacing:-.8px; margin-bottom:16px; }
         .fn-panel-desc { font-size:15px; color:rgba(255,255,255,.6); line-height:1.8; max-width:440px; }
-        .fn-phone-screen { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transform:translateX(20px); transition:opacity .5s ease,transform .5s ease; }
-        .fn-phone-screen:first-child { opacity:1; transform:translateX(0); }
+        .fn-phone-screen { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
         .fn-phone-glow { position:absolute; width:300px; height:300px; border-radius:50%; filter:blur(60px); pointer-events:none; }
 
         /* ── Para quién ── */
@@ -581,13 +642,11 @@ export default function Home() {
           .kh-hero-btns { flex-direction:column; align-items:center; }
           .kh-btn-primary,.kh-btn-ghost { width:100%; max-width:320px; justify-content:center; }
           .kh-hero-logo { width:130px; height:130px; margin-bottom:28px; }
-          /* Funciones: no sticky on mobile */
-          .funciones-wrap { height:auto!important; }
-          .funciones-sticky { position:static!important; height:auto!important; grid-template-columns:1fr!important; }
+          /* Funciones: sin pin en móvil, GSAP.set hace todos visibles */
+          .funciones-sticky { grid-template-columns:1fr!important; }
           .funciones-right { display:none!important; }
-          .funciones-left { height:auto!important; }
           .fn-tabs-row { display:none!important; }
-          .fn-panel { position:static!important; opacity:1!important; transform:none!important; padding:48px 24px; border-bottom:1px solid rgba(255,255,255,.06); pointer-events:auto!important; }
+          .fn-panel { position:static!important; padding:48px 24px; border-bottom:1px solid rgba(255,255,255,.06); pointer-events:auto!important; }
           /* Quien mobile carousel */
           .quien-section { display:flex!important; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:8px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
           .quien-section::-webkit-scrollbar { display:none; }
@@ -665,7 +724,9 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════ */}
       {/* SECCIÓN 1 — HERO                                  */}
       {/* ══════════════════════════════════════════════════ */}
-      <section className="kh-hero" id="hero">
+      <section className="kh-hero scroll-section" id="hero">
+        {/* Parallax bg */}
+        <div className="section-bg" aria-hidden style={{ background:'radial-gradient(ellipse 80% 80% at 60% 40%, rgba(184,216,248,.5) 0%, rgba(212,197,249,.3) 40%, rgba(184,237,212,.2) 70%, transparent 100%)' }} />
         <div className="kh-blob kh-blob-1" aria-hidden />
         <div className="kh-blob kh-blob-2" aria-hidden />
         <div className="kh-blob kh-blob-3" aria-hidden />
@@ -720,15 +781,16 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════ */}
       {/* SECCIÓN 2 — PROPUESTA DE VALOR                    */}
       {/* ══════════════════════════════════════════════════ */}
-      <section className="valor-section">
+      <section className="valor-section scroll-section">
+        <div className="section-bg" aria-hidden style={{ background:'linear-gradient(135deg,rgba(255,255,255,0) 0%,rgba(124,58,237,.04) 100%)' }} />
         <div className="valor-inner">
           <div className="valor-header">
             <span className="kh-tag kh-tag-purple" style={{ display:'inline-flex', marginBottom:16 }}>Por qué Khepria</span>
-            <h2 className="kh-h2 valor-title">Todo lo que necesita tu negocio</h2>
+            <h2 className="kh-h2 section-title">Todo lo que necesita tu negocio</h2>
             <p className="kh-section-p">Una sola plataforma. Sin instalaciones. Sin gestor. Sin complicaciones.</p>
           </div>
 
-          <div className="valor-cards">
+          <div className="valor-cards section-content">
             {[
               { icon: '⚡', title: 'Automatización total', desc: 'Reservas, recordatorios y confirmaciones funcionan solas. Recuperas horas cada semana sin hacer nada.' },
               { icon: '🤖', title: 'IA que trabaja por ti', desc: 'Chatbot 24/7 en WhatsApp e Instagram que responde, gestiona y cobra sin que toques el móvil.' },
@@ -747,7 +809,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════ */}
       {/* SECCIÓN 3 — FUNCIONES (sticky scroll inmersivo)   */}
       {/* ══════════════════════════════════════════════════ */}
-      <div className="funciones-wrap" id="funciones">
+      <div className="funciones-wrap funciones-section scroll-section" id="funciones">
         <div className="funciones-sticky">
           <div className="funciones-glow" aria-hidden />
 
@@ -763,7 +825,7 @@ export default function Home() {
           {/* Panel izquierdo: texto */}
           <div className="funciones-left">
             {FUNCIONES.map((fn, i) => (
-              <div key={i} className="fn-panel" style={{ opacity: i === 0 ? 1 : 0, transform: i === 0 ? 'translateY(0)' : 'translateY(24px)' }}>
+              <div key={i} className={`fn-panel funcion-${i + 1}`}>
                 <span className="fn-panel-icon">{fn.icon}</span>
                 <span className="fn-panel-label" style={{ color: fn.color }}>{fn.label}</span>
                 <h2 className="fn-panel-title">{fn.title}</h2>
@@ -783,7 +845,7 @@ export default function Home() {
           {/* Panel derecho: mockups de móvil */}
           <div className="funciones-right">
             {/* Reservas */}
-            <div className="fn-phone-screen" style={{ opacity:1, transform:'translateX(0)' }}>
+            <div className="fn-phone-screen funcion-phone-1">
               <div className="fn-phone-glow" style={{ background:'rgba(79,172,254,.3)' }} />
               <PhoneShell color="#4FACFE">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -823,7 +885,7 @@ export default function Home() {
             </div>
 
             {/* Chatbot */}
-            <div className="fn-phone-screen">
+            <div className="fn-phone-screen funcion-phone-2">
               <div className="fn-phone-glow" style={{ background:'rgba(212,197,249,.3)' }} />
               <PhoneShell color="#D4C5F9">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:8, overflow:'hidden' }}>
@@ -861,7 +923,7 @@ export default function Home() {
             </div>
 
             {/* Facturación */}
-            <div className="fn-phone-screen">
+            <div className="fn-phone-screen funcion-phone-3">
               <div className="fn-phone-glow" style={{ background:'rgba(64,220,165,.3)' }} />
               <PhoneShell color="#40DCA5">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -892,7 +954,7 @@ export default function Home() {
             </div>
 
             {/* Analytics */}
-            <div className="fn-phone-screen">
+            <div className="fn-phone-screen funcion-phone-4">
               <div className="fn-phone-glow" style={{ background:'rgba(253,233,162,.3)' }} />
               <PhoneShell color="#FDE9A2">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -928,7 +990,7 @@ export default function Home() {
             </div>
 
             {/* Marketing */}
-            <div className="fn-phone-screen">
+            <div className="fn-phone-screen funcion-phone-5">
               <div className="fn-phone-glow" style={{ background:'rgba(251,207,232,.3)' }} />
               <PhoneShell color="#FBCFE8">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -961,7 +1023,7 @@ export default function Home() {
             </div>
 
             {/* Equipo */}
-            <div className="fn-phone-screen">
+            <div className="fn-phone-screen funcion-phone-6">
               <div className="fn-phone-glow" style={{ background:'rgba(184,216,248,.3)' }} />
               <PhoneShell color="#B8D8F8">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -1007,15 +1069,15 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════ */}
       {/* SECCIÓN 4 — PARA QUIÉN                           */}
       {/* ══════════════════════════════════════════════════ */}
-      <section className="kh-quien" id="quien">
+      <section className="kh-quien scroll-section" id="quien">
         <div className="kh-quien-inner">
           <div className="kh-section-header">
             <span className="kh-tag kh-tag-blue" style={{ display:'inline-flex', marginBottom:14 }}>¿Para quién?</span>
-            <h2 className="kh-h2">Diseñado para tu tipo de negocio</h2>
+            <h2 className="kh-h2 section-title">Diseñado para tu tipo de negocio</h2>
             <p className="kh-section-p">Khepria se adapta a cualquier negocio de servicios que trabaje con citas</p>
           </div>
 
-          <div className="quien-section">
+          <div className="quien-section section-content">
             {QUIENES.map(q => (
               <div key={q.name} className="quien-card" onMouseMove={onTileMove} onMouseLeave={onTileLeave}>
                 <span className="quien-emoji">{q.icon}</span>
@@ -1029,15 +1091,15 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════ */}
       {/* SECCIÓN 5 — PLANES                               */}
       {/* ══════════════════════════════════════════════════ */}
-      <section className="kh-planes" id="planes">
+      <section className="kh-planes scroll-section" id="planes">
         <div className="kh-planes-inner">
           <div className="kh-section-header">
             <span className="kh-tag kh-tag-purple" style={{ display:'inline-flex', marginBottom:14 }}>Precios</span>
-            <h2 className="kh-h2">Sin sorpresas. Sin comisiones.</h2>
+            <h2 className="kh-h2 section-title">Sin sorpresas. Sin comisiones.</h2>
             <p className="kh-section-p">Elige el plan que mejor se adapte a tu negocio. Cancela cuando quieras.</p>
           </div>
 
-          <div className="planes-section" ref={planesRef}>
+          <div className="planes-section section-content" ref={planesRef}>
             {PLANES.map((p, i) => (
               <div key={i} className={`plan-card${p.popular ? ' popular' : ''}`}>
                 <div className="plan-badge" style={{ background: p.color + '66', color: p.colorDark }}>{p.badge}</div>
@@ -1102,8 +1164,8 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════ */}
       {/* SECCIÓN 6 — CTA FINAL                            */}
       {/* ══════════════════════════════════════════════════ */}
-      <section className="cta-section">
-        <div className="cta-glow" aria-hidden />
+      <section className="cta-section scroll-section">
+        <div className="cta-glow section-bg" aria-hidden />
         <div className="cta-inner">
           <div className="cta-logo-wrap">
             <DiamondLogo3D />
@@ -1122,7 +1184,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════ */}
       {/* SECCIÓN 7 — PARA CLIENTES                        */}
       {/* ══════════════════════════════════════════════════ */}
-      <section className="kh-clients">
+      <section className="kh-clients scroll-section">
         <div className="kh-clients-blob" aria-hidden />
         <div className="clientes-inner" style={{ maxWidth:580, margin:'0 auto', position:'relative', zIndex:1 }}>
           <span className="kh-tag kh-tag-green" style={{ display:'inline-flex', marginBottom:16 }}>Para clientes</span>
