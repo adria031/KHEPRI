@@ -222,19 +222,60 @@ export default function Home() {
     gsap.fromTo('.hero-logo',   { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 1.2, ease: 'back.out(1.2)', delay: 0.3 })
     gsap.fromTo('.hero-scroll', { opacity: 0 }, { opacity: 1, duration: 0.6, delay: 2.2 })
 
-    // Transiciones cinematográficas entre secciones
+    // Transición de color de fondo al entrar/salir de sección oscura
+    ScrollTrigger.create({
+      trigger: '.funciones-section',
+      start: 'top 60%',
+      end: 'bottom 40%',
+      onEnter:     () => gsap.to('body', { backgroundColor: '#0F0F1A', duration: 0.6, ease: 'power2.inOut' }),
+      onLeave:     () => gsap.to('body', { backgroundColor: '#F5F0FF', duration: 0.6, ease: 'power2.inOut' }),
+      onEnterBack: () => gsap.to('body', { backgroundColor: '#0F0F1A', duration: 0.6, ease: 'power2.inOut' }),
+      onLeaveBack: () => gsap.to('body', { backgroundColor: '#F5F0FF', duration: 0.6, ease: 'power2.inOut' }),
+    })
+
+    // Transiciones cinematográficas — slide con profundidad
     const sections = gsap.utils.toArray<Element>('.scroll-section')
     sections.forEach((section: any, i) => {
       if (i === 0) return
+
+      // Entrada desde abajo con escala y perspectiva
       gsap.fromTo(section,
-        { yPercent: 6, autoAlpha: 0 },
+        {
+          yPercent: 12,
+          autoAlpha: 0,
+          scale: 0.96,
+          transformOrigin: 'center bottom',
+        },
         {
           yPercent: 0,
           autoAlpha: 1,
+          scale: 1,
           ease: 'power2.out',
-          scrollTrigger: { trigger: section, start: 'top 95%', end: 'top 30%', scrub: 1 },
+          scrollTrigger: {
+            trigger: section,
+            start: 'top 98%',
+            end: 'top 15%',
+            scrub: 1.2,
+          },
         }
       )
+
+      // Clip-path reveal en secciones pares — transición más dramática
+      if (i % 2 === 0) {
+        gsap.fromTo(section,
+          { clipPath: 'inset(8% 0% 0% 0%)' },
+          {
+            clipPath: 'inset(0% 0% 0% 0%)',
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: section,
+              start: 'top 90%',
+              end: 'top 10%',
+              scrub: 1,
+            },
+          }
+        )
+      }
     })
 
     // Títulos de sección — fade + blur
@@ -429,11 +470,11 @@ export default function Home() {
       <style>{`
         :root { --purple:#7C3AED; --blue:#4FACFE; --green:#40DCA5; --bg:#F5F0FF; --text:#0F0F1A; }
         *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-        html { scroll-behavior:auto!important; overflow-x:hidden; max-width:100vw; }
+        html { scroll-behavior:auto!important; overflow-x:hidden; max-width:100vw; perspective:1200px; perspective-origin:center center; }
         body { font-family:'DM Sans',sans-serif!important; background:#F5F0FF; color:#0F0F1A; overflow-x:hidden; max-width:100vw; }
 
         /* ── Scroll cinematográfico ── */
-        .scroll-section { position:relative; overflow:hidden; will-change:transform; transform-origin:center top; background-color:inherit; isolation:isolate; }
+        .scroll-section { position:relative; overflow:hidden; will-change:transform,opacity; transform-origin:center top; background-color:inherit; isolation:isolate; transform-style:preserve-3d; backface-visibility:hidden; }
         .section-bg { position:absolute; inset:-20%; width:140%; height:140%; z-index:0; pointer-events:none; }
         .section-content { position:relative; z-index:1; }
         .section-title { opacity:0; }
