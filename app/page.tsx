@@ -264,20 +264,51 @@ export default function Home() {
       })
     })
 
-    // Funciones — stagger simple por item (sin pin, sin conflicto con Lenis)
-    gsap.utils.toArray<HTMLElement>('.funcion-item').forEach((item, i) => {
-      gsap.fromTo(item,
-        { opacity: 0, x: i % 2 === 0 ? -60 : 60 },
-        {
-          opacity: 1, x: 0, duration: 0.8, ease: 'power3.out',
-          scrollTrigger: {
-            trigger: item,
-            start: 'top 80%',
-            toggleActions: 'play none none reverse',
-          },
-        }
-      )
-    })
+    // Funciones — CSS sticky + GSAP timeline (sin pin:true — CSS maneja el sticky)
+    const isMobile = window.innerWidth <= 768
+    if (!isMobile) {
+      const fnCount = FUNCIONES.length
+
+      gsap.set('.fn-panel',        { opacity: 0, y: 24 })
+      gsap.set('.fn-phone-screen', { opacity: 0, x: 20 })
+      gsap.set('.funcion-1',       { opacity: 1, y: 0 })
+      gsap.set('.funcion-phone-1', { opacity: 1, x: 0 })
+
+      const fnTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: '.funciones-wrap',
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 1,
+        },
+      })
+
+      for (let i = 0; i < fnCount - 1; i++) {
+        fnTl
+          .to(`.funcion-${i + 1}`,       { opacity: 0, y: -40, duration: 1 }, i)
+          .to(`.funcion-phone-${i + 1}`, { opacity: 0, x: -40, duration: 1 }, i)
+          .fromTo(`.funcion-${i + 2}`,       { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 1 }, i)
+          .fromTo(`.funcion-phone-${i + 2}`, { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 1 }, i)
+      }
+
+      ScrollTrigger.create({
+        trigger: '.funciones-wrap',
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: 1,
+        onUpdate: self => {
+          const idx = Math.min(Math.floor(self.progress * fnCount), fnCount - 1)
+          document.querySelectorAll<HTMLElement>('.fn-tab').forEach((el, i) => {
+            el.style.background  = i === idx ? FUNCIONES[i].color : 'rgba(255,255,255,0.08)'
+            el.style.color       = i === idx ? '#0F0F1A' : 'rgba(255,255,255,0.45)'
+            el.style.fontWeight  = i === idx ? '700' : '500'
+          })
+        },
+      })
+    } else {
+      gsap.set('.fn-panel, .fn-phone-screen', { opacity: 1, x: 0, y: 0 })
+      ScrollTrigger.config({ ignoreMobileResize: true })
+    }
 
     const mm = gsap.matchMedia()
     mm.add('(max-width: 768px)', () => {
@@ -490,21 +521,21 @@ export default function Home() {
         .valor-title-card { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#111827; margin-bottom:10px; }
         .valor-desc { font-size:14px; color:#6B7280; line-height:1.75; }
 
-        /* ── Funciones — lista vertical con stagger GSAP ── */
+        /* ── Funciones — CSS sticky + GSAP timeline (sin pin:true) ── */
         .funciones-wrap { background:#0F0F1A; position:relative; }
-        .funciones-sticky { position:relative; max-width:860px; margin:0 auto; padding:80px 40px; }
-        .funciones-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 70% 60% at 50% 50%, rgba(124,58,237,.10) 0%, transparent 70%); }
-        .fn-tabs-row { display:none!important; }
-        .funciones-left { display:flex; flex-direction:column; }
-        .funciones-right { display:none!important; }
-        .fn-panel { position:relative; display:flex; flex-direction:column; padding:56px 0; border-bottom:1px solid rgba(255,255,255,.06); pointer-events:auto; }
-        .fn-panel:last-child { border-bottom:none; }
-        .fn-panel-icon { font-size:48px; margin-bottom:16px; display:block; }
+        .funciones-sticky { position:sticky; top:0; height:100svh; overflow:hidden; display:grid; grid-template-columns:1fr 1fr; }
+        .funciones-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 50% 60% at 30% 50%, rgba(124,58,237,.12) 0%, transparent 70%); animation:fnGlow 4s ease-in-out infinite; }
+        .fn-tabs-row { position:absolute; top:0; left:0; right:50%; display:flex; gap:8px; padding:24px 60px; flex-wrap:wrap; z-index:3; }
+        .fn-tab { font-size:12px; font-weight:500; padding:5px 12px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.45); cursor:default; transition:background .3s,color .3s,font-weight .3s; white-space:nowrap; letter-spacing:.2px; }
+        .funciones-left { position:relative; height:100%; overflow:hidden; }
+        .funciones-right { position:relative; height:100%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.02); }
+        .fn-panel { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; padding:80px 60px; pointer-events:none; }
+        .fn-panel-icon { font-size:56px; margin-bottom:20px; display:block; }
         .fn-panel-label { font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px; }
-        .fn-panel-title { font-family:'Syne',sans-serif; font-size:clamp(1.4rem,3vw,2.2rem); font-weight:800; color:#fff; line-height:1.12; letter-spacing:-.8px; margin-bottom:16px; }
-        .fn-panel-desc { font-size:15px; color:rgba(255,255,255,.6); line-height:1.8; max-width:560px; }
-        .fn-phone-screen { display:none!important; }
-        .fn-phone-glow { display:none!important; }
+        .fn-panel-title { font-family:'Syne',sans-serif; font-size:clamp(1.6rem,3vw,2.4rem); font-weight:800; color:#fff; line-height:1.12; letter-spacing:-.8px; margin-bottom:16px; }
+        .fn-panel-desc { font-size:15px; color:rgba(255,255,255,.6); line-height:1.8; max-width:440px; }
+        .fn-phone-screen { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+        .fn-phone-glow { position:absolute; width:300px; height:300px; border-radius:50%; filter:blur(60px); pointer-events:none; }
 
         /* ── Para quién ── */
         .kh-quien { padding:100px 24px; background:#F5F0FF; }
@@ -612,9 +643,12 @@ export default function Home() {
           .kh-hero-btns { flex-direction:column; align-items:center; }
           .kh-btn-primary,.kh-btn-ghost { width:100%; max-width:320px; justify-content:center; }
           .kh-hero-logo { width:130px; height:130px; margin-bottom:28px; }
-          /* Funciones mobile */
-          .funciones-sticky { padding:40px 20px; }
-          .fn-panel { padding:40px 0; }
+          /* Funciones mobile — sin sticky, lista vertical */
+          .funciones-wrap { height:auto!important; }
+          .funciones-sticky { position:relative!important; height:auto!important; grid-template-columns:1fr!important; }
+          .funciones-right { display:none!important; }
+          .fn-tabs-row { display:none!important; }
+          .fn-panel { position:static!important; padding:48px 24px; border-bottom:1px solid rgba(255,255,255,.06); pointer-events:auto!important; opacity:1!important; transform:none!important; }
           /* Quien mobile carousel */
           .quien-section { display:flex!important; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:8px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
           .quien-section::-webkit-scrollbar { display:none; }
@@ -777,7 +811,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════ */}
       {/* SECCIÓN 3 — FUNCIONES (sticky scroll inmersivo)   */}
       {/* ══════════════════════════════════════════════════ */}
-      <div className="funciones-wrap funciones-section scroll-section" id="funciones">
+      <div className="funciones-wrap funciones-section" id="funciones" style={{ height: `${FUNCIONES.length * 100}svh` }}>
         <div className="funciones-sticky">
           <div className="funciones-glow" aria-hidden />
 
@@ -793,7 +827,7 @@ export default function Home() {
           {/* Panel izquierdo: texto */}
           <div className="funciones-left">
             {FUNCIONES.map((fn, i) => (
-              <div key={i} className="fn-panel funcion-item">
+              <div key={i} className={`fn-panel funcion-${i + 1}`}>
                 <span className="fn-panel-icon">{fn.icon}</span>
                 <span className="fn-panel-label" style={{ color: fn.color }}>{fn.label}</span>
                 <h2 className="fn-panel-title">{fn.title}</h2>
