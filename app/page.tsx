@@ -305,17 +305,16 @@ export default function Home() {
       })
     })
 
-    // Funciones — CSS sticky + GSAP timeline (sin pin:true — CSS maneja el sticky)
+    // Funciones — CSS sticky + GSAP opacity crossfade (sin pin:true)
     const isMobile = window.innerWidth <= 768
     if (!isMobile) {
-      const fnCount = FUNCIONES.length
+      const panels = gsap.utils.toArray<HTMLElement>('.funcion-panel')
+      const total  = panels.length
 
-      gsap.set('.fn-panel',        { opacity: 0, y: 24 })
-      gsap.set('.fn-phone-screen', { opacity: 0, x: 20 })
-      gsap.set('.funcion-1',       { opacity: 1, y: 0 })
-      gsap.set('.funcion-phone-1', { opacity: 1, x: 0 })
+      gsap.set(panels,    { opacity: 0 })
+      gsap.set(panels[0], { opacity: 1 })
 
-      const fnTl = gsap.timeline({
+      const tl = gsap.timeline({
         scrollTrigger: {
           trigger: '.funciones-wrap',
           start: 'top top',
@@ -324,30 +323,14 @@ export default function Home() {
         },
       })
 
-      for (let i = 0; i < fnCount - 1; i++) {
-        fnTl
-          .to(`.funcion-${i + 1}`,       { opacity: 0, y: -40, duration: 1 }, i)
-          .to(`.funcion-phone-${i + 1}`, { opacity: 0, x: -40, duration: 1 }, i)
-          .fromTo(`.funcion-${i + 2}`,       { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 1 }, i)
-          .fromTo(`.funcion-phone-${i + 2}`, { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 1 }, i)
-      }
-
-      ScrollTrigger.create({
-        trigger: '.funciones-wrap',
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: 1,
-        onUpdate: self => {
-          const idx = Math.min(Math.floor(self.progress * fnCount), fnCount - 1)
-          document.querySelectorAll<HTMLElement>('.fn-tab').forEach((el, i) => {
-            el.style.background  = i === idx ? FUNCIONES[i].color : 'rgba(255,255,255,0.08)'
-            el.style.color       = i === idx ? '#0F0F1A' : 'rgba(255,255,255,0.45)'
-            el.style.fontWeight  = i === idx ? '700' : '500'
-          })
-        },
+      panels.forEach((panel, i) => {
+        const segEnd = (i + 1) / total
+        tl.to(panel, { opacity: 0, duration: 0.3 }, segEnd - 0.05)
+        if (i < total - 1) {
+          tl.fromTo(panels[i + 1], { opacity: 0 }, { opacity: 1, duration: 0.3 }, segEnd - 0.05)
+        }
       })
     } else {
-      gsap.set('.fn-panel, .fn-phone-screen', { opacity: 1, x: 0, y: 0 })
       ScrollTrigger.config({ ignoreMobileResize: true })
     }
 
@@ -470,11 +453,11 @@ export default function Home() {
       <style>{`
         :root { --purple:#7C3AED; --blue:#4FACFE; --green:#40DCA5; --bg:#F5F0FF; --text:#0F0F1A; }
         *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-        html { scroll-behavior:auto!important; overflow-x:hidden; max-width:100vw; perspective:1200px; perspective-origin:center center; }
+        html { scroll-behavior:auto!important; overflow-x:hidden; max-width:100vw; }
         body { font-family:'DM Sans',sans-serif!important; background:#F5F0FF; color:#0F0F1A; overflow-x:hidden; max-width:100vw; }
 
         /* ── Scroll cinematográfico ── */
-        .scroll-section { position:relative; overflow:hidden; will-change:transform,opacity; transform-origin:center top; background-color:inherit; isolation:isolate; transform-style:preserve-3d; backface-visibility:hidden; }
+        .scroll-section { position:relative; overflow:hidden; will-change:transform,opacity; transform-origin:center top; background-color:inherit; isolation:isolate; }
         .section-bg { position:absolute; inset:-20%; width:140%; height:140%; z-index:0; pointer-events:none; }
         .section-content { position:relative; z-index:1; }
         .section-title { opacity:0; }
@@ -562,20 +545,17 @@ export default function Home() {
         .valor-title-card { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#111827; margin-bottom:10px; }
         .valor-desc { font-size:14px; color:#6B7280; line-height:1.75; }
 
-        /* ── Funciones — CSS sticky + GSAP timeline (sin pin:true) ── */
+        /* ── Funciones — CSS sticky + GSAP opacity crossfade ── */
         .funciones-wrap { background:#0F0F1A; position:relative; }
-        .funciones-sticky { position:sticky; top:0; height:100svh; overflow:hidden; display:grid; grid-template-columns:1fr 1fr; }
+        .funciones-sticky { position:sticky; top:0; height:100svh; width:100%; overflow:hidden; }
         .funciones-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 50% 60% at 30% 50%, rgba(124,58,237,.12) 0%, transparent 70%); animation:fnGlow 4s ease-in-out infinite; }
-        .fn-tabs-row { position:absolute; top:0; left:0; right:50%; display:flex; gap:8px; padding:24px 60px; flex-wrap:wrap; z-index:3; }
-        .fn-tab { font-size:12px; font-weight:500; padding:5px 12px; border-radius:999px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.45); cursor:default; transition:background .3s,color .3s,font-weight .3s; white-space:nowrap; letter-spacing:.2px; }
-        .funciones-left { position:relative; height:100%; overflow:hidden; }
-        .funciones-right { position:relative; height:100%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.02); }
-        .fn-panel { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; padding:80px 60px; pointer-events:none; }
+        .funcion-panel { position:absolute; inset:0; opacity:0; display:grid; grid-template-columns:1fr 1fr; align-items:center; padding:80px; }
+        .fn-text-col { display:flex; flex-direction:column; justify-content:center; padding-right:60px; }
+        .fn-phone-col { display:flex; align-items:center; justify-content:center; position:relative; }
         .fn-panel-icon { font-size:56px; margin-bottom:20px; display:block; }
         .fn-panel-label { font-size:12px; font-weight:700; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px; }
         .fn-panel-title { font-family:'Syne',sans-serif; font-size:clamp(1.6rem,3vw,2.4rem); font-weight:800; color:#fff; line-height:1.12; letter-spacing:-.8px; margin-bottom:16px; }
         .fn-panel-desc { font-size:15px; color:rgba(255,255,255,.6); line-height:1.8; max-width:440px; }
-        .fn-phone-screen { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
         .fn-phone-glow { position:absolute; width:300px; height:300px; border-radius:50%; filter:blur(60px); pointer-events:none; }
 
         /* ── Para quién ── */
@@ -686,10 +666,9 @@ export default function Home() {
           .kh-hero-logo { width:130px; height:130px; margin-bottom:28px; }
           /* Funciones mobile — sin sticky, lista vertical */
           .funciones-wrap { height:auto!important; }
-          .funciones-sticky { position:relative!important; height:auto!important; grid-template-columns:1fr!important; }
-          .funciones-right { display:none!important; }
-          .fn-tabs-row { display:none!important; }
-          .fn-panel { position:static!important; padding:48px 24px; border-bottom:1px solid rgba(255,255,255,.06); pointer-events:auto!important; opacity:1!important; transform:none!important; }
+          .funciones-sticky { position:relative!important; height:auto!important; overflow:visible!important; }
+          .funcion-panel { position:static!important; opacity:1!important; display:flex!important; flex-direction:column!important; padding:40px 24px!important; border-bottom:1px solid rgba(255,255,255,.06); }
+          .fn-phone-col { display:none!important; }
           /* Quien mobile carousel */
           .quien-section { display:flex!important; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:8px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
           .quien-section::-webkit-scrollbar { display:none; }
@@ -856,39 +835,16 @@ export default function Home() {
         <div className="funciones-sticky">
           <div className="funciones-glow" aria-hidden />
 
-          {/* Tabs de funciones */}
-          <div className="fn-tabs-row" aria-hidden>
-            {FUNCIONES.map((fn, i) => (
-              <div key={i} className="fn-tab" style={{ background: i === 0 ? fn.color : 'rgba(255,255,255,0.08)', color: i === 0 ? '#0F0F1A' : 'rgba(255,255,255,0.45)', fontWeight: i === 0 ? 700 : 500 }}>
-                {fn.icon} {fn.label}
-              </div>
-            ))}
-          </div>
-
-          {/* Panel izquierdo: texto */}
-          <div className="funciones-left">
-            {FUNCIONES.map((fn, i) => (
-              <div key={i} className={`fn-panel funcion-${i + 1}`}>
-                <span className="fn-panel-icon">{fn.icon}</span>
-                <span className="fn-panel-label" style={{ color: fn.color }}>{fn.label}</span>
-                <h2 className="fn-panel-title">{fn.title}</h2>
-                <p className="fn-panel-desc">{fn.desc}</p>
-                <button
-                  style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background: fn.color, color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }}
-                  onClick={() => openAuth('registro')}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform='translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow=`0 8px 24px ${fn.color}55` }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform=''; (e.currentTarget as HTMLElement).style.boxShadow='' }}
-                >
-                  Probar {fn.label} gratis →
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Panel derecho: mockups de móvil */}
-          <div className="funciones-right">
-            {/* Reservas */}
-            <div className="fn-phone-screen funcion-phone-1">
+          {/* Panel 1 — Reservas */}
+          <div className="funcion-panel">
+            <div className="fn-text-col">
+              <span className="fn-panel-icon">📅</span>
+              <span className="fn-panel-label" style={{ color:'#4FACFE' }}>Reservas</span>
+              <h2 className="fn-panel-title">Reservas automáticas 24/7</h2>
+              <p className="fn-panel-desc">Tus clientes reservan, modifican y cancelan solos. Sin llamadas, sin WhatsApps. Confirmaciones y recordatorios automáticos por WhatsApp.</p>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#4FACFE', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #4FACFE55'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Reservas gratis →</button>
+            </div>
+            <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(79,172,254,.3)' }} />
               <PhoneShell color="#4FACFE">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -899,9 +855,7 @@ export default function Home() {
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3, textAlign:'center' }}>
                     {['L','M','X','J','V','S','D'].map(d=><div key={d} style={{ fontSize:9, color:'#9CA3AF', fontWeight:600 }}>{d}</div>)}
                     {[...Array(31)].map((_,i) => (
-                      <div key={i} style={{ fontSize:10, width:22, height:22, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:6, background: [14,20,27].includes(i+1) ? 'linear-gradient(135deg,#4FACFE,#2563EB)' : 'transparent', color: [14,20,27].includes(i+1) ? '#fff' : '#374151', fontWeight: [14,20,27].includes(i+1) ? 700 : 400 }}>
-                        {i+1}
-                      </div>
+                      <div key={i} style={{ fontSize:10, width:22, height:22, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:6, background:[14,20,27].includes(i+1)?'linear-gradient(135deg,#4FACFE,#2563EB)':'transparent', color:[14,20,27].includes(i+1)?'#fff':'#374151', fontWeight:[14,20,27].includes(i+1)?700:400 }}>{i+1}</div>
                     ))}
                   </div>
                   <div style={{ background:'linear-gradient(135deg,rgba(79,172,254,.12),rgba(79,172,254,.04))', border:'1px solid rgba(79,172,254,.25)', borderRadius:12, padding:12 }}>
@@ -910,25 +864,28 @@ export default function Home() {
                     <div style={{ fontSize:10, color:'#6B7280', marginTop:2 }}>Corte + color · 60min · €45</div>
                   </div>
                   <div style={{ display:'flex', gap:6 }}>
-                    <div style={{ flex:1, background:'#F1F5F9', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
-                      <div style={{ fontSize:14, fontWeight:800, color:'#4FACFE' }}>8</div>
-                      <div style={{ fontSize:9, color:'#6B7280' }}>hoy</div>
-                    </div>
-                    <div style={{ flex:1, background:'#F1F5F9', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
-                      <div style={{ fontSize:14, fontWeight:800, color:'#111827' }}>47</div>
-                      <div style={{ fontSize:9, color:'#6B7280' }}>este mes</div>
-                    </div>
-                    <div style={{ flex:1, background:'#F1F5F9', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
-                      <div style={{ fontSize:14, fontWeight:800, color:'#16A34A' }}>2.3k€</div>
-                      <div style={{ fontSize:9, color:'#6B7280' }}>pendiente</div>
-                    </div>
+                    {[['8','hoy','#4FACFE'],['47','este mes','#111827'],['2.3k€','pendiente','#16A34A']].map(([v,l,c])=>(
+                      <div key={l} style={{ flex:1, background:'#F1F5F9', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
+                        <div style={{ fontSize:14, fontWeight:800, color:String(c) }}>{v}</div>
+                        <div style={{ fontSize:9, color:'#6B7280' }}>{l}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </PhoneShell>
             </div>
+          </div>
 
-            {/* Chatbot */}
-            <div className="fn-phone-screen funcion-phone-2">
+          {/* Panel 2 — Chatbot */}
+          <div className="funcion-panel">
+            <div className="fn-text-col">
+              <span className="fn-panel-icon">🤖</span>
+              <span className="fn-panel-label" style={{ color:'#D4C5F9' }}>Chatbot</span>
+              <h2 className="fn-panel-title">IA que trabaja mientras duermes</h2>
+              <p className="fn-panel-desc">Responde consultas, gestiona citas y cobra automáticamente en WhatsApp e Instagram. El chatbot trabaja 24/7 sin que toques el móvil.</p>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#D4C5F9', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #D4C5F955'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Chatbot gratis →</button>
+            </div>
+            <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(212,197,249,.3)' }} />
               <PhoneShell color="#D4C5F9">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:8, overflow:'hidden' }}>
@@ -939,34 +896,35 @@ export default function Home() {
                       <div style={{ fontSize:8, color:'#34D399', fontWeight:600 }}>● En línea siempre</div>
                     </div>
                   </div>
-                  {[
-                    { from:'bot', text:'¡Hola! Soy el asistente de Barbería Marcos. ¿En qué puedo ayudarte? 💈' },
-                    { from:'user', text:'Quiero reservar para mañana' },
-                    { from:'bot', text:'Perfecto 👌 Huecos disponibles:' },
-                  ].map((m,i) => (
+                  {[{from:'bot',text:'¡Hola! Soy el asistente de Barbería Marcos. ¿En qué puedo ayudarte? 💈'},{from:'user',text:'Quiero reservar para mañana'},{from:'bot',text:'Perfecto 👌 Huecos disponibles:'}].map((m,i)=>(
                     <div key={i} style={{ display:'flex', justifyContent:m.from==='user'?'flex-end':'flex-start' }}>
-                      <div style={{ background:m.from==='user'?'linear-gradient(135deg,#7C3AED,#4F46E5)':'#fff', border:m.from==='user'?'none':'1px solid #E8ECF0', borderRadius:m.from==='user'?'12px 12px 2px 12px':'12px 12px 12px 2px', padding:'7px 9px', maxWidth:'82%', fontSize:9, color:m.from==='user'?'#fff':'#374151', lineHeight:1.5 }}>
-                        {m.text}
-                      </div>
+                      <div style={{ background:m.from==='user'?'linear-gradient(135deg,#7C3AED,#4F46E5)':'#fff', border:m.from==='user'?'none':'1px solid #E8ECF0', borderRadius:m.from==='user'?'12px 12px 2px 12px':'12px 12px 12px 2px', padding:'7px 9px', maxWidth:'82%', fontSize:9, color:m.from==='user'?'#fff':'#374151', lineHeight:1.5 }}>{m.text}</div>
                     </div>
                   ))}
                   <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                    {['10:00','11:30','16:00','17:30'].map((h,i) => (
+                    {['10:00','11:30','16:00','17:30'].map((h,i)=>(
                       <div key={h} style={{ background:i===1?'linear-gradient(135deg,#7C3AED,#4F46E5)':'#fff', color:i===1?'#fff':'#4F46E5', border:i===1?'none':'1px solid #DDD6FE', borderRadius:8, padding:'4px 7px', fontSize:9, fontWeight:700 }}>{h}</div>
                     ))}
                   </div>
                   <div style={{ display:'flex', justifyContent:'flex-end' }}>
                     <div style={{ background:'linear-gradient(135deg,#7C3AED,#4F46E5)', borderRadius:'12px 12px 2px 12px', padding:'7px 9px', fontSize:9, color:'#fff' }}>Las 11:30 🙌</div>
                   </div>
-                  <div style={{ background:'#fff', border:'1px solid #E8ECF0', borderRadius:'12px 12px 12px 2px', padding:'7px 9px', fontSize:9, color:'#374151', lineHeight:1.5 }}>
-                    ✅ ¡Confirmado! Mañana 11:30. Recordatorio 1h antes.
-                  </div>
+                  <div style={{ background:'#fff', border:'1px solid #E8ECF0', borderRadius:'12px 12px 12px 2px', padding:'7px 9px', fontSize:9, color:'#374151', lineHeight:1.5 }}>✅ ¡Confirmado! Mañana 11:30. Recordatorio 1h antes.</div>
                 </div>
               </PhoneShell>
             </div>
+          </div>
 
-            {/* Facturación */}
-            <div className="fn-phone-screen funcion-phone-3">
+          {/* Panel 3 — Facturación */}
+          <div className="funcion-panel">
+            <div className="fn-text-col">
+              <span className="fn-panel-icon">🧾</span>
+              <span className="fn-panel-label" style={{ color:'#40DCA5' }}>Facturación</span>
+              <h2 className="fn-panel-title">Facturas e IVA sin gestor</h2>
+              <p className="fn-panel-desc">Facturas con IVA, modelos 303, 130 y 111 automáticos. Cumple con Hacienda sin estrés ni coste extra.</p>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#40DCA5', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #40DCA555'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Facturación gratis →</button>
+            </div>
+            <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(64,220,165,.3)' }} />
               <PhoneShell color="#40DCA5">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -974,11 +932,7 @@ export default function Home() {
                     <span style={{ fontSize:11, fontWeight:800, color:'#111827' }}>Facturas · Mayo 2026</span>
                     <span style={{ fontSize:18 }}>🧾</span>
                   </div>
-                  {[
-                    { num:'F-0045', cliente:'María G.', importe:'87,00€', iva:'103,53€', estado:'Pagada', ok:true },
-                    { num:'F-0044', cliente:'Carlos R.', importe:'45,00€', iva:'54,45€', estado:'Pendiente', ok:false },
-                    { num:'F-0043', cliente:'Ana L.', importe:'120,00€', iva:'145,20€', estado:'Pagada', ok:true },
-                  ].map((f,i) => (
+                  {[{num:'F-0045',cliente:'María G.',iva:'103,53€',estado:'Pagada',ok:true},{num:'F-0044',cliente:'Carlos R.',iva:'54,45€',estado:'Pendiente',ok:false},{num:'F-0043',cliente:'Ana L.',iva:'145,20€',estado:'Pagada',ok:true}].map((f,i)=>(
                     <div key={i} style={{ background:'#F9FAFB', borderRadius:10, padding:'10px 12px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                       <div>
                         <div style={{ fontSize:10, fontWeight:700, color:'#111827' }}>{f.num} · {f.cliente}</div>
@@ -995,9 +949,18 @@ export default function Home() {
                 </div>
               </PhoneShell>
             </div>
+          </div>
 
-            {/* Analytics */}
-            <div className="fn-phone-screen funcion-phone-4">
+          {/* Panel 4 — Analytics */}
+          <div className="funcion-panel">
+            <div className="fn-text-col">
+              <span className="fn-panel-icon">📊</span>
+              <span className="fn-panel-label" style={{ color:'#FDE9A2' }}>Analytics</span>
+              <h2 className="fn-panel-title">IA predictiva de ingresos</h2>
+              <p className="fn-panel-desc">Sabe cuánto vas a ingresar antes de que ocurra. Detecta clientes en riesgo y recomienda acciones concretas.</p>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#FDE9A2', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #FDE9A255'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Analytics gratis →</button>
+            </div>
+            <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(253,233,162,.3)' }} />
               <PhoneShell color="#FDE9A2">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -1011,12 +974,12 @@ export default function Home() {
                     <div style={{ fontSize:10, color:'#16A34A', fontWeight:700 }}>↑ +18% vs mes anterior</div>
                   </div>
                   <div style={{ display:'flex', gap:8, alignItems:'flex-end', height:60, padding:'0 4px' }}>
-                    {[40,55,45,70,62,80,75,95].map((h,i) => (
-                      <div key={i} style={{ flex:1, background:i===7?'linear-gradient(180deg,#FDE9A2,#F59E0B)':'rgba(253,233,162,.4)', borderRadius:'4px 4px 0 0', height:`${h}%`, transition:'height .3s' }} />
+                    {[40,55,45,70,62,80,75,95].map((h,i)=>(
+                      <div key={i} style={{ flex:1, background:i===7?'linear-gradient(180deg,#FDE9A2,#F59E0B)':'rgba(253,233,162,.4)', borderRadius:'4px 4px 0 0', height:`${h}%` }} />
                     ))}
                   </div>
                   <div style={{ display:'flex', gap:8 }}>
-                    {[['Reservas','47','📅','#4FACFE'],['Ingresos','2.8k','💶','#40DCA5']].map(([label,val,ico,c],i) => (
+                    {[['Reservas','47','📅','#4FACFE'],['Ingresos','2.8k','💶','#40DCA5']].map(([label,val,ico,c],i)=>(
                       <div key={i} style={{ flex:1, background:'#F9FAFB', borderRadius:10, padding:10 }}>
                         <div style={{ fontSize:16 }}>{ico}</div>
                         <div style={{ fontSize:14, fontWeight:800, color:String(c), fontFamily:'Syne,sans-serif' }}>{val}</div>
@@ -1031,9 +994,18 @@ export default function Home() {
                 </div>
               </PhoneShell>
             </div>
+          </div>
 
-            {/* Marketing */}
-            <div className="fn-phone-screen funcion-phone-5">
+          {/* Panel 5 — Marketing */}
+          <div className="funcion-panel">
+            <div className="fn-text-col">
+              <span className="fn-panel-icon">📸</span>
+              <span className="fn-panel-label" style={{ color:'#FBCFE8' }}>Marketing</span>
+              <h2 className="fn-panel-title">Posts automáticos en redes</h2>
+              <p className="fn-panel-desc">Genera y publica contenido en Instagram automáticamente. Estrategia de captación lista en segundos con IA.</p>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#FBCFE8', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #FBCFE855'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Marketing gratis →</button>
+            </div>
+            <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(251,207,232,.3)' }} />
               <PhoneShell color="#FBCFE8">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -1041,32 +1013,35 @@ export default function Home() {
                     <span style={{ fontSize:11, fontWeight:800, color:'#111827' }}>Marketing IA</span>
                     <span style={{ fontSize:18 }}>📸</span>
                   </div>
-                  <div style={{ background:'linear-gradient(135deg,#7C3AED,#4FACFE)', borderRadius:14, aspectRatio:'1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32 }}>
-                    ✂️
-                  </div>
+                  <div style={{ background:'linear-gradient(135deg,#7C3AED,#4FACFE)', borderRadius:14, aspectRatio:'1', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32 }}>✂️</div>
                   <div style={{ background:'#F9FAFB', borderRadius:10, padding:'10px 12px' }}>
-                    <div style={{ fontSize:9, color:'#111827', lineHeight:1.6 }}>
-                      <b>@barberia_marcos</b> ✨ ¡Nuevo servicio disponible! Corte + barba + arreglo de cejas por solo <b>35€</b>. Reserva ahora con un solo clic 🔗 en nuestra bio 📅
-                    </div>
+                    <div style={{ fontSize:9, color:'#111827', lineHeight:1.6 }}><b>@barberia_marcos</b> ✨ ¡Nuevo servicio disponible! Corte + barba + arreglo de cejas por solo <b>35€</b>. Reserva ahora 🔗 en nuestra bio 📅</div>
                     <div style={{ fontSize:9, color:'#4F46E5', marginTop:6 }}>#barberia #madrid #estilo #barba</div>
                   </div>
                   <div style={{ display:'flex', gap:6 }}>
                     <div style={{ flex:1, background:'linear-gradient(135deg,#7C3AED,#4F46E5)', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
-                      <div style={{ fontSize:9, color:' rgba(255,255,255,.8)' }}>Publicar ahora</div>
+                      <div style={{ fontSize:9, color:'rgba(255,255,255,.8)' }}>Publicar ahora</div>
                     </div>
                     <div style={{ flex:1, background:'#F1F5F9', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
                       <div style={{ fontSize:9, color:'#374151' }}>Programar 📅</div>
                     </div>
                   </div>
-                  <div style={{ fontSize:9, color:'#6B7280', textAlign:'center' }}>
-                    Generado por IA en <b>3 segundos</b>
-                  </div>
+                  <div style={{ fontSize:9, color:'#6B7280', textAlign:'center' }}>Generado por IA en <b>3 segundos</b></div>
                 </div>
               </PhoneShell>
             </div>
+          </div>
 
-            {/* Equipo */}
-            <div className="fn-phone-screen funcion-phone-6">
+          {/* Panel 6 — Equipo */}
+          <div className="funcion-panel">
+            <div className="fn-text-col">
+              <span className="fn-panel-icon">👥</span>
+              <span className="fn-panel-label" style={{ color:'#B8D8F8' }}>Equipo</span>
+              <h2 className="fn-panel-title">Nóminas y contratos oficiales</h2>
+              <p className="fn-panel-desc">Turnos, nóminas y contratos SEPE generados automáticamente. Sin errores, sin papel, sin gestor laboral.</p>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#B8D8F8', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #B8D8F855'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Equipo gratis →</button>
+            </div>
+            <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(184,216,248,.3)' }} />
               <PhoneShell color="#B8D8F8">
                 <div style={{ padding:'0 14px', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
@@ -1074,15 +1049,9 @@ export default function Home() {
                     <span style={{ fontSize:11, fontWeight:800, color:'#111827' }}>Equipo · semana 24</span>
                     <span style={{ fontSize:18 }}>👥</span>
                   </div>
-                  {[
-                    { nombre:'Marcos G.', rol:'Peluquero', turno:'09:00–17:00', horas:'40h', color:'#4FACFE' },
-                    { nombre:'Laura M.', rol:'Colorista', turno:'10:00–18:00', horas:'38h', color:'#D4C5F9' },
-                    { nombre:'Pedro R.', rol:'Barbero', turno:'11:00–19:00', horas:'36h', color:'#40DCA5' },
-                  ].map((p,i) => (
+                  {[{nombre:'Marcos G.',rol:'Peluquero',turno:'09:00–17:00',horas:'40h',color:'#4FACFE'},{nombre:'Laura M.',rol:'Colorista',turno:'10:00–18:00',horas:'38h',color:'#D4C5F9'},{nombre:'Pedro R.',rol:'Barbero',turno:'11:00–19:00',horas:'36h',color:'#40DCA5'}].map((p,i)=>(
                     <div key={i} style={{ display:'flex', alignItems:'center', gap:10, background:'#F9FAFB', borderRadius:10, padding:'10px 12px' }}>
-                      <div style={{ width:28, height:28, borderRadius:'50%', background:p.color+'33', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:p.color, flexShrink:0 }}>
-                        {p.nombre[0]}
-                      </div>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:p.color+'33', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:p.color, flexShrink:0 }}>{p.nombre[0]}</div>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:10, fontWeight:700, color:'#111827' }}>{p.nombre}</div>
                         <div style={{ fontSize:9, color:'#6B7280' }}>{p.rol} · {p.turno}</div>
@@ -1106,6 +1075,7 @@ export default function Home() {
               </PhoneShell>
             </div>
           </div>
+
         </div>
       </div>
 
