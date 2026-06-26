@@ -235,47 +235,28 @@ export default function Home() {
 
     // Transiciones cinematográficas — slide con profundidad
     const sections = gsap.utils.toArray<Element>('.scroll-section')
+
+    // z-index incremental: cada sección tapa a la anterior al entrar
+    sections.forEach((section: any, i) => {
+      gsap.set(section, { zIndex: i + 1 })
+    })
+
     sections.forEach((section: any, i) => {
       if (i === 0) return
-
-      // Entrada desde abajo con escala y perspectiva
       gsap.fromTo(section,
-        {
-          yPercent: 12,
-          autoAlpha: 0,
-          scale: 0.96,
-          transformOrigin: 'center bottom',
-        },
+        { yPercent: 8, autoAlpha: 0 },
         {
           yPercent: 0,
           autoAlpha: 1,
-          scale: 1,
           ease: 'power2.out',
           scrollTrigger: {
             trigger: section,
-            start: 'top 98%',
-            end: 'top 15%',
-            scrub: 1.2,
+            start: 'top 95%',
+            end: 'top 20%',
+            scrub: 1,
           },
         }
       )
-
-      // Clip-path reveal en secciones pares — transición más dramática
-      if (i % 2 === 0) {
-        gsap.fromTo(section,
-          { clipPath: 'inset(8% 0% 0% 0%)' },
-          {
-            clipPath: 'inset(0% 0% 0% 0%)',
-            ease: 'power2.out',
-            scrollTrigger: {
-              trigger: section,
-              start: 'top 90%',
-              end: 'top 10%',
-              scrub: 1,
-            },
-          }
-        )
-      }
     })
 
     // Títulos de sección — fade + blur
@@ -457,7 +438,13 @@ export default function Home() {
         body { font-family:'DM Sans',sans-serif!important; background:#F5F0FF; color:#0F0F1A; overflow-x:clip; max-width:100vw; }
 
         /* ── Scroll cinematográfico ── */
-        .scroll-section { position:relative; overflow:hidden; will-change:transform,opacity; transform-origin:center top; background-color:inherit; isolation:isolate; }
+        .scroll-section { position:relative; min-height:100svh; width:100%; overflow:clip; isolation:isolate; z-index:1; background-color:var(--section-bg, #F5F0FF); }
+        .kh-hero        { --section-bg:#F5F0FF; }
+        .valor-section  { --section-bg:#ffffff; }
+        .kh-quien       { --section-bg:#F5F0FF; }
+        .kh-planes      { --section-bg:#ffffff; }
+        .cta-section    { --section-bg:#1a1040; }
+        .kh-clients     { --section-bg:#F0FDF4; }
         .section-bg { position:absolute; inset:-20%; width:140%; height:140%; z-index:0; pointer-events:none; }
         .section-content { position:relative; z-index:1; }
         .section-title { opacity:0; }
@@ -601,7 +588,7 @@ export default function Home() {
         .kh-btn-white:hover { transform:translateY(-2px); box-shadow:0 12px 40px rgba(0,0,0,.2); }
 
         /* ── Para Clientes ── */
-        .kh-clients { padding:80px 24px; background:rgba(64,220,165,.07); text-align:center; position:relative; overflow:hidden; }
+        .kh-clients { padding:80px 24px; background:#F0FDF4; text-align:center; position:relative; overflow:clip; }
         .kh-clients-blob { position:absolute; inset:-50px; background:radial-gradient(circle at 50% 50%,rgba(64,220,165,.12) 0%,transparent 70%); pointer-events:none; }
 
         /* ── Footer ── */
