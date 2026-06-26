@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, getIP } from '../../../lib/rateLimit'
 import { geminiGenerate } from '../../../lib/gemini'
+import { registrarErrorIA } from '../../../lib/ia-errores'
 
 export async function POST(req: NextRequest) {
   const rl = rateLimit(getIP(req), 10)
   if (!rl.ok) return rl.response
 
-  const { prompt } = await req.json()
+  const { prompt, negocioId } = await req.json()
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'API key no configurada' }, { status: 500 })
+  if (!apiKey) {
+    await registrarErrorIA({ endpoint: 'marketing/generar-imagen', error: new Error('API key no configurada'), negocioId })
+    return NextResponse.json({ error: 'No se pudo generar la imagen. Inténtalo de nuevo.' }, { status: 500 })
+  }
 
   const { ok, data, triedModels } = await geminiGenerate(
     { contents: [{ parts: [{ text: prompt }] }] },
@@ -17,8 +21,8 @@ export async function POST(req: NextRequest) {
 
   if (!ok) {
     console.error('[generar-imagen] All models failed. Tried:', triedModels)
-    const msg = (data as { error?: { message?: string } })?.error?.message ?? 'Error de IA'
-    return NextResponse.json({ error: msg }, { status: 503 })
+    await registrarErrorIA({ endpoint: 'marketing/generar-imagen', error: data, negocioId })
+    return NextResponse.json({ error: 'No se pudo generar la imagen. Inténtalo de nuevo.' }, { status: 503 })
   }
 
   const d = data as { candidates?: { content?: { parts?: { text?: string; inlineData?: { data?: string; mimeType?: string } }[] } }[] }

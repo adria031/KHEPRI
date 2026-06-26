@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { getAdminDashboard } from './actions'
+import { getAdminDashboard, getAdminErroresIA, adminResolverErrorIA, type ErrorIA } from './actions'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts'
 
 const PRECIOS: Record<string, number> = { starter: 0, basico: 29.99, pro: 59.99, plus: 99.99, beta: 0 }
@@ -15,8 +15,9 @@ const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov'
 type DashboardData = Awaited<ReturnType<typeof getAdminDashboard>>
 
 export default function AdminDashboard() {
-  const [datos,     setDatos]     = useState<DashboardData | null>(null)
-  const [countdown, setCountdown] = useState(60)
+  const [datos,      setDatos]      = useState<DashboardData | null>(null)
+  const [erroresIA,  setErroresIA]  = useState<ErrorIA[]>([])
+  const [countdown,  setCountdown]  = useState(60)
   const barRef  = useRef<HTMLDivElement | null>(null)
   const lineRef = useRef<HTMLDivElement | null>(null)
   const [barW,  setBarW]  = useState(0)
@@ -28,6 +29,15 @@ export default function AdminDashboard() {
     const iv = setInterval(load, 60000)
     return () => clearInterval(iv)
   }, [])
+
+  useEffect(() => {
+    getAdminErroresIA().then(({ data }) => setErroresIA(data))
+  }, [])
+
+  async function resolverError(id: string) {
+    await adminResolverErrorIA(id)
+    setErroresIA(prev => prev.filter(e => e.id !== id))
+  }
 
   useEffect(() => {
     if (!datos) return
@@ -177,6 +187,39 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
+        </div>
+        {/* ── Errores IA ─────────────────────────────────────────────── */}
+        <div className="db-card" style={{ marginBottom: 14 }}>
+          <div className="db-card-title">
+            🚨 Errores IA sin resolver
+            <span style={{ marginLeft: 8, background: erroresIA.length > 0 ? '#FEE2E2' : '#F0FDF4', color: erroresIA.length > 0 ? '#DC2626' : '#16A34A', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100 }}>
+              {erroresIA.length}
+            </span>
+          </div>
+          {erroresIA.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9CA3AF' }}>Sin errores pendientes ✓</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {erroresIA.map(e => (
+                <div key={e.id} style={{ background: '#FFF7F7', border: '1px solid #FECACA', borderRadius: 10, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ background: '#FEE2E2', color: '#DC2626', fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 6 }}>{e.endpoint ?? '—'}</span>
+                      <span style={{ fontSize: 11, color: '#9CA3AF' }}>{new Date(e.created_at).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#374151', wordBreak: 'break-word' }}>{e.error_mensaje ?? '—'}</div>
+                    {e.negocio_id && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>negocio: {e.negocio_id}</div>}
+                  </div>
+                  <button
+                    onClick={() => resolverError(e.id)}
+                    style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 8, border: 'none', background: '#D1FAE5', color: '#065F46', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Resolver
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

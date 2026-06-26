@@ -171,6 +171,35 @@ export async function getAdminNegocioFicha(negId: string): Promise<NegocioFicha>
   return { negocio: (neg ?? {}) as Record<string, unknown>, meses, totalIngresos, totalReservas, error: null }
 }
 
+// ─── IA Errors ────────────────────────────────────────────────────────────────
+
+export type ErrorIA = {
+  id: string
+  created_at: string
+  endpoint: string | null
+  error_mensaje: string | null
+  negocio_id: string | null
+  user_id: string | null
+  resuelto: boolean
+}
+
+export async function getAdminErroresIA(): Promise<{ data: ErrorIA[]; error: string | null }> {
+  try { await verifyAdmin() } catch (e) { return { data: [], error: String(e) } }
+  const { data, error } = await sb()
+    .from('ia_errores')
+    .select('id, created_at, endpoint, error_mensaje, negocio_id, user_id, resuelto')
+    .eq('resuelto', false)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) return { data: [], error: JSON.stringify(error) }
+  return { data: (data ?? []) as ErrorIA[], error: null }
+}
+
+export async function adminResolverErrorIA(id: string): Promise<void> {
+  await verifyAdmin()
+  await sb().from('ia_errores').update({ resuelto: true }).eq('id', id)
+}
+
 // ─── Writes ───────────────────────────────────────────────────────────────────
 
 export async function adminCambiarPlan(negId: string, userId: string, plan: string, creditos: number) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { geminiGenerate } from '../../lib/gemini'
+import { registrarErrorIA } from '../../lib/ia-errores'
 
 export async function GET() {
   const KEY = process.env.GEMINI_API_KEY ?? ''
@@ -13,7 +14,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const KEY = process.env.GEMINI_API_KEY
   if (!KEY) {
-    return NextResponse.json({ error: { message: 'API key no configurada en el servidor' } }, { status: 500 })
+    await registrarErrorIA({ endpoint: 'api/gemini', error: new Error('API key no configurada') })
+    return NextResponse.json({ error: { message: 'Servicio no disponible' } }, { status: 500 })
   }
 
   const body = await req.json()
@@ -21,10 +23,13 @@ export async function POST(req: NextRequest) {
 
   if (!ok) {
     console.error('[gemini/route] All models failed. Tried:', triedModels)
-  } else if (triedModels.length > 1) {
+    await registrarErrorIA({ endpoint: 'api/gemini', error: data })
+    return NextResponse.json({ error: { message: 'Servicio temporalmente no disponible' } }, { status: 503 })
+  }
+
+  if (triedModels.length > 1) {
     console.info(`[gemini/route] Responded with fallback model: ${model}`)
   }
 
-  // Devolvemos la respuesta de Gemini tal cual — el cliente la interpreta
-  return NextResponse.json(data, { status: ok ? 200 : 429 })
+  return NextResponse.json(data)
 }

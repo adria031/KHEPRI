@@ -346,7 +346,8 @@ export default function ChatbotPage() {
         break
       }
     } catch (err: any) {
-      addMsg({ role: 'bot', text: `Error de conexión: ${err.message}`, ts: new Date() })
+      console.error('[chatbot]', err)
+      addMsg({ role: 'bot', text: 'En este momento no puedo ayudarte. Inténtalo de nuevo en unos segundos. 🙏', ts: new Date() })
     } finally {
       setEnviando(false)
       setTimeout(() => inputRef.current?.focus(), 50)

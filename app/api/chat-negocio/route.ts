@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { geminiGenerate } from '../../lib/gemini'
 import { descontarCreditos } from '../../lib/creditos'
+import { registrarErrorIA } from '../../lib/ia-errores'
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -195,7 +196,8 @@ ${LANG_INSTRUCTIONS[lang]}`
     )
 
     if (!result.ok) {
-      return NextResponse.json({ error: 'Error de IA' }, { status: 502 })
+      await registrarErrorIA({ endpoint: 'chat-negocio', error: result.data, negocioId })
+      return NextResponse.json({ error: 'En este momento no puedo ayudarte. Inténtalo de nuevo en unos segundos.' }, { status: 502 })
     }
 
     const d = result.data as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
@@ -207,6 +209,7 @@ ${LANG_INSTRUCTIONS[lang]}`
     return NextResponse.json({ respuesta })
   } catch (e) {
     console.error('[chat-negocio]', e)
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+    await registrarErrorIA({ endpoint: 'chat-negocio', error: e })
+    return NextResponse.json({ error: 'En este momento no puedo ayudarte. Inténtalo de nuevo en unos segundos.' }, { status: 500 })
   }
 }
