@@ -453,8 +453,8 @@ export default function Home() {
       <style>{`
         :root { --purple:#7C3AED; --blue:#4FACFE; --green:#40DCA5; --bg:#F5F0FF; --text:#0F0F1A; }
         *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-        html { scroll-behavior:auto!important; overflow-x:hidden; max-width:100vw; }
-        body { font-family:'DM Sans',sans-serif!important; background:#F5F0FF; color:#0F0F1A; overflow-x:hidden; max-width:100vw; }
+        html { scroll-behavior:auto!important; overflow-x:clip; max-width:100vw; }
+        body { font-family:'DM Sans',sans-serif!important; background:#F5F0FF; color:#0F0F1A; overflow-x:clip; max-width:100vw; }
 
         /* ── Scroll cinematográfico ── */
         .scroll-section { position:relative; overflow:hidden; will-change:transform,opacity; transform-origin:center top; background-color:inherit; isolation:isolate; }
