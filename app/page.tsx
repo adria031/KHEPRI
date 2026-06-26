@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from './lib/supabase'
 import { AnimatePresence } from 'framer-motion'
 import Lenis from 'lenis'
@@ -172,7 +173,8 @@ export default function Home() {
   const [authMsg, setAuthMsg]           = useState('')
   const [authIsError, setAuthIsError]   = useState(false)
   const [honeypot, setHoneypot]         = useState('')
-  const planesRef = useRef<HTMLDivElement>(null)
+  const planesRef    = useRef<HTMLDivElement>(null)
+  const regTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Lenis smooth scroll + GSAP ScrollTrigger
   useEffect(() => {
@@ -356,6 +358,10 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
+    return () => { if (regTimerRef.current) clearTimeout(regTimerRef.current) }
+  }, [])
+
+  useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') closeAuth() }
     window.addEventListener('keydown', fn)
     return () => window.removeEventListener('keydown', fn)
@@ -411,7 +417,7 @@ export default function Home() {
       else setMsg(error.message, true)
     } else {
       setMsg('¡Cuenta creada! Revisa tu email para confirmar.', false)
-      setTimeout(() => { window.location.href = window.location.origin + '/onboarding' }, 1500)
+      regTimerRef.current = setTimeout(() => { window.location.href = window.location.origin + '/onboarding' }, 1500)
     }
     setAuthLoading(false)
   }
@@ -1201,14 +1207,14 @@ export default function Home() {
           <p className="kh-section-p" style={{ margin:'10px auto 28px', maxWidth:440 }}>
             Descubre y reserva en los mejores negocios cerca de ti, con disponibilidad en tiempo real.
           </p>
-          <a
+          <Link
             href="/cliente"
             style={{ display:'inline-flex', alignItems:'center', gap:10, padding:'16px 36px', borderRadius:16, background:'linear-gradient(135deg,#40DCA5,#22C88A)', color:'#fff', fontWeight:700, fontSize:16, textDecoration:'none', boxShadow:'0 6px 28px rgba(64,220,165,.35)', transition:'transform .2s,box-shadow .2s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform='translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow='0 12px 40px rgba(64,220,165,.5)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform=''; (e.currentTarget as HTMLElement).style.boxShadow='0 6px 28px rgba(64,220,165,.35)' }}
           >
             Descubre negocios cerca de ti →
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -1234,7 +1240,7 @@ export default function Home() {
               <div className="kh-footer-tag">Estamos construyendo algo grande ✨</div>
             </div>
             <div className="kh-footer-links">
-              <a href="/cliente" className="kh-footer-a">🗺️ App para clientes</a>
+              <Link href="/cliente" className="kh-footer-a">🗺️ App para clientes</Link>
               <a href="mailto:khepriacontact@gmail.com" className="kh-footer-a">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 4H4C2.9 4 2 4.9 2 6v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z" fill="#EA4335"/></svg>
                 khepriacontact@gmail.com
