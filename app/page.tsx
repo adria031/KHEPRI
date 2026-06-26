@@ -286,14 +286,13 @@ export default function Home() {
       })
     })
 
-    // Funciones — CSS sticky + GSAP opacity crossfade (sin pin:true)
+    // Funciones — CSS sticky + GSAP autoAlpha crossfade
     const isMobile = window.innerWidth <= 768
     if (!isMobile) {
       const panels = gsap.utils.toArray<HTMLElement>('.funcion-panel')
-      const total  = panels.length
 
-      gsap.set(panels,    { opacity: 0 })
-      gsap.set(panels[0], { opacity: 1 })
+      gsap.set(panels[0],      { autoAlpha: 1, yPercent: 0 })
+      gsap.set(panels.slice(1), { autoAlpha: 0, yPercent: 8 })
 
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -304,12 +303,17 @@ export default function Home() {
         },
       })
 
-      panels.forEach((panel, i) => {
-        const segEnd = (i + 1) / total
-        tl.to(panel, { opacity: 0, duration: 0.3 }, segEnd - 0.05)
-        if (i < total - 1) {
-          tl.fromTo(panels[i + 1], { opacity: 0 }, { opacity: 1, duration: 0.3 }, segEnd - 0.05)
-        }
+      panels.forEach((panel: any, i) => {
+        if (i === panels.length - 1) return
+        tl.to(panel,
+          { autoAlpha: 0, yPercent: -8, ease: 'power2.in', duration: 0.4 },
+          i
+        )
+        tl.fromTo(panels[i + 1] as any,
+          { autoAlpha: 0, yPercent: 8 },
+          { autoAlpha: 1, yPercent: 0, ease: 'power2.out', duration: 0.4 },
+          i + 0.6
+        )
       })
     } else {
       ScrollTrigger.config({ ignoreMobileResize: true })
@@ -532,11 +536,12 @@ export default function Home() {
         .valor-title-card { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:#111827; margin-bottom:10px; }
         .valor-desc { font-size:14px; color:#6B7280; line-height:1.75; }
 
-        /* ── Funciones — CSS sticky + GSAP opacity crossfade ── */
+        /* ── Funciones — CSS sticky + GSAP crossfade ── */
         .funciones-wrap { background:#0F0F1A; position:relative; }
         .funciones-sticky { position:sticky; top:0; height:100svh; width:100%; overflow:hidden; }
         .funciones-glow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 50% 60% at 30% 50%, rgba(124,58,237,.12) 0%, transparent 70%); animation:fnGlow 4s ease-in-out infinite; }
-        .funcion-panel { position:absolute; inset:0; opacity:0; display:grid; grid-template-columns:1fr 1fr; align-items:center; padding:80px; }
+        .funciones-panels { position:relative; width:100%; height:100%; }
+        .funcion-panel { position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; align-items:center; padding:80px; }
         .fn-text-col { display:flex; flex-direction:column; justify-content:center; padding-right:60px; }
         .fn-phone-col { display:flex; align-items:center; justify-content:center; position:relative; }
         .fn-panel-icon { font-size:56px; margin-bottom:20px; display:block; }
@@ -654,7 +659,8 @@ export default function Home() {
           /* Funciones mobile — sin sticky, lista vertical */
           .funciones-wrap { height:auto!important; }
           .funciones-sticky { position:relative!important; height:auto!important; overflow:visible!important; }
-          .funcion-panel { position:static!important; opacity:1!important; display:flex!important; flex-direction:column!important; padding:40px 24px!important; border-bottom:1px solid rgba(255,255,255,.06); }
+          .funciones-panels { height:auto!important; }
+          .funcion-panel { position:static!important; opacity:1!important; visibility:visible!important; display:flex!important; flex-direction:column!important; padding:40px 24px!important; border-bottom:1px solid rgba(255,255,255,.06); }
           .fn-phone-col { display:none!important; }
           /* Quien mobile carousel */
           .quien-section { display:flex!important; overflow-x:auto; scroll-snap-type:x mandatory; gap:12px; padding-bottom:8px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
@@ -822,8 +828,10 @@ export default function Home() {
         <div className="funciones-sticky">
           <div className="funciones-glow" aria-hidden />
 
-          {/* Panel 1 — Reservas */}
-          <div className="funcion-panel">
+          <div className="funciones-panels" style={{ position:'relative', width:'100%', height:'100%' }}>
+
+          {/* Panel 0 — Reservas */}
+          <div className="funcion-panel funcion-panel-0" style={{ opacity:1, visibility:'visible' }}>
             <div className="fn-text-col">
               <span className="fn-panel-icon">📅</span>
               <span className="fn-panel-label" style={{ color:'#4FACFE' }}>Reservas</span>
@@ -863,8 +871,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Panel 2 — Chatbot */}
-          <div className="funcion-panel">
+          {/* Panel 1 — Chatbot */}
+          <div className="funcion-panel funcion-panel-1" style={{ opacity:0, visibility:'hidden' }}>
             <div className="fn-text-col">
               <span className="fn-panel-icon">🤖</span>
               <span className="fn-panel-label" style={{ color:'#D4C5F9' }}>Chatbot</span>
@@ -902,8 +910,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Panel 3 — Facturación */}
-          <div className="funcion-panel">
+          {/* Panel 2 — Facturación */}
+          <div className="funcion-panel funcion-panel-2" style={{ opacity:0, visibility:'hidden' }}>
             <div className="fn-text-col">
               <span className="fn-panel-icon">🧾</span>
               <span className="fn-panel-label" style={{ color:'#40DCA5' }}>Facturación</span>
@@ -938,8 +946,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Panel 4 — Analytics */}
-          <div className="funcion-panel">
+          {/* Panel 3 — Analytics */}
+          <div className="funcion-panel funcion-panel-3" style={{ opacity:0, visibility:'hidden' }}>
             <div className="fn-text-col">
               <span className="fn-panel-icon">📊</span>
               <span className="fn-panel-label" style={{ color:'#FDE9A2' }}>Analytics</span>
@@ -983,8 +991,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Panel 5 — Marketing */}
-          <div className="funcion-panel">
+          {/* Panel 4 — Marketing */}
+          <div className="funcion-panel funcion-panel-4" style={{ opacity:0, visibility:'hidden' }}>
             <div className="fn-text-col">
               <span className="fn-panel-icon">📸</span>
               <span className="fn-panel-label" style={{ color:'#FBCFE8' }}>Marketing</span>
@@ -1019,8 +1027,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Panel 6 — Equipo */}
-          <div className="funcion-panel">
+          {/* Panel 5 — Equipo */}
+          <div className="funcion-panel funcion-panel-5" style={{ opacity:0, visibility:'hidden' }}>
             <div className="fn-text-col">
               <span className="fn-panel-icon">👥</span>
               <span className="fn-panel-label" style={{ color:'#B8D8F8' }}>Equipo</span>
@@ -1063,6 +1071,7 @@ export default function Home() {
             </div>
           </div>
 
+          </div>{/* /funciones-panels */}
         </div>
       </div>
 
