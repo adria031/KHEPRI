@@ -325,20 +325,21 @@ export default function Equipo() {
     const dir = [negocioDatos.direccion, negocioDatos.codigo_postal, negocioDatos.ciudad].filter(Boolean).join(', ')
     let y = 0
 
-    // ── Cabecera SEPE ─────────────────────────────────────────────────────────
-    doc.setFillColor(17,24,39); doc.rect(0,0,W,34,'F')
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(9)
-    doc.text('SERVICIO PÚBLICO DE EMPLEO ESTATAL (SEPE)', mL, 11)
-    doc.setFontSize(7); doc.setFont('helvetica','normal')
-    doc.text('Ministerio de Trabajo y Economía Social · España · 2026', mL, 17)
+    // ── Cabecera Khepria ──────────────────────────────────────────────────────
+    doc.setFillColor(124,58,237); doc.rect(0,0,W,34,'F')
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16)
+    doc.text('Khepria', mL, 14)
+    doc.setFontSize(8); doc.setFont('helvetica','normal')
+    doc.text('Plataforma de gestión para negocios de servicios · khepria.app', mL, 21)
+    doc.text('Ministerio de Trabajo y Economía Social · España · 2026', mL, 27)
     doc.setFontSize(14); doc.setFont('helvetica','bold')
-    doc.text('CONTRATO DE TRABAJO', 105, 14, {align:'center'})
+    doc.text('CONTRATO DE TRABAJO', 155, 14, {align:'center'})
     doc.setFontSize(10); doc.setFont('helvetica','normal')
-    doc.text(tipoInfo?.label?.toUpperCase() || c.tipo_contrato.toUpperCase(), 105, 21, {align:'center'})
+    doc.text(tipoInfo?.label?.toUpperCase() || c.tipo_contrato.toUpperCase(), 155, 21, {align:'center'})
     doc.setFontSize(8)
-    doc.text(tipoInfo?.art || '', 105, 27, {align:'center'})
-    doc.text(`Nº contrato: KH-${c.id.slice(0,8).toUpperCase()}`, mR, 11, {align:'right'})
-    doc.text(`Fecha documento: ${fmtFecha(new Date().toISOString().split('T')[0])}`, mR, 17, {align:'right'})
+    doc.text(tipoInfo?.art || '', 155, 27, {align:'center'})
+    doc.text(`Nº: KH-${c.id.slice(0,8).toUpperCase()}`, mR, 9, {align:'right'})
+    doc.text(`Fecha: ${fmtFecha(new Date().toISOString().split('T')[0])}`, mR, 14, {align:'right'})
     y = 42
 
     // ── Identificación empresa y trabajador ───────────────────────────────────
