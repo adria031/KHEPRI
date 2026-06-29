@@ -489,6 +489,15 @@ export default function Integraciones() {
                     />
                     <span style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--ds-text2)' }}>{qrColor}</span>
                   </div>
+                  <div style={{ display: 'flex', gap: '5px', marginTop: '8px' }}>
+                    {['#1a1a2e','#7C3AED','#059669','#DC2626','#000000','#1e40af'].map(c => (
+                      <button key={c} onClick={() => setQrColor(c)} title={c} style={{
+                        width: '22px', height: '22px', borderRadius: '50%', background: c,
+                        border: qrColor === c ? '2.5px solid #6B4FD8' : '1.5px solid rgba(0,0,0,0.12)',
+                        cursor: 'pointer', padding: 0, flexShrink: 0,
+                      }}/>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ds-text2)', marginBottom: '6px', textTransform: 'uppercase' as const, letterSpacing: '0.6px' }}>
@@ -499,6 +508,15 @@ export default function Integraciones() {
                       style={{ width: '36px', height: '36px', borderRadius: '8px', border: '1.5px solid var(--ds-border)', cursor: 'pointer', padding: '2px', background: 'none' }}
                     />
                     <span style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--ds-text2)' }}>{qrBgColor}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '5px', marginTop: '8px' }}>
+                    {['#ffffff','#F8F9FF','#FFF7ED','#F0FDF4','#EFF6FF','#1a1a2e'].map(c => (
+                      <button key={c} onClick={() => setQrBgColor(c)} title={c} style={{
+                        width: '22px', height: '22px', borderRadius: '50%', background: c,
+                        border: qrBgColor === c ? '2.5px solid #6B4FD8' : '1.5px solid rgba(0,0,0,0.12)',
+                        cursor: 'pointer', padding: 0, flexShrink: 0,
+                      }}/>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -515,10 +533,18 @@ export default function Integraciones() {
                   />
                 </div>
                 {negocio?.logo_url && (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer', paddingBottom: '4px' }}>
-                    <input type="checkbox" checked={qrConLogo} onChange={e => setQrConLogo(e.target.checked)}
-                      style={{ accentColor: '#6B4FD8', width: '15px', height: '15px' }}
-                    />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', paddingBottom: '4px' }} onClick={() => setQrConLogo(v => !v)}>
+                    <div style={{
+                      width: '36px', height: '20px', borderRadius: '10px',
+                      background: qrConLogo ? '#6B4FD8' : '#D1D5DB',
+                      position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                    }}>
+                      <div style={{
+                        position: 'absolute', top: '2px', left: qrConLogo ? '18px' : '2px',
+                        width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s',
+                      }}/>
+                    </div>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ds-text2)' }}>Logo</span>
                   </label>
                 )}
