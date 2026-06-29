@@ -52,6 +52,9 @@ export default function Horarios() {
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
   const [apiError, setApiError] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
+  const [personaSeleccionada, setPersonaSeleccionada] = useState<string | null>(null)
+  const [personas, setPersonas] = useState<Array<{id:string; nombre:string; esDueno:boolean}>>([])
 
   // Calendario
   const hoy = new Date()
@@ -79,40 +82,61 @@ export default function Horarios() {
   const [blModalData, setBlModalData] = useState<BloqueoForm | null>(null)
   const [guardandoBlModal, setGuardandoBlModal] = useState(false)
 
+  const cargarHorarios = useCallback(async (nid: string, personaId: string) => {
+    const mapRows = (rows: any[]) => {
+      const map: Record<string, Horario> = {}
+      rows.forEach((h: any) => {
+        map[h.dia] = {
+          id: h.id, dia: h.dia,
+          estado: h.abierto ? (h.hora_apertura2 ? 'partido' : 'abierto') : 'cerrado',
+          apertura: h.hora_apertura || '09:00',
+          cierre: h.hora_cierre || '14:00',
+          apertura2: h.hora_apertura2 || '16:00',
+          cierre2: h.hora_cierre2 || '20:00',
+        }
+      })
+      diasSemana.forEach(d => { if (!map[d]) map[d] = defaultHorario(d) })
+      return map
+    }
+    const { data } = await supabase.from('horarios').select('*').eq('negocio_id', nid).eq('trabajador_id', personaId)
+    if (data && data.length > 0) {
+      setHorarios(mapRows(data))
+    } else {
+      const { data: base } = await supabase.from('horarios').select('*').eq('negocio_id', nid).is('trabajador_id', null)
+      setHorarios(base && base.length > 0 ? mapRows(base) : Object.fromEntries(diasSemana.map(d => [d, defaultHorario(d)])))
+    }
+  }, [])
+
   useEffect(() => {
     ;(async () => {
       const { session, db } = await getSessionClient()
       if (!session?.user) { window.location.href = '/auth'; return }
       const user = session.user
+      setUserId(user.id)
       const { activo: negocio, todos } = await getNegocioActivo(user.id, session.access_token)
       if (!negocio) { window.location.href = '/onboarding'; return }
       setNegocioId(negocio.id)
       setNegocio(negocio)
       setTodosNegocios(todos)
-      {
-        const { data } = await db.from('horarios').select('*').eq('negocio_id', negocio.id)
-        if (data && data.length > 0) {
-          const map: Record<string, Horario> = {}
-          data.forEach((h: any) => {
-            map[h.dia] = {
-              id: h.id, dia: h.dia,
-              estado: h.abierto ? (h.hora_apertura2 ? 'partido' : 'abierto') : 'cerrado',
-              apertura: h.hora_apertura || '09:00',
-              cierre: h.hora_cierre || '14:00',
-              apertura2: h.hora_apertura2 || '16:00',
-              cierre2: h.hora_cierre2 || '20:00',
-            }
-          })
-          diasSemana.forEach(d => { if (!map[d]) map[d] = defaultHorario(d) })
-          setHorarios(map)
-        }
-      }
-      const { data: twData } = await db.from('trabajadores').select('id, nombre').eq('negocio_id', negocio.id).eq('activo', true).order('nombre')
+      const [{ data: perfil }, { data: twData }] = await Promise.all([
+        db.from('profiles').select('id, nombre').eq('id', user.id).single(),
+        db.from('trabajadores').select('id, nombre').eq('negocio_id', negocio.id).eq('activo', true).order('nombre'),
+      ])
+      const personasArr: Array<{id:string; nombre:string; esDueno:boolean}> = [
+        { id: user.id, nombre: (perfil as any)?.nombre || 'Yo (propietario)', esDueno: true },
+        ...((twData || []) as TrabMin[]).map(t => ({ id: t.id, nombre: t.nombre, esDueno: false })),
+      ]
+      setPersonas(personasArr)
       if (twData) setTrabEquipo(twData as TrabMin[])
-
+      setPersonaSeleccionada(user.id)
       setCargando(false)
     })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (negocioId && personaSeleccionada) cargarHorarios(negocioId, personaSeleccionada)
+  }, [negocioId, personaSeleccionada, cargarHorarios])
 
   const cargarExcepciones = useCallback(async (nid: string, anio: number, mes: number) => {
     setCargandoCal(true)
@@ -177,12 +201,13 @@ export default function Horarios() {
   }
 
   async function guardar() {
-    if (!negocioId) return
+    if (!negocioId || !personaSeleccionada) return
     setGuardando(true); setApiError('')
     const rows = diasSemana.map(dia => {
       const h = horarios[dia]
       return {
         negocio_id: negocioId,
+        trabajador_id: personaSeleccionada,
         dia,
         abierto: h.estado !== 'cerrado',
         hora_apertura: h.apertura,
@@ -193,7 +218,7 @@ export default function Horarios() {
     })
     const { error } = await supabase
       .from('horarios')
-      .upsert(rows, { onConflict: 'negocio_id,dia' })
+      .upsert(rows, { onConflict: 'negocio_id,trabajador_id,dia' })
     if (error) {
       console.error('Error guardando horarios:', error)
       setApiError(error.message)
@@ -490,6 +515,44 @@ export default function Horarios() {
 
             {/* ── SECCIÓN: MIS HORARIOS ── */}
             {seccion === 'mios' && (<>
+
+            {/* ── SELECTOR DE PERSONA ── */}
+            {personas.length > 1 && (
+              <div style={{ marginBottom:24 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginBottom:10 }}>
+                  Ver horario de:
+                </div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {personas.map(p => (
+                    <button key={p.id}
+                      onClick={() => setPersonaSeleccionada(p.id)}
+                      style={{
+                        display:'flex', alignItems:'center', gap:8,
+                        padding:'8px 16px', borderRadius:999,
+                        border: personaSeleccionada === p.id
+                          ? '2px solid #7C3AED' : '1.5px solid #E5E7EB',
+                        background: personaSeleccionada === p.id
+                          ? 'rgba(124,58,237,0.08)' : '#fff',
+                        cursor:'pointer', fontWeight:600, fontSize:13,
+                        transition:'all 0.2s', fontFamily:'inherit',
+                      }}>
+                      <div style={{
+                        width:28, height:28, borderRadius:'50%',
+                        background: p.esDueno
+                          ? 'linear-gradient(135deg,#7C3AED,#4FACFE)'
+                          : 'linear-gradient(135deg,#40DCA5,#4FACFE)',
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        color:'#fff', fontSize:12, fontWeight:800, flexShrink:0,
+                      }}>
+                        {p.nombre?.charAt(0).toUpperCase()}
+                      </div>
+                      {p.nombre}
+                      {p.esDueno && <span style={{ fontSize:10, color:'#7C3AED' }}>👑</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ── SECCIÓN 1: HORARIO SEMANAL ── */}
             <div className="section-title">Horario semanal</div>
