@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import KhepriaLogo from '../components/KhepriaLogo'
 
 const NAV = [
   { href: '/admin',          icon: '📊', label: 'Dashboard'  },
@@ -100,13 +101,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <aside className={`admin-sidebar ${menuOpen ? 'open' : ''}`}>
           {/* Logo */}
           <div style={{ padding: '16px 14px', borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg,#B8D8F8,#D4C5F9,#B8EDD4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
-                <path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.5"/>
-                <path d="M11 6L16 11L11 16L6 11Z" fill="white" opacity="0.7"/>
-                <circle cx="11" cy="11" r="2" fill="white"/>
-              </svg>
-            </div>
+            <KhepriaLogo size={28} />
             <div>
               <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 15, color: '#111827' }}>Khepria</div>
               <span style={{ background: 'linear-gradient(135deg,#6366F1,#8B5CF6)', color: 'white', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 100, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>

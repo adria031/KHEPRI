@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { Suspense } from 'react'
 import { useTheme } from '../components/ThemeProvider'
 import { LanguageSelector } from '../components/LanguageSelector'
+import KhepriaLogo from '../components/KhepriaLogo'
 
 const MapaNegocios = dynamic(() => import('./MapaNegocios'), { ssr: false, loading: () => (
   <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#F1F5F9', color:'#94A3B8', fontSize:'14px', fontWeight:600, gap:'8px' }}>
@@ -96,13 +97,7 @@ function formatFecha(s:string){
 function Logo(){
   return(
     <div style={{display:'flex',alignItems:'center',gap:'9px'}}>
-      <div style={{width:'32px',height:'32px',borderRadius:'10px',background:'linear-gradient(135deg,#B8D8F8,#D4C5F9,#B8EDD4)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
-          <path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.5"/>
-          <path d="M11 6L16 11L11 16L6 11Z" fill="white" opacity="0.7"/>
-          <circle cx="11" cy="11" r="2" fill="white"/>
-        </svg>
-      </div>
+      <KhepriaLogo size={28} />
       <span style={{fontWeight:800,fontSize:'16px',letterSpacing:'-0.5px',color:'#0F172A'}}>Khepria</span>
     </div>
   )

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { supabase } from '../lib/supabase'
 import { sanitizeField } from '../lib/sanitize'
+import KhepriaLogo from '../components/KhepriaLogo'
 
 const HCAPTCHA_SITEKEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? '10000000-ffff-ffff-ffff-000000000001'
 
@@ -20,13 +21,7 @@ async function verifyCaptcha(token: string): Promise<boolean> {
 function KhepriLogo() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <div style={{ width: '36px', height: '36px', borderRadius: '11px', background: 'linear-gradient(135deg, #B8D8F8, #D4C5F9, #B8EDD4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
-          <path d="M11 3L19 11L11 19L3 11Z" fill="white" opacity="0.5"/>
-          <path d="M11 6L16 11L11 16L6 11Z" fill="white" opacity="0.7"/>
-          <circle cx="11" cy="11" r="2" fill="white"/>
-        </svg>
-      </div>
+      <KhepriaLogo size={32} />
       <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px', color: '#111827' }}>Khepria</span>
     </div>
   )

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from './lib/supabase'
+import KhepriaLogo from './components/KhepriaLogo'
 import { AnimatePresence } from 'framer-motion'
 import Lenis from 'lenis'
 import { gsap } from 'gsap'
@@ -700,15 +701,7 @@ export default function Home() {
       <nav className="kh-nav">
         <div className="kh-nav-inner">
           <span className="kh-logo" onClick={() => scrollTo('hero')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 2L22 12L12 22L2 12L12 2Z" fill="url(#ng1)" opacity=".9"/>
-              <path d="M12 6L18 12L12 18L6 12L12 6Z" fill="url(#ng2)" opacity=".7"/>
-              <circle cx="12" cy="12" r="2" fill="white" opacity=".9"/>
-              <defs>
-                <linearGradient id="ng1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop stopColor="#A78BFA"/><stop offset="1" stopColor="#4F46E5"/></linearGradient>
-                <linearGradient id="ng2" x1="6" y1="6" x2="18" y2="18" gradientUnits="userSpaceOnUse"><stop stopColor="#C4B5FD"/><stop offset="1" stopColor="#818CF8"/></linearGradient>
-              </defs>
-            </svg>
+            <KhepriaLogo size={22} />
             <em>Kh</em>epria
           </span>
 
@@ -1226,15 +1219,7 @@ export default function Home() {
           <div className="kh-footer-top">
             <div>
               <div className="kh-footer-logo">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M12 2L22 12L12 22L2 12L12 2Z" fill="url(#fg1)" opacity=".9"/>
-                  <path d="M12 6L18 12L12 18L6 12L12 6Z" fill="url(#fg2)" opacity=".7"/>
-                  <circle cx="12" cy="12" r="2" fill="white" opacity=".9"/>
-                  <defs>
-                    <linearGradient id="fg1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop stopColor="#A78BFA"/><stop offset="1" stopColor="#4F46E5"/></linearGradient>
-                    <linearGradient id="fg2" x1="6" y1="6" x2="18" y2="18" gradientUnits="userSpaceOnUse"><stop stopColor="#C4B5FD"/><stop offset="1" stopColor="#818CF8"/></linearGradient>
-                  </defs>
-                </svg>
+                <KhepriaLogo size={20} />
                 <em>Kh</em>epria
               </div>
               <div className="kh-footer-tag">Estamos construyendo algo grande ✨</div>
