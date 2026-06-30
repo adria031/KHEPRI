@@ -35,7 +35,14 @@ type Msg = { role: 'user' | 'bot'; text: string; ts: Date; slots?: string[] }
 type NegocioInfo = {
   id: string; nombre: string; tipo: string; descripcion: string | null
   direccion: string | null; ciudad: string | null; telefono: string | null
+  chatbot_nivel?: string | null
 }
+
+const NIVELES_CHATBOT = [
+  { id: 'solo_dudas', nombre: 'Solo responder dudas', desc: 'El chatbot informa sobre servicios, precios y horarios pero no gestiona reservas', emoji: '💬' },
+  { id: 'reservar', nombre: 'Responder y reservar', desc: 'El chatbot puede crear nuevas reservas automáticamente', emoji: '📅' },
+  { id: 'reservar_cancelar', nombre: 'Control total', desc: 'El chatbot puede crear, modificar y cancelar reservas sin intervención', emoji: '⚡' },
+]
 type ServicioInfo = { id: string; nombre: string; precio: number; duracion: number }
 type TrabajadorInfo = { id: string; nombre: string; especialidad: string | null }
 type HorarioInfo = { dia: string; abierto: boolean; apertura: string; cierre: string; apertura2: string | null; cierre2: string | null }
@@ -47,7 +54,7 @@ const DIAS_ES: Record<string, string> = {
 
 function buildSystemPrompt(
   negocio: NegocioInfo,
-  config: { nombreBot: string; bienvenida: string; tono: string },
+  config: { nombreBot: string; bienvenida: string; tono: string; nivelChatbot: string },
   horarios: HorarioInfo[],
   servicios: ServicioInfo[],
   trabajadores: TrabajadorInfo[]
@@ -108,7 +115,27 @@ ${serviciosText || '  (Sin servicios)'}
 ${trabajadoresText}
 
 == CAPACIDADES ==
-Tienes acceso a funciones para gestionar reservas. Úsalas cuando el cliente lo necesite.
+${config.nivelChatbot === 'solo_dudas'
+  ? `IMPORTANTE: Solo puedes responder dudas sobre servicios, precios, horarios y ubicación. NUNCA crees, modifiques ni canceles reservas. Si el cliente quiere reservar, dile que llame directamente al negocio${negocio.telefono ? ` al ${negocio.telefono}` : ''} o reserve en la web.`
+  : config.nivelChatbot === 'reservar'
+  ? `Puedes crear nuevas reservas cuando el cliente lo solicite. NO puedes cancelar ni modificar reservas existentes — si te lo piden, diles que contacten directamente con el negocio.
+
+== PROCESO DE RESERVA — OBLIGATORIO ==
+Cuando el usuario quiera reservar, DEBES:
+1. Preguntar qué servicio quiere si no lo ha indicado (usa los IDs de la lista de servicios)
+2. Preguntar qué día y hora prefiere
+3. Pedir nombre completo y teléfono del cliente
+4. Llamar a verificarDisponibilidad con la fecha, hora y servicio_id
+5. Si está disponible, llamar a crearReserva inmediatamente con todos los datos
+6. Confirmar al cliente con fecha, hora y nombre del servicio
+
+NUNCA digas que no puedes reservar. NUNCA pidas que llamen por teléfono para reservar.
+SIEMPRE completa la reserva usando las funciones disponibles.
+Si no hay disponibilidad, ofrece los slots_sugeridos y pregunta cuál prefiere.
+
+Si el sistema de funciones falla, responde con JSON exacto (sin texto fuera del JSON):
+{ "mensaje": "Reserva confirmada...", "accion": "crear_reserva", "datos": { "servicio_id": "...", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "cliente_nombre": "...", "cliente_telefono": "..." } }`
+  : `Tienes control total: puedes crear, modificar y cancelar reservas según lo que el cliente solicite.
 
 == PROCESO DE RESERVA — OBLIGATORIO ==
 Cuando el usuario quiera reservar, DEBES:
@@ -126,8 +153,7 @@ Si no hay disponibilidad, ofrece los slots_sugeridos y pregunta cuál prefiere.
 Si el sistema de funciones falla, responde con JSON exacto (sin texto fuera del JSON):
 { "mensaje": "Reserva confirmada...", "accion": "crear_reserva", "datos": { "servicio_id": "...", "fecha": "YYYY-MM-DD", "hora": "HH:MM", "cliente_nombre": "...", "cliente_telefono": "..." } }
 
-- Para CANCELAR: pide el teléfono, llama a buscarReservas, muestra la lista y cuando el cliente
-  confirme qué reserva cancelar, llama a cancelarReserva con el ID.
+- Para CANCELAR: pide el teléfono, llama a buscarReservas, muestra la lista y cuando el cliente confirme qué reserva cancelar, llama a cancelarReserva con el ID.`}
 
 Si no puedes ayudar con algo no relacionado con el negocio, indica que contacte directamente con ${negocio.nombre}${negocio.telefono ? ` al ${negocio.telefono}` : ''}.
 
@@ -156,8 +182,11 @@ export default function ChatbotPage() {
   const [nombreBot, setNombreBot] = useState('Asistente')
   const [bienvenida, setBienvenida] = useState('¡Hola! ¿En qué puedo ayudarte hoy?')
   const [tono, setTono] = useState<'formal' | 'amigable' | 'profesional'>('profesional')
+  const [nivelChatbot, setNivelChatbot] = useState('reservar')
   const [configGuardada, setConfigGuardada] = useState(false)
   const [guardandoConfig, setGuardandoConfig] = useState(false)
+  const [guardandoNivel, setGuardandoNivel] = useState(false)
+  const [nivelGuardado, setNivelGuardado] = useState(false)
 
   // Chat preview
   const [mensajes, setMensajes] = useState<Msg[]>([])
@@ -179,7 +208,7 @@ export default function ChatbotPage() {
       setNegocioMin(negBase)
       // Re-fetch full fields for chatbot
       const { data: neg } = await db.from('negocios')
-        .select('id, nombre, tipo, descripcion, direccion, ciudad, telefono')
+        .select('id, nombre, tipo, descripcion, direccion, ciudad, telefono, chatbot_nivel')
         .eq('id', negBase.id).single()
       if (!neg) { setCargando(false); return }
 
@@ -187,6 +216,7 @@ export default function ChatbotPage() {
       setNegocio(neg)
       setNombreBot(`Asistente de ${neg.nombre}`)
       setBienvenida(`¡Hola! Soy el asistente de ${neg.nombre}. ¿En qué puedo ayudarte?`)
+      if (neg.chatbot_nivel) setNivelChatbot(neg.chatbot_nivel)
 
       const [{ data: svcs }, { data: trabs }, { data: hors }, { data: cfg }] = await Promise.all([
         db.from('servicios').select('id, nombre, precio, duracion').eq('negocio_id', neg.id).eq('activo', true),
@@ -249,7 +279,7 @@ export default function ChatbotPage() {
     try {
       const systemPrompt = buildSystemPrompt(
         negocio,
-        { nombreBot, bienvenida, tono },
+        { nombreBot, bienvenida, tono, nivelChatbot },
         horarios, servicios, trabajadores
       )
 
@@ -366,6 +396,15 @@ export default function ChatbotPage() {
     resetChat()
   }
 
+
+  async function guardarNivelChatbot() {
+    if (!negocioId) return
+    setGuardandoNivel(true)
+    await supabase.from('negocios').update({ chatbot_nivel: nivelChatbot }).eq('id', negocioId)
+    setGuardandoNivel(false)
+    setNivelGuardado(true)
+    setTimeout(() => setNivelGuardado(false), 3000)
+  }
 
   const statsData = [
     { label: 'Conversaciones este mes', value: '—', icon: '💬' },
@@ -578,6 +617,55 @@ export default function ChatbotPage() {
                       >
                         {guardandoConfig ? 'Guardando...' : configGuardada ? '✓ Guardado' : '💾 Guardar configuración'}
                       </button>
+                    </div>
+                  </div>
+
+                  {/* 3. NIVEL DE AUTONOMÍA */}
+                  <div className="card">
+                    <div className="card-header">
+                      <div>
+                        <div className="card-title">Permisos del chatbot</div>
+                        <div className="card-sub">Define qué puede hacer tu asistente IA</div>
+                      </div>
+                    </div>
+                    <div className="card-body">
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:700, color:'#111827', marginBottom:6 }}>
+                          ¿Qué puede hacer tu chatbot?
+                        </div>
+                        <div style={{ fontSize:13, color:'#6B7280', marginBottom:16 }}>
+                          Define el nivel de autonomía de tu asistente IA
+                        </div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                          {NIVELES_CHATBOT.map(nivel => (
+                            <div key={nivel.id}
+                              onClick={() => setNivelChatbot(nivel.id)}
+                              style={{
+                                display:'flex', alignItems:'center', gap:14,
+                                padding:'14px 16px', borderRadius:14, cursor:'pointer',
+                                border: nivelChatbot === nivel.id ? '2px solid #7C3AED' : '1.5px solid #E5E7EB',
+                                background: nivelChatbot === nivel.id ? 'rgba(124,58,237,0.05)' : '#fff',
+                                transition:'all 0.2s',
+                              }}>
+                              <div style={{ fontSize:28 }}>{nivel.emoji}</div>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontSize:14, fontWeight:700, color:'#111827' }}>{nivel.nombre}</div>
+                                <div style={{ fontSize:12, color:'#9CA3AF', marginTop:2 }}>{nivel.desc}</div>
+                              </div>
+                              {nivelChatbot === nivel.id && (
+                                <div style={{ width:22, height:22, borderRadius:'50%', background:'#7C3AED', color:'#fff', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800 }}>✓</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={guardarNivelChatbot} disabled={guardandoNivel}
+                          style={{ marginTop:16, padding:'11px 20px', borderRadius:10, border:'none',
+                            background: nivelGuardado ? '#2E8A5E' : 'linear-gradient(135deg,#7C3AED,#4F46E5)',
+                            color:'#fff', fontWeight:700, fontSize:13, cursor: guardandoNivel ? 'not-allowed' : 'pointer',
+                            opacity: guardandoNivel ? 0.7 : 1 }}>
+                          {guardandoNivel ? 'Guardando...' : nivelGuardado ? '✓ Guardado' : 'Guardar configuración'}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
