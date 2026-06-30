@@ -207,14 +207,16 @@ export default function Home() {
     })
 
     // Navbar cambia a oscuro al entrar en sección funciones
+    const navToDark  = () => { gsap.to('.kh-nav', { background: 'rgba(15,15,26,0.92)', duration: 0.5 }); gsap.to('.kh-logo', { color: '#fff', duration: 0.3 }); gsap.to('.kh-hamburger span', { background: '#fff', duration: 0.3 }); gsap.to('.kh-nav-btn', { color: '#e5e7eb', duration: 0.3 }) }
+    const navToLight = () => { gsap.to('.kh-nav', { background: 'rgba(245,240,255,0.92)', duration: 0.5 }); gsap.to('.kh-logo', { color: '#111827', duration: 0.3 }); gsap.to('.kh-hamburger span', { background: '#111827', duration: 0.3 }); gsap.to('.kh-nav-btn', { color: '#374151', duration: 0.3 }) }
     ScrollTrigger.create({
       trigger: '.funciones-section',
       start: 'top 50%',
       end: 'bottom 50%',
-      onEnter:     () => gsap.to('.kh-nav', { background: 'rgba(15,15,26,0.92)', duration: 0.5 }),
-      onLeave:     () => gsap.to('.kh-nav', { background: 'rgba(245,240,255,0.92)', duration: 0.5 }),
-      onEnterBack: () => gsap.to('.kh-nav', { background: 'rgba(15,15,26,0.92)', duration: 0.5 }),
-      onLeaveBack: () => gsap.to('.kh-nav', { background: 'rgba(245,240,255,0.92)', duration: 0.5 }),
+      onEnter:     navToDark,
+      onLeave:     navToLight,
+      onEnterBack: navToDark,
+      onLeaveBack: navToLight,
     })
 
     // Hero — animaciones inmediatas

@@ -10,6 +10,14 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
+function calcularContraste(hex: string): string {
+  const h = hex.replace('#', '').padEnd(6, '0').slice(0, 6)
+  const r = parseInt(h.slice(0, 2), 16) || 0
+  const g = parseInt(h.slice(2, 4), 16) || 0
+  const b = parseInt(h.slice(4, 6), 16) || 0
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#0F0F1A' : '#ffffff'
+}
+
 function KhepriLogo() {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
@@ -356,7 +364,7 @@ export default function FichaNegocio() {
   const colorPpal     = negocio?.color_principal ?? '#7C3AED'
   const colorSec      = negocio?.color_secundario ?? '#B8D8F8'
   const colorGradient = negocio?.color_gradient ?? `linear-gradient(135deg,${colorPpal},${colorSec})`
-  const colorText     = negocio?.color_text ?? '#fff'
+  const colorText     = calcularContraste(colorPpal)
 
   // ─── Loading / Not found ───────────────────────────────────────────────────
   if (cargando) return (

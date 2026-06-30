@@ -49,6 +49,14 @@ const CATEGORIAS = [
   { id:'custom',    nombre:'Mi color',    emoji:'✏️' },
 ]
 
+function calcularContraste(hex: string): string {
+  const h = hex.replace('#', '').padEnd(6, '0').slice(0, 6)
+  const r = parseInt(h.slice(0, 2), 16) || 0
+  const g = parseInt(h.slice(2, 4), 16) || 0
+  const b = parseInt(h.slice(4, 6), 16) || 0
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#0F0F1A' : '#ffffff'
+}
+
 
 
 export default function MiNegocio() {
@@ -82,7 +90,7 @@ export default function MiNegocio() {
     seleccionarPlantilla({
       id: 'custom', nombre: 'Personalizado', tipo: 'custom',
       gradient: `linear-gradient(135deg,${colorCustom},${colorCustom2})`,
-      color: colorCustom, textColor: '#fff',
+      color: colorCustom, textColor: calcularContraste(colorCustom),
     })
   }
 
@@ -276,12 +284,13 @@ export default function MiNegocio() {
     setSavingColor(true)
     setMsgColor(null)
     const colorPrincipal = plantillaSeleccionada?.color || colorCustom
+    const colorText = plantillaSeleccionada?.textColor ?? calcularContraste(colorPrincipal)
     const { error } = await supabase.from('negocios').update({
       plantilla: plantillaActual,
       color: colorPrincipal,
       color_secundario: colorCustom2,
       color_gradient: plantillaSeleccionada?.gradient || null,
-      color_text: plantillaSeleccionada?.textColor || '#fff',
+      color_text: colorText,
       color_principal: colorPrincipal,
     }).eq('id', negocioId)
     setSavingColor(false)
