@@ -89,6 +89,7 @@ export default function Nominas() {
   const [form, setForm] = useState<NominaForm>(FORM_VACIO)
   const [guardando, setGuardando] = useState(false)
   const [apiError, setApiError] = useState('')
+  const [cargandoNomina, setCargandoNomina] = useState(false)
 
   type ChatMsg = { role: 'user' | 'ai'; text: string }
   const [chatInput, setChatInput] = useState('')
@@ -397,6 +398,31 @@ Pregunta: ${msg}`
       setChatMsgs(prev => [...prev, { role: 'ai', text: 'Error al conectar con la IA. Inténtalo de nuevo.' }])
     }
     setChatLoading(false)
+  }
+
+  async function handleSubirNomina(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCargandoNomina(true)
+    const formData = new FormData()
+    formData.append('archivo', file)
+    try {
+      const res = await fetch('/api/nominas/extraer', { method: 'POST', body: formData })
+      const datos = await res.json()
+      if (datos.error) { console.error('Error extrayendo datos:', datos.error); return }
+      setForm(prev => ({
+        ...prev,
+        salario_mensual: datos.salarioBruto || prev.salario_mensual,
+        irpf_pct: datos.irpf || prev.irpf_pct,
+        ss_trab_pct: datos.seguridadSocial || prev.ss_trab_pct,
+      }))
+      if (datos.periodo) setMes(datos.periodo + '-01')
+    } catch (error) {
+      console.error('Error subiendo nómina:', error)
+    } finally {
+      setCargandoNomina(false)
+      e.target.value = ''
+    }
   }
 
   function abrirContratoModal(trabId: string) {
@@ -820,6 +846,27 @@ Pregunta: ${msg}`
             {/* Aviso en modal */}
             <div style={{background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10, padding:'10px 12px', fontSize:12, color:'#92400E', marginBottom:14, lineHeight:1.5}}>
               ⚠️ <strong>Documento orientativo.</strong> Verifica con tu gestor antes de entregar.
+            </div>
+
+            {/* Subida de nómina con autocompletado IA */}
+            <div style={{ marginBottom:20, padding:16, background:'#F7F9FF', borderRadius:14, border:'1.5px dashed #E5E7EB' }}>
+              <div style={{ fontSize:13, fontWeight:600, color:'#374151', marginBottom:10 }}>
+                📄 ¿Tienes una nómina anterior? Súbela y rellenamos los datos automáticamente
+              </div>
+              <input type="file" accept="application/pdf,image/*" onChange={handleSubirNomina}
+                style={{ display:'none' }} id="nomina-upload" disabled={cargandoNomina} />
+              <label htmlFor="nomina-upload" style={{
+                display:'inline-flex', alignItems:'center', gap:8,
+                padding:'10px 18px', borderRadius:10, cursor: cargandoNomina ? 'not-allowed' : 'pointer',
+                background:'#fff', border:'1.5px solid #E5E7EB',
+                fontSize:13, fontWeight:600, color:'#374151',
+                opacity: cargandoNomina ? 0.6 : 1,
+              }}>
+                📎 Subir nómina (PDF o foto)
+              </label>
+              {cargandoNomina && <div style={{ marginTop:10, fontSize:12, color:'#7C3AED' }}>
+                🤖 Analizando documento...
+              </div>}
             </div>
 
             {/* Trabajador */}
