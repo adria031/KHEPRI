@@ -132,15 +132,6 @@ export default function Facturacion() {
   const [chatFiscalCargando, setChatFiscalCargando] = useState(false)
   const chatFiscalEndRef = useRef<HTMLDivElement>(null)
 
-  // Análisis sentimiento reseñas
-  const [resenasCount, setResenasCount] = useState(0)
-  const [analizandoResenas, setAnalizandoResenas] = useState(false)
-  const [analisisResenas, setAnalisisResenas] = useState<{
-    positivo:number; neutro:number; negativo:number; sentimiento:string;
-    puntosFuertes:string[]; mejorar:string[]; sugerencias:string[]
-  } | null>(null)
-  const [analisisError, setAnalisisError] = useState('')
-
   // ── Data loaders ─────────────────────────────────────────────────────────────
 
   const cargarFacturasAuto = useCallback(async (nid: string, a: number, m: number) => {
@@ -258,8 +249,6 @@ export default function Facturacion() {
       setNegocioNif(neg.nif || '')
       setNegocioFormaJuridica(neg.forma_juridica || 'autonomo')
       setNegocioRegimenIva(neg.regimen_iva || 'general')
-      const { count: rc } = await db.from('resenas').select('*', { count:'exact', head:true }).eq('negocio_id', neg.id).not('texto', 'is', null)
-      setResenasCount(rc || 0)
       await Promise.all([
         cargarFacturasAuto(neg.id, anio, mes),
         cargarGastos(neg.id, anio, mes),
@@ -879,30 +868,6 @@ Datos del negocio: "${negocioNombre}", ciudad: ${negocioDatos.ciudad || 'no espe
     setTimeout(() => chatFiscalEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
-  async function analizarSentimiento() {
-    if (!negocioId) return
-    setAnalizandoResenas(true); setAnalisisError(''); setAnalisisResenas(null)
-    const { data: resenas } = await supabase.from('resenas').select('valoracion, texto').eq('negocio_id', negocioId).not('texto', 'is', null).limit(50)
-    if (!resenas || resenas.length === 0) {
-      setAnalisisError('No hay reseñas con texto para analizar.')
-      setAnalizandoResenas(false); return
-    }
-    const texto = (resenas as {valoracion:number;texto:string}[]).map((r, i) => `${i+1}. [${r.valoracion}★] "${r.texto}"`).join('\n')
-    const prompt = `Analiza estas ${resenas.length} reseñas de "${negocioNombre}" y responde SOLO con JSON válido (sin markdown):
-{"positivo":<0-100>,"neutro":<0-100>,"negativo":<0-100>,"sentimiento":"<excelente|muy bueno|bueno|regular|necesita mejoras>","puntosFuertes":["...","...","..."],"mejorar":["...","..."],"sugerencias":["acción concreta 1","acción concreta 2","acción concreta 3"]}
-Los porcentajes deben sumar exactamente 100. Basa los puntos en el texto real de las reseñas.
-RESEÑAS:\n${texto}`
-    try {
-      const raw = await llamarGeminiFiscal([{ role:'user', parts:[{ text: prompt }] }], '')
-      const m = raw.match(/\{[\s\S]*\}/)
-      if (!m) throw new Error('No JSON')
-      setAnalisisResenas(JSON.parse(m[0]))
-      // Descontar 3 créditos por análisis de sentimiento
-      descontarCreditos(negocioId, 3, 'analisis_resena').catch(() => {})
-    } catch { setAnalisisError('No se pudo analizar. Inténtalo de nuevo.') }
-    setAnalizandoResenas(false)
-  }
-
   // ── JSX ──────────────────────────────────────────────────────────────────────
 
   return (
@@ -1052,25 +1017,6 @@ RESEÑAS:\n${texto}`
         .chat-send-btn { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#1D4ED8,#6B4FD8); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform 0.15s; }
         .chat-send-btn:hover { transform:scale(1.08); }
         .chat-send-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
-        /* ── SENTIMENT ── */
-        .sentiment-card { background:white; border:1px solid var(--border); border-radius:18px; padding:24px; margin-bottom:24px; }
-        .sentiment-bars { display:flex; flex-direction:column; gap:10px; margin:18px 0; }
-        .sentiment-bar-row { display:flex; align-items:center; gap:10px; }
-        .sentiment-bar-label { width:80px; font-size:13px; font-weight:600; color:var(--text2); flex-shrink:0; }
-        .sentiment-bar-track { flex:1; height:10px; border-radius:100px; background:var(--bg); overflow:hidden; }
-        .sentiment-bar-fill { height:100%; border-radius:100px; transition:width 0.6s ease; }
-        .sentiment-bar-pct { width:36px; font-size:12px; font-weight:700; text-align:right; flex-shrink:0; }
-        .sentiment-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:100px; font-size:13px; font-weight:700; margin-bottom:10px; }
-        .sentiment-list { list-style:none; display:flex; flex-direction:column; gap:6px; margin-top:6px; }
-        .sentiment-list li { display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--text2); line-height:1.5; }
-        .sentiment-list li::before { content:''; width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:6px; }
-        .sentiment-list.fuerte li::before { background:#10B981; }
-        .sentiment-list.mejorar li::before { background:#F59E0B; }
-        .sentiment-list.suger li::before { background:#1D4ED8; }
-        .sentiment-section-title { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; margin-top:16px; }
-        .btn-analizar { display:flex; align-items:center; gap:8px; padding:11px 20px; background:linear-gradient(135deg,#1D4ED8,#6B4FD8); color:white; border:none; border-radius:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
-        .btn-analizar:hover:not(:disabled) { opacity:0.88; }
-        .btn-analizar:disabled { background:var(--muted); cursor:not-allowed; }
         @media (max-width: 768px) {
           .chat-panel { width:calc(100vw - 32px); right:16px; bottom:88px; }
           .chat-fab { bottom:20px; right:16px; }
@@ -1708,94 +1654,6 @@ RESEÑAS:\n${texto}`
           </div>
         </div>
       )}
-
-      {/* ── ANÁLISIS SENTIMIENTO RESEÑAS ── */}
-      <div className="section-block">
-        <div className="section-header">
-          <div>
-            <div className="section-title">Análisis de reseñas con IA</div>
-            <div className="section-sub">Gemini analiza el tono y sentimiento de tus {resenasCount} reseña{resenasCount !== 1 ? 's' : ''}</div>
-          </div>
-        </div>
-        {!analisisResenas && !analizandoResenas && (
-          <div className="sentiment-card" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, flexWrap:'wrap'}}>
-            <div>
-              <div style={{fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:4}}>¿Qué dicen tus clientes?</div>
-              <div style={{fontSize:13, color:'var(--muted)'}}>Detecta puntos fuertes, áreas de mejora y acciones concretas a partir de tus reseñas.</div>
-            </div>
-            <button
-              className="btn-analizar"
-              onClick={analizarSentimiento}
-              disabled={analizandoResenas || resenasCount === 0}
-            >
-              {resenasCount === 0 ? '0 reseñas' : '✨ Analizar reseñas'}
-            </button>
-          </div>
-        )}
-        {analizandoResenas && (
-          <div className="sentiment-card" style={{display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:36}}>
-            <div className="spinner" />
-            <div style={{fontSize:14, fontWeight:700}}>Analizando {resenasCount} reseñas con Gemini...</div>
-          </div>
-        )}
-        {analisisError && (
-          <div style={{padding:'12px 16px', background:'rgba(254,226,226,0.5)', border:'1px solid #FCA5A5', borderRadius:12, fontSize:13, color:'#DC2626', marginBottom:12}}>
-            {analisisError}
-          </div>
-        )}
-        {analisisResenas && (
-          <div className="sentiment-card">
-            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
-              <span className="sentiment-badge" style={{
-                background: analisisResenas.sentimiento === 'excelente' || analisisResenas.sentimiento === 'muy bueno' ? '#D1FAE5' : analisisResenas.sentimiento === 'bueno' ? '#DBEAFE' : '#FEF3C7',
-                color: analisisResenas.sentimiento === 'excelente' || analisisResenas.sentimiento === 'muy bueno' ? '#065F46' : analisisResenas.sentimiento === 'bueno' ? '#1D4ED8' : '#92400E',
-              }}>
-                {analisisResenas.sentimiento === 'excelente' ? '🏆' : analisisResenas.sentimiento === 'muy bueno' ? '⭐' : analisisResenas.sentimiento === 'bueno' ? '👍' : '💡'} Sentimiento general: {analisisResenas.sentimiento}
-              </span>
-              <button onClick={() => { setAnalisisResenas(null); setAnalisisError('') }} style={{background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14, fontWeight:600}}>Nuevo análisis</button>
-            </div>
-            <div className="sentiment-bars">
-              {[
-                { label:'Positivo', pct: analisisResenas.positivo, color:'#10B981' },
-                { label:'Neutro',   pct: analisisResenas.neutro,   color:'#F59E0B' },
-                { label:'Negativo', pct: analisisResenas.negativo,  color:'#EF4444' },
-              ].map(b => (
-                <div key={b.label} className="sentiment-bar-row">
-                  <span className="sentiment-bar-label">{b.label}</span>
-                  <div className="sentiment-bar-track">
-                    <div className="sentiment-bar-fill" style={{width:`${b.pct}%`, background:b.color}} />
-                  </div>
-                  <span className="sentiment-bar-pct" style={{color:b.color}}>{b.pct}%</span>
-                </div>
-              ))}
-            </div>
-            {analisisResenas.puntosFuertes?.length > 0 && (
-              <>
-                <div className="sentiment-section-title">Puntos fuertes</div>
-                <ul className="sentiment-list fuerte">
-                  {analisisResenas.puntosFuertes.map((p, i) => <li key={i}>{p}</li>)}
-                </ul>
-              </>
-            )}
-            {analisisResenas.mejorar?.length > 0 && (
-              <>
-                <div className="sentiment-section-title">Áreas de mejora</div>
-                <ul className="sentiment-list mejorar">
-                  {analisisResenas.mejorar.map((p, i) => <li key={i}>{p}</li>)}
-                </ul>
-              </>
-            )}
-            {analisisResenas.sugerencias?.length > 0 && (
-              <>
-                <div className="sentiment-section-title">Acciones sugeridas</div>
-                <ul className="sentiment-list suger">
-                  {analisisResenas.sugerencias.map((p, i) => <li key={i}>{p}</li>)}
-                </ul>
-              </>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* ── CHAT FAB ── */}
       <button className="chat-fab" onClick={abrirChatFiscal} title="Asistente fiscal IA">💼</button>
