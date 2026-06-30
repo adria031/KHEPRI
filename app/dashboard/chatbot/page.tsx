@@ -234,7 +234,8 @@ export default function ChatbotPage() {
   }, [])
 
   function seleccionarSlot(slot: string) {
-    enviarMensaje(slot)
+    console.log('Slot seleccionado:', slot)
+    enviarMensaje(`Confirmo la hora ${slot}`)
   }
 
   async function enviarMensaje(textoOverride?: string) {
