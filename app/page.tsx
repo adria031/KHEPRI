@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from './lib/supabase'
 import KhepriaLogo from './components/KhepriaLogo'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import Lenis from 'lenis'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -12,12 +12,54 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 // ── DATA ──────────────────────────────────────────────────────────────────────
 
 const FUNCIONES = [
-  { icon: '📅', label: 'Reservas',     title: 'Reservas automáticas 24/7',       desc: 'Tus clientes reservan, modifican y cancelan solos. Sin llamadas, sin WhatsApps. Confirmaciones y recordatorios automáticos por WhatsApp.', color: '#4FACFE' },
-  { icon: '🤖', label: 'Chatbot',      title: 'IA que trabaja mientras duermes', desc: 'Responde consultas, gestiona citas y cobra automáticamente en WhatsApp e Instagram. El chatbot trabaja 24/7 sin que toques el móvil.', color: '#D4C5F9' },
-  { icon: '🧾', label: 'Facturación',  title: 'Facturas e IVA sin gestor',       desc: 'Facturas con IVA, modelos 303, 130 y 111 automáticos. Cumple con Hacienda sin estrés ni coste extra.',       color: '#40DCA5' },
-  { icon: '📊', label: 'Analytics',    title: 'IA predictiva de ingresos',       desc: 'Sabe cuánto vas a ingresar antes de que ocurra. Detecta clientes en riesgo y recomienda acciones concretas.',  color: '#FDE9A2' },
-  { icon: '📸', label: 'Marketing',    title: 'Posts automáticos en redes',      desc: 'Genera y publica contenido en Instagram automáticamente. Estrategia de captación lista en segundos con IA.',     color: '#FBCFE8' },
-  { icon: '👥', label: 'Equipo',       title: 'Nóminas y contratos oficiales',   desc: 'Turnos, nóminas y contratos SEPE generados automáticamente. Sin errores, sin papel, sin gestor laboral.',        color: '#B8D8F8' },
+  {
+    icon: '📅', color: '#4FACFE',
+    titulo: 'Reservas automáticas 24/7',
+    resumen: 'Tus clientes reservan, modifican y cancelan solos.',
+    detalle: 'A diferencia de Calendly o Booksy, Khepria entiende el contexto de tu negocio. Si un cliente cancela, el hueco se ofrece automáticamente a la lista de espera. El sistema ajusta franjas horarias según la duración real de cada servicio sin que tengas que configurar nada manualmente.',
+    diferenciador: 'Sincronización en tiempo real con tu agenda. Sin dobles reservas, nunca.',
+    ejemplo: 'Marcos de Barbería Marcos recibe 12 reservas mientras duerme. Su agenda de mañana ya está completa antes de abrir la persiana.',
+  },
+  {
+    icon: '🤖', color: '#D4C5F9',
+    titulo: 'Chatbot IA WhatsApp e Instagram',
+    resumen: 'Responde consultas y gestiona reservas 24/7.',
+    detalle: 'No es un chatbot genérico con respuestas predefinidas. Khepria conecta tu IA directamente con tu agenda real, tus servicios y tus precios. Entiende el lenguaje natural de tus clientes y puede mantener conversaciones complejas sin perder el contexto.',
+    diferenciador: 'Tú decides su autonomía: solo informar, reservar, o control total.',
+    ejemplo: 'Un cliente escribe a las 23h preguntando por hueco para mañana. El chatbot responde, ofrece horarios y confirma la cita sin que nadie del negocio esté despierto.',
+  },
+  {
+    icon: '🧾', color: '#40DCA5',
+    titulo: 'Facturación e IVA automático',
+    resumen: 'Facturas y modelos fiscales generados solos.',
+    detalle: 'Cada reserva completada genera automáticamente su factura con IVA correctamente calculado. Los modelos 303, 130 y 111 se preparan trimestralmente listos para presentar, con todos los datos ya estructurados.',
+    diferenciador: 'Cero hojas de cálculo. Cero gestor para lo básico.',
+    ejemplo: 'A final de trimestre, Laia descarga su modelo 303 ya relleno en lugar de pasar una tarde reuniendo facturas sueltas.',
+  },
+  {
+    icon: '📊', color: '#FDE9A2',
+    titulo: 'Analytics con IA predictiva',
+    resumen: 'Predicciones de ingresos antes de que ocurran.',
+    detalle: 'El sistema aprende de tu histórico de reservas para predecir ingresos futuros, detectar clientes en riesgo de abandono y recomendarte cuándo activar promociones según patrones reales de tu negocio.',
+    diferenciador: 'No solo muestra datos del pasado — anticipa el futuro de tu negocio.',
+    ejemplo: 'La IA detecta que los martes tienen baja ocupación constante y sugiere un descuento automático que recupera un 15% de reservas perdidas.',
+  },
+  {
+    icon: '📸', color: '#FBCFE8',
+    titulo: 'Marketing IA automático',
+    resumen: 'Posts para Instagram generados con IA.',
+    detalle: 'Genera contenido visual y textos optimizados para tus redes sociales basándose en tu identidad de marca, tus servicios destacados y las tendencias de tu sector. Sin necesidad de diseñador ni community manager.',
+    diferenciador: 'De idea a publicación lista en menos de un minuto.',
+    ejemplo: 'Carlos necesita un post para el viernes. Khepria genera 3 opciones con imagen y texto basadas en su última promoción, listas para publicar.',
+  },
+  {
+    icon: '👥', color: '#B8D8F8',
+    titulo: 'Equipo, nóminas y contratos',
+    resumen: 'Turnos, nóminas y contratos SEPE en un click.',
+    detalle: 'Gestiona empleados, asigna turnos y genera nóminas mensuales con cálculos de IRPF y Seguridad Social automáticos. Los contratos SEPE oficiales se generan rellenos con los datos del trabajador.',
+    diferenciador: 'Sube un contrato anterior y la IA rellena todo el formulario sola.',
+    ejemplo: 'Sofía contrata a su primer empleado y genera el contrato SEPE completo en 5 minutos sin saber nada de leyes laborales.',
+  },
 ]
 
 const QUIENES = [
@@ -173,6 +215,7 @@ export default function Home() {
   const [authLoading, setAuthLoading]   = useState(false)
   const [authMsg, setAuthMsg]           = useState('')
   const [authIsError, setAuthIsError]   = useState(false)
+  const [modalFuncion, setModalFuncion] = useState<typeof FUNCIONES[0] | null>(null)
   const [honeypot, setHoneypot]         = useState('')
   const planesRef    = useRef<HTMLDivElement>(null)
   const regTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -838,7 +881,7 @@ export default function Home() {
               <span className="fn-panel-label" style={{ color:'#4FACFE' }}>Reservas</span>
               <h2 className="fn-panel-title">Reservas automáticas 24/7</h2>
               <p className="fn-panel-desc">Tus clientes reservan, modifican y cancelan solos. Sin llamadas, sin WhatsApps. Confirmaciones y recordatorios automáticos por WhatsApp.</p>
-              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#4FACFE', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #4FACFE55'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Reservas gratis →</button>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#4FACFE', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => setModalFuncion(FUNCIONES[0])} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #4FACFE55'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Más información →</button>
             </div>
             <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(79,172,254,.3)' }} />
@@ -879,7 +922,7 @@ export default function Home() {
               <span className="fn-panel-label" style={{ color:'#D4C5F9' }}>Chatbot</span>
               <h2 className="fn-panel-title">IA que trabaja mientras duermes</h2>
               <p className="fn-panel-desc">Responde consultas, gestiona citas y cobra automáticamente en WhatsApp e Instagram. El chatbot trabaja 24/7 sin que toques el móvil.</p>
-              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#D4C5F9', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #D4C5F955'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Chatbot gratis →</button>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#D4C5F9', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => setModalFuncion(FUNCIONES[1])} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #D4C5F955'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Más información →</button>
             </div>
             <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(212,197,249,.3)' }} />
@@ -918,7 +961,7 @@ export default function Home() {
               <span className="fn-panel-label" style={{ color:'#40DCA5' }}>Facturación</span>
               <h2 className="fn-panel-title">Facturas e IVA sin gestor</h2>
               <p className="fn-panel-desc">Facturas con IVA, modelos 303, 130 y 111 automáticos. Cumple con Hacienda sin estrés ni coste extra.</p>
-              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#40DCA5', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #40DCA555'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Facturación gratis →</button>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#40DCA5', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => setModalFuncion(FUNCIONES[2])} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #40DCA555'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Más información →</button>
             </div>
             <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(64,220,165,.3)' }} />
@@ -954,7 +997,7 @@ export default function Home() {
               <span className="fn-panel-label" style={{ color:'#FDE9A2' }}>Analytics</span>
               <h2 className="fn-panel-title">IA predictiva de ingresos</h2>
               <p className="fn-panel-desc">Sabe cuánto vas a ingresar antes de que ocurra. Detecta clientes en riesgo y recomienda acciones concretas.</p>
-              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#FDE9A2', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #FDE9A255'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Analytics gratis →</button>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#FDE9A2', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => setModalFuncion(FUNCIONES[3])} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #FDE9A255'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Más información →</button>
             </div>
             <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(253,233,162,.3)' }} />
@@ -999,7 +1042,7 @@ export default function Home() {
               <span className="fn-panel-label" style={{ color:'#FBCFE8' }}>Marketing</span>
               <h2 className="fn-panel-title">Posts automáticos en redes</h2>
               <p className="fn-panel-desc">Genera y publica contenido en Instagram automáticamente. Estrategia de captación lista en segundos con IA.</p>
-              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#FBCFE8', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #FBCFE855'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Marketing gratis →</button>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#FBCFE8', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => setModalFuncion(FUNCIONES[4])} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #FBCFE855'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Más información →</button>
             </div>
             <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(251,207,232,.3)' }} />
@@ -1035,7 +1078,7 @@ export default function Home() {
               <span className="fn-panel-label" style={{ color:'#B8D8F8' }}>Equipo</span>
               <h2 className="fn-panel-title">Nóminas y contratos oficiales</h2>
               <p className="fn-panel-desc">Turnos, nóminas y contratos SEPE generados automáticamente. Sin errores, sin papel, sin gestor laboral.</p>
-              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#B8D8F8', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => openAuth('registro')} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #B8D8F855'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Probar Equipo gratis →</button>
+              <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#B8D8F8', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => setModalFuncion(FUNCIONES[5])} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #B8D8F855'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Más información →</button>
             </div>
             <div className="fn-phone-col">
               <div className="fn-phone-glow" style={{ background:'rgba(184,216,248,.3)' }} />
@@ -1331,6 +1374,47 @@ export default function Home() {
                 </>
               )}
             </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL FUNCIÓN ── */}
+      <AnimatePresence>
+        {modalFuncion && (
+          <div className="kh-overlay" onClick={e => { if (e.target === e.currentTarget) setModalFuncion(null) }}>
+            <motion.div className="kh-modal"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              style={{ maxWidth: 560 }}>
+              <button className="kh-modal-close" onClick={() => setModalFuncion(null)}>✕</button>
+
+              <div style={{ fontSize: 40, marginBottom: 16 }}>{modalFuncion.icon}</div>
+              <h3 style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800, color: '#0F0F1A', marginBottom: 12 }}>
+                {modalFuncion.titulo}
+              </h3>
+              <p style={{ fontSize: 15, color: '#4B5563', lineHeight: 1.7, marginBottom: 20 }}>
+                {modalFuncion.detalle}
+              </p>
+
+              <div style={{ background: 'rgba(124,58,237,0.06)', borderRadius: 14, padding: '16px 18px', marginBottom: 16, borderLeft: '3px solid #7C3AED' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#7C3AED', marginBottom: 6 }}>⚡ LO QUE NOS DIFERENCIA</div>
+                <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.6, margin: 0 }}>{modalFuncion.diferenciador}</p>
+              </div>
+
+              <div style={{ background: '#F7F9FF', borderRadius: 14, padding: '16px 18px' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280', marginBottom: 6 }}>💡 EN LA PRÁCTICA</div>
+                <p style={{ fontSize: 14, color: '#4B5563', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+                  "{modalFuncion.ejemplo}"
+                </p>
+              </div>
+
+              <button onClick={() => { setModalFuncion(null); openAuth('registro') }}
+                style={{ width: '100%', marginTop: 20, padding: 14, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Empezar gratis →
+              </button>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
