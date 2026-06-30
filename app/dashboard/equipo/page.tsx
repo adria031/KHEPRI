@@ -109,6 +109,7 @@ export default function Equipo() {
     categoria:'', empresa_cif:'', empresa_representante:'',
   })
   const [guardandoContrato, setGuardandoContrato] = useState(false)
+  const [cargandoContrato, setCargandoContrato] = useState(false)
 
   // Estadísticas por trabajador
   type StatsRow = { trabajador_id: string; estado: string; precio: number | null; fecha: string }
@@ -183,6 +184,36 @@ export default function Equipo() {
   }
 
   function cerrarModal() { setModal(false); setFotoArchivo(null); setFotoPreview(null) }
+
+  async function handleSubirContrato(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCargandoContrato(true)
+    try {
+      const fd = new FormData()
+      fd.append('contrato', file)
+      const res = await fetch('/api/equipo/extraer-contrato', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (json.datos) {
+        const d = json.datos
+        setForm(f => ({
+          ...f,
+          nombre: d.nombre || f.nombre,
+          dni: d.dni || f.dni,
+          direccion: d.direccion || f.direccion,
+          email: d.email || f.email,
+          telefono: d.telefono || f.telefono,
+          tipo_contrato: d.tipo_contrato || f.tipo_contrato,
+          fecha_inicio: d.fecha_inicio || f.fecha_inicio,
+          salario_anual: d.salario_anual || f.salario_anual,
+          num_pagas: d.num_pagas || f.num_pagas,
+        }))
+      }
+    } finally {
+      setCargandoContrato(false)
+      e.target.value = ''
+    }
+  }
 
   async function subirFoto(file: File): Promise<string | null> {
     if (!negocioId) return null
@@ -797,6 +828,30 @@ export default function Equipo() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) cerrarModal() }}>
           <div className="modal">
             <div className="modal-title">{editando ? 'Editar miembro' : 'Nuevo miembro'}</div>
+
+            {/* ── Subida de contrato con autocompletado IA ── */}
+            <div style={{ background:'#F5F3FF', border:'1.5px dashed #C4B5FD', borderRadius:12, padding:'14px 18px', marginBottom:18, display:'flex', alignItems:'center', gap:14 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'#6B4FD8', marginBottom:4 }}>
+                  ✨ Autocompletar con contrato
+                </div>
+                <div style={{ fontSize:12, color:'#7C6A9E' }}>
+                  Sube el PDF o imagen del contrato y la IA rellenará los campos automáticamente.
+                </div>
+              </div>
+              <label style={{ cursor: cargandoContrato ? 'not-allowed' : 'pointer', flexShrink:0 }}>
+                <input type="file" accept=".pdf,image/*" style={{ display:'none' }} onChange={handleSubirContrato} disabled={cargandoContrato} />
+                <span style={{
+                  display:'inline-flex', alignItems:'center', gap:6,
+                  padding:'8px 16px', borderRadius:8,
+                  background: cargandoContrato ? '#DDD6FE' : 'linear-gradient(135deg,#6B4FD8,#4F46E5)',
+                  color:'white', fontSize:13, fontWeight:700,
+                  pointerEvents: cargandoContrato ? 'none' : 'auto',
+                }}>
+                  {cargandoContrato ? '⏳ Analizando...' : '📄 Subir contrato'}
+                </span>
+              </label>
+            </div>
 
             <div className="section-label">Información básica</div>
             <div className="field">
