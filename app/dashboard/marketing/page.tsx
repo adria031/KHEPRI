@@ -656,13 +656,22 @@ Devuelve SOLO JSON sin markdown:
         const finalW   = 1080
         const finalH   = isHistoria ? 1920 : 1080
 
-        // Fuerza dimensiones exactas antes de capturar
+        // Fuerza dimensiones y posición fuera de pantalla
+        // overflow:visible para que html2canvas capture el contenido completo sin recortar
+        const prevStyles = {
+          width:    element.style.width,
+          height:   element.style.height,
+          position: element.style.position,
+          left:     element.style.left,
+          top:      element.style.top,
+          overflow: element.style.overflow,
+        }
         element.style.width    = `${captureW}px`
         element.style.height   = `${captureH}px`
         element.style.position = 'fixed'
         element.style.left     = '-9999px'
         element.style.top      = '0'
-        element.style.overflow = 'hidden'
+        element.style.overflow = 'visible'
 
         await document.fonts.ready
         await new Promise(r => setTimeout(r, 1200))
@@ -681,6 +690,9 @@ Devuelve SOLO JSON sin markdown:
           y: 0,
         })
 
+        // Restaura estilos originales del elemento
+        Object.assign(element.style, prevStyles)
+
         // Escala al tamaño final exacto
         const finalCanvas = document.createElement('canvas')
         finalCanvas.width  = finalW
@@ -691,7 +703,9 @@ Devuelve SOLO JSON sin markdown:
         const link = document.createElement('a')
         link.download = `khepria-${formato}-${Date.now()}.png`
         link.href = finalCanvas.toDataURL('image/png')
+        document.body.appendChild(link)
         link.click()
+        document.body.removeChild(link)
         break
       } catch {
         intentos++
