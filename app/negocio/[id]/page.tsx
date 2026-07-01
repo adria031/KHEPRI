@@ -274,23 +274,10 @@ export default function FichaNegocio() {
         body: JSON.stringify({ messages: nuevos, negocioId: id, idioma: chatIdioma, fecha: new Date().toLocaleDateString('es-ES') }),
       })
       const data = await res.json()
-      const respuesta: string = data.respuesta ?? 'Lo siento, hubo un error.'
-      setMensajes(prev => [...prev, { rol: 'bot', texto: respuesta }])
-
-      // Auto-ejecutar reserva cuando el bot genera un bloque [RESERVA:{...}]
-      const reservaIdx = respuesta.indexOf('[RESERVA:')
-      if (reservaIdx !== -1 && !reservaConfirmada) {
-        const jsonStart = reservaIdx + '[RESERVA:'.length
-        const jsonEnd = respuesta.indexOf(']', jsonStart)
-        if (jsonEnd !== -1) {
-          try {
-            const datos = JSON.parse(respuesta.slice(jsonStart, jsonEnd))
-            if (datos.nombre && datos.telefono && datos.servicio && datos.fecha && datos.hora) {
-              await crearReservaChatbot(datos)
-            }
-          } catch { /* JSON inválido, el confirm button manual servirá de fallback */ }
-        }
-      }
+      // El endpoint ya procesa [RESERVA:...] server-side; filtrar cualquier resto como seguridad
+      const mensajeRaw: string = data.mensaje ?? data.respuesta ?? 'Lo siento, hubo un error.'
+      const mensajeMostrado = mensajeRaw.replace(/\[RESERVA:.*?\]/gs, '').trim()
+      setMensajes(prev => [...prev, { rol: 'bot', texto: mensajeMostrado || mensajeRaw }])
     } catch {
       setMensajes(prev => [...prev, { rol: 'bot', texto: 'Error de conexión.' }])
     }
@@ -298,36 +285,33 @@ export default function FichaNegocio() {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
-  async function crearReservaChatbot(datos: { nombre:string; telefono:string; servicio:string; trabajador:string; fecha:string; hora:string }) {
+  async function crearReservaChatbot(datos: { nombre:string; email:string; servicio:string; trabajador:string; fecha:string; hora:string }) {
     const servMatch = servicios.find(s => s.nombre.toLowerCase().includes(datos.servicio.toLowerCase()) || datos.servicio.toLowerCase().includes(s.nombre.toLowerCase()))
     const trabMatch = datos.trabajador && datos.trabajador !== 'cualquiera'
       ? trabajadores.find(t => t.nombre.toLowerCase().includes(datos.trabajador.toLowerCase()))
       : null
 
-    // Vincular la reserva al perfil del cliente por teléfono
-    let clienteEmail: string | null = null
+    // Vincular la reserva al perfil del cliente por email
     let clienteUserId: string | null = null
-    if (datos.telefono) {
+    if (datos.email) {
       const { data: perfil } = await supabase
         .from('profiles')
-        .select('id, email')
-        .eq('telefono', datos.telefono)
+        .select('id')
+        .eq('email', datos.email)
         .maybeSingle()
-      if (perfil?.email) clienteEmail = perfil.email
       if (perfil?.id) clienteUserId = perfil.id
     }
 
     const { error } = await supabase.rpc('crear_reserva', {
       p_negocio_id: id, p_servicio_id: servMatch?.id ?? null, p_trabajador_id: trabMatch?.id ?? null,
-      p_cliente_nombre: datos.nombre, p_cliente_telefono: datos.telefono, p_cliente_email: clienteEmail,
+      p_cliente_nombre: datos.nombre, p_cliente_telefono: null, p_cliente_email: datos.email,
       p_fecha: datos.fecha, p_hora: datos.hora, p_user_id: clienteUserId,
     })
     if (error) {
       setMensajes(prev => [...prev, { rol: 'bot', texto: `No pude crear la reserva: ${error.message}. Intenta reservar directamente.` }])
     } else {
       setReservaConfirmada(true)
-      const vinculo = clienteEmail ? ' Tu reserva ha quedado vinculada a tu perfil.' : ''
-      setMensajes(prev => [...prev, { rol: 'bot', texto: `Tu cita está confirmada para el ${datos.fecha} a las ${datos.hora}. ¡Te esperamos!${vinculo}\n\n👤 ${datos.nombre} · 📞 ${datos.telefono} · ✂️ ${datos.servicio}` }])
+      setMensajes(prev => [...prev, { rol: 'bot', texto: `Tu cita está confirmada para el ${datos.fecha} a las ${datos.hora}. ¡Te esperamos!\n\n👤 ${datos.nombre} · ✉️ ${datos.email} · ✂️ ${datos.servicio}` }])
       descontarCreditos(id, 3, 'chatbot_reserva').catch(() => {})
     }
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)

@@ -48,90 +48,43 @@ export async function POST(req: NextRequest) {
     const LANG_INSTRUCTIONS: Record<string, string> = {
       es: `FLUJO PARA RESERVAR (sigue este orden exacto):
 
-Paso 1 - Verificar registro:
-Cuando el cliente exprese intención de reservar, pregunta:
-"Para reservar necesito verificar tu identidad. ¿Estás registrado en Khepria?"
-
-Si dice NO o que no tiene cuenta:
-Responde: "Puedes registrarte aquí: ${registroUrl}
-Es rápido y solo necesitas email y teléfono. Una vez registrado vuelve y te gestiono la cita."
-No sigas con el proceso de reserva hasta que confirme que está registrado.
-
-Si dice SÍ o que tiene cuenta:
-Pregunta: "¿Cuál es tu número de teléfono registrado?"
-Usa este número para verificar su perfil en el sistema. El número es obligatorio.
-Si el cliente no está en el sistema: "No encuentro ese teléfono en nuestro sistema. Por favor regístrate primero en: ${registroUrl}"
-
-Paso 2 - Elegir servicio:
-Pregunta qué servicio quiere y preséntale las opciones disponibles.
-
-Paso 3 - Elegir profesional (opcional):
-Si hay varios profesionales, pregunta si tiene preferencia o si quiere cualquiera.
-
-Paso 4 - Elegir fecha:
-Pregunta la fecha deseada (DD/MM/YYYY). Informa de los días disponibles según los horarios.
-
-Paso 5 - Elegir hora:
-Pregunta la hora deseada. Informa los horarios de apertura disponibles.
-
-Paso 6 - Confirmar datos:
-Muestra un resumen completo y pide confirmación al cliente.
-
-Paso 7 - Ejecutar reserva:
-Cuando el cliente confirme, muestra el mensaje de confirmación y añade al final en una sola línea sin saltos:
-[RESERVA:{"nombre":"...","telefono":"...","servicio":"...","trabajador":"...","fecha":"YYYY-MM-DD","hora":"HH:MM"}]
+Paso 1 - Elegir servicio: Pregunta qué servicio quiere y muéstrale las opciones disponibles.
+Paso 2 - Elegir profesional (opcional): Si hay varios, pregunta si tiene preferencia o si quiere cualquiera.
+Paso 3 - Elegir fecha: Pregunta la fecha deseada (DD/MM/YYYY). Informa los días disponibles según el horario.
+Paso 4 - Elegir hora: Pregunta la hora deseada dentro del horario de apertura.
+Paso 5 - Pedir datos personales: Pregunta NOMBRE completo y EMAIL del cliente (no teléfono).
+Paso 6 - Confirmar: Muestra resumen completo y pide confirmación explícita.
+Paso 7 - Cuando el cliente confirme: escribe un mensaje amable de confirmación y añade AL FINAL en una sola línea sin saltos de línea:
+[RESERVA:{"nombre":"...","email":"...","servicio":"...","trabajador":"...","fecha":"YYYY-MM-DD","hora":"HH:MM"}]
 
 Para "cualquiera"/"sin preferencia" en trabajador, usa el valor "cualquiera".
-Si el cliente NO está registrado, muestra [MOSTRAR_OPCIONES] para que pueda ir directamente a la web a reservar.
-Cuando el cliente exprese intención de reservar sin pasar por el flujo, incluye [MOSTRAR_OPCIONES].`,
+El bloque [RESERVA:{...}] lo procesa el sistema automáticamente, el cliente no lo verá.`,
 
       ca: `FLUX PER RESERVAR (segueix aquest ordre exacte):
 
-Pas 1 - Verificar registre:
-Quan el client expressi intenció de reservar, pregunta:
-"Per reservar necessito verificar la teva identitat. Estàs registrat a Khepria?"
+Pas 1 - Triar servei: Pregunta quin servei vol i mostra les opcions disponibles.
+Pas 2 - Triar professional (opcional): Si n'hi ha diversos, pregunta preferència.
+Pas 3 - Triar data (DD/MM/YYYY). Informa els dies disponibles.
+Pas 4 - Triar hora dins l'horari d'obertura.
+Pas 5 - Demanar dades: Pregunta NOM complet i EMAIL del client (no telèfon).
+Pas 6 - Confirmar: Mostra resum i demana confirmació explícita.
+Pas 7 - Quan confirmi: escriu missatge amable i afegeix AL FINAL en una sola línia:
+[RESERVA:{"nombre":"...","email":"...","servicio":"...","trabajador":"...","fecha":"YYYY-MM-DD","hora":"HH:MM"}]
 
-Si diu NO:
-Respon: "Pots registrar-te aquí: ${registroUrl}
-És ràpid i només necessites email i telèfon. Un cop registrat torna i et gestiono la cita."
-
-Si diu SÍ:
-Pregunta: "Quin és el teu número de telèfon registrat?"
-
-Pas 2 - Triar servei: Pregunta quin servei vol.
-Pas 3 - Triar professional (opcional).
-Pas 4 - Triar data (DD/MM/YYYY).
-Pas 5 - Triar hora.
-Pas 6 - Confirmar dades.
-Pas 7 - Quan confirmi, afegeix al final en una línia:
-[RESERVA:{"nombre":"...","telefono":"...","servicio":"...","trabajador":"...","fecha":"YYYY-MM-DD","hora":"HH:MM"}]
-
-Si no registrat: mostra [MOSTRAR_OPCIONES].
-Quan expressi intenció de reservar: inclou [MOSTRAR_OPCIONES].`,
+Per a "qualsevol"/"sense preferència" en treballador, usa el valor "cualquiera".`,
 
       en: `BOOKING FLOW (follow this exact order):
 
-Step 1 - Verify registration:
-When the client expresses intent to book, ask:
-"To make a booking I need to verify your identity. Are you registered on Khepria?"
+Step 1 - Choose service: Ask what service they want and show available options.
+Step 2 - Choose professional (optional): If several, ask for preference.
+Step 3 - Choose date (DD/MM/YYYY). Inform available days from schedule.
+Step 4 - Choose time within opening hours.
+Step 5 - Get contact details: Ask for client's FULL NAME and EMAIL (not phone).
+Step 6 - Confirm: Show full summary and ask for explicit confirmation.
+Step 7 - When confirmed: write a friendly confirmation message and add AT THE END on a single line:
+[RESERVA:{"nombre":"...","email":"...","servicio":"...","trabajador":"...","fecha":"YYYY-MM-DD","hora":"HH:MM"}]
 
-If they say NO:
-Reply: "You can register here: ${registroUrl}
-It's quick and only requires your email and phone number. Once registered, come back and I'll book your appointment."
-
-If they say YES:
-Ask: "What is your registered phone number?"
-
-Step 2 - Choose service.
-Step 3 - Choose professional (optional).
-Step 4 - Choose date (DD/MM/YYYY).
-Step 5 - Choose time.
-Step 6 - Confirm details.
-Step 7 - When confirmed, add at the end on a single line:
-[RESERVA:{"nombre":"...","telefono":"...","servicio":"...","trabajador":"...","fecha":"YYYY-MM-DD","hora":"HH:MM"}]
-
-If not registered: show [MOSTRAR_OPCIONES].
-When booking intent detected: include [MOSTRAR_OPCIONES].`,
+For "anyone"/"no preference" in professional, use the value "cualquiera".`,
     }
 
     const CANCEL_POLICY: Record<string, string> = {
@@ -201,12 +154,52 @@ ${LANG_INSTRUCTIONS[lang]}`
     }
 
     const d = result.data as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
-    const respuesta = d?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Lo siento, no pude procesar tu mensaje.'
+    const textoRespuesta = d?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Lo siento, no pude procesar tu mensaje.'
 
     // Descontar 1 crédito por respuesta del chatbot (fire-and-forget)
     descontarCreditos(negocioId, 1, 'chatbot_respuesta', sb).catch(() => {})
 
-    return NextResponse.json({ respuesta })
+    // Detectar y procesar bloque [RESERVA:{...}] antes de devolver la respuesta
+    const reservaMatch = textoRespuesta.match(/\[RESERVA:(.*?)\]/s)
+    if (reservaMatch) {
+      try {
+        const datosReserva = JSON.parse(reservaMatch[1])
+
+        const { data: servicio } = await sb
+          .from('servicios')
+          .select('id')
+          .eq('negocio_id', negocioId)
+          .ilike('nombre', `%${datosReserva.servicio}%`)
+          .single()
+
+        const { error } = await sb
+          .from('reservas')
+          .insert({
+            negocio_id: negocioId,
+            cliente_nombre: datosReserva.nombre,
+            cliente_email: datosReserva.email,
+            fecha: datosReserva.fecha,
+            hora: datosReserva.hora,
+            servicio_id: servicio?.id || null,
+            estado: 'pendiente',
+            origen: 'chatbot',
+          })
+
+        if (error) {
+          console.error('Error creando reserva:', error)
+          await registrarErrorIA({ endpoint: 'chatbot-reserva', error, negocioId })
+        }
+
+        const mensajeLimpio = textoRespuesta.replace(/\[RESERVA:.*?\]/gs, '').trim()
+        return NextResponse.json({
+          mensaje: mensajeLimpio || '✅ ¡Reserva confirmada! Te hemos enviado un email de confirmación.',
+        })
+      } catch (e) {
+        console.error('Error parseando reserva:', e)
+      }
+    }
+
+    return NextResponse.json({ mensaje: textoRespuesta })
   } catch (e) {
     console.error('[chat-negocio]', e)
     await registrarErrorIA({ endpoint: 'chat-negocio', error: e })
