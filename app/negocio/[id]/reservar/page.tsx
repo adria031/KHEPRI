@@ -179,7 +179,7 @@ export default function Reservar() {
     setCargandoSlots(true)
     let query = supabase
       .from('reservas')
-      .select('hora')
+      .select('hora, servicio_id')
       .eq('negocio_id', id)
       .eq('fecha', fecha)
       .neq('estado', 'cancelada')
@@ -188,18 +188,27 @@ export default function Reservar() {
       ? supabase.from('bloqueos_trabajador').select('hora_inicio, hora_fin, dia_completo').eq('trabajador_id', trabajador.id).eq('fecha', fecha)
       : Promise.resolve({ data: [] })
     Promise.all([query, bloqueosQuery]).then(([{ data }, { data: bloqs }]) => {
-      const counts: Record<string, number> = {}
-      for (const r of data || []) {
-        const h = r.hora.slice(0, 5)
-        counts[h] = (counts[h] ?? 0) + 1
+      // Expande cada reserva a todos sus chunks de 30 min según la duración del servicio
+      const chunkCounts: Record<string, number> = {}
+      for (const r of (data || [])) {
+        const srv = servicios.find(s => s.id === r.servicio_id)
+        const duracion = srv?.duracion || 60
+        const [rh, rm] = r.hora.slice(0, 5).split(':').map(Number)
+        const inicio = rh * 60 + rm
+        for (let m = inicio; m < inicio + duracion; m += 30) {
+          const chunk = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+          chunkCounts[chunk] = (chunkCounts[chunk] ?? 0) + 1
+        }
       }
       const { maxSimul } = negocioAgenda
-      const ocupados = new Set(Object.entries(counts).filter(([, n]) => n >= maxSimul).map(([h]) => h))
+      const ocupados = new Set(
+        Object.entries(chunkCounts).filter(([, n]) => n >= maxSimul).map(([h]) => h)
+      )
       setHorasOcupadas(ocupados)
       setBloqueosDia((bloqs ?? []) as { hora_inicio: string | null; hora_fin: string | null; dia_completo: boolean }[])
       setCargandoSlots(false)
     })
-  }, [paso, fecha, serviciosSeleccionados, trabajador, id, negocioAgenda])
+  }, [paso, fecha, serviciosSeleccionados, trabajador, id, negocioAgenda, servicios])
 
   // Generar slots para la fecha y duración total seleccionada (respeta bloqueos_trabajador)
   const slots = useCallback((): string[] => {
