@@ -5,7 +5,22 @@ import type { NextRequest } from 'next/server'
 const LOCALES = ['es', 'ca', 'en']
 const DEFAULT_LOCALE = 'es'
 
-const PROTECTED = ['/dashboard', '/cliente', '/empleado', '/admin']
+// Rutas públicas — accesibles sin autenticación
+const rutasPublicas = [
+  '/',
+  '/cliente',
+  '/cliente/(.*)',
+  '/negocio/(.*)',
+  '/legal/(.*)',
+  '/auth/(.*)',
+  '/aviso-legal',
+  '/api/waitlist',
+  '/api/webhook/(.*)',
+]
+
+function esRutaPublica(pathname: string): boolean {
+  return rutasPublicas.some(pattern => new RegExp(`^${pattern}$`).test(pathname))
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -36,9 +51,8 @@ export async function proxy(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // ── Auth: protect private routes ─────────────────────────────────────────
-  const isProtected = PROTECTED.some(r => pathname.startsWith(r))
-  if (isProtected && !session) {
+  // ── Auth: proteger rutas privadas ─────────────────────────────────────────
+  if (!esRutaPublica(pathname) && !session) {
     const loginUrl = new URL('/auth', request.url)
     loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
