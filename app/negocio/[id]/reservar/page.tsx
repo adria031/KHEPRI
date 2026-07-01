@@ -179,7 +179,7 @@ export default function Reservar() {
     setCargandoSlots(true)
     let query = supabase
       .from('reservas')
-      .select('hora, servicio_id')
+      .select('hora, servicio_id, duracion_total')
       .eq('negocio_id', id)
       .eq('fecha', fecha)
       .neq('estado', 'cancelada')
@@ -191,8 +191,7 @@ export default function Reservar() {
       // Expande cada reserva a todos sus chunks de 30 min según la duración del servicio
       const chunkCounts: Record<string, number> = {}
       for (const r of (data || [])) {
-        const srv = servicios.find(s => s.id === r.servicio_id)
-        const duracion = srv?.duracion || 60
+        const duracion = r.duracion_total || servicios.find(s => s.id === r.servicio_id)?.duracion || 60
         const [rh, rm] = r.hora.slice(0, 5).split(':').map(Number)
         const inicio = rh * 60 + rm
         for (let m = inicio; m < inicio + duracion; m += 30) {
@@ -516,10 +515,11 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
     const [sh, sm] = s.split(':').map(Number)
     const slotStart = sh * 60 + sm
     const slotEnd = slotStart + duracionTotal
-    return [...horasOcupadas].some(h => {
-      const [hh, hm] = h.split(':').map(Number)
-      const hMin = hh * 60 + hm
-      return hMin >= slotStart && hMin < slotEnd
+    return [...horasOcupadas].some(chunk => {
+      const [hh, hm] = chunk.split(':').map(Number)
+      const chunkStart = hh * 60 + hm
+      const chunkEnd = chunkStart + 30
+      return slotStart < chunkEnd && slotEnd > chunkStart
     })
   }
 
