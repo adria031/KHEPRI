@@ -112,7 +112,7 @@ export default function Equipo() {
   const [cargandoContrato, setCargandoContrato] = useState(false)
 
   // Estadísticas por trabajador
-  type StatsRow = { trabajador_id: string; estado: string; precio: number | null; fecha: string }
+  type StatsRow = { trabajador_id: string | null; estado: string; precio_total: number | null; fecha: string; created_at: string }
   const [statsWorker, setStatsWorker] = useState<StatsRow[]>([])
   const [trabajadorSeleccionado, setTrabajadorSeleccionado] = useState<string | null>(null)
 
@@ -145,9 +145,10 @@ export default function Equipo() {
       await cargarContratos(neg.id)
       const { data: sw } = await db
         .from('reservas')
-        .select('trabajador_id, estado, precio, fecha')
+        .select('trabajador_id, estado, precio_total, fecha, created_at')
         .eq('negocio_id', neg.id)
-        .not('trabajador_id', 'is', null)
+      console.log('Total reservas:', sw?.length)
+      console.log('Con trabajador_id:', sw?.filter(r => r.trabajador_id).length)
       setStatsWorker((sw || []) as StatsRow[])
       setCargando(false)
     })()
@@ -514,30 +515,6 @@ export default function Equipo() {
   const hoyISO = new Date().toISOString().split('T')[0]
   const mesActual = hoyISO.slice(0, 7)
 
-  const statsPorTrabajador = trabajadores.map(t => {
-    const rw = statsWorker.filter(r => r.trabajador_id === t.id)
-    const completadas = rw.filter(r => r.estado === 'completada')
-    const canceladas  = rw.filter(r => r.estado === 'cancelada')
-    const ingresos    = completadas.reduce((s, r) => s + (r.precio || 0), 0)
-    const rwMes       = rw.filter(r => r.fecha?.startsWith(mesActual))
-    const compMes     = rwMes.filter(r => r.estado === 'completada')
-    const ingresosMes = compMes.reduce((s, r) => s + (r.precio || 0), 0)
-    const futuras     = rw
-      .filter(r => r.fecha >= hoyISO && r.estado !== 'cancelada')
-      .sort((a, b) => a.fecha.localeCompare(b.fecha))
-    return {
-      ...t,
-      totalReservas: rw.length,
-      completadas:   completadas.length,
-      canceladas:    canceladas.length,
-      ingresos,
-      tasaExito: rw.length > 0 ? Math.round((completadas.length / rw.length) * 100) : 0,
-      reservasMes:  rwMes.length,
-      ingresosMes,
-      proximaCita:  futuras[0]?.fecha || null,
-    }
-  })
-
   const listaFinal: Trabajador[] = [
     ...(duenoProfile ? [{
       id: duenoProfile.id,
@@ -553,6 +530,33 @@ export default function Equipo() {
     } as Trabajador] : []),
     ...trabajadores,
   ]
+
+  const statsPorTrabajador = listaFinal.map(t => {
+    const rw = t.esDueno
+      ? statsWorker.filter(r => r.trabajador_id === t.id || r.trabajador_id === null)
+      : statsWorker.filter(r => r.trabajador_id === t.id)
+    const completadas = rw.filter(r => r.estado === 'completada')
+    const canceladas  = rw.filter(r => r.estado === 'cancelada')
+    const ingresos    = completadas.reduce((s, r) => s + (r.precio_total || 0), 0)
+    const rwMes       = rw.filter(r => r.fecha?.startsWith(mesActual))
+    const compMes     = rwMes.filter(r => r.estado === 'completada')
+    const ingresosMes = compMes.reduce((s, r) => s + (r.precio_total || 0), 0)
+    const futuras     = rw
+      .filter(r => r.fecha >= hoyISO && r.estado !== 'cancelada')
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    return {
+      ...t,
+      totalReservas: rw.length,
+      completadas:   completadas.length,
+      canceladas:    canceladas.length,
+      ingresos,
+      tasaExito: rw.length > 0 ? Math.round((completadas.length / rw.length) * 100) : 0,
+      reservasMes:  rwMes.length,
+      ingresosMes,
+      proximaCita:  futuras[0]?.fecha || null,
+    }
+  })
+  console.log('Stats por trabajador:', statsPorTrabajador)
 
   return (
     <DashboardShell negocio={negocio} todosNegocios={todosNegocios}>
