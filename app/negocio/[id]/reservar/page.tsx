@@ -609,19 +609,7 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
         .day-num { font-size: 20px; font-weight: 800; color: #111827; line-height: 1; }
         .day-month { font-size: 10px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; }
         /* Slot list */
-        .slot-list { display: flex; flex-direction: column; gap: 8px; }
-        .slot-item { display: flex; align-items: center; padding: 13px 16px; background: white; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 12px; cursor: pointer; transition: all 0.15s; gap: 14px; }
-        .slot-item:hover { border-color: #1D4ED8; box-shadow: 0 0 0 3px rgba(29,78,216,0.07); }
-        .slot-item.selected { background: #1D4ED8; border-color: #1D4ED8; }
-        .slot-item.selected .slot-hora, .slot-item.selected .slot-precio { color: white; }
-        .slot-item.ocupado { background: #F9FAFB; cursor: not-allowed; opacity: 0.5; }
-        .slot-item.ocupado .slot-hora { text-decoration: line-through; color: #9CA3AF; }
-        .slot-dot { width: 8px; height: 8px; border-radius: 50%; background: #34D399; flex-shrink: 0; }
-        .slot-item.ocupado .slot-dot { background: #F87171; }
-        .slot-item.selected .slot-dot { background: rgba(255,255,255,0.6); }
-        .slot-hora { font-size: 16px; font-weight: 800; color: #111827; flex: 1; }
-        .slot-precio { font-size: 14px; font-weight: 700; color: #6B7280; }
-        .slot-tag { font-size: 11px; font-weight: 700; color: #F87171; background: rgba(248,113,113,0.1); padding: 2px 8px; border-radius: 100px; }
+        .slot-list { display: flex; flex-wrap: wrap; gap: 8px; }
         /* Éxito */
         .exito { text-align: center; padding: 40px 20px; }
         .exito-icon { font-size: 64px; margin-bottom: 16px; }
@@ -878,23 +866,48 @@ Hoy es ${new Date().toISOString().split('T')[0]}.
                     <div className="slot-list">
                       {slots().map(s => {
                         const ocupado = esSlotOcupado(s)
+                        const seleccionado = hora === s
                         return (
-                          <div
+                          <button
                             key={s}
-                            className={`slot-item ${ocupado ? 'ocupado' : ''} ${hora === s ? 'selected' : ''}`}
+                            disabled={ocupado}
                             onTouchStart={handleTouchStart}
                             onTouchEnd={(e) => handleTouchEnd(e, () => { if (!ocupado) { setHora(s); setPaso(4) } })}
                             onClick={() => { if (!ocupado) { setHora(s); setPaso(4) } }}
+                            style={{
+                              padding: '8px 14px', borderRadius: 10,
+                              border: seleccionado ? '2px solid #7C3AED' : ocupado ? '1.5px solid #F1F5F9' : '1.5px solid #E5E7EB',
+                              background: seleccionado ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : ocupado ? '#F9FAFB' : '#fff',
+                              color: seleccionado ? '#fff' : ocupado ? '#D1D5DB' : '#374151',
+                              fontWeight: 700, fontSize: 13,
+                              cursor: ocupado ? 'not-allowed' : 'pointer',
+                              textDecoration: ocupado ? 'line-through' : 'none',
+                              opacity: ocupado ? 0.5 : 1, transition: 'all 0.2s',
+                              position: 'relative' as const,
+                              fontFamily: 'inherit',
+                            }}
                           >
-                            <span className="slot-dot" />
-                            <span className="slot-hora">{s}</span>
-                            {ocupado
-                              ? <span className="slot-tag">Ocupado</span>
-                              : <span className="slot-precio">{precioTotal > 0 ? `€${precioTotal.toFixed(2)}` : ''}</span>
-                            }
-                          </div>
+                            {s}
+                            {ocupado && (
+                              <span style={{ position: 'absolute', top: -6, right: -6,
+                                background: '#EF4444', color: '#fff', borderRadius: '50%',
+                                width: 14, height: 14, fontSize: 9, display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', fontWeight: 800,
+                              }}>✕</span>
+                            )}
+                          </button>
                         )
                       })}
+                    </div>
+                    <div style={{ display:'flex', gap:16, marginTop:12, fontSize:12, color:'#9CA3AF' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:12, height:12, borderRadius:3, background:'#7C3AED' }} />
+                        Disponible
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:12, height:12, borderRadius:3, background:'#F1F5F9', border:'1px solid #E5E7EB' }} />
+                        Ocupado
+                      </div>
                     </div>
 
                     {/* Lista de espera — mostrar si TODOS los slots están ocupados */}
