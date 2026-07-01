@@ -758,7 +758,7 @@ export default function Home() {
 
           <div style={{ display:'flex', gap:8, flexShrink:0 }}>
             <button className="kh-nav-login" onClick={() => openAuth('login')}>Entrar</button>
-            <button className="kh-nav-cta"   onClick={() => openAuth('registro')}>Pruébalo gratis</button>
+            <button className="kh-nav-cta"   onClick={() => openAuth('registro')}>Crear cuenta</button>
           </div>
 
           <div className="kh-nav-mob-auth">
@@ -776,7 +776,7 @@ export default function Home() {
           <button className="kh-mobile-btn" onClick={() => scrollTo('planes')}>Precios</button>
           <button className="kh-mobile-btn" onClick={() => scrollTo('quien')}>Para quién</button>
           <button className="kh-mobile-btn" onClick={() => openAuth('login')}>Entrar</button>
-          <button className="kh-mobile-btn" style={{ color:'#7C3AED' }} onClick={() => openAuth('registro')}>Pruébalo gratis →</button>
+          <button className="kh-mobile-btn" style={{ color:'#7C3AED' }} onClick={() => openAuth('registro')}>Crear cuenta →</button>
         </div>
       </nav>
 
@@ -826,8 +826,8 @@ export default function Home() {
           </div>
 
           <div className="kh-hero-btns hero-btns">
-            <button className="kh-btn-primary" onClick={() => openAuth('registro')}>Empezar gratis →</button>
-            <button className="kh-btn-ghost"   onClick={() => scrollTo('funciones')}>Ver demo</button>
+            <button className="kh-btn-primary" onClick={() => openAuth('registro')}>Crear cuenta →</button>
+            <button className="kh-btn-ghost"   onClick={() => scrollTo('funciones')}>Ver funciones</button>
           </div>
         </div>
 
@@ -1225,11 +1225,11 @@ export default function Home() {
           </div>
           <h2 className="cta-h2">Tu negocio merece<br />la mejor herramienta</h2>
           <p className="cta-p">
-            Empieza gratis hoy. Sin tarjeta de crédito. Sin permanencia.<br />
+            Sin tarjeta de crédito. Sin permanencia.<br />
             Configuración en menos de 5 minutos.
           </p>
           <button className="kh-btn-white" onClick={() => openAuth('registro')}>
-            Empezar gratis →
+            Crear mi cuenta →
           </button>
         </div>
       </section>
@@ -1354,7 +1354,7 @@ export default function Home() {
                     )}
                     <input type="text" name="website" value={honeypot} onChange={e => setHoneypot(e.target.value)} style={{ display:'none', position:'absolute', left:'-9999px', opacity:0, pointerEvents:'none' }} tabIndex={-1} autoComplete="off" aria-hidden="true" />
                     <button className="kh-auth-btn" type="submit" disabled={authLoading}>
-                      {authLoading ? (authMode === 'login' ? 'Entrando...' : 'Creando cuenta...') : (authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta gratis')}
+                      {authLoading ? (authMode === 'login' ? 'Entrando...' : 'Creando cuenta...') : (authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta')}
                     </button>
                   </form>
 
@@ -1412,7 +1412,7 @@ export default function Home() {
 
               <button onClick={() => { setModalFuncion(null); openAuth('registro') }}
                 style={{ width: '100%', marginTop: 20, padding: 14, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>
-                Empezar gratis →
+                Crear mi cuenta →
               </button>
             </motion.div>
           </div>
