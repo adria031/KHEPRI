@@ -33,7 +33,7 @@ const FUNCIONES = [
     titulo: 'Facturación e IVA automático',
     resumen: 'Facturas y modelos fiscales generados solos.',
     detalle: 'Cada reserva completada genera automáticamente su factura con IVA correctamente calculado. Los modelos 303, 130 y 111 se preparan trimestralmente listos para presentar, con todos los datos ya estructurados.',
-    diferenciador: 'Cero hojas de cálculo. Cero gestor para lo básico.',
+    diferenciador: 'Tus facturas, IVA y modelos fiscales siempre ordenados y listos para tu gestor o para presentar tú mismo.',
     ejemplo: 'A final de trimestre, Laia descarga su modelo 303 ya relleno en lugar de pasar una tarde reuniendo facturas sueltas.',
   },
   {
@@ -846,7 +846,7 @@ export default function Home() {
           <div className="valor-header">
             <span className="kh-tag kh-tag-purple" style={{ display:'inline-flex', marginBottom:16 }}>Por qué Khepria</span>
             <h2 className="kh-h2 section-title">Todo lo que necesita tu negocio</h2>
-            <p className="kh-section-p">Una sola plataforma. Sin instalaciones. Sin gestor. Sin complicaciones.</p>
+            <p className="kh-section-p">Una sola plataforma. Sin instalaciones. Sin complicaciones.</p>
           </div>
 
           <div className="valor-cards section-content">
@@ -959,7 +959,7 @@ export default function Home() {
             <div className="fn-text-col">
               <span className="fn-panel-icon">🧾</span>
               <span className="fn-panel-label" style={{ color:'#40DCA5' }}>Facturación</span>
-              <h2 className="fn-panel-title">Facturas e IVA sin gestor</h2>
+              <h2 className="fn-panel-title">Facturas e IVA en orden</h2>
               <p className="fn-panel-desc">Facturas con IVA, modelos 303, 130 y 111 automáticos. Cumple con Hacienda sin estrés ni coste extra.</p>
               <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#40DCA5', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => setModalFuncion(FUNCIONES[2])} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #40DCA555'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Más información →</button>
             </div>
@@ -1077,7 +1077,7 @@ export default function Home() {
               <span className="fn-panel-icon">👥</span>
               <span className="fn-panel-label" style={{ color:'#B8D8F8' }}>Equipo</span>
               <h2 className="fn-panel-title">Nóminas y contratos oficiales</h2>
-              <p className="fn-panel-desc">Turnos, nóminas y contratos SEPE generados automáticamente. Sin errores, sin papel, sin gestor laboral.</p>
+              <p className="fn-panel-desc">Turnos, nóminas y contratos SEPE generados automáticamente. Sin errores y sin papel.</p>
               <button style={{ marginTop:32, alignSelf:'flex-start', padding:'12px 24px', borderRadius:12, border:'none', background:'#B8D8F8', color:'#0F0F1A', fontWeight:700, fontSize:14, fontFamily:'DM Sans,sans-serif', cursor:'pointer', transition:'transform .2s,box-shadow .2s' }} onClick={() => setModalFuncion(FUNCIONES[5])} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(-2px)';(e.currentTarget as HTMLElement).style.boxShadow='0 8px 24px #B8D8F855'}} onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='';(e.currentTarget as HTMLElement).style.boxShadow=''}}>Más información →</button>
             </div>
             <div className="fn-phone-col">
