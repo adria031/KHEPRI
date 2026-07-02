@@ -1098,17 +1098,9 @@ export default function FichaNegocio() {
           <div className="chat-msgs">
             {mensajes.map((m, i) => {
               const tieneOpciones = m.rol === 'bot' && m.texto.includes('[MOSTRAR_OPCIONES]')
-              const reservaMatch = m.rol === 'bot' ? (() => {
-                const idx = m.texto.indexOf('[RESERVA:')
-                if (idx === -1) return null
-                const jsonStart = idx + '[RESERVA:'.length
-                const jsonEnd = m.texto.indexOf(']', jsonStart)
-                if (jsonEnd === -1) return null
-                return m.texto.slice(jsonStart, jsonEnd)
-              })() : null
               const textoLimpio = m.texto
                 .replace('[MOSTRAR_OPCIONES]', '')
-                .replace(/\[RESERVA:\{[^[\]]*\}\]/g, '')
+                .replace(/\[RESERVA:.*?\]/gs, '')
                 .trim()
               return (
                 <div key={i} className={`chat-wrap ${m.rol}`}>
@@ -1122,12 +1114,6 @@ export default function FichaNegocio() {
                       <button className="chat-opt" onClick={() => enviarMensaje('Prefiero que lo gestiones tú.')}>🤖 <span><strong>Que lo gestione el asistente</strong></span></button>
                     </div>
                   )}
-                  {reservaMatch && !reservaConfirmada && (() => {
-                    try {
-                      const datos = JSON.parse(reservaMatch)
-                      return <button className="chat-confirm-btn" onClick={() => crearReservaChatbot(datos)} onTouchEnd={(e) => { e.preventDefault(); crearReservaChatbot(datos) }}>✅ Confirmar reserva</button>
-                    } catch { return null }
-                  })()}
                 </div>
               )
             })}
