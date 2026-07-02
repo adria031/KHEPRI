@@ -61,11 +61,11 @@ export async function POST(req: NextRequest) {
     })
 
     if (!chatRes.ok) return NextResponse.json({ ok: true })
-    const { respuesta } = await chatRes.json() as { respuesta?: string }
-    if (!respuesta) return NextResponse.json({ ok: true })
+    const { mensaje } = await chatRes.json() as { mensaje?: string }
+    if (!mensaje) return NextResponse.json({ ok: true })
 
     // Strip internal booking markers before sending to WhatsApp
-    const waText = respuesta
+    const waText = mensaje
       .replace(/\[RESERVA:[^\]]+\]/g, '')
       .replace(/\[MOSTRAR_OPCIONES\]/g, '')
       .trim()
